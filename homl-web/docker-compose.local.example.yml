@@ -1,0 +1,11 @@
+services:
+  homlback:
+    build:
+      dockerfile: Dockerfile.local
+      # No proxy args needed — vendor/ is committed; build runs fully offline.
+
+  # Uncomment and adjust when Docker Hub is unreachable (use a registry mirror or local cache).
+  # redis:
+  #   image: "registry.corp/redis:alpine"
+  # mysql:
+  #   image: "registry.corp/mysql:8.4"

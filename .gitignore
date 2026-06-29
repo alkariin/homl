@@ -1,0 +1,103 @@
+# -----------------------------
+# OS / Editor
+# -----------------------------
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.iml
+
+# -----------------------------
+# Logs / temp
+# -----------------------------
+*.log
+*.tmp
+*.swp
+tmp/
+temp/
+.cache/
+
+# -----------------------------
+# Secrets / env
+# -----------------------------
+.env
+.env.*
+!.env.example
+!.env.local.example
+!**/.env.local.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# -----------------------------
+# Flutter / Dart
+# -----------------------------
+**/.dart_tool/
+**/.packages
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.pub-cache/
+**/.metadata
+**/build/
+**/coverage/
+
+# Flutter generated (if present)
+**/lib/generated_plugin_registrant.dart
+
+# Symbolication / obfuscation
+**/app.*.symbols
+**/app.*.map.json
+
+# -----------------------------
+# Android (Flutter app)
+# -----------------------------
+**/android/.gradle/
+**/android/local.properties
+**/android/**/build/
+**/android/app/debug/
+**/android/app/profile/
+**/android/app/release/
+
+# -----------------------------
+# iOS (Flutter app)
+# -----------------------------
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/.last_build_id
+**/ios/Flutter/ephemeral/
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/flutter_export_environment.sh
+
+# Xcode user data
+**/ios/**/*.xcuserstate
+**/ios/**/*.xcworkspace/xcuserdata/
+**/ios/**/*.xcodeproj/xcuserdata/
+
+# -----------------------------
+# Go
+# -----------------------------
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+bin/
+dist/
+go.work
+go.work.sum
+**/vendor/
+
+# -----------------------------
+# Docker / local runtime
+# -----------------------------
+docker-data/
+
+# -----------------------------
+# Local-only overrides (machine-specific; *.example variants stay tracked)
+# -----------------------------
+docker-compose.local.yml
+Makefile.local
+Dockerfile.local

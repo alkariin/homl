@@ -1,0 +1,15 @@
+FROM golang:1.23-alpine AS builder
+WORKDIR /app
+
+# vendor/ is committed — no network access needed during build.
+# If you need to update dependencies: go mod tidy && go mod vendor
+# (set HTTP_PROXY / HTTPS_PROXY)
+COPY ./src/ ./
+RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor -o /homlback .
+
+FROM alpine:3.20
+WORKDIR /app
+COPY --from=builder /homlback /app/homlback
+COPY --from=builder /app/constants.json /app/constants.json
+EXPOSE 8080
+CMD ["/app/homlback"]

@@ -1,0 +1,19 @@
+{
+  "global_unexpectedError": "Unexpected error",
+
+  "account": "Account",
+  "account_logout": "Logout",
+  "account_updatePassword": "Update password",
+  "account_currentPassword": "Actual password",
+  "account_enterPassword": "Enter the new password",
+  "account_repeatPassword": "Repeat the password",
+  "account_fingerprintSwitchText": "Add fingerprint lock",
+  "account_fingerprintSwitchError": "Can't use biometric auth on this device.",
+  "account_pinSwitchText": "Add PIN code",
+  "account_pinSwitchError": "PIN couldn't be configured",
+  "account_enterPin": "Enter the PIN code",
+
+  "settings": "Settings",
+  "settings_language": "Language",
+  "settings_selectLanguage": "Select language"
+}

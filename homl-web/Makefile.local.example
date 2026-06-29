@@ -1,0 +1,7 @@
+# Machine-specific overrides — copy to Makefile.local (gitignored).
+# Use Dockerfile.local on machines if needed.
+# The build runs fully offline thanks to the committed vendor/ directory.
+# To update dependencies: set HTTP_PROXY / HTTPS_PROXY in your shell, then:
+#   make vendor   → runs go mod tidy && go mod vendor
+
+DOCKERFILE := Dockerfile.local

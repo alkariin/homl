@@ -1,0 +1,1 @@
+export 'view/register.dart';
