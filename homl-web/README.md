@@ -78,6 +78,14 @@ Run the backend as a local Go process:
 make local
 ```
 
+## Testing
+
+```bash
+make test          # unit + HTTP integration tests (needs a local Go toolchain)
+make test-docker   # same, in a golang container (no local Go needed)
+make test-e2e      # end-to-end tests against a running stack (make dev first)
+```
+
 ## Updating dependencies
 
 ```bash
