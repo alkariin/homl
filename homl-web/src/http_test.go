@@ -9,10 +9,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alkariin/homl/homl-web/controller"
-	"github.com/alkariin/homl/homl-web/helper"
-	"github.com/alkariin/homl/homl-web/model"
-	"github.com/alkariin/homl/homl-web/service/mocks"
+	"github.com/alkariin/homl/homl-web/internal/category"
+	"github.com/alkariin/homl/homl-web/internal/domain"
+	"github.com/alkariin/homl/homl-web/internal/event"
+	"github.com/alkariin/homl/homl-web/internal/mocks"
+	"github.com/alkariin/homl/homl-web/internal/person"
+	"github.com/alkariin/homl/homl-web/internal/settings"
+	"github.com/alkariin/homl/homl-web/internal/shared"
+	"github.com/alkariin/homl/homl-web/internal/tag"
+	"github.com/alkariin/homl/homl-web/internal/user"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -52,21 +57,21 @@ func newTestServer() (*gin.Engine, *serverMocks) {
 		persons:    new(mocks.MockPersonsService),
 		settings:   new(mocks.MockSettingsService),
 	}
-	handler := &controller.Handler{
-		UsersService:      sm.users,
-		CategoriesService: sm.categories,
-		EventsService:     sm.events,
-		TagsService:       sm.tags,
-		PersonsService:    sm.persons,
-		SettingsService:   sm.settings,
+	server := &Server{
+		User:     &user.Handler{UsersService: sm.users},
+		Category: &category.Handler{CategoriesService: sm.categories, UsersService: sm.users},
+		Tag:      &tag.Handler{TagsService: sm.tags, UsersService: sm.users},
+		Person:   &person.Handler{PersonsService: sm.persons, UsersService: sm.users},
+		Event:    &event.Handler{EventsService: sm.events, UsersService: sm.users},
+		Settings: &settings.Handler{SettingsService: sm.settings, UsersService: sm.users},
 	}
-	router := SetupRouter(handler, "", 5*time.Second)
+	router := SetupRouter(server, "", 5*time.Second)
 	return router, sm
 }
 
 // authHeader returns a Bearer token accepted by TokenAuthMiddleware for testUserID.
 func authHeader() string {
-	td, _ := helper.CreateToken(testUserID)
+	td, _ := shared.CreateToken(testUserID)
 	return "Bearer " + td.AccessToken
 }
 
@@ -100,7 +105,7 @@ func decodeJSON(t *testing.T, rec *httptest.ResponseRecorder) map[string]interfa
 func TestRegistrationEndpoint(t *testing.T) {
 	router, sm := newTestServer()
 
-	sm.users.On("Registration", mock.AnythingOfType("*model.User"), mock.AnythingOfType("*model.Language")).
+	sm.users.On("Registration", mock.AnythingOfType("*domain.User"), mock.AnythingOfType("*domain.Language")).
 		Return(map[string]string{"access_token": "a", "refresh_token": "r"}, nil)
 
 	rec := doRequest(router, http.MethodPost, "/registration",
@@ -125,7 +130,7 @@ func TestRegistrationRejectsInvalidLanguage(t *testing.T) {
 func TestLoginEndpoint(t *testing.T) {
 	router, sm := newTestServer()
 
-	sm.users.On("Login", mock.AnythingOfType("*model.User")).
+	sm.users.On("Login", mock.AnythingOfType("*domain.User")).
 		Return(map[string]string{"access_token": "a", "refresh_token": "r"}, nil)
 
 	rec := doRequest(router, http.MethodPost, "/login",
@@ -150,7 +155,7 @@ func TestLoginRejectsBadEmail(t *testing.T) {
 func TestRefreshEndpoint(t *testing.T) {
 	router, sm := newTestServer()
 
-	sm.users.On("Refresh", mock.AnythingOfType("*model.RefreshInput")).
+	sm.users.On("Refresh", mock.AnythingOfType("*domain.RefreshInput")).
 		Return(map[string]string{"access_token": "a", "refresh_token": "r"}, nil)
 
 	rec := doRequest(router, http.MethodPost, "/refresh",
@@ -165,7 +170,7 @@ func TestRefreshEndpoint(t *testing.T) {
 func TestLogoutEndpoint(t *testing.T) {
 	router, sm := newTestServer()
 
-	sm.users.On("Logout", mock.AnythingOfType("*model.AccessDetails")).Return(nil)
+	sm.users.On("Logout", mock.AnythingOfType("*domain.AccessDetails")).Return(nil)
 
 	rec := doRequest(router, http.MethodPost, "/logout", "", authHeader())
 
@@ -197,14 +202,14 @@ func TestGetCategoriesEndpoint(t *testing.T) {
 	router, sm := newTestServer()
 
 	sm.users.On("GetUserIdFromToken", mock.Anything).Return(testUserID, nil)
-	sm.categories.On("GetCategories", testUserID).Return([]model.GetCategoryResponse{
+	sm.categories.On("GetCategories", testUserID).Return([]domain.GetCategoryResponse{
 		{Id: 1, Category: "Dates", Color: "#ffff60", IsLocked: true},
 	}, nil)
 
 	rec := doRequest(router, http.MethodGet, "/categories", "", authHeader())
 
 	assert.Equal(t, http.StatusOK, rec.Code)
-	var out []model.GetCategoryResponse
+	var out []domain.GetCategoryResponse
 	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &out))
 	assert.Len(t, out, 1)
 	assert.Equal(t, "Dates", out[0].Category)
@@ -215,7 +220,7 @@ func TestCreateCategoryEndpoint(t *testing.T) {
 	router, sm := newTestServer()
 
 	sm.users.On("GetUserIdFromToken", mock.Anything).Return(testUserID, nil)
-	sm.categories.On("CreateCategory", mock.AnythingOfType("*model.Category")).Return(nil)
+	sm.categories.On("CreateCategory", mock.AnythingOfType("*domain.Category")).Return(nil)
 
 	rec := doRequest(router, http.MethodPost, "/categories",
 		`{"category":"Noces","color":"#ff0000"}`, authHeader())
@@ -239,7 +244,7 @@ func TestUpdateCategoryEndpoint(t *testing.T) {
 	router, sm := newTestServer()
 
 	sm.users.On("GetUserIdFromToken", mock.Anything).Return(testUserID, nil)
-	sm.categories.On("UpdateCategory", mock.AnythingOfType("*model.Category")).Return(nil)
+	sm.categories.On("UpdateCategory", mock.AnythingOfType("*domain.Category")).Return(nil)
 
 	rec := doRequest(router, http.MethodPatch, "/categories/5",
 		`{"category":"Autres","color":"#ff0000"}`, authHeader())
@@ -266,14 +271,14 @@ func TestGetEventsEndpoint(t *testing.T) {
 	router, sm := newTestServer()
 
 	sm.users.On("GetUserIdFromToken", mock.Anything).Return(testUserID, nil)
-	sm.events.On("GetEvents", testUserID, mock.Anything).Return([]model.GetEventsResponse{
-		{Event: model.Event{Id: 1, Description: "cool"}},
+	sm.events.On("GetEvents", testUserID, mock.Anything).Return([]domain.GetEventsResponse{
+		{Event: domain.Event{Id: 1, Description: "cool"}},
 	}, nil)
 
 	rec := doRequest(router, http.MethodGet, "/events", `{"tags":[]}`, authHeader())
 
 	assert.Equal(t, http.StatusOK, rec.Code)
-	var out []model.GetEventsResponse
+	var out []domain.GetEventsResponse
 	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &out))
 	assert.Len(t, out, 1)
 	sm.events.AssertExpectations(t)
@@ -283,7 +288,7 @@ func TestCreateEventEndpoint(t *testing.T) {
 	router, sm := newTestServer()
 
 	sm.users.On("GetUserIdFromToken", mock.Anything).Return(testUserID, nil)
-	sm.events.On("CreateEvent", testUserID, mock.AnythingOfType("*model.Event"), mock.Anything).Return(nil)
+	sm.events.On("CreateEvent", testUserID, mock.AnythingOfType("*domain.Event"), mock.Anything).Return(nil)
 
 	rec := doRequest(router, http.MethodPost, "/events",
 		`{"description":"cool","date":"1993-12-01T00:00:00Z","tagsId":[1,2]}`, authHeader())

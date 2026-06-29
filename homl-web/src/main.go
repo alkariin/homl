@@ -13,56 +13,59 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/alkariin/homl/homl-web/config"
-	"github.com/alkariin/homl/homl-web/controller"
-	"github.com/alkariin/homl/homl-web/repository"
-	"github.com/alkariin/homl/homl-web/service"
+	"github.com/alkariin/homl/homl-web/internal/category"
+	"github.com/alkariin/homl/homl-web/internal/event"
+	"github.com/alkariin/homl/homl-web/internal/person"
+	"github.com/alkariin/homl/homl-web/internal/platform"
+	"github.com/alkariin/homl/homl-web/internal/settings"
+	"github.com/alkariin/homl/homl-web/internal/tag"
+	"github.com/alkariin/homl/homl-web/internal/user"
 )
 
-func inject(d *config.DataSources) (*gin.Engine, error) {
+func inject(d *platform.DataSources) (*gin.Engine, error) {
 	log.Println("Injecting data sources")
 
 	// repositories
-	categoriesRepository := repository.NewCategoriesRepository(d.DB)
-	eventsRepository := repository.NewEventsRepository(d.DB)
-	personsRepository := repository.NewPersonsRepository(d.DB)
-	settingsRepository := repository.NewSettingsRepository(d.DB)
-	tagsRepository := repository.NewTagsRepository(d.DB)
-	usersRepository := repository.NewUsersRepository(d.DB, d.RedisClient)
+	categoriesRepository := category.NewCategoriesRepository(d.DB)
+	eventsRepository := event.NewEventsRepository(d.DB)
+	personsRepository := person.NewPersonsRepository(d.DB)
+	settingsRepository := settings.NewSettingsRepository(d.DB)
+	tagsRepository := tag.NewTagsRepository(d.DB)
+	usersRepository := user.NewUsersRepository(d.DB, d.RedisClient)
 
 	// services
-	categoriesService := service.NewCategoriesService(&service.CSConfig{
+	categoriesService := category.NewCategoriesService(&category.CSConfig{
 		CategoriesRepository: categoriesRepository,
 	})
-	eventsService := service.NewEventsService(&service.ESConfig{
+	eventsService := event.NewEventsService(&event.ESConfig{
 		EventsRepository:     eventsRepository,
 		CategoriesRepository: categoriesRepository,
 		TagsRepository:       tagsRepository,
 	})
-	personService := service.NewPersonsService(&service.PSConfig{
+	personService := person.NewPersonsService(&person.PSConfig{
 		PersonsRepository:    personsRepository,
 		CategoriesRepository: categoriesRepository,
 		TagsRepository:       tagsRepository,
 	})
-	settingsService := service.NewSettingsService(&service.SSConfig{
+	settingsService := settings.NewSettingsService(&settings.SSConfig{
 		SettingsRepository: settingsRepository,
 	})
-	tagsService := service.NewTagsService(&service.TSConfig{
+	tagsService := tag.NewTagsService(&tag.TSConfig{
 		TagsRepository:       tagsRepository,
 		CategoriesRepository: categoriesRepository,
 	})
-	usersService := service.NewUsersService(&service.UserConfig{
+	usersService := user.NewUsersService(&user.UserConfig{
 		UsersRepository: usersRepository,
 	})
 
-	// create handler and rest of config
-	handler := &controller.Handler{
-		CategoriesService: categoriesService,
-		EventsService:     eventsService,
-		PersonsService:    personService,
-		SettingsService:   settingsService,
-		TagsService:       tagsService,
-		UsersService:      usersService,
+	// wire the per-feature HTTP handlers (usersService doubles as the Authenticator)
+	server := &Server{
+		User:     &user.Handler{UsersService: usersService},
+		Category: &category.Handler{CategoriesService: categoriesService, UsersService: usersService},
+		Tag:      &tag.Handler{TagsService: tagsService, UsersService: usersService},
+		Person:   &person.Handler{PersonsService: personService, UsersService: usersService},
+		Event:    &event.Handler{EventsService: eventsService, UsersService: usersService},
+		Settings: &settings.Handler{SettingsService: settingsService, UsersService: usersService},
 	}
 
 	baseURL := os.Getenv("HOML_API_URL")
@@ -74,13 +77,13 @@ func inject(d *config.DataSources) (*gin.Engine, error) {
 	}
 	TimeoutDuration := time.Duration(time.Duration(ht) * time.Second)
 
-	router := SetupRouter(handler, baseURL, TimeoutDuration)
+	router := SetupRouter(server, baseURL, TimeoutDuration)
 
 	return router, nil
 }
 
 func main() {
-	ds, err := config.InitConfig()
+	ds, err := platform.InitConfig()
 	if err != nil {
 		log.Fatalf("Unable to initialize data sources: %v\n", err)
 	}
