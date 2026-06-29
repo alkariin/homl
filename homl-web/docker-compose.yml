@@ -1,0 +1,68 @@
+services:
+  homlback:
+    build:
+      context: .
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-PROD}
+      HOST: ${HOST:-http://localhost:8080}
+      HOML_API_URL: ${HOML_API_URL:-/api}
+      HANDLER_TIMEOUT: ${HANDLER_TIMEOUT:-5}
+      MYSQL_ADDRESS: mysql_container:3306
+      REDIS_ADDRESS: redis_container:6379
+      MYSQL_USER: ${MYSQL_USER:-homl}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-change_me_mysql}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-homl}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change_me_redis}
+      ACCESS_SECRET: ${ACCESS_SECRET:-change_me_access_secret}
+      REFRESH_SECRET: ${REFRESH_SECRET:-change_me_refresh_secret}
+      ENCRYPT_SECRET: ${ENCRYPT_SECRET:-change_me_encrypt_secret}
+    ports:
+      - 8080:8080
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  redis:
+    image: "redis:alpine"
+    container_name: redis_container
+    command: /bin/sh -c 'redis-server --requirepass "$$REDIS_PASSWORD"'
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change_me_redis}
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./db/redis-data:/var/lib/redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "$$REDIS_PASSWORD", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  mysql:
+    image: "mysql:8.4"
+    container_name: mysql_container
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-change_me_root}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-homl}
+      MYSQL_USER: ${MYSQL_USER:-homl}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-change_me_mysql}
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./db/homl.sql:/homl.sql
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          '/usr/bin/mysql --user=$$MYSQL_USER --password=$$MYSQL_PASSWORD
+            --execute "SHOW DATABASES;"'
+        ]
+      interval: 10s
+      timeout: 2s
+      retries: 10
+
+volumes:
+  mysql-data:

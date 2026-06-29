@@ -1,0 +1,20 @@
+{
+  "global_unexpectedError": "Erreur inattendue",
+
+  "account": "Compte",
+  "account_logout": "Se deconnecter",
+  "account_updatePassword": "Mettre a jour le mot de passe",
+  "account_currentPassword": "Mot de passe actuel",
+  "account_enterPassword": "Entrer le nouveau mot de passe",
+  "account_repeatPassword": "Repeter le mot de passe",
+  "account_fingerprintSwitchText": "Activer le verrouillage par empreinte",
+  "account_fingerprintSwitchError": "Impossible d'utiliser l'authentification biométrique sur cet appareil.",
+  "account_pinSwitchText": "Ajouter un code PIN",
+  "account_pinSwitchError": "Le code PIN n'a pas pu etre configure",
+  "account_enterPin": "Entrer le code PIN",
+
+  "settings": "Parametres",
+  "settings_language": "Langue",
+  "settings_selectLanguage": "Selectionner la langue"
+}
+

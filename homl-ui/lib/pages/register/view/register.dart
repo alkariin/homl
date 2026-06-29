@@ -1,0 +1,110 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:homl/l10n/app_localizations.dart';
+
+import 'package:homl/components/button.dart';
+import 'package:homl/components/input.dart';
+import 'package:homl/data/repositories/users.repository.dart';
+import 'package:homl/helpers/language.dart';
+import 'package:homl/helpers/validations.dart';
+import 'package:homl/pages/register/bloc/register_bloc.dart';
+
+class RegisterPage extends StatelessWidget {
+  const RegisterPage({super.key});
+
+  static Route<void> route() {
+    return MaterialPageRoute<void>(builder: (_) => const RegisterPage());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final localization = AppLocalizations.of(context)!;
+    final String lang = localization.localeName;
+
+    return BlocProvider(
+      create: (BuildContext context) =>
+          RegisterBloc(context.read<UsersRepository>(), stringToLanguage(lang)),
+      child: const RegisterView(),
+    );
+  }
+}
+
+class RegisterView extends StatefulWidget {
+  const RegisterView({super.key});
+
+  @override
+  State<RegisterView> createState() => _RegisterViewState();
+}
+
+class _RegisterViewState extends State<RegisterView> {
+  final _formKey = GlobalKey<FormState>();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocListener<RegisterBloc, RegisterState>(
+        listener: (context, state) {
+          if (state.isRegisterIncorrect) {
+            ScaffoldMessenger.of(context)
+              ..hideCurrentSnackBar()
+              ..showSnackBar(
+                const SnackBar(content: Text('Authentication Failure')),
+              );
+          }
+        },
+        bloc: BlocProvider.of<RegisterBloc>(context),
+        child: Scaffold(
+            appBar: AppBar(
+              title: const Text('HOML'),
+            ),
+            body: Align(
+              alignment: const Alignment(0, -1 / 3),
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Input(
+                          labelText: 'username',
+                          onChange: (username) => context
+                              .read<RegisterBloc>()
+                              .add(RegisterUsernameChanged(username)),
+                          initialValue:
+                              context.read<RegisterBloc>().state.username,
+                          validator: (username) {
+                            if (isEmailValid(username)) return null;
+                            return "The email is not valid";
+                          }),
+                      const Padding(padding: EdgeInsets.all(12)),
+                      Input(
+                        inputType: InputType.password,
+                        labelText: 'password',
+                        onChange: (password) => context
+                            .read<RegisterBloc>()
+                            .add(RegisterPasswordChanged(password)),
+                        initialValue:
+                            context.read<RegisterBloc>().state.password,
+                        validator: (password) {
+                          if (isPasswordValid(password)) return null;
+                          return "Must contain at least one number, one uppercase and lowercase letter, one special character, and at least 8 or more characters";
+                        },
+                      ),
+                      const Padding(padding: EdgeInsets.all(12)),
+                      Button(
+                        text: 'Register',
+                        onPressed: () {
+                          if (_formKey.currentState!.validate()) {
+                            context
+                                .read<RegisterBloc>()
+                                .add(RegisterSubmitted());
+                          }
+                        },
+                      )
+                    ],
+                  ),
+                ),
+              ),
+            )));
+  }
+}
