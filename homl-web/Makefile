@@ -60,6 +60,26 @@ local: ## Run backend process locally (requires db-up + migrateup first)
 vendor: ## Refresh vendor/ (set HTTP_PROXY/HTTPS_PROXY if needed)
 	cd src && go mod tidy && go mod vendor
 
+##@ Testing
+
+GO_IMAGE ?= golang:1.23-alpine
+
+test: ## Run unit + HTTP integration tests (needs a local Go toolchain)
+	cd src && go test ./...
+
+test-cover: ## Run tests with a coverage summary
+	cd src && go test -cover ./...
+
+test-docker: ## Run unit + HTTP integration tests in a Go container (no local Go needed)
+	docker run --rm \
+	  -v "$(CURDIR)/src":/app \
+	  -v homl-gomod:/go/pkg/mod \
+	  -v homl-gobuild:/root/.cache/go-build \
+	  -w /app $(GO_IMAGE) go test ./...
+
+test-e2e: ## Run end-to-end tests against a running stack (make dev first)
+	cd src && go test -tags e2e -count=1 ./e2e/...
+
 ##@ Docker
 
 build: ## Build backend Docker image
@@ -116,5 +136,6 @@ _network:
 	@docker network create $(DOCKER_NETWORK) 2>/dev/null || true
 
 .PHONY: help dev reload up down local vendor build \
+        test test-cover test-docker test-e2e \
         db-up db-down migrateup migratedown migratefix migratecreate seed \
         clean _network
