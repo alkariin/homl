@@ -53,8 +53,8 @@ func (m *MockUsersService) ResetPassword(user *domain.User) error {
 	return errAt(m.Called(user), 0)
 }
 
-func (m *MockUsersService) ConfirmResetPassword(user *domain.User) (map[string]string, error) {
-	ret := m.Called(user)
+func (m *MockUsersService) ConfirmResetPassword(newPassword string, idUser uint64) (map[string]string, error) {
+	ret := m.Called(newPassword, idUser)
 	return tokensAt(ret, 0), errAt(ret, 1)
 }
 

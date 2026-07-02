@@ -235,19 +235,12 @@ func (u *usersService) ResetPassword(user *domain.User) error {
 	return smtp.SendMail(smtpHost+":"+smtpPort, auth, from, to, message)
 }
 
-func (u *usersService) ConfirmResetPassword(user *domain.User) (map[string]string, error) {
-	_, err := mail.ParseAddress(user.Username)
-	if err != nil {
-		return nil, shared.NewStatusUnprocessableEntity()
-	}
-
-	// Get user id
-	idUser, err := u.UsersRepository.FindIdByUsername(user.Username)
-	if err != nil {
-		return nil, err
-	}
-
-	return u.generateAndUpdatePassword(user.Password, idUser)
+// ConfirmResetPassword sets a new password for the user identified by idUser,
+// which the handler derives from the reset token. The target account is never
+// taken from the request body, so a valid token cannot be used to reset another
+// user's password.
+func (u *usersService) ConfirmResetPassword(newPassword string, idUser uint64) (map[string]string, error) {
+	return u.generateAndUpdatePassword(newPassword, idUser)
 }
 
 func (u *usersService) UpdatePassword(oldPassword string, newPassword string, idUser uint64) (map[string]string, error) {

@@ -167,7 +167,6 @@ func (h *Handler) ResetPassword(c *gin.Context) {
 
 /** input:
  * {
- *   username: string,
  *   password: string
  * }
  */
@@ -179,13 +178,21 @@ func (h *Handler) ConfirmResetPassword(c *gin.Context) {
 		return
 	}
 
-	v1 := shared.GinInputParams{Field: user.Username, Validation: usernameValidation}
+	v1 := shared.GinInputParams{Field: user.Password, Validation: passwordValidation}
 	if shared.CheckGinInput(v1) {
 		shared.SendGinError(c, shared.NewStatusUnprocessableEntity())
 		return
 	}
 
-	tokens, err := h.UsersService.ConfirmResetPassword(&user)
+	// The account being reset is bound to the reset token, never to the request
+	// body, so a valid token can only reset its own owner's password.
+	au, err := shared.ExtractTokenMetadata(c.Request)
+	if err != nil {
+		shared.SendGinMyCustomError(c, err, shared.NewAuthorization("Not authorized"))
+		return
+	}
+
+	tokens, err := h.UsersService.ConfirmResetPassword(user.Password, au.UserId)
 	if err != nil {
 		shared.SendGinError(c, err)
 		return
