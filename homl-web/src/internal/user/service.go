@@ -16,6 +16,10 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// bcryptCost is the work factor used when hashing pins. 10 is the current
+// bcrypt default; the low-entropy nature of a pin makes a strong factor worth it.
+const bcryptCost = 10
+
 type usersService struct {
 	UsersRepository domain.UsersRepository
 }
@@ -108,6 +112,20 @@ func (u *usersService) Refresh(ri *domain.RefreshInput) (map[string]string, erro
 		return nil, err
 	}
 
+	// Enforce the second factor server-side: a valid refresh token alone must
+	// not be enough once the account has pin or fingerprint enabled, otherwise
+	// the extra factor is only a client-side illusion.
+	secureUser, err := u.UsersRepository.FindById(userId)
+	if err != nil {
+		return nil, shared.NewAuthorization("Not authorized")
+	}
+	if secureUser.IsPinEnabled && ri.Pin == nil {
+		return nil, shared.NewAuthorization("Pin must be provided")
+	}
+	if secureUser.IsFingerprintEnabled && ri.Signature == nil {
+		return nil, shared.NewAuthorization("Signature must be provided")
+	}
+
 	// Verification of signature
 	signature := ri.Signature
 	if signature != nil {
@@ -121,6 +139,17 @@ func (u *usersService) Refresh(ri *domain.RefreshInput) (map[string]string, erro
 			return nil, err
 		}
 
+		if storedUser.Pkey == nil || storedUser.Challenge == nil {
+			return nil, shared.NewAuthorization("Not authorized")
+		}
+
+		// Consume the challenge before verifying so it can be used at most once,
+		// even if verification fails. This prevents replaying a captured
+		// challenge/signature pair.
+		if err := u.UsersRepository.UpdateChallenge(userId, nil); err != nil {
+			return nil, err
+		}
+
 		publicKey, err := shared.ParsePublicKey(*storedUser.Pkey)
 		if err != nil {
 			return nil, err
@@ -130,7 +159,7 @@ func (u *usersService) Refresh(ri *domain.RefreshInput) (map[string]string, erro
 
 		isValid := ed25519.Verify(ed25519.PublicKey(publicKey), []byte(data), signatureDecoded)
 		if !isValid {
-			return nil, shared.NewInternal()
+			return nil, shared.NewAuthorization("Not authorized")
 		}
 	}
 
@@ -206,19 +235,12 @@ func (u *usersService) ResetPassword(user *domain.User) error {
 	return smtp.SendMail(smtpHost+":"+smtpPort, auth, from, to, message)
 }
 
-func (u *usersService) ConfirmResetPassword(user *domain.User) (map[string]string, error) {
-	_, err := mail.ParseAddress(user.Username)
-	if err != nil {
-		return nil, shared.NewStatusUnprocessableEntity()
-	}
-
-	// Get user id
-	idUser, err := u.UsersRepository.FindIdByUsername(user.Username)
-	if err != nil {
-		return nil, err
-	}
-
-	return u.generateAndUpdatePassword(user.Password, idUser)
+// ConfirmResetPassword sets a new password for the user identified by idUser,
+// which the handler derives from the reset token. The target account is never
+// taken from the request body, so a valid token cannot be used to reset another
+// user's password.
+func (u *usersService) ConfirmResetPassword(newPassword string, idUser uint64) (map[string]string, error) {
+	return u.generateAndUpdatePassword(newPassword, idUser)
 }
 
 func (u *usersService) UpdatePassword(oldPassword string, newPassword string, idUser uint64) (map[string]string, error) {
@@ -338,6 +360,17 @@ func (u *usersService) SecureAuth(user *domain.User) (*domain.UserResponse, erro
 		return nil, shared.NewBadRequest("Pkey should not be provided")
 	}
 
+	// Hash the pin before it ever reaches the database. A pin is a low-entropy
+	// secret, so plaintext storage would expose every pin on a DB leak.
+	if user.Pin != nil {
+		hashedPin, err := bcrypt.GenerateFromPassword([]byte(*user.Pin), bcryptCost)
+		if err != nil {
+			return nil, shared.NewStatusUnprocessableEntity()
+		}
+		hashedPinStr := string(hashedPin)
+		user.Pin = &hashedPinStr
+	}
+
 	// reactions
 
 	removePin := false
@@ -351,15 +384,20 @@ func (u *usersService) SecureAuth(user *domain.User) (*domain.UserResponse, erro
 	}
 
 	// request
-	u.UsersRepository.UpdatePinAndFingerprint(user, removePkey, removePin)
+	if err := u.UsersRepository.UpdatePinAndFingerprint(user, removePkey, removePin); err != nil {
+		return nil, err
+	}
 
 	// Get new values and send them back
 	res, err := u.UsersRepository.FindById(user.ID)
+	if err != nil {
+		return nil, err
+	}
 
 	response := &domain.UserResponse{
 		IsFingerprintEnabled: res.IsFingerprintEnabled,
 		IsPinEnabled:         res.IsPinEnabled,
 	}
 
-	return response, err
+	return response, nil
 }
