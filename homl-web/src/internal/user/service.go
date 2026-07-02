@@ -16,6 +16,10 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// bcryptCost is the work factor used when hashing pins. 10 is the current
+// bcrypt default; the low-entropy nature of a pin makes a strong factor worth it.
+const bcryptCost = 10
+
 type usersService struct {
 	UsersRepository domain.UsersRepository
 }
@@ -336,6 +340,17 @@ func (u *usersService) SecureAuth(user *domain.User) (*domain.UserResponse, erro
 
 	if user.Pkey != nil && (!user.IsPinEnabled && !user.IsFingerprintEnabled) {
 		return nil, shared.NewBadRequest("Pkey should not be provided")
+	}
+
+	// Hash the pin before it ever reaches the database. A pin is a low-entropy
+	// secret, so plaintext storage would expose every pin on a DB leak.
+	if user.Pin != nil {
+		hashedPin, err := bcrypt.GenerateFromPassword([]byte(*user.Pin), bcryptCost)
+		if err != nil {
+			return nil, shared.NewStatusUnprocessableEntity()
+		}
+		hashedPinStr := string(hashedPin)
+		user.Pin = &hashedPinStr
 	}
 
 	// reactions
