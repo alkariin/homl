@@ -139,6 +139,17 @@ func (u *usersService) Refresh(ri *domain.RefreshInput) (map[string]string, erro
 			return nil, err
 		}
 
+		if storedUser.Pkey == nil || storedUser.Challenge == nil {
+			return nil, shared.NewAuthorization("Not authorized")
+		}
+
+		// Consume the challenge before verifying so it can be used at most once,
+		// even if verification fails. This prevents replaying a captured
+		// challenge/signature pair.
+		if err := u.UsersRepository.UpdateChallenge(userId, nil); err != nil {
+			return nil, err
+		}
+
 		publicKey, err := shared.ParsePublicKey(*storedUser.Pkey)
 		if err != nil {
 			return nil, err
@@ -148,7 +159,7 @@ func (u *usersService) Refresh(ri *domain.RefreshInput) (map[string]string, erro
 
 		isValid := ed25519.Verify(ed25519.PublicKey(publicKey), []byte(data), signatureDecoded)
 		if !isValid {
-			return nil, shared.NewInternal()
+			return nil, shared.NewAuthorization("Not authorized")
 		}
 	}
 
