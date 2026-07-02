@@ -212,43 +212,50 @@ func (r *UsersRepository) ResetPinCounter(idUser uint64) error {
 }
 
 func (r *UsersRepository) CheckPin(idUser uint64, pin string) error {
-	// verify pin code
-	var id uint
-	row := r.DB.QueryRow(`SELECT Id FROM Users WHERE Id = ? AND Pin = ?`, idUser, pin)
-	err := row.Scan(&id)
-	if err != nil {
-		// increment pin try counter
-		res, err2 := r.DB.Exec("UPDATE Users SET pinTryCounter = IFNULL(pinTryCounter, 0) + 1 WHERE id = ?", idUser)
+	// Fetch the stored (hashed) pin and the current failure counter.
+	var storedPin *string
+	var pinTryCounter *uint
+	row := r.DB.QueryRow(`SELECT pin, pinTryCounter FROM Users WHERE id = ?`, idUser)
+	if err := row.Scan(&storedPin, &pinTryCounter); err != nil {
+		return err
+	}
 
+	// Hard lockout: once locked, even a correct pin is refused until the user
+	// re-authenticates with their password (which resets the counter on Login).
+	if pinTryCounter != nil && *pinTryCounter >= 3 {
+		return shared.NewAuthorization("Pin is locked") // this string is used in FE
+	}
+
+	if storedPin == nil {
+		return shared.NewAuthorization("Pin code not correct")
+	}
+
+	// Constant-time comparison against the bcrypt hash.
+	if err := bcrypt.CompareHashAndPassword([]byte(*storedPin), []byte(pin)); err != nil {
+		// Wrong pin: increment the failure counter.
+		res, err2 := r.DB.Exec("UPDATE Users SET pinTryCounter = IFNULL(pinTryCounter, 0) + 1 WHERE id = ?", idUser)
 		if err2 != nil {
 			return err2
 		}
-
-		rowsAffected, err2 := res.RowsAffected()
-		if rowsAffected == 0 || err2 != nil {
+		if rowsAffected, err2 := res.RowsAffected(); rowsAffected == 0 || err2 != nil {
 			return shared.NewInternal()
 		}
 
-		// verify if pin is locked
-		var pinTryCounter *uint
-		row := r.DB.QueryRow(`SELECT pinTryCounter FROM Users WHERE Id = ?`, idUser)
-		err2 = row.Scan(&pinTryCounter)
-		if err2 != nil {
+		// Re-read the counter to tell the FE whether the pin just got locked.
+		var counter *uint
+		if err2 := r.DB.QueryRow(`SELECT pinTryCounter FROM Users WHERE id = ?`, idUser).Scan(&counter); err2 != nil {
 			return err2
 		}
-
-		if pinTryCounter != nil && *pinTryCounter >= 3 {
+		if counter != nil && *counter >= 3 {
 			return shared.NewAuthorization("Pin is locked") // this string is used in FE
 		}
-
 		return shared.NewAuthorization("Pin code not correct")
-	} else {
-		// reset pin try counter
-		err2 := r.ResetPinCounter(idUser)
+	}
 
-		if err2 != nil {
-			return err2
-		}
+	// Correct pin: reset the counter. Tolerate a no-op update (counter already 0)
+	// since this driver's RowsAffected reports changed rows, not matched rows.
+	if _, err := r.DB.Exec("UPDATE Users SET pinTryCounter = 0 WHERE id = ?", idUser); err != nil {
+		return err
 	}
 	return nil
 }
