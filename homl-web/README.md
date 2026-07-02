@@ -59,7 +59,7 @@ make reload
 For rapid iteration without a Docker rebuild, run the Go process directly (requires the stack already running):
 
 ```bash
-make local   # go run ./src
+make local   # go run ./src/cmd/homl-web
 ```
 
 ## Local backend mode (Go process + Docker deps)

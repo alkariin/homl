@@ -9,13 +9,12 @@ COPY ./src/go.mod ./src/go.sum ./
 RUN go mod download
 
 COPY ./src/ ./
-RUN CGO_ENABLED=0 GOOS=linux go build -o /homlback .
+RUN CGO_ENABLED=0 GOOS=linux go build -o /homlback ./cmd/homl-web
 
 FROM alpine:3.20
 
 WORKDIR /app
 COPY --from=builder /homlback /app/homlback
-COPY --from=builder /app/constants.json /app/constants.json
 
 EXPOSE 8080
 
