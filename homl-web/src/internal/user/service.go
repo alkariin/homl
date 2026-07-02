@@ -112,6 +112,20 @@ func (u *usersService) Refresh(ri *domain.RefreshInput) (map[string]string, erro
 		return nil, err
 	}
 
+	// Enforce the second factor server-side: a valid refresh token alone must
+	// not be enough once the account has pin or fingerprint enabled, otherwise
+	// the extra factor is only a client-side illusion.
+	secureUser, err := u.UsersRepository.FindById(userId)
+	if err != nil {
+		return nil, shared.NewAuthorization("Not authorized")
+	}
+	if secureUser.IsPinEnabled && ri.Pin == nil {
+		return nil, shared.NewAuthorization("Pin must be provided")
+	}
+	if secureUser.IsFingerprintEnabled && ri.Signature == nil {
+		return nil, shared.NewAuthorization("Signature must be provided")
+	}
+
 	// Verification of signature
 	signature := ri.Signature
 	if signature != nil {
