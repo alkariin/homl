@@ -112,7 +112,7 @@ type UsersService interface {
 	Logout(accessDetails *AccessDetails) error
 	Refresh(refreshInput *RefreshInput) (map[string]string, error)
 	ResetPassword(user *User) error
-	ConfirmResetPassword(user *User) (map[string]string, error)
+	ConfirmResetPassword(newPassword string, idUser uint64) (map[string]string, error)
 	UpdatePassword(oldPassword string, newPassword string, idUser uint64) (map[string]string, error)
 	Challenge(refreshToken string) (*string, error)
 	GetUserIdFromToken(request *http.Request) (uint64, error)
