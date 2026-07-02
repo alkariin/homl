@@ -37,16 +37,15 @@ help: ## Show this help
 
 ##@ Development
 
-dev: _network ## First launch: start stack detached, migrate, seed
+dev: _network ## First launch: build, migrate, seed, then run in foreground (Ctrl-C stops the stack)
 	docker compose $(COMPOSE_FILES) up -d --build
 	@printf "Waiting for backend"
 	@until nc -z localhost 8080 2>/dev/null; do printf "."; sleep 2; done && echo " ready"
 	$(MAKE) migrateup
 	$(MAKE) seed
 	@echo "→ http://localhost:8080  (demo@homl.local / Demo1234!)"
-
-reload: ## Rebuild and restart backend only (DB keeps running)
-	docker compose $(COMPOSE_FILES) up -d --build homlback
+	@echo "Attaching — press Ctrl-C to stop the stack."
+	docker compose $(COMPOSE_FILES) up
 
 up: _network ## Start full stack in foreground with live logs
 	docker compose $(COMPOSE_FILES) up --build
@@ -55,7 +54,7 @@ down: ## Stop the compose stack
 	docker compose $(COMPOSE_FILES) down --remove-orphans
 
 local: ## Run backend process locally (requires db-up + migrateup first)
-	cd src && go run .
+	cd src && go run ./cmd/homl-web
 
 vendor: ## Refresh vendor/ (set HTTP_PROXY/HTTPS_PROXY if needed)
 	cd src && go mod tidy && go mod vendor
@@ -135,7 +134,7 @@ clean: ## Remove stack, named volumes, orphan containers, and built images
 _network:
 	@docker network create $(DOCKER_NETWORK) 2>/dev/null || true
 
-.PHONY: help dev reload up down local vendor build \
+.PHONY: help dev up down local vendor build \
         test test-cover test-docker test-e2e \
         db-up db-down migrateup migratedown migratefix migratecreate seed \
         clean _network
