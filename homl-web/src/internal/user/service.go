@@ -384,15 +384,20 @@ func (u *usersService) SecureAuth(user *domain.User) (*domain.UserResponse, erro
 	}
 
 	// request
-	u.UsersRepository.UpdatePinAndFingerprint(user, removePkey, removePin)
+	if err := u.UsersRepository.UpdatePinAndFingerprint(user, removePkey, removePin); err != nil {
+		return nil, err
+	}
 
 	// Get new values and send them back
 	res, err := u.UsersRepository.FindById(user.ID)
+	if err != nil {
+		return nil, err
+	}
 
 	response := &domain.UserResponse{
 		IsFingerprintEnabled: res.IsFingerprintEnabled,
 		IsPinEnabled:         res.IsPinEnabled,
 	}
 
-	return response, err
+	return response, nil
 }
