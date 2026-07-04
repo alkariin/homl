@@ -10,8 +10,6 @@ import (
 	"github.com/alkariin/homl/homl-web/internal/domain/category"
 	"github.com/alkariin/homl/homl-web/internal/domain/event"
 	"github.com/alkariin/homl/homl-web/internal/domain/person"
-	"github.com/alkariin/homl/homl-web/internal/domain/settings"
-	"github.com/alkariin/homl/homl-web/internal/domain/tag"
 	"github.com/alkariin/homl/homl-web/internal/domain/user"
 	"github.com/stretchr/testify/mock"
 )
@@ -36,8 +34,8 @@ type MockUsersService struct {
 	mock.Mock
 }
 
-func (m *MockUsersService) Registration(user *user.User, language *settings.Language) (map[string]string, error) {
-	ret := m.Called(user, language)
+func (m *MockUsersService) Registration(u *user.User, language *user.Language) (map[string]string, error) {
+	ret := m.Called(u, language)
 	return tokensAt(ret, 0), errAt(ret, 1)
 }
 
@@ -156,11 +154,11 @@ type MockTagsService struct {
 	mock.Mock
 }
 
-func (m *MockTagsService) CreateTag(idUser uint64, tag *tag.Tag) error {
+func (m *MockTagsService) CreateTag(idUser uint64, tag *category.Tag) error {
 	return errAt(m.Called(idUser, tag), 0)
 }
 
-func (m *MockTagsService) UpdateTag(idUser uint64, tag *tag.Tag) error {
+func (m *MockTagsService) UpdateTag(idUser uint64, tag *category.Tag) error {
 	return errAt(m.Called(idUser, tag), 0)
 }
 
@@ -201,20 +199,20 @@ type MockSettingsService struct {
 	mock.Mock
 }
 
-func (m *MockSettingsService) GetSettings(idUser uint64) (*settings.SettingsResponse, error) {
+func (m *MockSettingsService) GetSettings(idUser uint64) (*user.SettingsResponse, error) {
 	ret := m.Called(idUser)
-	var r0 *settings.SettingsResponse
+	var r0 *user.SettingsResponse
 	if ret.Get(0) != nil {
-		r0 = ret.Get(0).(*settings.SettingsResponse)
+		r0 = ret.Get(0).(*user.SettingsResponse)
 	}
 	return r0, errAt(ret, 1)
 }
 
-func (m *MockSettingsService) UpdateSettings(idUser uint64, newSettings *settings.Settings) (*settings.SettingsResponse, error) {
+func (m *MockSettingsService) UpdateSettings(idUser uint64, newSettings *user.Settings) (*user.SettingsResponse, error) {
 	ret := m.Called(idUser, newSettings)
-	var r0 *settings.SettingsResponse
+	var r0 *user.SettingsResponse
 	if ret.Get(0) != nil {
-		r0 = ret.Get(0).(*settings.SettingsResponse)
+		r0 = ret.Get(0).(*user.SettingsResponse)
 	}
 	return r0, errAt(ret, 1)
 }

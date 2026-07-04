@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	"github.com/alkariin/homl/homl-web/internal/apperror"
-	"github.com/alkariin/homl/homl-web/internal/crypto"
+	"github.com/alkariin/homl/homl-web/internal/application"
+	"github.com/alkariin/homl/homl-web/internal/domain/category"
 	"github.com/alkariin/homl/homl-web/internal/domain/event"
-	"github.com/alkariin/homl/homl-web/internal/domain/tag"
 )
 
 // nullStringToString converts a sql.NullString to a plain string (empty when NULL).
@@ -21,16 +21,18 @@ func nullStringToString(ns sql.NullString) string {
 }
 
 type EventsRepository struct {
-	DB *sql.DB
+	DB     *sql.DB
+	Crypto application.Encryptor
 }
 
-func NewEventsRepository(db *sql.DB) event.Repository {
+func NewEventsRepository(db *sql.DB, crypto application.Encryptor) event.Repository {
 	return &EventsRepository{
-		DB: db,
+		DB:     db,
+		Crypto: crypto,
 	}
 }
 
-func (e *EventsRepository) FindEventsWithTags(encTags []string, idUser uint64) (map[uint]event.Event, map[uint][]tag.Tag, error) {
+func (e *EventsRepository) FindEventsWithTags(encTags []string, idUser uint64) (map[uint]event.Event, map[uint][]category.Tag, error) {
 	var tagsQuery string
 	if len(encTags) == 0 {
 		tagsQuery = ""
@@ -64,10 +66,10 @@ func (e *EventsRepository) FindEventsWithTags(encTags []string, idUser uint64) (
 		return nil, nil, err
 	}
 
-	resTags := make(map[uint][]tag.Tag)
+	resTags := make(map[uint][]category.Tag)
 	resEvents := make(map[uint]event.Event)
 	for results.Next() {
-		var tag tag.Tag
+		var tag category.Tag
 		var event event.Event
 		var description sql.NullString
 		err = results.Scan(&event.Id, &description, &event.Date, &tag.Id, &tag.Tag, &tag.IdCategory)
@@ -76,7 +78,7 @@ func (e *EventsRepository) FindEventsWithTags(encTags []string, idUser uint64) (
 		}
 		event.Description = nullStringToString(description)
 
-		decTag, err := crypto.Decrypt(tag.Tag)
+		decTag, err := e.Crypto.Decrypt(tag.Tag)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -89,21 +91,21 @@ func (e *EventsRepository) FindEventsWithTags(encTags []string, idUser uint64) (
 	return resEvents, resTags, nil
 }
 
-func (e *EventsRepository) CreateEventWithTags(tags []tag.Tag, tagsId []uint, event *event.Event, idUser uint64) error {
+func (e *EventsRepository) CreateEventWithTags(tags []category.Tag, tagsId []uint, event *event.Event, idUser uint64) error {
 	ctx := context.Background()
 	tx, err := e.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 
-	otherTagsId, err := CreateAllTags(ctx, tx, tags)
+	otherTagsId, err := CreateAllTags(ctx, tx, e.Crypto, tags)
 	if err != nil {
 		return err
 	}
 	tagsId = append(tagsId, otherTagsId...)
 
 	// it works even if the description has been omitted
-	encDescription, err := crypto.Encrypt(event.Description)
+	encDescription, err := e.Crypto.Encrypt(event.Description)
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -134,20 +136,20 @@ func (e *EventsRepository) CreateEventWithTags(tags []tag.Tag, tagsId []uint, ev
 	return tx.Commit()
 }
 
-func (e *EventsRepository) UpdateEventWithTags(tags []tag.Tag, tagsId []uint, event *event.Event, idUser uint64) error {
+func (e *EventsRepository) UpdateEventWithTags(tags []category.Tag, tagsId []uint, event *event.Event, idUser uint64) error {
 	ctx := context.Background()
 	tx, err := e.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 
-	otherTagsId, err := CreateAllTags(ctx, tx, tags)
+	otherTagsId, err := CreateAllTags(ctx, tx, e.Crypto, tags)
 	if err != nil {
 		return err
 	}
 	tagsId = append(tagsId, otherTagsId...)
 
-	encDescription, err := crypto.Encrypt(event.Description)
+	encDescription, err := e.Crypto.Encrypt(event.Description)
 	if err != nil {
 		tx.Rollback()
 		return err

@@ -5,7 +5,7 @@ import (
 
 	"github.com/alkariin/homl/homl-web/internal/apperror"
 	"github.com/alkariin/homl/homl-web/internal/application"
-	"github.com/alkariin/homl/homl-web/internal/domain/settings"
+	"github.com/alkariin/homl/homl-web/internal/domain/user"
 	"github.com/gin-gonic/gin"
 )
 
@@ -18,7 +18,7 @@ import (
  * }
  */
 func (h *SettingsHandler) GetSettings(c *gin.Context) {
-	idUser, err := h.UsersService.GetUserIdFromToken(c.Request)
+	idUser, err := h.Auth.GetUserIdFromToken(c.Request)
 	if err != nil {
 		SendGinError(c, err)
 		return
@@ -44,13 +44,13 @@ func (h *SettingsHandler) GetSettings(c *gin.Context) {
  * }
  */
 func (h *SettingsHandler) UpdateSettings(c *gin.Context) {
-	idUser, err := h.UsersService.GetUserIdFromToken(c.Request)
+	idUser, err := h.Auth.GetUserIdFromToken(c.Request)
 	if err != nil {
 		SendGinError(c, err)
 		return
 	}
 
-	var settings settings.Settings
+	var settings user.Settings
 	err = c.ShouldBindJSON(&settings)
 	if err != nil {
 		SendGinMyCustomError(c, err, apperror.NewStatusUnprocessableEntity())
@@ -75,5 +75,5 @@ func (h *SettingsHandler) UpdateSettings(c *gin.Context) {
 // Handler wires the settings HTTP endpoints to their service.
 type SettingsHandler struct {
 	SettingsService application.SettingsService
-	UsersService    Authenticator
+	Auth            Authenticator
 }

@@ -5,18 +5,19 @@ import (
 	"database/sql"
 
 	"github.com/alkariin/homl/homl-web/internal/apperror"
-	"github.com/alkariin/homl/homl-web/internal/crypto"
+	"github.com/alkariin/homl/homl-web/internal/application"
 	"github.com/alkariin/homl/homl-web/internal/domain/category"
-	"github.com/alkariin/homl/homl-web/internal/domain/tag"
 )
 
 type CategoriesRepository struct {
-	DB *sql.DB
+	DB     *sql.DB
+	Crypto application.Encryptor
 }
 
-func NewCategoriesRepository(db *sql.DB) category.Repository {
+func NewCategoriesRepository(db *sql.DB, crypto application.Encryptor) category.Repository {
 	return &CategoriesRepository{
-		DB: db,
+		DB:     db,
+		Crypto: crypto,
 	}
 }
 
@@ -51,7 +52,7 @@ func (c *CategoriesRepository) CheckLastIdByIdAndIdUser(idUser uint64, idCategor
 }
 
 // Returns all categories with all tags, but without the tags of the category persons
-func (c *CategoriesRepository) GetAllCategoriesWithTags(idUser uint64) (map[uint]category.Category, map[uint][]tag.TagDTO, error) {
+func (c *CategoriesRepository) GetAllCategoriesWithTags(idUser uint64) (map[uint]category.Category, map[uint][]category.TagDTO, error) {
 	type SQLTag struct {
 		Id  sql.NullInt64  `json:"id"`
 		Tag sql.NullString `json:"tag"`
@@ -70,20 +71,20 @@ func (c *CategoriesRepository) GetAllCategoriesWithTags(idUser uint64) (map[uint
 		return nil, nil, err
 	}
 
-	var tags = make(map[uint][]tag.TagDTO)
+	var tags = make(map[uint][]category.TagDTO)
 	var categories = make(map[uint]category.Category)
 	for results.Next() {
 		var sqlTag SQLTag
-		var t tag.TagDTO
+		var t category.TagDTO
 		var cat category.Category
 		err = results.Scan(&cat.Id, &cat.Category, &cat.Color, &cat.IsLocked, &sqlTag.Id, &sqlTag.Tag)
 		// if the category is empty, Tag will be null
 		if sqlTag.Id.Valid && sqlTag.Tag.Valid {
-			decTag, err := crypto.Decrypt(sqlTag.Tag.String)
+			decTag, err := c.Crypto.Decrypt(sqlTag.Tag.String)
 			if err != nil {
 				return nil, nil, err
 			}
-			t = tag.TagDTO{Id: uint(sqlTag.Id.Int64), Tag: decTag}
+			t = category.TagDTO{Id: uint(sqlTag.Id.Int64), Tag: decTag}
 			tags[cat.Id] = append(tags[cat.Id], t)
 		}
 		categories[cat.Id] = cat

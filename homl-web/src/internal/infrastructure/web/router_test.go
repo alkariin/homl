@@ -11,7 +11,7 @@ import (
 
 	"github.com/alkariin/homl/homl-web/internal/domain/category"
 	"github.com/alkariin/homl/homl-web/internal/domain/event"
-	"github.com/alkariin/homl/homl-web/internal/token"
+	"github.com/alkariin/homl/homl-web/internal/infrastructure/auth"
 	"github.com/alkariin/homl/homl-web/test/mocks"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -25,11 +25,11 @@ import (
 
 const testUserID = uint64(1)
 
+// testJWT backs both the auth middleware of the test router and the
+// authHeader helper, so the tokens it mints are accepted end-to-end.
+var testJWT = auth.NewJWT("test_access_secret", "test_refresh_secret", false)
+
 func TestMain(m *testing.M) {
-	os.Setenv("ENVIRONMENT", "TEST")
-	os.Setenv("ACCESS_SECRET", "test_access_secret")
-	os.Setenv("REFRESH_SECRET", "test_refresh_secret")
-	os.Setenv("ENCRYPT_SECRET", "01234567890123456789012345678901")
 	gin.SetMode(gin.TestMode)
 	os.Exit(m.Run())
 }
@@ -53,20 +53,21 @@ func newTestServer() (*gin.Engine, *serverMocks) {
 		settings:   new(mocks.MockSettingsService),
 	}
 	server := &Server{
-		User:     &UserHandler{UsersService: sm.users},
-		Category: &CategoryHandler{CategoriesService: sm.categories, UsersService: sm.users},
-		Tag:      &TagHandler{TagsService: sm.tags, UsersService: sm.users},
-		Person:   &PersonHandler{PersonsService: sm.persons, UsersService: sm.users},
-		Event:    &EventHandler{EventsService: sm.events, UsersService: sm.users},
-		Settings: &SettingsHandler{SettingsService: sm.settings, UsersService: sm.users},
+		Tokens:   testJWT,
+		User:     &UserHandler{UsersService: sm.users, Tokens: testJWT, Auth: sm.users},
+		Category: &CategoryHandler{CategoriesService: sm.categories, Auth: sm.users},
+		Tag:      &TagHandler{TagsService: sm.tags, Auth: sm.users},
+		Person:   &PersonHandler{PersonsService: sm.persons, Auth: sm.users},
+		Event:    &EventHandler{EventsService: sm.events, Auth: sm.users},
+		Settings: &SettingsHandler{SettingsService: sm.settings, Auth: sm.users},
 	}
-	router := SetupRouter(server, "", 5*time.Second)
+	router := SetupRouter(server, "", 5*time.Second, false, "")
 	return router, sm
 }
 
 // authHeader returns a Bearer token accepted by TokenAuthMiddleware for testUserID.
 func authHeader() string {
-	td, _ := token.CreateToken(testUserID)
+	td, _ := testJWT.CreateToken(testUserID)
 	return "Bearer " + td.AccessToken
 }
 
@@ -100,7 +101,7 @@ func decodeJSON(t *testing.T, rec *httptest.ResponseRecorder) map[string]interfa
 func TestRegistrationEndpoint(t *testing.T) {
 	router, sm := newTestServer()
 
-	sm.users.On("Registration", mock.AnythingOfType("*user.User"), mock.AnythingOfType("*settings.Language")).
+	sm.users.On("Registration", mock.AnythingOfType("*user.User"), mock.AnythingOfType("*user.Language")).
 		Return(map[string]string{"access_token": "a", "refresh_token": "r"}, nil)
 
 	rec := doRequest(router, http.MethodPost, "/registration",

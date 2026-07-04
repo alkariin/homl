@@ -7,75 +7,59 @@ import (
 	"time"
 
 	"github.com/alkariin/homl/homl-web/internal/apperror"
-	"github.com/alkariin/homl/homl-web/internal/crypto"
+	"github.com/alkariin/homl/homl-web/internal/application"
 	"github.com/alkariin/homl/homl-web/internal/domain/masterdata"
-	"github.com/alkariin/homl/homl-web/internal/domain/settings"
 	"github.com/alkariin/homl/homl-web/internal/domain/user"
-	"github.com/alkariin/homl/homl-web/internal/token"
 	"github.com/go-redis/redis/v7"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type UsersRepository struct {
-	DB    *sql.DB
-	Redis *redis.Client
+	DB     *sql.DB
+	Redis  *redis.Client
+	Crypto application.Encryptor
 }
 
-func NewUsersRepository(db *sql.DB, redis *redis.Client) user.Repository {
+func NewUsersRepository(db *sql.DB, redis *redis.Client, crypto application.Encryptor) user.Repository {
 	return &UsersRepository{
-		DB:    db,
-		Redis: redis,
+		DB:     db,
+		Redis:  redis,
+		Crypto: crypto,
 	}
 }
 
-func (u *UsersRepository) Registration(user *user.User, language *settings.Language) (map[string]string, error) {
+func (u *UsersRepository) Registration(user *user.User, language *user.Language) error {
 	ctx := context.Background()
 	tx, err := u.DB.BeginTx(ctx, nil)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// Salt and hash the password using the bcrypt algorithm
 	// The second argument is the cost of hashing, which we arbitrarily set as 8 (this value can be more or less, depending on the computing power you wish to utilize)
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), 8)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// Next, insert the username, along with the hashed password into the database
 	_, err = tx.Query("INSERT INTO Users (username, password, language) VALUES (?, ?, ?)", user.Username, string(hashedPassword), *language)
 	if err != nil {
 		tx.Rollback()
-		return nil, err
+		return err
 	}
 
 	// Get user id
 	result := tx.QueryRow("SELECT id FROM Users WHERE username=? AND password=?", user.Username, string(hashedPassword))
 	if result == nil {
 		tx.Rollback()
-		return nil, err
+		return apperror.NewInternal()
 	}
 
 	err = result.Scan(&user.ID)
 	if err != nil {
 		tx.Rollback()
-		return nil, err
-	}
-
-	// Create access and refresh tokens
-	ts, err := token.CreateToken(user.ID)
-	if err != nil {
-		tx.Rollback()
-		return nil, err
-	}
-	err = u.CreateAuth(user.ID, ts)
-	if err != nil {
-		tx.Rollback()
-		return nil, err
-	}
-	tokens := map[string]string{
-		"access_token":  ts.AccessToken,
-		"refresh_token": ts.RefreshToken,
+		return err
 	}
 
 	// Create default categories
@@ -83,16 +67,16 @@ func (u *UsersRepository) Registration(user *user.User, language *settings.Langu
 
 	var idCategoryDate uint = 0
 	for i := 0; i < len(categories); i++ {
-		encCategory, err := crypto.Encrypt(categories[i].Name)
+		encCategory, err := u.Crypto.Encrypt(categories[i].Name)
 		if err != nil {
 			tx.Rollback()
-			return nil, err
+			return err
 		}
 
 		_, err = tx.Query("INSERT INTO Categories (category, color, isLocked, idUser) VALUES (?, ?, ?, ?)", encCategory, categories[i].Color, 1, user.ID)
 		if err != nil {
 			tx.Rollback()
-			return nil, err
+			return err
 		}
 
 		if i == 0 { // Get id of the category "dates"
@@ -100,22 +84,17 @@ func (u *UsersRepository) Registration(user *user.User, language *settings.Langu
 			err = row.Scan(&idCategoryDate)
 			if err != nil {
 				tx.Rollback()
-				return nil, err
+				return err
 			}
 		}
 	}
 
 	if idCategoryDate == 0 {
 		tx.Rollback()
-		return nil, apperror.NewInternal()
+		return apperror.NewInternal()
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		return nil, err
-	}
-
-	return tokens, nil
+	return tx.Commit()
 }
 
 func (r *UsersRepository) FindById(idUser uint64) (*user.User, error) {

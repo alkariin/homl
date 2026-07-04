@@ -6,15 +6,17 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var testAES = NewAES("01234567890123456789012345678901") // 32 bytes -> AES-256
+
 func TestEncryptDecryptRoundTrip(t *testing.T) {
 	cases := []string{"Cinema", "Vacances d'été", "", "123456", "noël 🎄"}
 
 	for _, plain := range cases {
 		t.Run(plain, func(t *testing.T) {
-			encrypted, err := Encrypt(plain)
+			encrypted, err := testAES.Encrypt(plain)
 			assert.NoError(t, err)
 
-			decrypted, err := Decrypt(encrypted)
+			decrypted, err := testAES.Decrypt(encrypted)
 			assert.NoError(t, err)
 			assert.Equal(t, plain, decrypted)
 		})
@@ -24,13 +26,13 @@ func TestEncryptDecryptRoundTrip(t *testing.T) {
 func TestEncryptIsDeterministic(t *testing.T) {
 	// The cipher uses a fixed IV, so the same plaintext always yields the same
 	// ciphertext. The service layer relies on this to look tags up by value.
-	a, err := Encrypt("December")
+	a, err := testAES.Encrypt("December")
 	assert.NoError(t, err)
-	b, err := Encrypt("December")
+	b, err := testAES.Encrypt("December")
 	assert.NoError(t, err)
 	assert.Equal(t, a, b)
 
-	other, err := Encrypt("November")
+	other, err := testAES.Encrypt("November")
 	assert.NoError(t, err)
 	assert.NotEqual(t, a, other)
 }

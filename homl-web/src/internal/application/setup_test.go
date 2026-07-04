@@ -1,17 +1,14 @@
 package application_test
 
 import (
-	"os"
-	"testing"
+	"github.com/alkariin/homl/homl-web/internal/infrastructure/auth"
+	"github.com/alkariin/homl/homl-web/internal/infrastructure/crypto"
 )
 
-// TestMain provisions the crypto/JWT secrets required by the crypto and token
-// packages for every service test in this package.
-func TestMain(m *testing.M) {
-	os.Setenv("ENVIRONMENT", "TEST")
-	os.Setenv("ACCESS_SECRET", "test_access_secret")
-	os.Setenv("REFRESH_SECRET", "test_refresh_secret")
-	os.Setenv("ENCRYPT_SECRET", "01234567890123456789012345678901") // 32 bytes -> AES-256
-
-	os.Exit(m.Run())
-}
+// Real infrastructure adapters wired into the services under test: the
+// service tests assert on real ciphertexts and real JWTs, only the
+// repositories are mocked.
+var (
+	testCrypto = crypto.NewAES("01234567890123456789012345678901") // 32 bytes -> AES-256
+	testTokens = auth.NewJWT("test_access_secret", "test_refresh_secret", false)
+)

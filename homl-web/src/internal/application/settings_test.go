@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/alkariin/homl/homl-web/internal/application"
-	"github.com/alkariin/homl/homl-web/internal/domain/settings"
+	"github.com/alkariin/homl/homl-web/internal/domain/user"
 	"github.com/alkariin/homl/homl-web/test/mocks"
 	"github.com/stretchr/testify/assert"
 )
@@ -15,55 +15,55 @@ func TestGetSettings(t *testing.T) {
 		// idUser, _ := uuid.NewRandom()
 		idUser := uint64(1)
 
-		expectedSettingsResponse := &settings.SettingsResponse{
+		expectedSettingsResponse := &user.SettingsResponse{
 			Language:      "de",
 			DefaultScreen: true,
 		}
 
-		expectedSettings := &settings.Settings{
+		expectedSettings := &user.Settings{
 			Language:      "de",
 			DefaultScreen: true,
 		}
 
-		mockSettingsRepo := new(mocks.MockSettingsRepo)
+		mockUsersRepo := new(mocks.MockUsersRepo)
 		settingsService := application.NewSettingsService(&application.SSConfig{
-			SettingsRepository: mockSettingsRepo,
+			UsersRepository: mockUsersRepo,
 		})
-		mockSettingsRepo.On("FindByIdUser", idUser).Return(expectedSettings, nil)
+		mockUsersRepo.On("FindSettingsByIdUser", idUser).Return(expectedSettings, nil)
 
 		resultSettings, err := settingsService.GetSettings(idUser)
 		assert.NoError(t, err)
 		assert.Equal(t, resultSettings, expectedSettingsResponse)
-		mockSettingsRepo.AssertExpectations(t)
+		mockUsersRepo.AssertExpectations(t)
 	})
 }
 
 func TestUpdateSettings(t *testing.T) {
 	idUser := uint64(1)
 
-	mockSettingsRepo := new(mocks.MockSettingsRepo)
+	mockUsersRepo := new(mocks.MockUsersRepo)
 	settingsService := application.NewSettingsService(&application.SSConfig{
-		SettingsRepository: mockSettingsRepo,
+		UsersRepository: mockUsersRepo,
 	})
 
 	t.Run("Update settings with good inputs", func(t *testing.T) {
-		newSettings := &settings.Settings{
+		newSettings := &user.Settings{
 			Language:      "de",
 			DefaultScreen: true,
 		}
 
-		expectedSettings := &settings.SettingsResponse{
+		expectedSettings := &user.SettingsResponse{
 			Language:      "de",
 			DefaultScreen: true,
 		}
 
-		mockSettingsRepo.On("Update", newSettings, idUser).Return(nil)
-		mockSettingsRepo.On("FindByIdUser", idUser).Return(newSettings, nil)
+		mockUsersRepo.On("UpdateSettings", newSettings, idUser).Return(nil)
+		mockUsersRepo.On("FindSettingsByIdUser", idUser).Return(newSettings, nil)
 
 		resultSettings, err := settingsService.UpdateSettings(idUser, newSettings)
 
 		assert.NoError(t, err)
 		assert.Equal(t, resultSettings, expectedSettings)
-		mockSettingsRepo.AssertExpectations(t)
+		mockUsersRepo.AssertExpectations(t)
 	})
 }

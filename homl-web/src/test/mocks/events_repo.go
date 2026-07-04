@@ -1,8 +1,8 @@
 package mocks
 
 import (
+	"github.com/alkariin/homl/homl-web/internal/domain/category"
 	"github.com/alkariin/homl/homl-web/internal/domain/event"
-	"github.com/alkariin/homl/homl-web/internal/domain/tag"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -11,7 +11,7 @@ type MockEventsRepo struct {
 	mock.Mock
 }
 
-func (m *MockEventsRepo) FindEventsWithTags(encTags []string, idUser uint64) (map[uint]event.Event, map[uint][]tag.Tag, error) {
+func (m *MockEventsRepo) FindEventsWithTags(encTags []string, idUser uint64) (map[uint]event.Event, map[uint][]category.Tag, error) {
 	ret := m.Called(encTags, idUser)
 
 	var r0 map[uint]event.Event
@@ -19,9 +19,9 @@ func (m *MockEventsRepo) FindEventsWithTags(encTags []string, idUser uint64) (ma
 		r0 = ret.Get(0).(map[uint]event.Event)
 	}
 
-	var r1 map[uint][]tag.Tag
+	var r1 map[uint][]category.Tag
 	if ret.Get(1) != nil {
-		r1 = ret.Get(1).(map[uint][]tag.Tag)
+		r1 = ret.Get(1).(map[uint][]category.Tag)
 	}
 
 	var r2 error
@@ -32,7 +32,7 @@ func (m *MockEventsRepo) FindEventsWithTags(encTags []string, idUser uint64) (ma
 	return r0, r1, r2
 }
 
-func (m *MockEventsRepo) CreateEventWithTags(tags []tag.Tag, tagsId []uint, event *event.Event, idUser uint64) error {
+func (m *MockEventsRepo) CreateEventWithTags(tags []category.Tag, tagsId []uint, event *event.Event, idUser uint64) error {
 	ret := m.Called(tags, tagsId, event, idUser)
 
 	var r0 error
@@ -43,7 +43,7 @@ func (m *MockEventsRepo) CreateEventWithTags(tags []tag.Tag, tagsId []uint, even
 	return r0
 }
 
-func (m *MockEventsRepo) UpdateEventWithTags(tags []tag.Tag, tagsId []uint, event *event.Event, idUser uint64) error {
+func (m *MockEventsRepo) UpdateEventWithTags(tags []category.Tag, tagsId []uint, event *event.Event, idUser uint64) error {
 	ret := m.Called(tags, tagsId, event, idUser)
 
 	var r0 error

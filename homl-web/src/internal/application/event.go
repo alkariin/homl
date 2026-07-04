@@ -3,11 +3,10 @@ package application
 import (
 	"sort"
 	"strconv"
+	"time"
 
-	"github.com/alkariin/homl/homl-web/internal/crypto"
 	"github.com/alkariin/homl/homl-web/internal/domain/category"
 	"github.com/alkariin/homl/homl-web/internal/domain/event"
-	"github.com/alkariin/homl/homl-web/internal/domain/tag"
 )
 
 // EventsService is the use-case port of the Event aggregate.
@@ -21,27 +20,27 @@ type EventsService interface {
 type eventsService struct {
 	EventsRepository     event.Repository
 	CategoriesRepository category.Repository
-	TagsRepository       tag.Repository
+	Crypto               Encryptor
 }
 
 type ESConfig struct {
 	EventsRepository     event.Repository
 	CategoriesRepository category.Repository
-	TagsRepository       tag.Repository
+	Crypto               Encryptor
 }
 
 func NewEventsService(c *ESConfig) EventsService {
 	return &eventsService{
 		EventsRepository:     c.EventsRepository,
 		CategoriesRepository: c.CategoriesRepository,
-		TagsRepository:       c.TagsRepository,
+		Crypto:               c.Crypto,
 	}
 }
 
 func (e *eventsService) GetEvents(idUser uint64, tags []string) ([]event.GetEventsResponse, error) {
 	var encTags []string
 	for _, t := range tags {
-		encTag, err := crypto.Encrypt(t)
+		encTag, err := e.Crypto.Encrypt(t)
 		if err != nil {
 			return nil, err
 		}
@@ -62,7 +61,7 @@ func (e *eventsService) GetEvents(idUser uint64, tags []string) ([]event.GetEven
 	var responses = make([]event.GetEventsResponse, 0)
 	for _, k := range keys {
 		evt := resEvents[uint(k)]
-		decDescription, err := crypto.Decrypt(evt.Description)
+		decDescription, err := e.Crypto.Decrypt(evt.Description)
 		if err != nil {
 			return nil, err
 		}
@@ -79,119 +78,54 @@ func (e *eventsService) GetEvents(idUser uint64, tags []string) ([]event.GetEven
 }
 
 func (e *eventsService) CreateEvent(idUser uint64, event *event.Event, tagsId []uint) error {
-	// create date with month/year tags
-	idCategoryDate, err := e.CategoriesRepository.FindLastIdByIdUser(idUser)
+	tags, err := e.buildDateTags(idUser, event.Date)
 	if err != nil {
 		return err
 	}
-
-	month := event.Date.Month().String()
-	encMonth, err := crypto.Encrypt(month)
-	if err != nil {
-		return err
-	}
-
-	idTagMonth, err := e.TagsRepository.FindTagIdByTagAndIdCategory(encMonth, idCategoryDate)
-	if err != nil {
-		return err
-	}
-
-	var monthTag tag.Tag
-	if idTagMonth == 0 {
-		monthTag = tag.Tag{
-			Tag:        month,
-			IdCategory: idCategoryDate,
-		}
-	} else {
-		monthTag = tag.Tag{
-			Id: idTagMonth,
-		}
-	}
-
-	year := strconv.Itoa(event.Date.Year())
-	encYear, err := crypto.Encrypt(year)
-	if err != nil {
-		return err
-	}
-
-	idTagYear, err := e.TagsRepository.FindTagIdByTagAndIdCategory(encYear, idCategoryDate)
-	if err != nil {
-		return err
-	}
-
-	var yearTag tag.Tag
-	if idTagYear == 0 {
-		yearTag = tag.Tag{
-			Tag:        year,
-			IdCategory: idCategoryDate,
-		}
-	} else {
-		yearTag = tag.Tag{
-			Id: idTagYear,
-		}
-	}
-	var tags = []tag.Tag{}
-	tags = append(tags, monthTag, yearTag)
 
 	return e.EventsRepository.CreateEventWithTags(tags, tagsId, event, idUser)
 }
 
 func (e *eventsService) UpdateEvent(idUser uint64, event *event.Event, tagsId []uint) error {
-	// create date with month/year tags
-	idCategoryDate, err := e.CategoriesRepository.FindLastIdByIdUser(idUser)
+	tags, err := e.buildDateTags(idUser, event.Date)
 	if err != nil {
 		return err
 	}
-
-	month := event.Date.Month().String()
-	encMonth, err := crypto.Encrypt(month)
-	if err != nil {
-		return err
-	}
-
-	idTagMonth, err := e.TagsRepository.FindTagIdByTagAndIdCategory(encMonth, idCategoryDate)
-	if err != nil {
-		return err
-	}
-
-	var monthTag tag.Tag
-	if idTagMonth == 0 {
-		monthTag = tag.Tag{
-			Tag:        month,
-			IdCategory: idCategoryDate,
-		}
-	} else {
-		monthTag = tag.Tag{
-			Id: idTagMonth,
-		}
-	}
-
-	year := strconv.Itoa(event.Date.Year())
-	encYear, err := crypto.Encrypt(year)
-	if err != nil {
-		return err
-	}
-
-	idTagYear, err := e.TagsRepository.FindTagIdByTagAndIdCategory(encYear, idCategoryDate)
-	if err != nil {
-		return err
-	}
-
-	var yearTag tag.Tag
-	if idTagYear == 0 {
-		yearTag = tag.Tag{
-			Tag:        year,
-			IdCategory: idCategoryDate,
-		}
-	} else {
-		yearTag = tag.Tag{
-			Id: idTagYear,
-		}
-	}
-	var tags = []tag.Tag{}
-	tags = append(tags, monthTag, yearTag)
 
 	return e.EventsRepository.UpdateEventWithTags(tags, tagsId, event, idUser)
+}
+
+// buildDateTags returns the month and year tags of the event's date, reusing
+// the existing tag ids when the user already has them in his date category.
+func (e *eventsService) buildDateTags(idUser uint64, date time.Time) ([]category.Tag, error) {
+	idCategoryDate, err := e.CategoriesRepository.FindLastIdByIdUser(idUser)
+	if err != nil {
+		return nil, err
+	}
+
+	month := date.Month().String()
+	year := strconv.Itoa(date.Year())
+
+	var tags []category.Tag
+	for _, name := range []string{month, year} {
+		encName, err := e.Crypto.Encrypt(name)
+		if err != nil {
+			return nil, err
+		}
+
+		idTag, err := e.CategoriesRepository.FindTagIdByTagAndIdCategory(encName, idCategoryDate)
+		if err != nil {
+			return nil, err
+		}
+
+		if idTag == 0 {
+			tags = append(tags, category.Tag{Tag: name, IdCategory: idCategoryDate})
+		} else {
+			tags = append(tags, category.Tag{Id: idTag})
+		}
+	}
+
+	return tags, nil
 }
 
 func (e *eventsService) DeleteEvent(idEvent uint) error {

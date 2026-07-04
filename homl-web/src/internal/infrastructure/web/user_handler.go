@@ -5,9 +5,7 @@ import (
 
 	"github.com/alkariin/homl/homl-web/internal/apperror"
 	"github.com/alkariin/homl/homl-web/internal/application"
-	"github.com/alkariin/homl/homl-web/internal/domain/settings"
 	"github.com/alkariin/homl/homl-web/internal/domain/user"
-	"github.com/alkariin/homl/homl-web/internal/token"
 	"github.com/gin-gonic/gin"
 )
 
@@ -24,9 +22,9 @@ var languageValidation = "required,eq=fr|eq=de|eq=en"
  */
 func (h *UserHandler) Registration(c *gin.Context) {
 	type RegistrationInput struct {
-		Username string            `json:"username"`
-		Password string            `json:"password"`
-		Language settings.Language `json:"language"`
+		Username string        `json:"username"`
+		Password string        `json:"password"`
+		Language user.Language `json:"language"`
 	}
 
 	// Parse and decode the request body into a new `User` instance
@@ -95,7 +93,7 @@ func (h *UserHandler) Login(c *gin.Context) {
  * {}
  */
 func (h *UserHandler) Logout(c *gin.Context) {
-	au, err := token.ExtractTokenMetadata(c.Request)
+	au, err := h.Tokens.ExtractAccessDetails(c.Request)
 	if err != nil {
 		SendGinMyCustomError(c, err, apperror.NewAuthorization("Something went wrong when reading token"))
 		return
@@ -188,7 +186,7 @@ func (h *UserHandler) ConfirmResetPassword(c *gin.Context) {
 
 	// The account being reset is bound to the reset token, never to the request
 	// body, so a valid token can only reset its own owner's password.
-	au, err := token.ExtractTokenMetadata(c.Request)
+	au, err := h.Tokens.ExtractAccessDetails(c.Request)
 	if err != nil {
 		SendGinMyCustomError(c, err, apperror.NewAuthorization("Not authorized"))
 		return
@@ -224,7 +222,7 @@ func (h *UserHandler) UpdatePassword(c *gin.Context) {
 		return
 	}
 
-	idUser, err := h.UsersService.GetUserIdFromToken(c.Request)
+	idUser, err := h.Auth.GetUserIdFromToken(c.Request)
 	if err != nil {
 		SendGinError(c, err)
 		return
@@ -283,7 +281,7 @@ func (h *UserHandler) SecureAuth(c *gin.Context) {
 		return
 	}
 
-	idUser, err := h.UsersService.GetUserIdFromToken(c.Request)
+	idUser, err := h.Auth.GetUserIdFromToken(c.Request)
 	if err != nil {
 		SendGinError(c, err)
 		return
@@ -303,4 +301,6 @@ func (h *UserHandler) SecureAuth(c *gin.Context) {
 // Handler wires the auth/user HTTP endpoints to their service.
 type UserHandler struct {
 	UsersService application.UsersService
+	Tokens       TokenParser
+	Auth         Authenticator
 }

@@ -29,7 +29,7 @@ var nicknamesValidation = "required"
  *  }
  */
 func (h *PersonHandler) GetPersons(c *gin.Context) {
-	idUser, err := h.UsersService.GetUserIdFromToken(c.Request)
+	idUser, err := h.Auth.GetUserIdFromToken(c.Request)
 	if err != nil {
 		SendGinError(c, err)
 		return
@@ -71,7 +71,7 @@ func (h *PersonHandler) CreatePerson(c *gin.Context) {
 		return
 	}
 
-	idUser, err := h.UsersService.GetUserIdFromToken(c.Request)
+	idUser, err := h.Auth.GetUserIdFromToken(c.Request)
 	if err != nil {
 		SendGinError(c, err)
 		return
@@ -129,7 +129,7 @@ func (h *PersonHandler) UpdatePerson(c *gin.Context) {
 		return
 	}
 
-	idUser, err := h.UsersService.GetUserIdFromToken(c.Request)
+	idUser, err := h.Auth.GetUserIdFromToken(c.Request)
 	if err != nil {
 		SendGinError(c, err)
 		return
@@ -156,7 +156,7 @@ func (h *PersonHandler) DeletePerson(c *gin.Context) {
 	}
 	idPerson := uint(idParam)
 
-	idUser, err := h.UsersService.GetUserIdFromToken(c.Request)
+	idUser, err := h.Auth.GetUserIdFromToken(c.Request)
 	if err != nil {
 		SendGinError(c, err)
 		return
@@ -173,5 +173,5 @@ func (h *PersonHandler) DeletePerson(c *gin.Context) {
 // Handler wires the persons HTTP endpoints to their service.
 type PersonHandler struct {
 	PersonsService application.PersonsService
-	UsersService   Authenticator
+	Auth           Authenticator
 }

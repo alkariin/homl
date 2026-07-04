@@ -1,8 +1,6 @@
-// Package user holds the User aggregate: entities, DTOs, auth value objects
-// and the persistence port.
+// Package user holds the User aggregate: entities, DTOs, auth value objects,
+// per-user settings and the persistence port.
 package user
-
-import "github.com/alkariin/homl/homl-web/internal/domain/settings"
 
 type User struct {
 	ID                   uint64  `json:"id"`
@@ -37,6 +35,12 @@ type AccessDetails struct {
 	UserId     uint64
 }
 
+// RefreshDetails is the metadata carried by a verified refresh token.
+type RefreshDetails struct {
+	RefreshUuid string
+	UserId      uint64
+}
+
 type TokenDetails struct {
 	AccessToken  string
 	RefreshToken string
@@ -46,9 +50,14 @@ type TokenDetails struct {
 	RtExpires    int64
 }
 
-// Repository is the persistence port of the User aggregate (MySQL + Redis auth store).
+// Repository is the persistence port of the User aggregate (MySQL + Redis auth
+// store). Settings belong to the aggregate, so their persistence operations
+// live here as well.
 type Repository interface {
-	Registration(user *User, language *settings.Language) (map[string]string, error)
+	// Registration creates the user and its default categories in one
+	// transaction and fills in user.ID. Token creation is the application
+	// layer's job.
+	Registration(user *User, language *Language) error
 	FindById(idUser uint64) (*User, error)
 	FindByUsername(username string) (*User, error)
 	FindIdByUsername(username string) (uint64, error)
@@ -62,4 +71,7 @@ type Repository interface {
 	CreateAuth(userid uint64, td *TokenDetails) error
 	FetchAuth(authD *AccessDetails) (uint64, error)
 	UpdatePinAndFingerprint(user *User, removePkey bool, removePin bool) error
+
+	FindSettingsByIdUser(idUser uint64) (*Settings, error)
+	UpdateSettings(s *Settings, idUser uint64) error
 }

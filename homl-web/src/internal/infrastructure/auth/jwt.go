@@ -1,9 +1,11 @@
-package token
+// Package auth is the infrastructure adapter for JWT-based authentication.
+// It implements the application.TokenIssuer port (minting/verifying token
+// pairs) and the web.TokenParser port (reading tokens off incoming requests).
+package auth
 
 import (
 	"fmt"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -12,16 +14,29 @@ import (
 	"github.com/twinj/uuid"
 
 	"github.com/alkariin/homl/homl-web/internal/domain/user"
-	"github.com/alkariin/homl/homl-web/internal/env"
 )
 
 var ACCESS_TOKEN_EXPIRE_MINUTES = 10
 var REFRESH_TOKEN_EXPIRE_MINUTES = 60 * 24 * 365 / 2 // 6 months
 
-func CreateToken(userid uint64) (*user.TokenDetails, error) {
+type JWT struct {
+	accessSecret  string
+	refreshSecret string
+	dev           bool // dev tokens live one year to ease local debugging
+}
+
+func NewJWT(accessSecret string, refreshSecret string, dev bool) *JWT {
+	return &JWT{
+		accessSecret:  accessSecret,
+		refreshSecret: refreshSecret,
+		dev:           dev,
+	}
+}
+
+func (j *JWT) CreateToken(userid uint64) (*user.TokenDetails, error) {
 	td := &user.TokenDetails{}
 	var tokenExpiresMin int
-	if env.IsDev() {
+	if j.dev {
 		tokenExpiresMin = 525600 // 1 year
 	} else {
 		tokenExpiresMin = ACCESS_TOKEN_EXPIRE_MINUTES
@@ -40,7 +55,7 @@ func CreateToken(userid uint64) (*user.TokenDetails, error) {
 	atClaims["user_id"] = userid
 	atClaims["exp"] = td.AtExpires
 	at := jwt.NewWithClaims(jwt.SigningMethodHS256, atClaims)
-	td.AccessToken, err = at.SignedString([]byte(os.Getenv("ACCESS_SECRET")))
+	td.AccessToken, err = at.SignedString([]byte(j.accessSecret))
 	if err != nil {
 		return nil, err
 	}
@@ -50,11 +65,45 @@ func CreateToken(userid uint64) (*user.TokenDetails, error) {
 	rtClaims["user_id"] = userid
 	rtClaims["exp"] = td.RtExpires
 	rt := jwt.NewWithClaims(jwt.SigningMethodHS256, rtClaims)
-	td.RefreshToken, err = rt.SignedString([]byte(os.Getenv("REFRESH_SECRET")))
+	td.RefreshToken, err = rt.SignedString([]byte(j.refreshSecret))
 	if err != nil {
 		return nil, err
 	}
 	return td, nil
+}
+
+// VerifyRefresh checks the signature and validity of a refresh token and
+// returns its typed metadata, so the application layer never touches claims.
+func (j *JWT) VerifyRefresh(refreshToken string) (*user.RefreshDetails, error) {
+	token, err := jwt.Parse(refreshToken, func(token *jwt.Token) (interface{}, error) {
+		//Make sure that the token method conform to "SigningMethodHMAC"
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(j.refreshSecret), nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok || !token.Valid {
+		return nil, fmt.Errorf("invalid refresh token")
+	}
+
+	refreshUuid, ok := claims["refresh_uuid"].(string)
+	if !ok {
+		return nil, fmt.Errorf("refresh token misses refresh_uuid claim")
+	}
+	userId, err := strconv.ParseUint(fmt.Sprintf("%.f", claims["user_id"]), 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	return &user.RefreshDetails{
+		RefreshUuid: refreshUuid,
+		UserId:      userId,
+	}, nil
 }
 
 func extractToken(r *http.Request) string {
@@ -67,14 +116,14 @@ func extractToken(r *http.Request) string {
 	return ""
 }
 
-func verifyToken(r *http.Request) (*jwt.Token, error) {
+func (j *JWT) verifyToken(r *http.Request) (*jwt.Token, error) {
 	tokenString := extractToken(r)
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		//Make sure that the token method conform to "SigningMethodHMAC"
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return []byte(os.Getenv("ACCESS_SECRET")), nil
+		return []byte(j.accessSecret), nil
 	})
 	if err != nil {
 		return nil, err
@@ -82,31 +131,9 @@ func verifyToken(r *http.Request) (*jwt.Token, error) {
 	return token, nil
 }
 
-func VerifyTokenAndRefresh(refreshToken string) (jwt.MapClaims, bool) {
-	token, err := jwt.Parse(refreshToken, func(token *jwt.Token) (interface{}, error) {
-		//Make sure that the token method conform to "SigningMethodHMAC"
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-		return []byte(os.Getenv("REFRESH_SECRET")), nil
-	})
-	if err != nil {
-		return nil, false
-	}
-
-	//is token valid?
-	if _, ok := token.Claims.(jwt.Claims); !ok && !token.Valid {
-		return nil, false
-	}
-	//Since token is valid, get the uuid:
-	claims, ok := token.Claims.(jwt.MapClaims) //the token claims should conform to MapClaims
-
-	return claims, ok
-}
-
 // Valid reports whether the request carries a valid access token.
-func Valid(r *http.Request) error {
-	token, err := verifyToken(r)
+func (j *JWT) Valid(r *http.Request) error {
+	token, err := j.verifyToken(r)
 	if err != nil {
 		return err
 	}
@@ -116,8 +143,10 @@ func Valid(r *http.Request) error {
 	return nil
 }
 
-func ExtractTokenMetadata(r *http.Request) (*user.AccessDetails, error) {
-	token, err := verifyToken(r)
+// ExtractAccessDetails parses the request's access token and returns its
+// session metadata.
+func (j *JWT) ExtractAccessDetails(r *http.Request) (*user.AccessDetails, error) {
+	token, err := j.verifyToken(r)
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +154,7 @@ func ExtractTokenMetadata(r *http.Request) (*user.AccessDetails, error) {
 	if ok && token.Valid {
 		accessUuid, ok := claims["access_uuid"].(string)
 		if !ok {
-			return nil, err
+			return nil, fmt.Errorf("access token misses access_uuid claim")
 		}
 		userId, err := strconv.ParseUint(fmt.Sprintf("%.f", claims["user_id"]), 10, 64)
 		if err != nil {
@@ -136,5 +165,5 @@ func ExtractTokenMetadata(r *http.Request) (*user.AccessDetails, error) {
 			UserId:     userId,
 		}, nil
 	}
-	return nil, err
+	return nil, fmt.Errorf("invalid access token")
 }

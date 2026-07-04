@@ -4,38 +4,36 @@ import (
 	"strings"
 
 	"github.com/alkariin/homl/homl-web/internal/apperror"
-	"github.com/alkariin/homl/homl-web/internal/crypto"
 	"github.com/alkariin/homl/homl-web/internal/domain/category"
 	"github.com/alkariin/homl/homl-web/internal/domain/masterdata"
-	"github.com/alkariin/homl/homl-web/internal/domain/tag"
 )
 
-// TagsService is the use-case port of the Tag aggregate.
+// TagsService holds the tag use cases of the Category aggregate.
 type TagsService interface {
-	CreateTag(idUser uint64, t *tag.Tag) error
-	UpdateTag(idUser uint64, t *tag.Tag) error
+	CreateTag(idUser uint64, t *category.Tag) error
+	UpdateTag(idUser uint64, t *category.Tag) error
 	DeleteTag(idTag uint, idUser uint64) error
 }
 
 type tagsService struct {
-	TagsRepository       tag.Repository
 	CategoriesRepository category.Repository
+	Crypto               Encryptor
 }
 
 type TSConfig struct {
-	TagsRepository       tag.Repository
 	CategoriesRepository category.Repository
+	Crypto               Encryptor
 }
 
 func NewTagsService(c *TSConfig) TagsService {
 	return &tagsService{
-		TagsRepository:       c.TagsRepository,
 		CategoriesRepository: c.CategoriesRepository,
+		Crypto:               c.Crypto,
 	}
 }
 
 // CreateTag implements TagsService.
-func (t *tagsService) CreateTag(idUser uint64, tag *tag.Tag) error {
+func (t *tagsService) CreateTag(idUser uint64, tag *category.Tag) error {
 
 	// Check that the idCategory is not Persons
 	idCategoryDate, err := t.CategoriesRepository.FindLastIdByIdUser(idUser)
@@ -65,12 +63,12 @@ func (t *tagsService) CreateTag(idUser uint64, tag *tag.Tag) error {
 		return err
 	}
 
-	encTag, err := crypto.Encrypt(uTag)
+	encTag, err := t.Crypto.Encrypt(uTag)
 	if err != nil {
 		return err
 	}
 
-	err = t.TagsRepository.Create(encTag, tag.IdCategory)
+	err = t.CategoriesRepository.CreateTag(encTag, tag.IdCategory)
 	if err != nil {
 		return err
 	}
@@ -79,7 +77,7 @@ func (t *tagsService) CreateTag(idUser uint64, tag *tag.Tag) error {
 }
 
 // UpdateTag implements TagsService.
-func (t *tagsService) UpdateTag(idUser uint64, tag *tag.Tag) error {
+func (t *tagsService) UpdateTag(idUser uint64, tag *category.Tag) error {
 
 	// Check that the idCategory is not Persons
 	idCategoryDate, err := t.CategoriesRepository.FindLastIdByIdUser(idUser)
@@ -109,12 +107,12 @@ func (t *tagsService) UpdateTag(idUser uint64, tag *tag.Tag) error {
 		return err
 	}
 
-	encTag, err := crypto.Encrypt(uTag)
+	encTag, err := t.Crypto.Encrypt(uTag)
 	if err != nil {
 		return err
 	}
 
-	err = t.TagsRepository.Update(encTag, tag.IdCategory, tag.Id)
+	err = t.CategoriesRepository.UpdateTag(encTag, tag.IdCategory, tag.Id)
 	if err != nil {
 		return err
 	}
@@ -124,5 +122,5 @@ func (t *tagsService) UpdateTag(idUser uint64, tag *tag.Tag) error {
 
 // DeleteTag implements TagsService.
 func (t *tagsService) DeleteTag(idTag uint, idUser uint64) error {
-	return t.TagsRepository.Delete(idTag, idUser)
+	return t.CategoriesRepository.DeleteTag(idTag, idUser)
 }

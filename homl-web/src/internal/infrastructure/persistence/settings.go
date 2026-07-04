@@ -1,25 +1,15 @@
 package persistence
 
 import (
-	"database/sql"
-
-	"github.com/alkariin/homl/homl-web/internal/apperror"
-	"github.com/alkariin/homl/homl-web/internal/domain/settings"
+	"github.com/alkariin/homl/homl-web/internal/domain/user"
 )
 
-type SettingsRepository struct {
-	DB *sql.DB
-}
+// Settings belong to the User aggregate, so their persistence operations are
+// methods of UsersRepository.
 
-func NewSettingsRepository(db *sql.DB) settings.Repository {
-	return &SettingsRepository{
-		DB: db,
-	}
-}
-
-func (r *SettingsRepository) FindByIdUser(idUser uint64) (*settings.Settings, error) {
-	settings := settings.Settings{}
-	row := r.DB.QueryRow("SELECT language, defaultScreen FROM Users WHERE id = ?;", idUser)
+func (u *UsersRepository) FindSettingsByIdUser(idUser uint64) (*user.Settings, error) {
+	settings := user.Settings{}
+	row := u.DB.QueryRow("SELECT language, defaultScreen FROM Users WHERE id = ?;", idUser)
 	err := row.Scan(&settings.Language, &settings.DefaultScreen)
 	if err != nil {
 		return nil, err
@@ -27,16 +17,9 @@ func (r *SettingsRepository) FindByIdUser(idUser uint64) (*settings.Settings, er
 	return &settings, nil
 }
 
-func (r *SettingsRepository) Update(s *settings.Settings, idUser uint64) error {
-	res, err := r.DB.Exec("UPDATE Users SET language = ?, defaultScreen = ? WHERE idUser = ?", s.Language, s.DefaultScreen, idUser)
-	if err != nil {
-		return err
-	}
-
-	rowsAffected, err := res.RowsAffected()
-	if rowsAffected == 0 || err != nil {
-		return apperror.NewInternal()
-	}
-
-	return nil
+func (u *UsersRepository) UpdateSettings(s *user.Settings, idUser uint64) error {
+	// Tolerate a no-op update (same values) since this driver's RowsAffected
+	// reports changed rows, not matched rows.
+	_, err := u.DB.Exec("UPDATE Users SET language = ?, defaultScreen = ? WHERE id = ?", s.Language, s.DefaultScreen, idUser)
+	return err
 }

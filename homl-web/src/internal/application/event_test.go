@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/alkariin/homl/homl-web/internal/application"
+	"github.com/alkariin/homl/homl-web/internal/domain/category"
 	"github.com/alkariin/homl/homl-web/internal/domain/event"
-	"github.com/alkariin/homl/homl-web/internal/domain/tag"
 	"github.com/alkariin/homl/homl-web/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -18,19 +18,18 @@ func TestCreateEvent(t *testing.T) {
 	t.Run("Builds fresh month and year tags when none exist yet", func(t *testing.T) {
 		eventsRepo := new(mocks.MockEventsRepo)
 		catRepo := new(mocks.MockCategoriesRepo)
-		tagsRepo := new(mocks.MockTagsRepo)
 		svc := application.NewEventsService(&application.ESConfig{
 			EventsRepository:     eventsRepo,
 			CategoriesRepository: catRepo,
-			TagsRepository:       tagsRepo,
+			Crypto:               testCrypto,
 		})
 
 		catRepo.On("FindLastIdByIdUser", uint64(1)).Return(uint(3), nil)
 		// No existing tag for either the month or the year.
-		tagsRepo.On("FindTagIdByTagAndIdCategory", mock.Anything, uint(3)).Return(uint(0), nil)
+		catRepo.On("FindTagIdByTagAndIdCategory", mock.Anything, uint(3)).Return(uint(0), nil)
 
 		eventsRepo.On("CreateEventWithTags",
-			mock.MatchedBy(func(tags []tag.Tag) bool {
+			mock.MatchedBy(func(tags []category.Tag) bool {
 				return len(tags) == 2 &&
 					tags[0].Tag == "December" && tags[0].IdCategory == 3 &&
 					tags[1].Tag == "1993" && tags[1].IdCategory == 3
@@ -47,18 +46,17 @@ func TestCreateEvent(t *testing.T) {
 	t.Run("Reuses existing tag ids when the month/year tags already exist", func(t *testing.T) {
 		eventsRepo := new(mocks.MockEventsRepo)
 		catRepo := new(mocks.MockCategoriesRepo)
-		tagsRepo := new(mocks.MockTagsRepo)
 		svc := application.NewEventsService(&application.ESConfig{
 			EventsRepository:     eventsRepo,
 			CategoriesRepository: catRepo,
-			TagsRepository:       tagsRepo,
+			Crypto:               testCrypto,
 		})
 
 		catRepo.On("FindLastIdByIdUser", uint64(1)).Return(uint(3), nil)
-		tagsRepo.On("FindTagIdByTagAndIdCategory", mock.Anything, uint(3)).Return(uint(77), nil)
+		catRepo.On("FindTagIdByTagAndIdCategory", mock.Anything, uint(3)).Return(uint(77), nil)
 
 		eventsRepo.On("CreateEventWithTags",
-			mock.MatchedBy(func(tags []tag.Tag) bool {
+			mock.MatchedBy(func(tags []category.Tag) bool {
 				// When a tag already exists, only its id is forwarded.
 				return len(tags) == 2 &&
 					tags[0].Id == 77 && tags[0].Tag == "" &&
