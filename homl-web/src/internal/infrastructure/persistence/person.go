@@ -6,17 +6,19 @@ import (
 	"sort"
 
 	"github.com/alkariin/homl/homl-web/internal/apperror"
-	"github.com/alkariin/homl/homl-web/internal/crypto"
+	"github.com/alkariin/homl/homl-web/internal/application"
 	"github.com/alkariin/homl/homl-web/internal/domain/person"
 )
 
 type PersonsRepository struct {
-	DB *sql.DB
+	DB     *sql.DB
+	Crypto application.Encryptor
 }
 
-func NewPersonsRepository(db *sql.DB) person.Repository {
+func NewPersonsRepository(db *sql.DB, crypto application.Encryptor) person.Repository {
 	return &PersonsRepository{
-		DB: db,
+		DB:     db,
+		Crypto: crypto,
 	}
 }
 
@@ -55,7 +57,7 @@ func (r *PersonsRepository) FindPersonsWithTagsAndCategories(idUser uint64) (map
 			return nil, nil, err
 		}
 
-		decNickname, err := crypto.Decrypt(nickname.Nickname)
+		decNickname, err := r.Crypto.Decrypt(nickname.Nickname)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -99,7 +101,7 @@ func (r *PersonsRepository) CreatePersonWithTags(encFirstname string, encLastnam
 
 	// create nickname tags
 	for _, nickname := range nicknames {
-		encNickname, err := crypto.Encrypt(nickname)
+		encNickname, err := r.Crypto.Encrypt(nickname)
 		if err != nil {
 			tx.Rollback()
 			return err
@@ -214,7 +216,7 @@ func (r *PersonsRepository) UpdatePersonWithTags(
 				n2 := bodyNicknames[j]
 				// Insertion of the nickname
 				if n2.Id == 0 {
-					encNickname, err := crypto.Encrypt(n2.Nickname)
+					encNickname, err := r.Crypto.Encrypt(n2.Nickname)
 					if err != nil {
 						tx.Rollback()
 						return err
@@ -249,7 +251,7 @@ func (r *PersonsRepository) UpdatePersonWithTags(
 				}
 
 				// Update of the nickname
-				encNickname, err := crypto.Encrypt(n2.Nickname)
+				encNickname, err := r.Crypto.Encrypt(n2.Nickname)
 				if err != nil {
 					tx.Rollback()
 					return err

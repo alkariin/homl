@@ -1,4 +1,4 @@
-package token
+package auth
 
 import (
 	"net/http"
@@ -7,8 +7,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var testJWT = NewJWT("test_access_secret", "test_refresh_secret", false)
+
 func TestCreateToken(t *testing.T) {
-	td, err := CreateToken(42)
+	td, err := testJWT.CreateToken(42)
 
 	assert.NoError(t, err)
 	assert.NotEmpty(t, td.AccessToken)
@@ -17,38 +19,39 @@ func TestCreateToken(t *testing.T) {
 	assert.NotEmpty(t, td.RefreshUuid)
 }
 
-func TestExtractTokenMetadata(t *testing.T) {
-	td, err := CreateToken(42)
+func TestExtractAccessDetails(t *testing.T) {
+	td, err := testJWT.CreateToken(42)
 	assert.NoError(t, err)
 
 	req, _ := http.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set("Authorization", "Bearer "+td.AccessToken)
 
-	ad, err := ExtractTokenMetadata(req)
+	ad, err := testJWT.ExtractAccessDetails(req)
 
 	assert.NoError(t, err)
 	assert.Equal(t, uint64(42), ad.UserId)
 	assert.Equal(t, td.AccessUuid, ad.AccessUuid)
 }
 
-func TestExtractTokenMetadataRejectsGarbage(t *testing.T) {
+func TestExtractAccessDetailsRejectsGarbage(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set("Authorization", "Bearer not-a-real-jwt")
 
-	ad, err := ExtractTokenMetadata(req)
+	ad, err := testJWT.ExtractAccessDetails(req)
 
 	assert.Error(t, err)
 	assert.Nil(t, ad)
 }
 
-func TestVerifyTokenAndRefresh(t *testing.T) {
-	td, err := CreateToken(7)
+func TestVerifyRefresh(t *testing.T) {
+	td, err := testJWT.CreateToken(7)
 	assert.NoError(t, err)
 
-	claims, ok := VerifyTokenAndRefresh(td.RefreshToken)
-	assert.True(t, ok)
-	assert.Equal(t, td.RefreshUuid, claims["refresh_uuid"])
+	rd, err := testJWT.VerifyRefresh(td.RefreshToken)
+	assert.NoError(t, err)
+	assert.Equal(t, td.RefreshUuid, rd.RefreshUuid)
+	assert.Equal(t, uint64(7), rd.UserId)
 
-	_, ok = VerifyTokenAndRefresh("bogus")
-	assert.False(t, ok)
+	_, err = testJWT.VerifyRefresh("bogus")
+	assert.Error(t, err)
 }

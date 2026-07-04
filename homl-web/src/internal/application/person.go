@@ -4,10 +4,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/alkariin/homl/homl-web/internal/crypto"
 	"github.com/alkariin/homl/homl-web/internal/domain/category"
 	"github.com/alkariin/homl/homl-web/internal/domain/person"
-	"github.com/alkariin/homl/homl-web/internal/domain/tag"
 )
 
 // PersonsService is the use-case port of the Person aggregate.
@@ -21,20 +19,20 @@ type PersonsService interface {
 type personsService struct {
 	PersonsRepository    person.Repository
 	CategoriesRepository category.Repository
-	TagsRepository       tag.Repository
+	Crypto               Encryptor
 }
 
 type PSConfig struct {
 	PersonsRepository    person.Repository
 	CategoriesRepository category.Repository
-	TagsRepository       tag.Repository
+	Crypto               Encryptor
 }
 
 func NewPersonsService(c *PSConfig) PersonsService {
 	return &personsService{
 		PersonsRepository:    c.PersonsRepository,
 		CategoriesRepository: c.CategoriesRepository,
-		TagsRepository:       c.TagsRepository,
+		Crypto:               c.Crypto,
 	}
 }
 
@@ -53,12 +51,12 @@ func (s *personsService) GetPersons(idUser uint64) ([]person.GetPersonsResponse,
 	var responses = make([]person.GetPersonsResponse, 0)
 	for _, k := range keys {
 		p := persons[uint(k)]
-		decFirstname, err := crypto.Decrypt(p.Firstname)
+		decFirstname, err := s.Crypto.Decrypt(p.Firstname)
 		if err != nil {
 			return nil, err
 		}
 
-		decLastname, err := crypto.Decrypt(p.Lastname)
+		decLastname, err := s.Crypto.Decrypt(p.Lastname)
 		if err != nil {
 			return nil, err
 		}
@@ -77,17 +75,17 @@ func (s *personsService) GetPersons(idUser uint64) ([]person.GetPersonsResponse,
 func (s *personsService) CreatePerson(person *person.Person, nicknames []string, idUser uint64) error {
 	firstname := strings.Title(person.Firstname)
 	lastname := strings.Title(person.Lastname)
-	encFirstname, err := crypto.Encrypt(firstname)
+	encFirstname, err := s.Crypto.Encrypt(firstname)
 	if err != nil {
 		return err
 	}
-	encLastname, err := crypto.Encrypt(lastname)
+	encLastname, err := s.Crypto.Encrypt(lastname)
 	if err != nil {
 		return err
 	}
 
 	mainTagName := firstname + lastname
-	encMainTagName, err := crypto.Encrypt(mainTagName)
+	encMainTagName, err := s.Crypto.Encrypt(mainTagName)
 	if err != nil {
 		return err
 	}
@@ -117,7 +115,7 @@ func (s *personsService) UpdatePerson(person *person.Person, nicknames []person.
 	}
 
 	// Get main tag of the person (used multiple times)
-	mainPersonTagId, err := s.TagsRepository.FindMainTagIdOfPerson(person.Id)
+	mainPersonTagId, err := s.CategoriesRepository.FindMainTagIdOfPerson(person.Id)
 	if err != nil {
 		return err
 	}
@@ -130,17 +128,17 @@ func (s *personsService) UpdatePerson(person *person.Person, nicknames []person.
 
 	firstname := strings.Title(person.Firstname)
 	lastname := strings.Title(person.Lastname)
-	encFirstname, err := crypto.Encrypt(firstname)
+	encFirstname, err := s.Crypto.Encrypt(firstname)
 	if err != nil {
 		return err
 	}
-	encLastname, err := crypto.Encrypt(lastname)
+	encLastname, err := s.Crypto.Encrypt(lastname)
 	if err != nil {
 		return err
 	}
 
 	mainTagName := firstname + lastname
-	encMainTagName, err := crypto.Encrypt(mainTagName)
+	encMainTagName, err := s.Crypto.Encrypt(mainTagName)
 	if err != nil {
 		return err
 	}

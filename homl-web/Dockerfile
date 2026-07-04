@@ -9,7 +9,7 @@ COPY ./src/go.mod ./src/go.sum ./
 RUN go mod download
 
 COPY ./src/ ./
-RUN CGO_ENABLED=0 GOOS=linux go build -o /homlback ./cmd/homl-web
+RUN CGO_ENABLED=0 GOOS=linux go build -o /homlback .
 
 FROM alpine:3.20
 

@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/alkariin/homl/homl-web/internal/apperror"
-	"github.com/alkariin/homl/homl-web/internal/crypto"
 	"github.com/alkariin/homl/homl-web/internal/domain/category"
 )
 
@@ -19,15 +18,18 @@ type CategoriesService interface {
 
 type categoriesService struct {
 	CategoriesRepository category.Repository
+	Crypto               Encryptor
 }
 
 type CSConfig struct {
 	CategoriesRepository category.Repository
+	Crypto               Encryptor
 }
 
 func NewCategoriesService(c *CSConfig) CategoriesService {
 	return &categoriesService{
 		CategoriesRepository: c.CategoriesRepository,
+		Crypto:               c.Crypto,
 	}
 }
 
@@ -46,7 +48,7 @@ func (c *categoriesService) GetCategories(idUser uint64) ([]category.GetCategory
 	var responses = make([]category.GetCategoryResponse, 0)
 	for _, k := range keys {
 		cat := categories[uint(k)]
-		decCategory, err := crypto.Decrypt(cat.Category)
+		decCategory, err := c.Crypto.Decrypt(cat.Category)
 		if err != nil {
 			return nil, err
 		}
@@ -65,7 +67,7 @@ func (c *categoriesService) GetCategories(idUser uint64) ([]category.GetCategory
 
 func (c *categoriesService) CreateCategory(newCategory *category.Category) error {
 	uCategory := strings.Title(newCategory.Category)
-	encCategory, err := crypto.Encrypt(uCategory)
+	encCategory, err := c.Crypto.Encrypt(uCategory)
 	if err != nil {
 		return err
 	}
@@ -87,7 +89,7 @@ func (c *categoriesService) CreateCategory(newCategory *category.Category) error
 }
 
 func (c *categoriesService) UpdateCategory(newCategory *category.Category) error {
-	encCategory, err := crypto.Encrypt(newCategory.Category)
+	encCategory, err := c.Crypto.Encrypt(newCategory.Category)
 	if err != nil {
 		return err
 	}

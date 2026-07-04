@@ -6,7 +6,7 @@ import (
 
 	"github.com/alkariin/homl/homl-web/internal/apperror"
 	"github.com/alkariin/homl/homl-web/internal/application"
-	"github.com/alkariin/homl/homl-web/internal/domain/tag"
+	"github.com/alkariin/homl/homl-web/internal/domain/category"
 	"github.com/gin-gonic/gin"
 )
 
@@ -20,7 +20,7 @@ var idCategoryValidation = "required"
  * }
  */
 func (h *TagHandler) CreateTag(c *gin.Context) {
-	var tag *tag.Tag
+	var tag *category.Tag
 	err := c.ShouldBindJSON(&tag)
 	if err != nil {
 		SendGinMyCustomError(c, err, apperror.NewStatusUnprocessableEntity())
@@ -34,7 +34,7 @@ func (h *TagHandler) CreateTag(c *gin.Context) {
 		return
 	}
 
-	idUser, err := h.UsersService.GetUserIdFromToken(c.Request)
+	idUser, err := h.Auth.GetUserIdFromToken(c.Request)
 	if err != nil {
 		SendGinError(c, err)
 		return
@@ -63,7 +63,7 @@ func (h *TagHandler) UpdateTag(c *gin.Context) {
 		return
 	}
 
-	var tag *tag.Tag
+	var tag *category.Tag
 	err = c.ShouldBindJSON(&tag)
 	if err != nil {
 		SendGinMyCustomError(c, err, apperror.NewStatusUnprocessableEntity())
@@ -78,7 +78,7 @@ func (h *TagHandler) UpdateTag(c *gin.Context) {
 		return
 	}
 
-	idUser, err := h.UsersService.GetUserIdFromToken(c.Request)
+	idUser, err := h.Auth.GetUserIdFromToken(c.Request)
 	if err != nil {
 		SendGinError(c, err)
 		return
@@ -105,7 +105,7 @@ func (h *TagHandler) DeleteTag(c *gin.Context) {
 	}
 	id := uint(idParam)
 
-	idUser, err := h.UsersService.GetUserIdFromToken(c.Request)
+	idUser, err := h.Auth.GetUserIdFromToken(c.Request)
 	if err != nil {
 		SendGinError(c, err)
 		return
@@ -122,6 +122,6 @@ func (h *TagHandler) DeleteTag(c *gin.Context) {
 
 // Handler wires the tags HTTP endpoints to their service.
 type TagHandler struct {
-	TagsService  application.TagsService
-	UsersService Authenticator
+	TagsService application.TagsService
+	Auth        Authenticator
 }

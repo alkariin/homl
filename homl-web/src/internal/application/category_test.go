@@ -5,9 +5,7 @@ import (
 	"testing"
 
 	"github.com/alkariin/homl/homl-web/internal/application"
-	"github.com/alkariin/homl/homl-web/internal/crypto"
 	"github.com/alkariin/homl/homl-web/internal/domain/category"
-	"github.com/alkariin/homl/homl-web/internal/domain/tag"
 	"github.com/alkariin/homl/homl-web/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -16,12 +14,12 @@ import (
 func TestCreateCategory(t *testing.T) {
 	t.Run("Encrypts and title-cases the name, then forwards to the repository", func(t *testing.T) {
 		mockRepo := new(mocks.MockCategoriesRepo)
-		svc := application.NewCategoriesService(&application.CSConfig{CategoriesRepository: mockRepo})
+		svc := application.NewCategoriesService(&application.CSConfig{CategoriesRepository: mockRepo, Crypto: testCrypto})
 
 		// The service should title-case "noces" -> "Noces", encrypt it,
 		// force IsLocked to false and keep the IdUser untouched.
 		mockRepo.On("Create", mock.MatchedBy(func(c *category.Category) bool {
-			dec, err := crypto.Decrypt(c.Category)
+			dec, err := testCrypto.Decrypt(c.Category)
 			return err == nil && dec == "Noces" && c.Color == "red" && !c.IsLocked && c.IdUser == 42
 		})).Return(nil)
 
@@ -33,7 +31,7 @@ func TestCreateCategory(t *testing.T) {
 
 	t.Run("Propagates repository errors", func(t *testing.T) {
 		mockRepo := new(mocks.MockCategoriesRepo)
-		svc := application.NewCategoriesService(&application.CSConfig{CategoriesRepository: mockRepo})
+		svc := application.NewCategoriesService(&application.CSConfig{CategoriesRepository: mockRepo, Crypto: testCrypto})
 
 		mockRepo.On("Create", mock.Anything).Return(errors.New("db down"))
 
@@ -47,9 +45,9 @@ func TestCreateCategory(t *testing.T) {
 func TestUpdateCategory(t *testing.T) {
 	t.Run("Forbids renaming a locked category", func(t *testing.T) {
 		mockRepo := new(mocks.MockCategoriesRepo)
-		svc := application.NewCategoriesService(&application.CSConfig{CategoriesRepository: mockRepo})
+		svc := application.NewCategoriesService(&application.CSConfig{CategoriesRepository: mockRepo, Crypto: testCrypto})
 
-		oldEncrypted, _ := crypto.Encrypt("Dates")
+		oldEncrypted, _ := testCrypto.Encrypt("Dates")
 		mockRepo.On("FindById", uint(1)).Return(&category.Category{
 			Id:       1,
 			Category: oldEncrypted,
@@ -66,16 +64,16 @@ func TestUpdateCategory(t *testing.T) {
 
 	t.Run("Updates a non-locked category", func(t *testing.T) {
 		mockRepo := new(mocks.MockCategoriesRepo)
-		svc := application.NewCategoriesService(&application.CSConfig{CategoriesRepository: mockRepo})
+		svc := application.NewCategoriesService(&application.CSConfig{CategoriesRepository: mockRepo, Crypto: testCrypto})
 
-		stored, _ := crypto.Encrypt("Holidays")
+		stored, _ := testCrypto.Encrypt("Holidays")
 		mockRepo.On("FindById", uint(2)).Return(&category.Category{
 			Id:       2,
 			Category: stored,
 			IsLocked: false,
 		}, nil)
 		mockRepo.On("Update", mock.MatchedBy(func(c *category.Category) bool {
-			dec, err := crypto.Decrypt(c.Category)
+			dec, err := testCrypto.Decrypt(c.Category)
 			return err == nil && dec == "Trips" && c.Color == "#000000"
 		})).Return(nil)
 
@@ -89,16 +87,16 @@ func TestUpdateCategory(t *testing.T) {
 func TestGetCategories(t *testing.T) {
 	t.Run("Decrypts names and returns them sorted by id", func(t *testing.T) {
 		mockRepo := new(mocks.MockCategoriesRepo)
-		svc := application.NewCategoriesService(&application.CSConfig{CategoriesRepository: mockRepo})
+		svc := application.NewCategoriesService(&application.CSConfig{CategoriesRepository: mockRepo, Crypto: testCrypto})
 
-		encA, _ := crypto.Encrypt("Dates")
-		encB, _ := crypto.Encrypt("Persons")
+		encA, _ := testCrypto.Encrypt("Dates")
+		encB, _ := testCrypto.Encrypt("Persons")
 
 		categories := map[uint]category.Category{
 			2: {Id: 2, Category: encB, Color: "#60ccff", IsLocked: true},
 			1: {Id: 1, Category: encA, Color: "#ffff60", IsLocked: true},
 		}
-		tags := map[uint][]tag.TagDTO{
+		tags := map[uint][]category.TagDTO{
 			1: {{Id: 10, Tag: "January"}},
 		}
 		mockRepo.On("GetAllCategoriesWithTags", uint64(7)).Return(categories, tags, nil)
@@ -120,7 +118,7 @@ func TestGetCategories(t *testing.T) {
 func TestDeleteCategory(t *testing.T) {
 	t.Run("Forwards arguments to the repository", func(t *testing.T) {
 		mockRepo := new(mocks.MockCategoriesRepo)
-		svc := application.NewCategoriesService(&application.CSConfig{CategoriesRepository: mockRepo})
+		svc := application.NewCategoriesService(&application.CSConfig{CategoriesRepository: mockRepo, Crypto: testCrypto})
 
 		mockRepo.On("Delete", uint(3), uint64(9), true).Return(nil)
 

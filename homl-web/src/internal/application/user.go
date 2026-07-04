@@ -4,18 +4,11 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/base64"
-	"fmt"
-	"net/http"
 	"net/mail"
 	"net/smtp"
-	"os"
-	"strconv"
 
 	"github.com/alkariin/homl/homl-web/internal/apperror"
-	"github.com/alkariin/homl/homl-web/internal/crypto"
-	"github.com/alkariin/homl/homl-web/internal/domain/settings"
 	"github.com/alkariin/homl/homl-web/internal/domain/user"
-	"github.com/alkariin/homl/homl-web/internal/token"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -25,7 +18,7 @@ const bcryptCost = 10
 
 // UsersService is the use-case port of the User aggregate (auth included).
 type UsersService interface {
-	Registration(u *user.User, language *settings.Language) (map[string]string, error)
+	Registration(u *user.User, language *user.Language) (map[string]string, error)
 	Login(u *user.User) (map[string]string, error)
 	Logout(accessDetails *user.AccessDetails) error
 	Refresh(refreshInput *user.RefreshInput) (map[string]string, error)
@@ -33,26 +26,38 @@ type UsersService interface {
 	ConfirmResetPassword(newPassword string, idUser uint64) (map[string]string, error)
 	UpdatePassword(oldPassword string, newPassword string, idUser uint64) (map[string]string, error)
 	Challenge(refreshToken string) (*string, error)
-	GetUserIdFromToken(request *http.Request) (uint64, error)
 	SecureAuth(u *user.User) (*user.UserResponse, error)
 }
 
 type usersService struct {
 	UsersRepository user.Repository
+	Tokens          TokenIssuer
+	Host            string // public host used in password-reset links
 }
 
 type UserConfig struct {
 	UsersRepository user.Repository
+	Tokens          TokenIssuer
+	Host            string
 }
 
 func NewUsersService(c *UserConfig) UsersService {
 	return &usersService{
 		UsersRepository: c.UsersRepository,
+		Tokens:          c.Tokens,
+		Host:            c.Host,
 	}
 }
 
-func (u *usersService) Registration(user *user.User, language *settings.Language) (map[string]string, error) {
-	return u.UsersRepository.Registration(user, language)
+func (u *usersService) Registration(usr *user.User, language *user.Language) (map[string]string, error) {
+	err := u.UsersRepository.Registration(usr, language)
+	if err != nil {
+		return nil, err
+	}
+
+	// The account is committed at this point; if token creation fails the
+	// user simply logs in afterwards.
+	return u.createSession(usr.ID)
 }
 
 func (u *usersService) Login(user *user.User) (map[string]string, error) {
@@ -77,12 +82,17 @@ func (u *usersService) Login(user *user.User) (map[string]string, error) {
 		}
 	}
 
-	// Create access and refresh tokens
-	ts, err := token.CreateToken(storedUser.ID)
+	return u.createSession(storedUser.ID)
+}
+
+// createSession mints a fresh access/refresh token pair and stores its
+// metadata in the auth store.
+func (u *usersService) createSession(idUser uint64) (map[string]string, error) {
+	ts, err := u.Tokens.CreateToken(idUser)
 	if err != nil {
 		return nil, err
 	}
-	err = u.UsersRepository.CreateAuth(storedUser.ID, ts)
+	err = u.UsersRepository.CreateAuth(idUser, ts)
 	if err != nil {
 		return nil, err
 	}
@@ -115,24 +125,15 @@ func (u *usersService) Refresh(ri *user.RefreshInput) (map[string]string, error)
 	}
 
 	// verify token
-	claims, ok := token.VerifyTokenAndRefresh(ri.Refresh_token)
-	if !ok {
-		return nil, apperror.NewAuthorization("Not authorized")
-	}
-
-	refreshUuid, ok := claims["refresh_uuid"].(string) // convert the interface to string
-	if !ok {
-		return nil, apperror.NewInternal()
-	}
-	userId, err := strconv.ParseUint(fmt.Sprintf("%.f", claims["user_id"]), 10, 64)
+	rd, err := u.Tokens.VerifyRefresh(ri.Refresh_token)
 	if err != nil {
-		return nil, err
+		return nil, apperror.NewAuthorization("Not authorized")
 	}
 
 	// Enforce the second factor server-side: a valid refresh token alone must
 	// not be enough once the account has pin or fingerprint enabled, otherwise
 	// the extra factor is only a client-side illusion.
-	secureUser, err := u.UsersRepository.FindById(userId)
+	secureUser, err := u.UsersRepository.FindById(rd.UserId)
 	if err != nil {
 		return nil, apperror.NewAuthorization("Not authorized")
 	}
@@ -151,7 +152,7 @@ func (u *usersService) Refresh(ri *user.RefreshInput) (map[string]string, error)
 			return nil, err
 		}
 
-		storedUser, err := u.UsersRepository.FindPkeyAndChallengeById(userId)
+		storedUser, err := u.UsersRepository.FindPkeyAndChallengeById(rd.UserId)
 		if err != nil {
 			return nil, err
 		}
@@ -163,11 +164,11 @@ func (u *usersService) Refresh(ri *user.RefreshInput) (map[string]string, error)
 		// Consume the challenge before verifying so it can be used at most once,
 		// even if verification fails. This prevents replaying a captured
 		// challenge/signature pair.
-		if err := u.UsersRepository.UpdateChallenge(userId, nil); err != nil {
+		if err := u.UsersRepository.UpdateChallenge(rd.UserId, nil); err != nil {
 			return nil, err
 		}
 
-		publicKey, err := crypto.ParsePublicKey(*storedUser.Pkey)
+		publicKey, err := base64.StdEncoding.DecodeString(*storedUser.Pkey)
 		if err != nil {
 			return nil, err
 		}
@@ -182,30 +183,21 @@ func (u *usersService) Refresh(ri *user.RefreshInput) (map[string]string, error)
 
 	// Verification of pin
 	if ri.Pin != nil {
-		err = u.UsersRepository.CheckPin(userId, *ri.Pin)
+		err = u.UsersRepository.CheckPin(rd.UserId, *ri.Pin)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	//Delete the previous Refresh Token
-	deleted, delErr := u.UsersRepository.DeleteAuth(refreshUuid)
+	deleted, delErr := u.UsersRepository.DeleteAuth(rd.RefreshUuid)
 	if delErr != nil || deleted == 0 { // if any goes wrong
 		return nil, apperror.NewAuthorization("Not authorized")
 	}
 	//Create new pairs of refresh and access tokens
-	ts, createErr := token.CreateToken(userId)
-	if createErr != nil {
+	tokens, err := u.createSession(rd.UserId)
+	if err != nil {
 		return nil, apperror.NewStatusForbidden()
-	}
-	//save the tokens metadata to redis
-	saveErr := u.UsersRepository.CreateAuth(userId, ts)
-	if saveErr != nil {
-		return nil, apperror.NewStatusForbidden()
-	}
-	tokens := map[string]string{
-		"access_token":  ts.AccessToken,
-		"refresh_token": ts.RefreshToken,
 	}
 	return tokens, nil
 }
@@ -222,12 +214,12 @@ func (u *usersService) ResetPassword(user *user.User) error {
 		return err
 	}
 
-	td, err := token.CreateToken(idUser)
+	td, err := u.Tokens.CreateToken(idUser)
 	if err != nil {
 		return err
 	}
 
-	link := os.Getenv("HOST") + "/reset?email=" + user.Username + "&token=" + td.AccessToken
+	link := u.Host + "/reset?email=" + user.Username + "&token=" + td.AccessToken
 
 	// Sender data.
 	from := "no_reply@homl.ch"
@@ -289,20 +281,7 @@ func (u *usersService) generateAndUpdatePassword(newPassword string, idUser uint
 		return nil, err
 	}
 
-	// Create access and refresh tokens
-	ts, err := token.CreateToken(idUser)
-	if err != nil {
-		return nil, err
-	}
-	err = u.UsersRepository.CreateAuth(idUser, ts)
-	if err != nil {
-		return nil, err
-	}
-	tokens := map[string]string{
-		"access_token":  ts.AccessToken,
-		"refresh_token": ts.RefreshToken,
-	}
-	return tokens, nil
+	return u.createSession(idUser)
 }
 
 func (u *usersService) Challenge(refreshToken string) (*string, error) {
@@ -316,34 +295,17 @@ func (u *usersService) Challenge(refreshToken string) (*string, error) {
 	challenge := randomString[:length]
 
 	// Store the challenge
-	claims, ok := token.VerifyTokenAndRefresh(refreshToken)
-	if !ok {
+	rd, err := u.Tokens.VerifyRefresh(refreshToken)
+	if err != nil {
 		return nil, apperror.NewAuthorization("Refresh token expired")
 	}
 
-	userId, err := strconv.ParseUint(fmt.Sprintf("%.f", claims["user_id"]), 10, 64)
-	if err != nil {
-		return nil, err
-	}
-
-	err = u.UsersRepository.UpdateChallenge(userId, &challenge)
+	err = u.UsersRepository.UpdateChallenge(rd.UserId, &challenge)
 	if err != nil {
 		return nil, err
 	}
 
 	return &challenge, nil
-}
-
-func (u *usersService) GetUserIdFromToken(request *http.Request) (uint64, error) {
-	tokenAuth, err := token.ExtractTokenMetadata(request)
-	if err != nil {
-		return 0, apperror.NewAuthorization("Not authorized")
-	}
-	userId, err := u.UsersRepository.FetchAuth(tokenAuth)
-	if err != nil {
-		return 0, apperror.NewAuthorization("Not authorized")
-	}
-	return userId, nil
 }
 
 /** input:

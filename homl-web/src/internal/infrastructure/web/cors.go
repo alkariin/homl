@@ -2,15 +2,13 @@ package web
 
 import (
 	"net/http"
-	"os"
 
 	"github.com/gin-gonic/gin"
 )
 
 // CorsMiddleware sets CORS headers on every response and short-circuits OPTIONS preflight
-// requests. Allowed origin defaults to "*"; set CORS_ORIGIN to restrict it.
-func CorsMiddleware() gin.HandlerFunc {
-	origin := os.Getenv("CORS_ORIGIN")
+// requests. An empty allowed origin falls back to "*".
+func CorsMiddleware(origin string) gin.HandlerFunc {
 	if origin == "" {
 		origin = "*"
 	}

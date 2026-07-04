@@ -1,24 +1,24 @@
 package application
 
-import "github.com/alkariin/homl/homl-web/internal/domain/settings"
+import "github.com/alkariin/homl/homl-web/internal/domain/user"
 
-// SettingsService is the use-case port of the Settings aggregate.
+// SettingsService holds the settings use cases of the User aggregate.
 type SettingsService interface {
-	GetSettings(idUser uint64) (*settings.SettingsResponse, error)
-	UpdateSettings(idUser uint64, s *settings.Settings) (*settings.SettingsResponse, error)
+	GetSettings(idUser uint64) (*user.SettingsResponse, error)
+	UpdateSettings(idUser uint64, s *user.Settings) (*user.SettingsResponse, error)
 }
 
 type settingsService struct {
-	SettingsRepository settings.Repository
+	UsersRepository user.Repository
 }
 
 type SSConfig struct {
-	SettingsRepository settings.Repository
+	UsersRepository user.Repository
 }
 
 func NewSettingsService(c *SSConfig) SettingsService {
 	return &settingsService{
-		SettingsRepository: c.SettingsRepository,
+		UsersRepository: c.UsersRepository,
 	}
 }
 
@@ -30,15 +30,18 @@ func NewSettingsService(c *SSConfig) SettingsService {
  *   isPinEnabled: bool
  * }
  */
-func (s *settingsService) GetSettings(idUser uint64) (*settings.SettingsResponse, error) {
-	res, err := s.SettingsRepository.FindByIdUser(idUser)
+func (s *settingsService) GetSettings(idUser uint64) (*user.SettingsResponse, error) {
+	res, err := s.UsersRepository.FindSettingsByIdUser(idUser)
+	if err != nil {
+		return nil, err
+	}
 
-	response := &settings.SettingsResponse{
+	response := &user.SettingsResponse{
 		Language:      res.Language,
 		DefaultScreen: res.DefaultScreen,
 	}
 
-	return response, err
+	return response, nil
 }
 
 /** input:
@@ -51,16 +54,22 @@ func (s *settingsService) GetSettings(idUser uint64) (*settings.SettingsResponse
  *   pkey?: string
  * }
  */
-func (s *settingsService) UpdateSettings(idUser uint64, newSettings *settings.Settings) (*settings.SettingsResponse, error) {
-	s.SettingsRepository.Update(newSettings, idUser)
+func (s *settingsService) UpdateSettings(idUser uint64, newSettings *user.Settings) (*user.SettingsResponse, error) {
+	err := s.UsersRepository.UpdateSettings(newSettings, idUser)
+	if err != nil {
+		return nil, err
+	}
 
 	// Get new settings and send them back
-	res, err := s.SettingsRepository.FindByIdUser(idUser)
+	res, err := s.UsersRepository.FindSettingsByIdUser(idUser)
+	if err != nil {
+		return nil, err
+	}
 
-	response := &settings.SettingsResponse{
+	response := &user.SettingsResponse{
 		Language:      res.Language,
 		DefaultScreen: res.DefaultScreen,
 	}
 
-	return response, err
+	return response, nil
 }

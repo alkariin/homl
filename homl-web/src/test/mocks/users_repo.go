@@ -1,7 +1,6 @@
 package mocks
 
 import (
-	"github.com/alkariin/homl/homl-web/internal/domain/settings"
 	"github.com/alkariin/homl/homl-web/internal/domain/user"
 	"github.com/stretchr/testify/mock"
 )
@@ -11,20 +10,15 @@ type MockUsersRepo struct {
 	mock.Mock
 }
 
-func (m *MockUsersRepo) Registration(user *user.User, language *settings.Language) (map[string]string, error) {
-	ret := m.Called(user, language)
+func (m *MockUsersRepo) Registration(u *user.User, language *user.Language) error {
+	ret := m.Called(u, language)
 
-	var r0 map[string]string
+	var r0 error
 	if ret.Get(0) != nil {
-		r0 = ret.Get(0).(map[string]string)
+		r0 = ret.Get(0).(error)
 	}
 
-	var r1 error
-	if ret.Get(1) != nil {
-		r1 = ret.Get(1).(error)
-	}
-
-	return r0, r1
+	return r0
 }
 
 func (m *MockUsersRepo) FindById(idUser uint64) (*user.User, error) {
@@ -203,4 +197,31 @@ func (m *MockUsersRepo) FetchAuth(authD *user.AccessDetails) (uint64, error) {
 	}
 
 	return r0, r1
+}
+
+func (m *MockUsersRepo) FindSettingsByIdUser(idUser uint64) (*user.Settings, error) {
+	res := m.Called(idUser)
+
+	var r0 *user.Settings
+	if res.Get(0) != nil {
+		r0 = res.Get(0).(*user.Settings)
+	}
+
+	var r1 error
+	if res.Get(1) != nil {
+		r1 = res.Get(1).(error)
+	}
+
+	return r0, r1
+}
+
+func (m *MockUsersRepo) UpdateSettings(s *user.Settings, idUser uint64) error {
+	ret := m.Called(s, idUser)
+
+	var r0 error
+	if ret.Get(0) != nil {
+		r0 = ret.Get(0).(error)
+	}
+
+	return r0
 }

@@ -54,7 +54,7 @@ down: ## Stop the compose stack
 	docker compose $(COMPOSE_FILES) down --remove-orphans
 
 local: ## Run backend process locally (requires db-up + migrateup first)
-	cd src && go run ./cmd/homl-web
+	cd src && go run .
 
 vendor: ## Refresh vendor/ (set HTTP_PROXY/HTTPS_PROXY if needed)
 	cd src && go mod tidy && go mod vendor
