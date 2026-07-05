@@ -17,6 +17,7 @@ import (
 	"github.com/alkariin/homl/homl-web/internal/infrastructure/crypto"
 	"github.com/alkariin/homl/homl-web/internal/infrastructure/db"
 	"github.com/alkariin/homl/homl-web/internal/infrastructure/persistence"
+	"github.com/alkariin/homl/homl-web/internal/infrastructure/ratelimit"
 	"github.com/alkariin/homl/homl-web/internal/infrastructure/web"
 )
 
@@ -26,6 +27,7 @@ func inject(cfg *config.Config, d *db.DataSources) *gin.Engine {
 	// infrastructure adapters
 	aes := crypto.NewAES(cfg.EncryptSecret)
 	jwt := auth.NewJWT(cfg.AccessSecret, cfg.RefreshSecret, cfg.IsDev())
+	limiter := ratelimit.NewRedisLimiter(d.RedisClient)
 
 	// repositories
 	categoriesRepository := persistence.NewCategoriesRepository(d.DB, aes)
@@ -59,6 +61,12 @@ func inject(cfg *config.Config, d *db.DataSources) *gin.Engine {
 		UsersRepository: usersRepository,
 		Tokens:          jwt,
 		Host:            cfg.Host,
+		SMTP: application.SMTPConfig{
+			Host:     cfg.SmtpHost,
+			Port:     cfg.SmtpPort,
+			From:     cfg.SmtpFrom,
+			Password: cfg.SmtpPassword,
+		},
 	})
 
 	// request-level authentication: parse the token, resolve the session
@@ -66,13 +74,14 @@ func inject(cfg *config.Config, d *db.DataSources) *gin.Engine {
 
 	// wire the per-feature HTTP handlers
 	server := &web.Server{
-		Tokens:   jwt,
-		User:     &web.UserHandler{UsersService: usersService, Tokens: jwt, Auth: authenticator},
-		Category: &web.CategoryHandler{CategoriesService: categoriesService, Auth: authenticator},
-		Tag:      &web.TagHandler{TagsService: tagsService, Auth: authenticator},
-		Person:   &web.PersonHandler{PersonsService: personService, Auth: authenticator},
-		Event:    &web.EventHandler{EventsService: eventsService, Auth: authenticator},
-		Settings: &web.SettingsHandler{SettingsService: settingsService, Auth: authenticator},
+		Auth:        authenticator,
+		RateLimiter: limiter,
+		User:        &web.UserHandler{UsersService: usersService, Tokens: jwt},
+		Category:    &web.CategoryHandler{CategoriesService: categoriesService},
+		Tag:         &web.TagHandler{TagsService: tagsService},
+		Person:      &web.PersonHandler{PersonsService: personService},
+		Event:       &web.EventHandler{EventsService: eventsService},
+		Settings:    &web.SettingsHandler{SettingsService: settingsService},
 	}
 
 	return web.SetupRouter(server, cfg.BaseURL, cfg.HandlerTimeout, cfg.IsDev(), cfg.CorsOrigin)

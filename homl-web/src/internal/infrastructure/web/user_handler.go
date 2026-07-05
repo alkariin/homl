@@ -184,15 +184,16 @@ func (h *UserHandler) ConfirmResetPassword(c *gin.Context) {
 		return
 	}
 
-	// The account being reset is bound to the reset token, never to the request
-	// body, so a valid token can only reset its own owner's password.
-	au, err := h.Tokens.ExtractAccessDetails(c.Request)
-	if err != nil {
-		SendGinMyCustomError(c, err, apperror.NewAuthorization("Not authorized"))
+	// The reset token is a dedicated single-use credential carried in the
+	// Authorization header (never an access token). The service resolves and
+	// revokes it, so the account being reset is bound to the token, not the body.
+	resetToken := bearerToken(c.Request)
+	if resetToken == "" {
+		SendGinError(c, apperror.NewAuthorization("Not authorized"))
 		return
 	}
 
-	tokens, err := h.UsersService.ConfirmResetPassword(user.Password, au.UserId)
+	tokens, err := h.UsersService.ConfirmResetPassword(user.Password, resetToken)
 	if err != nil {
 		SendGinError(c, err)
 		return
@@ -222,7 +223,7 @@ func (h *UserHandler) UpdatePassword(c *gin.Context) {
 		return
 	}
 
-	idUser, err := h.Auth.GetUserIdFromToken(c.Request)
+	idUser, err := UserIDFromContext(c)
 	if err != nil {
 		SendGinError(c, err)
 		return
@@ -281,7 +282,7 @@ func (h *UserHandler) SecureAuth(c *gin.Context) {
 		return
 	}
 
-	idUser, err := h.Auth.GetUserIdFromToken(c.Request)
+	idUser, err := UserIDFromContext(c)
 	if err != nil {
 		SendGinError(c, err)
 		return
@@ -302,5 +303,4 @@ func (h *UserHandler) SecureAuth(c *gin.Context) {
 type UserHandler struct {
 	UsersService application.UsersService
 	Tokens       TokenParser
-	Auth         Authenticator
 }

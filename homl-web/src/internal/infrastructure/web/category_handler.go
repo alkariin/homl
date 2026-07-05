@@ -26,7 +26,7 @@ var colorValidation = "required,hexcolor"
  * }
  */
 func (h *CategoryHandler) GetCategories(c *gin.Context) {
-	userId, err := h.Auth.GetUserIdFromToken(c.Request)
+	userId, err := UserIDFromContext(c)
 	if err != nil {
 		SendGinError(c, err)
 		return
@@ -62,7 +62,7 @@ func (h *CategoryHandler) CreateCategory(c *gin.Context) {
 		return
 	}
 
-	category.IdUser, err = h.Auth.GetUserIdFromToken(c.Request)
+	category.IdUser, err = UserIDFromContext(c)
 	if err != nil {
 		SendGinError(c, err)
 		return
@@ -146,7 +146,7 @@ func (h *CategoryHandler) DeleteCategory(c *gin.Context) {
 		return
 	}
 
-	idUser, err := h.Auth.GetUserIdFromToken(c.Request)
+	idUser, err := UserIDFromContext(c)
 	if err != nil {
 		SendGinError(c, err)
 		return
@@ -164,5 +164,4 @@ func (h *CategoryHandler) DeleteCategory(c *gin.Context) {
 // Handler wires the categories HTTP endpoints to their service.
 type CategoryHandler struct {
 	CategoriesService application.CategoriesService
-	Auth              Authenticator
 }
