@@ -15,7 +15,6 @@ FROM alpine:3.20
 
 WORKDIR /app
 COPY --from=builder /homlback /app/homlback
-COPY --from=builder /app/constants.json /app/constants.json
 
 EXPOSE 8080
 
