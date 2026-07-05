@@ -25,7 +25,7 @@ func InitConfig(cfg *config.Config) (*DataSources, error) {
 
 	rdb, err := initRedis(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("error opening redix: %w", err)
+		return nil, fmt.Errorf("error opening redis: %w", err)
 	}
 
 	return &DataSources{

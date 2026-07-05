@@ -87,7 +87,7 @@ func (t *tagsService) UpdateTag(idUser uint64, tag *category.Tag) error {
 	idCategoryPerson := idCategoryDate + 1
 
 	if tag.IdCategory == idCategoryPerson {
-		apperror.NewBadRequest("The given idCategory is not valid")
+		return apperror.NewBadRequest("The given idCategory is not valid")
 	}
 
 	// Check that the tag is not blacklisted
