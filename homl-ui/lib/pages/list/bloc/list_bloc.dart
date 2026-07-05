@@ -18,7 +18,7 @@ class ListBloc extends Bloc<ListEvent, ListState> {
     on<RemoveTagFromHeader>(_onRemoveTagFromHeader);
   }
 
-  _onAddTagToHeader(AddTagToHeader event, Emitter<ListState> emit) async {
+  Future<void> _onAddTagToHeader(AddTagToHeader event, Emitter<ListState> emit) async {
     try {
       Tag res = await tagsRepository.createTag(event.text, event.idCategory);
       var tags = state.tags.toList();
@@ -29,7 +29,7 @@ class ListBloc extends Bloc<ListEvent, ListState> {
     }
   }
 
-  _onRemoveTagFromHeader(
+  Future<void> _onRemoveTagFromHeader(
       RemoveTagFromHeader event, Emitter<ListState> emit) async {
     try {
       await tagsRepository.deleteTag(event.id);

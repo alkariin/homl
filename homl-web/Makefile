@@ -61,7 +61,7 @@ vendor: ## Refresh vendor/ (set HTTP_PROXY/HTTPS_PROXY if needed)
 
 ##@ Testing
 
-GO_IMAGE ?= golang:1.23-alpine
+GO_IMAGE ?= golang:1.26-alpine
 
 test: ## Run unit + HTTP integration tests (needs a local Go toolchain)
 	cd src && go test ./...
