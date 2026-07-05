@@ -50,13 +50,13 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     add(Init());
   }
 
-  _onCreateTag(CreateTag event, Emitter<HomeState> emit) {}
+  void _onCreateTag(CreateTag event, Emitter<HomeState> emit) {}
 
-  _onUpdateTag(UpdateTag event, Emitter<HomeState> emit) {}
+  void _onUpdateTag(UpdateTag event, Emitter<HomeState> emit) {}
 
-  _onDeleteTag(DeleteTag event, Emitter<HomeState> emit) {}
+  void _onDeleteTag(DeleteTag event, Emitter<HomeState> emit) {}
 
-  _onInit(Init event, Emitter<HomeState> emit) async {
+  Future<void> _onInit(Init event, Emitter<HomeState> emit) async {
     try {
       final events = await eventsRepository.getEvents();
       final categories = await categoriesRepository.getCategories();
@@ -81,15 +81,15 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     }
   }
 
-  _onUpdateSettings(UpdateSettings event, Emitter<HomeState> emit) {
+  void _onUpdateSettings(UpdateSettings event, Emitter<HomeState> emit) {
     emit(state.copyWith(settings: event.settings));
   }
 
-  _onErrorModal(ErrorModal event, Emitter<HomeState> emit) {
+  void _onErrorModal(ErrorModal event, Emitter<HomeState> emit) {
     emit(state.copyWith(modal: event.error));
   }
 
-  _onEndModal(EndModal event, Emitter<HomeState> emit) {
+  void _onEndModal(EndModal event, Emitter<HomeState> emit) {
     emit(state.copyWith(modal: null));
   }
 

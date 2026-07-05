@@ -31,7 +31,7 @@ class AccountBloc extends Bloc<AccountEvent, AccountState> {
     add(InitValues());
   }
 
-  _onInitValues(InitValues event, Emitter<AccountState> emit) async {
+  Future<void> _onInitValues(InitValues event, Emitter<AccountState> emit) async {
     final isFingerprintEnabled = await LocalStorageManager.getValue(
         LocalStorageKey.isFingerprintEnabled);
     final pinKeypair =
@@ -46,7 +46,7 @@ class AccountBloc extends Bloc<AccountEvent, AccountState> {
             isPinEnabled: pinKeypair != null)));
   }
 
-  _onResetPasswordDialogState(
+  void _onResetPasswordDialogState(
       ResetPasswordDialogState event, Emitter<AccountState> emit) {
     emit(state.copyWith(
       responseError: "",
@@ -114,7 +114,7 @@ class AccountBloc extends Bloc<AccountEvent, AccountState> {
     }
   }
 
-  _onSubmitPin(SubmitPin event, Emitter<AccountState> emit) async {
+  Future<void> _onSubmitPin(SubmitPin event, Emitter<AccountState> emit) async {
     if (event.pin != null) {
       try {
         var (publicKey, keyPairJson) = await encryption.generateKeyPair();
@@ -148,7 +148,7 @@ class AccountBloc extends Bloc<AccountEvent, AccountState> {
     }
   }
 
-  _onResetPinViewState(ResetPinViewState event, Emitter<AccountState> emit) {
+  void _onResetPinViewState(ResetPinViewState event, Emitter<AccountState> emit) {
     emit(state.copyWith(
       modal: null,
       isFormSubmitted: false,
