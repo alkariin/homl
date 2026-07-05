@@ -2,96 +2,94 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
 	"time"
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/alkariin/homl/homl-web/internal/category"
-	"github.com/alkariin/homl/homl-web/internal/event"
-	"github.com/alkariin/homl/homl-web/internal/person"
-	"github.com/alkariin/homl/homl-web/internal/platform"
-	"github.com/alkariin/homl/homl-web/internal/settings"
-	"github.com/alkariin/homl/homl-web/internal/tag"
-	"github.com/alkariin/homl/homl-web/internal/user"
+	"github.com/alkariin/homl/homl-web/internal/application"
+	"github.com/alkariin/homl/homl-web/internal/infrastructure/auth"
+	"github.com/alkariin/homl/homl-web/internal/infrastructure/config"
+	"github.com/alkariin/homl/homl-web/internal/infrastructure/crypto"
+	"github.com/alkariin/homl/homl-web/internal/infrastructure/db"
+	"github.com/alkariin/homl/homl-web/internal/infrastructure/persistence"
+	"github.com/alkariin/homl/homl-web/internal/infrastructure/web"
 )
 
-func inject(d *platform.DataSources) (*gin.Engine, error) {
+func inject(cfg *config.Config, d *db.DataSources) *gin.Engine {
 	log.Println("Injecting data sources")
 
+	// infrastructure adapters
+	aes := crypto.NewAES(cfg.EncryptSecret)
+	jwt := auth.NewJWT(cfg.AccessSecret, cfg.RefreshSecret, cfg.IsDev())
+
 	// repositories
-	categoriesRepository := category.NewCategoriesRepository(d.DB)
-	eventsRepository := event.NewEventsRepository(d.DB)
-	personsRepository := person.NewPersonsRepository(d.DB)
-	settingsRepository := settings.NewSettingsRepository(d.DB)
-	tagsRepository := tag.NewTagsRepository(d.DB)
-	usersRepository := user.NewUsersRepository(d.DB, d.RedisClient)
+	categoriesRepository := persistence.NewCategoriesRepository(d.DB, aes)
+	eventsRepository := persistence.NewEventsRepository(d.DB, aes)
+	personsRepository := persistence.NewPersonsRepository(d.DB, aes)
+	usersRepository := persistence.NewUsersRepository(d.DB, d.RedisClient, aes)
 
 	// services
-	categoriesService := category.NewCategoriesService(&category.CSConfig{
+	categoriesService := application.NewCategoriesService(&application.CSConfig{
 		CategoriesRepository: categoriesRepository,
+		Crypto:               aes,
 	})
-	eventsService := event.NewEventsService(&event.ESConfig{
+	eventsService := application.NewEventsService(&application.ESConfig{
 		EventsRepository:     eventsRepository,
 		CategoriesRepository: categoriesRepository,
-		TagsRepository:       tagsRepository,
+		Crypto:               aes,
 	})
-	personService := person.NewPersonsService(&person.PSConfig{
+	personService := application.NewPersonsService(&application.PSConfig{
 		PersonsRepository:    personsRepository,
 		CategoriesRepository: categoriesRepository,
-		TagsRepository:       tagsRepository,
+		Crypto:               aes,
 	})
-	settingsService := settings.NewSettingsService(&settings.SSConfig{
-		SettingsRepository: settingsRepository,
-	})
-	tagsService := tag.NewTagsService(&tag.TSConfig{
-		TagsRepository:       tagsRepository,
-		CategoriesRepository: categoriesRepository,
-	})
-	usersService := user.NewUsersService(&user.UserConfig{
+	settingsService := application.NewSettingsService(&application.SSConfig{
 		UsersRepository: usersRepository,
 	})
+	tagsService := application.NewTagsService(&application.TSConfig{
+		CategoriesRepository: categoriesRepository,
+		Crypto:               aes,
+	})
+	usersService := application.NewUsersService(&application.UserConfig{
+		UsersRepository: usersRepository,
+		Tokens:          jwt,
+		Host:            cfg.Host,
+	})
 
-	// wire the per-feature HTTP handlers (usersService doubles as the Authenticator)
-	server := &Server{
-		User:     &user.Handler{UsersService: usersService},
-		Category: &category.Handler{CategoriesService: categoriesService, UsersService: usersService},
-		Tag:      &tag.Handler{TagsService: tagsService, UsersService: usersService},
-		Person:   &person.Handler{PersonsService: personService, UsersService: usersService},
-		Event:    &event.Handler{EventsService: eventsService, UsersService: usersService},
-		Settings: &settings.Handler{SettingsService: settingsService, UsersService: usersService},
+	// request-level authentication: parse the token, resolve the session
+	authenticator := &web.TokenAuthenticator{Tokens: jwt, Sessions: usersRepository}
+
+	// wire the per-feature HTTP handlers
+	server := &web.Server{
+		Tokens:   jwt,
+		User:     &web.UserHandler{UsersService: usersService, Tokens: jwt, Auth: authenticator},
+		Category: &web.CategoryHandler{CategoriesService: categoriesService, Auth: authenticator},
+		Tag:      &web.TagHandler{TagsService: tagsService, Auth: authenticator},
+		Person:   &web.PersonHandler{PersonsService: personService, Auth: authenticator},
+		Event:    &web.EventHandler{EventsService: eventsService, Auth: authenticator},
+		Settings: &web.SettingsHandler{SettingsService: settingsService, Auth: authenticator},
 	}
 
-	baseURL := os.Getenv("HOML_API_URL")
-
-	handlerTimeout := os.Getenv("HANDLER_TIMEOUT")
-	ht, err := strconv.ParseInt(handlerTimeout, 0, 64)
-	if err != nil {
-		return nil, fmt.Errorf("could not parse HANDLER_TIMEOUT as int: %w", err)
-	}
-	TimeoutDuration := time.Duration(time.Duration(ht) * time.Second)
-
-	router := SetupRouter(server, baseURL, TimeoutDuration)
-
-	return router, nil
+	return web.SetupRouter(server, cfg.BaseURL, cfg.HandlerTimeout, cfg.IsDev(), cfg.CorsOrigin)
 }
 
 func main() {
-	ds, err := platform.InitConfig()
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("Unable to load configuration: %v\n", err)
+	}
+
+	ds, err := db.InitConfig(cfg)
 	if err != nil {
 		log.Fatalf("Unable to initialize data sources: %v\n", err)
 	}
 
-	router, err := inject(ds)
-	if err != nil {
-		log.Fatalf("Failure to inject data sources: %v\n", err)
-	}
+	router := inject(cfg, ds)
 
 	srv := &http.Server{
 		Addr:    ":8080",
