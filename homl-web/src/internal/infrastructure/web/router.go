@@ -48,7 +48,7 @@ func SetupRouter(s *Server, baseUrl string, timeoutDuration time.Duration, isDev
 	g.PUT("/password", authRequired, s.User.UpdatePassword)
 	g.POST("/resetPassword", resetLimit, s.User.ResetPassword)
 	g.POST("/confirmResetPassword", resetLimit, s.User.ConfirmResetPassword)
-	g.GET("/challenge", challengeLimit, s.User.Challenge)
+	g.POST("/challenge", challengeLimit, s.User.Challenge)
 	g.PUT("/secureAuth", authRequired, s.User.SecureAuth)
 
 	g.GET("/categories", authRequired, s.Category.GetCategories)

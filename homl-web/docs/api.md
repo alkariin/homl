@@ -47,7 +47,7 @@ the handlers next to it.
 | PUT | `/password` | ✔ | — |
 | POST | `/resetPassword` | — | 5/hour |
 | POST | `/confirmResetPassword` | reset token | 5/hour |
-| GET | `/challenge` | refresh token | 30/min |
+| POST | `/challenge` | refresh token | 30/min |
 | PUT | `/secureAuth` | ✔ | — |
 
 ### POST /registration
@@ -118,7 +118,7 @@ header; the body carries only the new password.
 → `200` fresh token pair — `401` if the token is unknown, expired or already
 used.
 
-### GET /challenge
+### POST /challenge
 
 Returns a one-time challenge to be signed by the device key (fingerprint
 flow). The refresh token is carried in the request body.
@@ -201,12 +201,12 @@ person; when updating, an existing nickname must carry its `id`.
 ## Events
 
 All endpoints require auth. Date tags are added by the backend from `date`;
-`tagsId` may be empty. `GET /events` accepts an optional body to filter by
-tag names.
+`tagsId` may be empty. `GET /events` accepts an optional `tags` query filter,
+repeated once per tag name (`?tags=2024&tags=July`).
 
-| Method | Path | Body | Response |
+| Method | Path | Body / query | Response |
 | --- | --- | --- | --- |
-| GET | `/events` | `{tags?: string[]}` | `200` list below |
+| GET | `/events` | `?tags=<name>&tags=<name>` (optional) | `200` list below |
 | POST | `/events` | `{description?, date, tagsId: uint[]}` | `201` |
 | PATCH | `/events/:id` | `{description?, date, tagsId: uint[]}` | `204` |
 | DELETE | `/events/:id` | — | `204` |

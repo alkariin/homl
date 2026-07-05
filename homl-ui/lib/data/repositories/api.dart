@@ -87,7 +87,7 @@ class Api {
 
   Future<String> _askForChallengeString(String refreshToken) async {
     final response = await api
-        .get<String>('/challenge', data: {'refresh_token': refreshToken});
+        .post<String>('/challenge', data: {'refresh_token': refreshToken});
     return response.data!;
   }
 
