@@ -6,10 +6,16 @@ part 'tag.g.dart';
 class Tag {
   final int id;
   final String tag;
+  final int? idCategory;
+
+  /// Id of the main tag when this tag is a synonym (null = main tag).
+  final int? idParentTag;
 
   Tag({
     required this.id,
     required this.tag,
+    this.idCategory,
+    this.idParentTag,
   });
 
   factory Tag.fromJson(Map<String, dynamic> json) => _$TagFromJson(json);

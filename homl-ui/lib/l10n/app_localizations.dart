@@ -189,6 +189,168 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Select language'**
   String get settings_selectLanguage;
+
+  /// No description provided for @global_cancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get global_cancel;
+
+  /// No description provided for @global_save.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get global_save;
+
+  /// No description provided for @global_delete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get global_delete;
+
+  /// No description provided for @nav_categories.
+  ///
+  /// In en, this message translates to:
+  /// **'Categories'**
+  String get nav_categories;
+
+  /// No description provided for @nav_search.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get nav_search;
+
+  /// No description provided for @nav_add.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get nav_add;
+
+  /// No description provided for @insert_tagInputLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a tag'**
+  String get insert_tagInputLabel;
+
+  /// No description provided for @insert_descriptionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get insert_descriptionLabel;
+
+  /// No description provided for @insert_submit.
+  ///
+  /// In en, this message translates to:
+  /// **'Create event'**
+  String get insert_submit;
+
+  /// No description provided for @insert_eventCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Event created'**
+  String get insert_eventCreated;
+
+  /// No description provided for @insert_noTagsError.
+  ///
+  /// In en, this message translates to:
+  /// **'Add at least one tag'**
+  String get insert_noTagsError;
+
+  /// No description provided for @list_filterLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter by tag'**
+  String get list_filterLabel;
+
+  /// No description provided for @list_manageCategories.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage categories'**
+  String get list_manageCategories;
+
+  /// No description provided for @list_noEvents.
+  ///
+  /// In en, this message translates to:
+  /// **'No events found'**
+  String get list_noEvents;
+
+  /// No description provided for @categories_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Categories'**
+  String get categories_title;
+
+  /// No description provided for @categories_newCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'New category'**
+  String get categories_newCategory;
+
+  /// No description provided for @categories_editCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit category'**
+  String get categories_editCategory;
+
+  /// No description provided for @categories_deleteCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete category?'**
+  String get categories_deleteCategory;
+
+  /// No description provided for @categories_deleteMoveTags.
+  ///
+  /// In en, this message translates to:
+  /// **'Move the tags to the Other category'**
+  String get categories_deleteMoveTags;
+
+  /// No description provided for @categories_categoryName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get categories_categoryName;
+
+  /// No description provided for @categories_color.
+  ///
+  /// In en, this message translates to:
+  /// **'Color'**
+  String get categories_color;
+
+  /// No description provided for @categories_newTag.
+  ///
+  /// In en, this message translates to:
+  /// **'New tag'**
+  String get categories_newTag;
+
+  /// No description provided for @categories_renameTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename tag'**
+  String get categories_renameTag;
+
+  /// No description provided for @categories_deleteTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete tag'**
+  String get categories_deleteTag;
+
+  /// No description provided for @categories_addSynonym.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a synonym'**
+  String get categories_addSynonym;
+
+  /// No description provided for @categories_detachSynonym.
+  ///
+  /// In en, this message translates to:
+  /// **'Detach synonym'**
+  String get categories_detachSynonym;
+
+  /// No description provided for @categories_synonymName.
+  ///
+  /// In en, this message translates to:
+  /// **'Synonym'**
+  String get categories_synonymName;
 }
 
 class _AppLocalizationsDelegate

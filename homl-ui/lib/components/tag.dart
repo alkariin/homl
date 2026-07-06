@@ -1,54 +1,49 @@
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
-class Tag extends StatefulWidget {
+class Tag extends StatelessWidget {
   final int id;
   final String text;
   final String? color;
-  final Function()? updateDate;
-  final Function(int id) onDeleteTag;
+
+  /// Called on tap (e.g. open a date picker, insert the tag in a filter).
+  final Function()? onTap;
+
+  /// Called on long press. When null the tag is not removable (date tag).
+  final Function(int id)? onDeleteTag;
   final bool isDate;
 
   const Tag(
       {required this.id,
       required this.text,
       this.color,
-      this.updateDate,
-      required this.onDeleteTag,
-      required this.isDate,
+      this.onTap,
+      this.onDeleteTag,
+      this.isDate = false,
       super.key});
 
   @override
-  State<Tag> createState() => _TagState();
-}
-
-class _TagState extends State<Tag> {
-  void onPressed() {
-    if (!widget.isDate) return;
-    // open calendar
-
-    // widget.updateDate()
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-      Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          ElevatedButton(
-            onPressed: onPressed,
-            onLongPress: () => widget.onDeleteTag(widget.id),
-            child: Container(
-              height: 25,
-              padding: const EdgeInsets.all(5),
-              color: widget.color != null
-                  ? Color(int.parse(widget.color!.replaceAll("#", "0xff")))
-                  : const Color.fromRGBO(230, 230, 230, 0.5),
-              child: Text(widget.text),
-            ),
-          ),
-        ],
+    return ElevatedButton(
+      onPressed: onTap,
+      onLongPress: onDeleteTag == null ? null : () => onDeleteTag!(id),
+      child: Container(
+        height: 25,
+        padding: const EdgeInsets.all(5),
+        color: color != null
+            ? Color(int.parse(color!.replaceAll("#", "0xff")))
+            : const Color.fromRGBO(230, 230, 230, 0.5),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isDate) ...[
+              const FaIcon(FontAwesomeIcons.calendar, size: 14),
+              const SizedBox(width: 5),
+            ],
+            Text(text),
+          ],
+        ),
       ),
-    ]);
+    );
   }
 }
