@@ -1,6 +1,7 @@
 package application
 
 import (
+	"context"
 	"sort"
 	"strings"
 
@@ -10,10 +11,10 @@ import (
 
 // PersonsService is the use-case port of the Person aggregate.
 type PersonsService interface {
-	GetPersons(idUser uint64) ([]person.GetPersonsResponse, error)
-	CreatePerson(p *person.Person, nicknames []string, idUser uint64) error
-	UpdatePerson(p *person.Person, nicknames []person.Nickname, idUser uint64) error
-	DeletePerson(idPerson uint, idUser uint64) error
+	GetPersons(ctx context.Context, idUser uint64) ([]person.GetPersonsResponse, error)
+	CreatePerson(ctx context.Context, p *person.Person, nicknames []string, idUser uint64) error
+	UpdatePerson(ctx context.Context, p *person.Person, nicknames []person.Nickname, idUser uint64) error
+	DeletePerson(ctx context.Context, idPerson uint, idUser uint64) error
 }
 
 type personsService struct {
@@ -36,8 +37,8 @@ func NewPersonsService(c *PSConfig) PersonsService {
 	}
 }
 
-func (s *personsService) GetPersons(idUser uint64) ([]person.GetPersonsResponse, error) {
-	persons, nicknames, err := s.PersonsRepository.FindPersonsWithTagsAndCategories(idUser)
+func (s *personsService) GetPersons(ctx context.Context, idUser uint64) ([]person.GetPersonsResponse, error) {
+	persons, nicknames, err := s.PersonsRepository.FindPersonsWithTagsAndCategories(ctx, idUser)
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +73,7 @@ func (s *personsService) GetPersons(idUser uint64) ([]person.GetPersonsResponse,
 	return responses, nil
 }
 
-func (s *personsService) CreatePerson(person *person.Person, nicknames []string, idUser uint64) error {
+func (s *personsService) CreatePerson(ctx context.Context, person *person.Person, nicknames []string, idUser uint64) error {
 	firstname := strings.Title(person.Firstname)
 	lastname := strings.Title(person.Lastname)
 	encFirstname, err := s.Crypto.Encrypt(firstname)
@@ -91,37 +92,37 @@ func (s *personsService) CreatePerson(person *person.Person, nicknames []string,
 	}
 
 	// Get idCategoryPerson
-	idCategoryDate, err := s.CategoriesRepository.FindLastIdByIdUser(idUser)
+	idCategoryDate, err := s.CategoriesRepository.FindLastIdByIdUser(ctx, idUser)
 	if err != nil {
 		return err
 	}
 	idCategoryPerson := idCategoryDate + 1
 
-	return s.PersonsRepository.CreatePersonWithTags(encFirstname, encLastname, encMainTagName, idCategoryPerson, nicknames)
+	return s.PersonsRepository.CreatePersonWithTags(ctx, encFirstname, encLastname, encMainTagName, idCategoryPerson, nicknames)
 }
 
-func (s *personsService) UpdatePerson(person *person.Person, nicknames []person.Nickname, idUser uint64) error {
+func (s *personsService) UpdatePerson(ctx context.Context, person *person.Person, nicknames []person.Nickname, idUser uint64) error {
 	// Get idCategoryPerson
-	idCategoryDate, err := s.CategoriesRepository.FindLastIdByIdUser(idUser)
+	idCategoryDate, err := s.CategoriesRepository.FindLastIdByIdUser(ctx, idUser)
 	if err != nil {
 		return err
 	}
 	idCategoryPerson := idCategoryDate + 1
 
 	// Verify if the given id is a person of the user
-	err = s.PersonsRepository.CheckPersonIdsWithTagsAndCategories(idUser, person.Id)
+	err = s.PersonsRepository.CheckPersonIdsWithTagsAndCategories(ctx, idUser, person.Id)
 	if err != nil {
 		return err
 	}
 
 	// Get main tag of the person (used multiple times)
-	mainPersonTagId, err := s.CategoriesRepository.FindMainTagIdOfPerson(person.Id)
+	mainPersonTagId, err := s.CategoriesRepository.FindMainTagIdOfPerson(ctx, person.Id)
 	if err != nil {
 		return err
 	}
 
 	// if first/lastname are updated the main tag should be updated as well
-	storedPerson, err := s.PersonsRepository.FindById(person.Id)
+	storedPerson, err := s.PersonsRepository.FindById(ctx, person.Id)
 	if err != nil {
 		return err
 	}
@@ -143,9 +144,9 @@ func (s *personsService) UpdatePerson(person *person.Person, nicknames []person.
 		return err
 	}
 
-	return s.PersonsRepository.UpdatePersonWithTags(storedPerson, encFirstname, encLastname, encMainTagName, mainPersonTagId, idCategoryPerson, idUser, nicknames)
+	return s.PersonsRepository.UpdatePersonWithTags(ctx, storedPerson, encFirstname, encLastname, encMainTagName, mainPersonTagId, idCategoryPerson, idUser, nicknames)
 }
 
-func (s *personsService) DeletePerson(idPerson uint, idUser uint64) error {
-	return s.PersonsRepository.DeletePerson(idPerson, idUser)
+func (s *personsService) DeletePerson(ctx context.Context, idPerson uint, idUser uint64) error {
+	return s.PersonsRepository.DeletePerson(ctx, idPerson, idUser)
 }

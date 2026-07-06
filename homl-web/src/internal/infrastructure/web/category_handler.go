@@ -32,7 +32,7 @@ func (h *CategoryHandler) GetCategories(c *gin.Context) {
 		return
 	}
 
-	res, err := h.CategoriesService.GetCategories(userId)
+	res, err := h.CategoriesService.GetCategories(c.Request.Context(), userId)
 	if err != nil {
 		SendGinError(c, err)
 		return
@@ -68,7 +68,7 @@ func (h *CategoryHandler) CreateCategory(c *gin.Context) {
 		return
 	}
 
-	err = h.CategoriesService.CreateCategory(category)
+	err = h.CategoriesService.CreateCategory(c.Request.Context(), category)
 	if err != nil {
 		SendGinError(c, err)
 		return
@@ -106,7 +106,7 @@ func (h *CategoryHandler) UpdateCategory(c *gin.Context) {
 		return
 	}
 
-	err = h.CategoriesService.UpdateCategory(&category)
+	err = h.CategoriesService.UpdateCategory(c.Request.Context(), &category)
 	if err != nil {
 		SendGinError(c, err)
 		return
@@ -152,7 +152,7 @@ func (h *CategoryHandler) DeleteCategory(c *gin.Context) {
 		return
 	}
 
-	err = h.CategoriesService.DeleteCategory(idCategory, idUser, body.MoveTags)
+	err = h.CategoriesService.DeleteCategory(c.Request.Context(), idCategory, idUser, body.MoveTags)
 	if err != nil {
 		SendGinError(c, err)
 		return
