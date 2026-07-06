@@ -1,6 +1,7 @@
 package application_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/alkariin/homl/homl-web/internal/application"
@@ -31,7 +32,7 @@ func TestGetSettings(t *testing.T) {
 		})
 		mockUsersRepo.On("FindSettingsByIdUser", idUser).Return(expectedSettings, nil)
 
-		resultSettings, err := settingsService.GetSettings(idUser)
+		resultSettings, err := settingsService.GetSettings(context.Background(), idUser)
 		assert.NoError(t, err)
 		assert.Equal(t, resultSettings, expectedSettingsResponse)
 		mockUsersRepo.AssertExpectations(t)
@@ -60,7 +61,7 @@ func TestUpdateSettings(t *testing.T) {
 		mockUsersRepo.On("UpdateSettings", newSettings, idUser).Return(nil)
 		mockUsersRepo.On("FindSettingsByIdUser", idUser).Return(newSettings, nil)
 
-		resultSettings, err := settingsService.UpdateSettings(idUser, newSettings)
+		resultSettings, err := settingsService.UpdateSettings(context.Background(), idUser, newSettings)
 
 		assert.NoError(t, err)
 		assert.Equal(t, resultSettings, expectedSettings)

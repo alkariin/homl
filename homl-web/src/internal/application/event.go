@@ -1,6 +1,7 @@
 package application
 
 import (
+	"context"
 	"sort"
 	"strconv"
 	"time"
@@ -11,10 +12,10 @@ import (
 
 // EventsService is the use-case port of the Event aggregate.
 type EventsService interface {
-	GetEvents(idUser uint64, tags []string) ([]event.GetEventsResponse, error)
-	CreateEvent(idUser uint64, e *event.Event, tagsId []uint) error
-	UpdateEvent(idUser uint64, e *event.Event, tagsId []uint) error
-	DeleteEvent(idEvent uint) error
+	GetEvents(ctx context.Context, idUser uint64, tags []string) ([]event.GetEventsResponse, error)
+	CreateEvent(ctx context.Context, idUser uint64, e *event.Event, tagsId []uint) error
+	UpdateEvent(ctx context.Context, idUser uint64, e *event.Event, tagsId []uint) error
+	DeleteEvent(ctx context.Context, idEvent uint) error
 }
 
 type eventsService struct {
@@ -37,9 +38,17 @@ func NewEventsService(c *ESConfig) EventsService {
 	}
 }
 
-func (e *eventsService) GetEvents(idUser uint64, tags []string) ([]event.GetEventsResponse, error) {
+func (e *eventsService) GetEvents(ctx context.Context, idUser uint64, tags []string) ([]event.GetEventsResponse, error) {
+	// Deduplicate the requested tags: the repository matches events against
+	// ALL of them by counting distinct names, so duplicates would never match.
 	var encTags []string
+	seen := make(map[string]bool)
 	for _, t := range tags {
+		if seen[t] {
+			continue
+		}
+		seen[t] = true
+
 		encTag, err := e.Crypto.Encrypt(t)
 		if err != nil {
 			return nil, err
@@ -47,7 +56,7 @@ func (e *eventsService) GetEvents(idUser uint64, tags []string) ([]event.GetEven
 		encTags = append(encTags, encTag)
 	}
 
-	resEvents, resTags, err := e.EventsRepository.FindEventsWithTags(encTags, idUser)
+	resEvents, resTags, err := e.EventsRepository.FindEventsWithTags(ctx, encTags, idUser)
 	if err != nil {
 		return nil, err
 	}
@@ -77,28 +86,28 @@ func (e *eventsService) GetEvents(idUser uint64, tags []string) ([]event.GetEven
 	return responses, nil
 }
 
-func (e *eventsService) CreateEvent(idUser uint64, event *event.Event, tagsId []uint) error {
-	tags, err := e.buildDateTags(idUser, event.Date)
+func (e *eventsService) CreateEvent(ctx context.Context, idUser uint64, event *event.Event, tagsId []uint) error {
+	tags, err := e.buildDateTags(ctx, idUser, event.Date)
 	if err != nil {
 		return err
 	}
 
-	return e.EventsRepository.CreateEventWithTags(tags, tagsId, event, idUser)
+	return e.EventsRepository.CreateEventWithTags(ctx, tags, tagsId, event, idUser)
 }
 
-func (e *eventsService) UpdateEvent(idUser uint64, event *event.Event, tagsId []uint) error {
-	tags, err := e.buildDateTags(idUser, event.Date)
+func (e *eventsService) UpdateEvent(ctx context.Context, idUser uint64, event *event.Event, tagsId []uint) error {
+	tags, err := e.buildDateTags(ctx, idUser, event.Date)
 	if err != nil {
 		return err
 	}
 
-	return e.EventsRepository.UpdateEventWithTags(tags, tagsId, event, idUser)
+	return e.EventsRepository.UpdateEventWithTags(ctx, tags, tagsId, event, idUser)
 }
 
 // buildDateTags returns the month and year tags of the event's date, reusing
 // the existing tag ids when the user already has them in his date category.
-func (e *eventsService) buildDateTags(idUser uint64, date time.Time) ([]category.Tag, error) {
-	idCategoryDate, err := e.CategoriesRepository.FindLastIdByIdUser(idUser)
+func (e *eventsService) buildDateTags(ctx context.Context, idUser uint64, date time.Time) ([]category.Tag, error) {
+	idCategoryDate, err := e.CategoriesRepository.FindLastIdByIdUser(ctx, idUser)
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +122,7 @@ func (e *eventsService) buildDateTags(idUser uint64, date time.Time) ([]category
 			return nil, err
 		}
 
-		idTag, err := e.CategoriesRepository.FindTagIdByTagAndIdCategory(encName, idCategoryDate)
+		idTag, err := e.CategoriesRepository.FindTagIdByTagAndIdCategory(ctx, encName, idCategoryDate)
 		if err != nil {
 			return nil, err
 		}
@@ -128,6 +137,6 @@ func (e *eventsService) buildDateTags(idUser uint64, date time.Time) ([]category
 	return tags, nil
 }
 
-func (e *eventsService) DeleteEvent(idEvent uint) error {
-	return e.EventsRepository.Delete(idEvent)
+func (e *eventsService) DeleteEvent(ctx context.Context, idEvent uint) error {
+	return e.EventsRepository.Delete(ctx, idEvent)
 }
