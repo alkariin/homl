@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/alkariin/homl/homl-web/internal/apperror"
@@ -17,7 +18,7 @@ type TokenParser interface {
 // SessionStore resolves an access token's metadata to the authenticated user
 // id. Implemented by the users repository (Redis auth store).
 type SessionStore interface {
-	FetchAuth(authD *user.AccessDetails) (uint64, error)
+	FetchAuth(ctx context.Context, authD *user.AccessDetails) (uint64, error)
 }
 
 // Authenticator resolves the authenticated user id from an incoming request.
@@ -38,7 +39,7 @@ func (a *TokenAuthenticator) GetUserIdFromToken(request *http.Request) (uint64, 
 	if err != nil {
 		return 0, apperror.NewAuthorization("Not authorized")
 	}
-	userId, err := a.Sessions.FetchAuth(accessDetails)
+	userId, err := a.Sessions.FetchAuth(request.Context(), accessDetails)
 	if err != nil {
 		return 0, apperror.NewAuthorization("Not authorized")
 	}

@@ -35,7 +35,7 @@ func (h *PersonHandler) GetPersons(c *gin.Context) {
 		return
 	}
 
-	response, err := h.PersonsService.GetPersons(idUser)
+	response, err := h.PersonsService.GetPersons(c.Request.Context(), idUser)
 	if err != nil {
 		SendGinError(c, err)
 		return
@@ -77,7 +77,7 @@ func (h *PersonHandler) CreatePerson(c *gin.Context) {
 		return
 	}
 
-	err = h.PersonsService.CreatePerson(&body.Person, body.Nicknames, idUser)
+	err = h.PersonsService.CreatePerson(c.Request.Context(), &body.Person, body.Nicknames, idUser)
 	if err != nil {
 		SendGinError(c, err)
 		return
@@ -135,7 +135,7 @@ func (h *PersonHandler) UpdatePerson(c *gin.Context) {
 		return
 	}
 
-	err = h.PersonsService.UpdatePerson(&body.Person, body.Nicknames, idUser)
+	err = h.PersonsService.UpdatePerson(c.Request.Context(), &body.Person, body.Nicknames, idUser)
 	if err != nil {
 		SendGinError(c, err)
 		return
@@ -162,7 +162,7 @@ func (h *PersonHandler) DeletePerson(c *gin.Context) {
 		return
 	}
 
-	err = h.PersonsService.DeletePerson(idPerson, idUser)
+	err = h.PersonsService.DeletePerson(c.Request.Context(), idPerson, idUser)
 	if err != nil {
 		SendGinError(c, err)
 	}

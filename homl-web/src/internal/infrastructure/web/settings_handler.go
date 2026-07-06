@@ -24,7 +24,7 @@ func (h *SettingsHandler) GetSettings(c *gin.Context) {
 		return
 	}
 
-	settings, err := h.SettingsService.GetSettings(idUser)
+	settings, err := h.SettingsService.GetSettings(c.Request.Context(), idUser)
 	if err != nil {
 		SendGinError(c, err)
 		return
@@ -63,7 +63,7 @@ func (h *SettingsHandler) UpdateSettings(c *gin.Context) {
 		return
 	}
 
-	newSettings, err := h.SettingsService.UpdateSettings(idUser, &settings)
+	newSettings, err := h.SettingsService.UpdateSettings(c.Request.Context(), idUser, &settings)
 	if err != nil {
 		SendGinError(c, err)
 		return

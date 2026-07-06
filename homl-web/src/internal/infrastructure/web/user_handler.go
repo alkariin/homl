@@ -48,7 +48,7 @@ func (h *UserHandler) Registration(c *gin.Context) {
 		Password: body.Password,
 	}
 
-	tokens, err := h.UsersService.Registration(&user, &body.Language)
+	tokens, err := h.UsersService.Registration(c.Request.Context(), &user, &body.Language)
 	if err != nil {
 		SendGinError(c, err)
 		return
@@ -79,7 +79,7 @@ func (h *UserHandler) Login(c *gin.Context) {
 		return
 	}
 
-	tokens, err := h.UsersService.Login(&user)
+	tokens, err := h.UsersService.Login(c.Request.Context(), &user)
 	if err != nil {
 		SendGinError(c, err)
 		return
@@ -99,7 +99,7 @@ func (h *UserHandler) Logout(c *gin.Context) {
 		return
 	}
 
-	err = h.UsersService.Logout(au)
+	err = h.UsersService.Logout(c.Request.Context(), au)
 	if err != nil {
 		SendGinError(c, err)
 		return
@@ -128,7 +128,7 @@ func (h *UserHandler) Refresh(c *gin.Context) {
 		return
 	}
 
-	tokens, err := h.UsersService.Refresh(&input)
+	tokens, err := h.UsersService.Refresh(c.Request.Context(), &input)
 	if err != nil {
 		SendGinError(c, err)
 		return
@@ -156,7 +156,7 @@ func (h *UserHandler) ResetPassword(c *gin.Context) {
 		return
 	}
 
-	err = h.UsersService.ResetPassword(&user)
+	err = h.UsersService.ResetPassword(c.Request.Context(), &user)
 	if err != nil {
 		SendGinError(c, err)
 		return
@@ -192,7 +192,7 @@ func (h *UserHandler) ConfirmResetPassword(c *gin.Context) {
 		return
 	}
 
-	tokens, err := h.UsersService.ConfirmResetPassword(user.Password, au.UserId)
+	tokens, err := h.UsersService.ConfirmResetPassword(c.Request.Context(), user.Password, au.UserId)
 	if err != nil {
 		SendGinError(c, err)
 		return
@@ -228,7 +228,7 @@ func (h *UserHandler) UpdatePassword(c *gin.Context) {
 		return
 	}
 
-	tokens, err := h.UsersService.UpdatePassword(userPassword.OldPassword, userPassword.NewPassword, idUser)
+	tokens, err := h.UsersService.UpdatePassword(c.Request.Context(), userPassword.OldPassword, userPassword.NewPassword, idUser)
 	if err != nil {
 		SendGinError(c, err)
 		return
@@ -255,7 +255,7 @@ func (h *UserHandler) Challenge(c *gin.Context) {
 		return
 	}
 
-	challenge, err := h.UsersService.Challenge(refreshToken)
+	challenge, err := h.UsersService.Challenge(c.Request.Context(), refreshToken)
 	if err != nil {
 		SendGinError(c, err)
 		return
@@ -289,7 +289,7 @@ func (h *UserHandler) SecureAuth(c *gin.Context) {
 
 	user.ID = idUser
 
-	res, err := h.UsersService.SecureAuth(&user)
+	res, err := h.UsersService.SecureAuth(c.Request.Context(), &user)
 	if err != nil {
 		SendGinError(c, err)
 		return

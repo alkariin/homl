@@ -1,18 +1,19 @@
 package db
 
 import (
-	"database/sql"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/go-redis/redis/v7"
 	_ "github.com/go-sql-driver/mysql" // imported for side effects only
+	"github.com/jmoiron/sqlx"
 
 	"github.com/alkariin/homl/homl-web/internal/infrastructure/config"
 )
 
 type DataSources struct {
-	DB          *sql.DB
+	DB          *sqlx.DB
 	RedisClient *redis.Client
 }
 
@@ -34,16 +35,16 @@ func InitConfig(cfg *config.Config) (*DataSources, error) {
 	}, nil
 }
 
-func initMysql(cfg *config.Config) (*sql.DB, error) {
-	mySql, err := sql.Open("mysql", cfg.MysqlUser+":"+cfg.MysqlPassword+"@tcp("+cfg.MysqlAddress+")/"+cfg.MysqlDatabase+"?parseTime=true")
+func initMysql(cfg *config.Config) (*sqlx.DB, error) {
+	mySql, err := sqlx.Connect("mysql", cfg.MysqlUser+":"+cfg.MysqlPassword+"@tcp("+cfg.MysqlAddress+")/"+cfg.MysqlDatabase+"?parseTime=true")
 	if err != nil {
 		return nil, err
 	}
 
-	err = mySql.Ping()
-	if err != nil {
-		return nil, err
-	}
+	// keep lifetime below the MySQL server timeout so the driver never uses a closed connection
+	mySql.SetMaxOpenConns(25)
+	mySql.SetMaxIdleConns(25)
+	mySql.SetConnMaxLifetime(3 * time.Minute)
 
 	return mySql, nil
 }

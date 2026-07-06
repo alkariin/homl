@@ -1,11 +1,15 @@
 package application
 
-import "github.com/alkariin/homl/homl-web/internal/domain/user"
+import (
+	"context"
+
+	"github.com/alkariin/homl/homl-web/internal/domain/user"
+)
 
 // SettingsService holds the settings use cases of the User aggregate.
 type SettingsService interface {
-	GetSettings(idUser uint64) (*user.SettingsResponse, error)
-	UpdateSettings(idUser uint64, s *user.Settings) (*user.SettingsResponse, error)
+	GetSettings(ctx context.Context, idUser uint64) (*user.SettingsResponse, error)
+	UpdateSettings(ctx context.Context, idUser uint64, s *user.Settings) (*user.SettingsResponse, error)
 }
 
 type settingsService struct {
@@ -30,8 +34,8 @@ func NewSettingsService(c *SSConfig) SettingsService {
  *   isPinEnabled: bool
  * }
  */
-func (s *settingsService) GetSettings(idUser uint64) (*user.SettingsResponse, error) {
-	res, err := s.UsersRepository.FindSettingsByIdUser(idUser)
+func (s *settingsService) GetSettings(ctx context.Context, idUser uint64) (*user.SettingsResponse, error) {
+	res, err := s.UsersRepository.FindSettingsByIdUser(ctx, idUser)
 	if err != nil {
 		return nil, err
 	}
@@ -54,14 +58,14 @@ func (s *settingsService) GetSettings(idUser uint64) (*user.SettingsResponse, er
  *   pkey?: string
  * }
  */
-func (s *settingsService) UpdateSettings(idUser uint64, newSettings *user.Settings) (*user.SettingsResponse, error) {
-	err := s.UsersRepository.UpdateSettings(newSettings, idUser)
+func (s *settingsService) UpdateSettings(ctx context.Context, idUser uint64, newSettings *user.Settings) (*user.SettingsResponse, error) {
+	err := s.UsersRepository.UpdateSettings(ctx, newSettings, idUser)
 	if err != nil {
 		return nil, err
 	}
 
 	// Get new settings and send them back
-	res, err := s.UsersRepository.FindSettingsByIdUser(idUser)
+	res, err := s.UsersRepository.FindSettingsByIdUser(ctx, idUser)
 	if err != nil {
 		return nil, err
 	}

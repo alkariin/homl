@@ -2,16 +2,18 @@
 // per-user settings and the persistence port.
 package user
 
+import "context"
+
 type User struct {
-	ID                   uint64  `json:"id"`
-	Username             string  `json:"username"`
-	Password             string  `json:"password"`
-	IsFingerprintEnabled bool    `json:"isFingerprintEnabled"`
-	IsPinEnabled         bool    `json:"isPinEnabled"`
-	Pin                  *string `json:"pin"`
-	PinTryCounter        *uint   `json:"pinTryCounter"`
-	Pkey                 *string `json:"pkey"`
-	Challenge            *string `json:"challenge"`
+	ID                   uint64  `json:"id" db:"id"`
+	Username             string  `json:"username" db:"username"`
+	Password             string  `json:"password" db:"password"`
+	IsFingerprintEnabled bool    `json:"isFingerprintEnabled" db:"isFingerprintEnabled"`
+	IsPinEnabled         bool    `json:"isPinEnabled" db:"isPinEnabled"`
+	Pin                  *string `json:"pin" db:"pin"`
+	PinTryCounter        *uint   `json:"pinTryCounter" db:"pinTryCounter"`
+	Pkey                 *string `json:"pkey" db:"pkey"`
+	Challenge            *string `json:"challenge" db:"challenge"`
 }
 
 type UserResponse struct {
@@ -57,21 +59,21 @@ type Repository interface {
 	// Registration creates the user and its default categories in one
 	// transaction and fills in user.ID. Token creation is the application
 	// layer's job.
-	Registration(user *User, language *Language) error
-	FindById(idUser uint64) (*User, error)
-	FindByUsername(username string) (*User, error)
-	FindIdByUsername(username string) (uint64, error)
-	FindPkeyAndChallengeById(idUser uint64) (*User, error)
-	UpdatePassword(idUser uint64, hashedPassword string) error
-	FindPasswordById(idUser uint64) (*string, error)
-	UpdateChallenge(idUser uint64, challenge *string) error
-	ResetPinCounter(idUser uint64) error
-	CheckPin(idUser uint64, pin string) error
-	DeleteAuth(givenUuid string) (int64, error)
-	CreateAuth(userid uint64, td *TokenDetails) error
-	FetchAuth(authD *AccessDetails) (uint64, error)
-	UpdatePinAndFingerprint(user *User, removePkey bool, removePin bool) error
+	Registration(ctx context.Context, user *User, language *Language) error
+	FindById(ctx context.Context, idUser uint64) (*User, error)
+	FindByUsername(ctx context.Context, username string) (*User, error)
+	FindIdByUsername(ctx context.Context, username string) (uint64, error)
+	FindPkeyAndChallengeById(ctx context.Context, idUser uint64) (*User, error)
+	UpdatePassword(ctx context.Context, idUser uint64, hashedPassword string) error
+	FindPasswordById(ctx context.Context, idUser uint64) (*string, error)
+	UpdateChallenge(ctx context.Context, idUser uint64, challenge *string) error
+	ResetPinCounter(ctx context.Context, idUser uint64) error
+	CheckPin(ctx context.Context, idUser uint64, pin string) error
+	DeleteAuth(ctx context.Context, givenUuid string) (int64, error)
+	CreateAuth(ctx context.Context, userid uint64, td *TokenDetails) error
+	FetchAuth(ctx context.Context, authD *AccessDetails) (uint64, error)
+	UpdatePinAndFingerprint(ctx context.Context, user *User, removePkey bool, removePin bool) error
 
-	FindSettingsByIdUser(idUser uint64) (*Settings, error)
-	UpdateSettings(s *Settings, idUser uint64) error
+	FindSettingsByIdUser(ctx context.Context, idUser uint64) (*Settings, error)
+	UpdateSettings(ctx context.Context, s *Settings, idUser uint64) error
 }
