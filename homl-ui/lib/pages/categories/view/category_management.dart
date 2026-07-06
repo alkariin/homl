@@ -39,57 +39,59 @@ class CategoryManagementView extends StatelessWidget {
   Widget build(BuildContext context) {
     var localization = AppLocalizations.of(context)!;
 
-    return BlocListener<HomeBloc, HomeState>(
-      listener: (context, state) {
-        if (state.modal != null) {
-          ScaffoldMessenger.of(context)
-            ..hideCurrentSnackBar()
-            ..showSnackBar(SnackBar(
-              content: Text(state.modal!),
-              action: SnackBarAction(label: 'close', onPressed: () {}),
-              duration: const Duration(seconds: 5),
-            )).closed.then((_) {
-              homeBloc.add(EndModal());
-            });
-        }
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(localization.categories_title),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () {
-              Navigator.pop(context);
-            },
-          ),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(localization.categories_title),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.pop(context);
+          },
         ),
-        floatingActionButton: FloatingActionButton(
-          tooltip: localization.categories_newCategory,
-          child: const Icon(Icons.add),
-          onPressed: () => _categoryDialog(
-            context,
-            title: localization.categories_newCategory,
-            onSubmit: (name, color) =>
-                homeBloc.add(CreateCategory(name, color)),
-          ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        tooltip: localization.categories_newCategory,
+        child: const Icon(Icons.add),
+        onPressed: () => categoryDialog(
+          context,
+          title: localization.categories_newCategory,
+          onSubmit: (name, color) => homeBloc.add(CreateCategory(name, color)),
         ),
-        body: BlocBuilder<HomeBloc, HomeState>(builder: (context, state) {
-          return ListView(
-            padding: const EdgeInsets.only(bottom: 80),
-            children: state.categories
-                .map((category) => _CategoryTile(category: category))
-                .toList(),
-          );
-        }),
+      ),
+      body: CategoryManagementBody(
+        onTagSelected: (tag) => Navigator.pop(context, tag),
       ),
     );
   }
 }
 
+/// Categories list, reused by the pushed management page and the Categories
+/// tab. [onTagSelected] receives the tapped tag (pop with result, or switch
+/// to the search tab).
+class CategoryManagementBody extends StatelessWidget {
+  final void Function(TagView tag) onTagSelected;
+
+  const CategoryManagementBody({required this.onTagSelected, super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<HomeBloc, HomeState>(builder: (context, state) {
+      return ListView(
+        padding: const EdgeInsets.only(top: 10, bottom: 80),
+        children: state.categories
+            .map((category) =>
+                _CategoryTile(category: category, onTagSelected: onTagSelected))
+            .toList(),
+      );
+    });
+  }
+}
+
 class _CategoryTile extends StatelessWidget {
   final Category category;
+  final void Function(TagView tag) onTagSelected;
 
-  const _CategoryTile({required this.category});
+  const _CategoryTile({required this.category, required this.onTagSelected});
 
   @override
   Widget build(BuildContext context) {
@@ -104,61 +106,77 @@ class _CategoryTile extends StatelessWidget {
     final idDates = homeBloc.state.categories.isEmpty
         ? -1
         : homeBloc.state.categories.first.id;
-    final canManageTags =
-        category.id != idDates && category.id != idDates + 1;
+    final canManageTags = category.id != idDates && category.id != idDates + 1;
 
-    return ExpansionTile(
-      leading: CircleAvatar(
-        radius: 12,
-        backgroundColor:
-            Color(int.parse(category.color.replaceAll("#", "0xff"))),
-      ),
-      title: Text(category.category),
-      trailing: category.isLocked
-          ? const SizedBox.shrink()
-          : Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: const FaIcon(FontAwesomeIcons.pen, size: 16),
-                  tooltip: localization.categories_editCategory,
-                  onPressed: () => _categoryDialog(
-                    context,
-                    title: localization.categories_editCategory,
-                    initialName: category.category,
-                    initialColor: category.color,
-                    onSubmit: (name, color) => homeBloc
-                        .add(UpdateCategory(category.id, name, color)),
-                  ),
-                ),
-                IconButton(
-                  icon: const FaIcon(FontAwesomeIcons.trash, size: 16),
-                  tooltip: localization.global_delete,
-                  onPressed: () => _deleteCategoryDialog(context, category),
-                ),
-              ],
-            ),
-      children: [
-        ...mainTags.map((mainTag) => _TagRow(
-            category: category,
-            mainTag: mainTag,
-            canManage: canManageTags,
-            synonyms: category.tags
-                .where((tag) => tag.idParentTag == mainTag.id)
-                .toList())),
-        if (canManageTags)
-          ListTile(
-            dense: true,
-            leading: const Icon(Icons.add, size: 18),
-            title: Text(localization.categories_newTag),
-            onTap: () => _textDialog(
-              context,
-              title: localization.categories_newTag,
-              label: localization.categories_categoryName,
-              onSubmit: (name) => homeBloc.add(CreateTag(name, category.id)),
-            ),
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 10,
+            spreadRadius: 1,
           ),
-      ],
+        ],
+      ),
+      child: ExpansionTile(
+        shape: const Border(),
+        leading: CircleAvatar(
+          radius: 12,
+          backgroundColor:
+              Color(int.parse(category.color.replaceAll("#", "0xff"))),
+        ),
+        title: Text(category.category),
+        trailing: category.isLocked
+            ? const SizedBox.shrink()
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const FaIcon(FontAwesomeIcons.pen, size: 16),
+                    tooltip: localization.categories_editCategory,
+                    onPressed: () => categoryDialog(
+                      context,
+                      title: localization.categories_editCategory,
+                      initialName: category.category,
+                      initialColor: category.color,
+                      onSubmit: (name, color) => homeBloc
+                          .add(UpdateCategory(category.id, name, color)),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const FaIcon(FontAwesomeIcons.trash, size: 16),
+                    tooltip: localization.global_delete,
+                    onPressed: () => _deleteCategoryDialog(context, category),
+                  ),
+                ],
+              ),
+        children: [
+          ...mainTags.map((mainTag) => _TagRow(
+              category: category,
+              mainTag: mainTag,
+              canManage: canManageTags,
+              onTagSelected: onTagSelected,
+              synonyms: category.tags
+                  .where((tag) => tag.idParentTag == mainTag.id)
+                  .toList())),
+          if (canManageTags)
+            ListTile(
+              dense: true,
+              leading: const Icon(Icons.add, size: 18),
+              title: Text(localization.categories_newTag),
+              onTap: () => _textDialog(
+                context,
+                title: localization.categories_newTag,
+                label: localization.categories_categoryName,
+                onSubmit: (name) => homeBloc.add(CreateTag(name, category.id)),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -168,18 +186,20 @@ class _TagRow extends StatelessWidget {
   final Tag mainTag;
   final List<Tag> synonyms;
   final bool canManage;
+  final void Function(TagView tag) onTagSelected;
 
   const _TagRow(
       {required this.category,
       required this.mainTag,
       required this.synonyms,
-      required this.canManage});
+      required this.canManage,
+      required this.onTagSelected});
 
-  /// Pops the page returning the tapped tag so it becomes a search filter.
+  /// Hands the tapped tag to the page callback (search filter insertion).
   void _selectTag(BuildContext context, Tag tag) {
     final tagView = context.read<HomeBloc>().state.allTagsMap[tag.tag];
     if (tagView != null) {
-      Navigator.pop(context, tagView);
+      onTagSelected(tagView);
     }
   }
 
@@ -363,7 +383,7 @@ void _textDialog(BuildContext context,
 }
 
 /// Category create/edit dialog: name + preset color picker.
-void _categoryDialog(BuildContext context,
+void categoryDialog(BuildContext context,
     {required String title,
     String? initialName,
     String? initialColor,
@@ -395,8 +415,8 @@ void _categoryDialog(BuildContext context,
                         onTap: () => setState(() => selectedColor = color),
                         child: CircleAvatar(
                           radius: 15,
-                          backgroundColor: Color(
-                              int.parse(color.replaceAll("#", "0xff"))),
+                          backgroundColor:
+                              Color(int.parse(color.replaceAll("#", "0xff"))),
                           child: selectedColor == color
                               ? const Icon(Icons.check, size: 16)
                               : null,

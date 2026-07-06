@@ -1,6 +1,23 @@
 import 'package:flutter/material.dart';
 
+/// Design palette (Figma "Search Page" export).
+const Color yellow = Color(0xFFD3A934);
+const Color blue = Color(0xFF14B7EB);
+const Color background = Color(0xFFFBFBFB);
+const Color borderGrey = Color(0xFFB7B7B7);
+const Color ink = Color(0xFF000000);
+
+/// Legacy header color, kept for the pastel category presets below.
 const Color primary = Color(0xfff2e5c2);
+
+/// Parses a backend "#RRGGBB" color string.
+Color colorFromHex(String hex) => Color(int.parse(hex.replaceAll("#", "0xff")));
+
+/// Darkens a color so pastel category colors stay readable as thin borders.
+Color darken(Color color, [double amount = .25]) {
+  final hsl = HSLColor.fromColor(color);
+  return hsl.withLightness((hsl.lightness - amount).clamp(0.0, 1.0)).toColor();
+}
 
 /// Preset colors offered when creating/editing a category (hex strings,
 /// stored as-is by the backend).

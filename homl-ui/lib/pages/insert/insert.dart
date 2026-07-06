@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:homl/l10n/app_localizations.dart';
 
+import 'package:homl/components/bubbles_background.dart';
 import 'package:homl/components/button.dart';
 import 'package:homl/components/input.dart';
 import 'package:homl/components/tag.dart';
@@ -81,8 +82,7 @@ class _InsertViewState extends State<InsertView> {
         }
       },
       child: BlocBuilder<HomeBloc, HomeState>(builder: (context, homeState) {
-        return BlocBuilder<InsertBloc, InsertState>(
-            builder: (context, state) {
+        return BlocBuilder<InsertBloc, InsertState>(builder: (context, state) {
           final insertBloc = context.read<InsertBloc>();
 
           Future<void> pickDate() async {
@@ -97,56 +97,73 @@ class _InsertViewState extends State<InsertView> {
             }
           }
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                TagInput(
-                  labelText: localization.insert_tagInputLabel,
-                  tags: state.tagNames
-                      .map((name) => TagChipData(
-                          id: homeState.allTagsMap[name]?.id ?? -1,
-                          name: name,
-                          color: homeState.allTagsMap[name]?.color))
-                      .toList(),
-                  suggestions: homeState.allTagsMap.values
-                      .map((tagView) => TagChipData(
-                          id: tagView.id,
-                          name: tagView.tagName,
-                          color: tagView.color))
-                      .toList(),
-                  onAddTag: (name) =>
-                      context.read<InsertBloc>().add(AddTag(name)),
-                  onRemoveTag: (tag) =>
-                      context.read<InsertBloc>().add(RemoveTag(tag.name)),
-                  // The date tag is always there and cannot be removed
-                  leading: Tag(
-                    id: -1,
-                    text: DateFormat.yMd(locale).format(state.date),
-                    isDate: true,
-                    onTap: pickDate,
-                  ),
+          return BubblesBackground(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(15),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 20,
+                      spreadRadius: 1,
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 20),
-                Input(
-                  labelText: localization.insert_descriptionLabel,
-                  controller: _descriptionController,
-                  maxLines: 4,
-                  minLines: 3,
-                  validator: (_) => null,
-                  onChange: (text) =>
-                      context.read<InsertBloc>().add(UpdateDescription(text)),
-                ),
-                const SizedBox(height: 20),
-                state.status == InsertStatus.submitting
-                    ? const Center(child: CircularProgressIndicator())
-                    : Button(
-                        text: localization.insert_submit,
-                        onPressed: () =>
-                            context.read<InsertBloc>().add(SubmitEvent()),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TagInput(
+                      labelText: localization.insert_tagInputLabel,
+                      tags: state.tagNames
+                          .map((name) => TagChipData(
+                              id: homeState.allTagsMap[name]?.id ?? -1,
+                              name: name,
+                              color: homeState.allTagsMap[name]?.color))
+                          .toList(),
+                      suggestions: homeState.allTagsMap.values
+                          .map((tagView) => TagChipData(
+                              id: tagView.id,
+                              name: tagView.tagName,
+                              color: tagView.color))
+                          .toList(),
+                      onAddTag: (name) =>
+                          context.read<InsertBloc>().add(AddTag(name)),
+                      onRemoveTag: (tag) =>
+                          context.read<InsertBloc>().add(RemoveTag(tag.name)),
+                      // The date tag is always there and cannot be removed
+                      leading: Tag(
+                        id: -1,
+                        text: DateFormat.yMd(locale).format(state.date),
+                        isDate: true,
+                        onTap: pickDate,
                       ),
-              ],
+                    ),
+                    const SizedBox(height: 20),
+                    Input(
+                      labelText: localization.insert_descriptionLabel,
+                      controller: _descriptionController,
+                      maxLines: 4,
+                      minLines: 3,
+                      validator: (_) => null,
+                      onChange: (text) => context
+                          .read<InsertBloc>()
+                          .add(UpdateDescription(text)),
+                    ),
+                    const SizedBox(height: 20),
+                    state.status == InsertStatus.submitting
+                        ? const Center(child: CircularProgressIndicator())
+                        : Button(
+                            text: localization.insert_submit,
+                            onPressed: () =>
+                                context.read<InsertBloc>().add(SubmitEvent()),
+                          ),
+                  ],
+                ),
+              ),
             ),
           );
         });

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
+import 'package:homl/components/logo.dart';
 import 'package:homl/components/tag.dart';
+import 'package:homl/helpers/colors.dart';
 
 /// Data of a chip displayed by [TagInput]. [id] is -1 when the tag does not
 /// exist on the backend yet.
@@ -33,6 +36,9 @@ class TagInput extends StatefulWidget {
   /// Rendered after the text field (e.g. the categories management button).
   final Widget? trailing;
 
+  /// Shows the homl "#" logo on the left of the field (search page).
+  final bool showLogo;
+
   const TagInput(
       {required this.labelText,
       required this.tags,
@@ -41,6 +47,7 @@ class TagInput extends StatefulWidget {
       this.onRemoveTag,
       this.leading,
       this.trailing,
+      this.showLogo = false,
       super.key});
 
   @override
@@ -78,8 +85,8 @@ class _TagInputState extends State<TagInput> {
 
     return widget.suggestions.where((suggestion) =>
         suggestion.name.toLowerCase().contains(query) &&
-        !widget.tags.any((tag) =>
-            tag.name.toLowerCase() == suggestion.name.toLowerCase()));
+        !widget.tags.any(
+            (tag) => tag.name.toLowerCase() == suggestion.name.toLowerCase()));
   }
 
   @override
@@ -87,28 +94,35 @@ class _TagInputState extends State<TagInput> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Wrap(
-          spacing: 5,
-          runSpacing: 5,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            if (widget.leading != null) widget.leading!,
-            // A simple tap on a chip removes it (the date chip is the
-            // [leading] widget and keeps its own onTap)
-            ...widget.tags.map((tag) => Tag(
-                id: tag.id,
-                text: tag.name,
-                color: tag.color,
-                onTap: widget.onRemoveTag == null
-                    ? null
-                    : () => widget.onRemoveTag!(tag),
-                onDeleteTag: widget.onRemoveTag == null
-                    ? null
-                    : (_) => widget.onRemoveTag!(tag))),
-          ],
-        ),
+        if (widget.leading != null || widget.tags.isNotEmpty) ...[
+          Wrap(
+            spacing: 5,
+            runSpacing: 5,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              if (widget.leading != null) widget.leading!,
+              // A simple tap on a chip removes it (the date chip is the
+              // [leading] widget and keeps its own onTap)
+              ...widget.tags.map((tag) => Tag(
+                  id: tag.id,
+                  text: tag.name,
+                  color: tag.color,
+                  onTap: widget.onRemoveTag == null
+                      ? null
+                      : () => widget.onRemoveTag!(tag),
+                  onDeleteTag: widget.onRemoveTag == null
+                      ? null
+                      : (_) => widget.onRemoveTag!(tag))),
+            ],
+          ),
+          const SizedBox(height: 12),
+        ],
         Row(
           children: [
+            if (widget.showLogo) ...[
+              const HomlLogo(),
+              const SizedBox(width: 12),
+            ],
             Expanded(
               child: RawAutocomplete<TagChipData>(
                 textEditingController: _controller,
@@ -122,7 +136,21 @@ class _TagInputState extends State<TagInput> {
                     controller: controller,
                     focusNode: focusNode,
                     textInputAction: TextInputAction.done,
-                    decoration: InputDecoration(labelText: widget.labelText),
+                    decoration: InputDecoration(
+                      labelText: widget.labelText,
+                      suffixIcon: ValueListenableBuilder<TextEditingValue>(
+                        valueListenable: controller,
+                        builder: (context, value, _) => value.text.isEmpty
+                            ? const SizedBox.shrink()
+                            : IconButton(
+                                icon: const FaIcon(
+                                    FontAwesomeIcons.solidCircleXmark,
+                                    size: 18,
+                                    color: yellow),
+                                onPressed: controller.clear,
+                              ),
+                      ),
+                    ),
                     onFieldSubmitted: _submit,
                   );
                 },
@@ -131,6 +159,7 @@ class _TagInputState extends State<TagInput> {
                     alignment: Alignment.topLeft,
                     child: Material(
                       elevation: 4,
+                      borderRadius: BorderRadius.circular(5),
                       child: ConstrainedBox(
                         constraints:
                             const BoxConstraints(maxHeight: 200, maxWidth: 300),
