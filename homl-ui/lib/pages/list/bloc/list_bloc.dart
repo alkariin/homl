@@ -2,42 +2,57 @@ import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:homl/l10n/app_localizations.dart';
 
-import 'package:homl/data/models/tag.dart';
-import 'package:homl/data/repositories/tags.repository.dart';
+import 'package:homl/data/models/event.dart';
+import 'package:homl/data/repositories/events.repository.dart';
 
 part 'list_event.dart';
 part 'list_state.dart';
 
 class ListBloc extends Bloc<ListEvent, ListState> {
   final AppLocalizations localization;
-  final TagsRepository tagsRepository;
+  final EventsRepository eventsRepository;
 
-  ListBloc(this.localization, this.tagsRepository)
+  ListBloc(this.localization, this.eventsRepository)
       : super(ListState.initial()) {
-    on<AddTagToHeader>(_onAddTagToHeader);
-    on<RemoveTagFromHeader>(_onRemoveTagFromHeader);
+    on<FetchEvents>(_onFetchEvents);
+    on<AddFilterTag>(_onAddFilterTag);
+    on<RemoveFilterTag>(_onRemoveFilterTag);
+    on<EndListModal>(_onEndListModal);
+
+    add(FetchEvents());
   }
 
-  _onAddTagToHeader(AddTagToHeader event, Emitter<ListState> emit) async {
+  Future<void> _fetch(Emitter<ListState> emit, List<String> filters) async {
+    emit(state.copyWith(filters: filters, loading: true));
     try {
-      Tag res = await tagsRepository.createTag(event.text, event.idCategory);
-      var tags = state.tags.toList();
-      tags.add(res);
-      emit(state.copyWith(tags: tags));
+      final events = await eventsRepository.getEvents(tags: filters);
+      emit(state.copyWith(events: events, loading: false));
     } catch (_) {
-      emit(state.copyWith(modal: localization.global_unexpectedError));
+      emit(state.copyWith(
+          loading: false, modal: localization.global_unexpectedError));
     }
   }
 
-  _onRemoveTagFromHeader(
-      RemoveTagFromHeader event, Emitter<ListState> emit) async {
-    try {
-      await tagsRepository.deleteTag(event.id);
-      var tags = state.tags.toList();
-      tags.removeWhere((tag) => tag.id == event.id);
-      emit(state.copyWith(tags: tags));
-    } catch (_) {
-      emit(state.copyWith(modal: localization.global_unexpectedError));
+  _onFetchEvents(FetchEvents event, Emitter<ListState> emit) async {
+    await _fetch(emit, state.filters);
+  }
+
+  _onAddFilterTag(AddFilterTag event, Emitter<ListState> emit) async {
+    final name = event.name.trim();
+    if (name.isEmpty ||
+        state.filters.any((f) => f.toLowerCase() == name.toLowerCase())) {
+      return;
     }
+
+    await _fetch(emit, [...state.filters, name]);
+  }
+
+  _onRemoveFilterTag(RemoveFilterTag event, Emitter<ListState> emit) async {
+    await _fetch(
+        emit, state.filters.where((f) => f != event.name).toList());
+  }
+
+  _onEndListModal(EndListModal event, Emitter<ListState> emit) {
+    emit(state.copyWith(clearModal: true));
   }
 }
