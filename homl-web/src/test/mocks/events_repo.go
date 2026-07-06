@@ -1,17 +1,21 @@
 package mocks
 
 import (
+	"context"
+
 	"github.com/alkariin/homl/homl-web/internal/domain/category"
 	"github.com/alkariin/homl/homl-web/internal/domain/event"
 	"github.com/stretchr/testify/mock"
 )
 
 // MockEventsRepo is a programmable testify mock for event.Repository.
+// The ctx argument is deliberately not forwarded to m.Called so expectations
+// stay expressed on the business arguments only.
 type MockEventsRepo struct {
 	mock.Mock
 }
 
-func (m *MockEventsRepo) FindEventsWithTags(encTags []string, idUser uint64) (map[uint]event.Event, map[uint][]category.Tag, error) {
+func (m *MockEventsRepo) FindEventsWithTags(ctx context.Context, encTags []string, idUser uint64) (map[uint]event.Event, map[uint][]category.Tag, error) {
 	ret := m.Called(encTags, idUser)
 
 	var r0 map[uint]event.Event
@@ -32,7 +36,7 @@ func (m *MockEventsRepo) FindEventsWithTags(encTags []string, idUser uint64) (ma
 	return r0, r1, r2
 }
 
-func (m *MockEventsRepo) CreateEventWithTags(tags []category.Tag, tagsId []uint, event *event.Event, idUser uint64) error {
+func (m *MockEventsRepo) CreateEventWithTags(ctx context.Context, tags []category.Tag, tagsId []uint, event *event.Event, idUser uint64) error {
 	ret := m.Called(tags, tagsId, event, idUser)
 
 	var r0 error
@@ -43,7 +47,7 @@ func (m *MockEventsRepo) CreateEventWithTags(tags []category.Tag, tagsId []uint,
 	return r0
 }
 
-func (m *MockEventsRepo) UpdateEventWithTags(tags []category.Tag, tagsId []uint, event *event.Event, idUser uint64) error {
+func (m *MockEventsRepo) UpdateEventWithTags(ctx context.Context, tags []category.Tag, tagsId []uint, event *event.Event, idUser uint64) error {
 	ret := m.Called(tags, tagsId, event, idUser)
 
 	var r0 error
@@ -54,7 +58,7 @@ func (m *MockEventsRepo) UpdateEventWithTags(tags []category.Tag, tagsId []uint,
 	return r0
 }
 
-func (m *MockEventsRepo) Delete(id uint) error {
+func (m *MockEventsRepo) Delete(ctx context.Context, id uint) error {
 	ret := m.Called(id)
 
 	var r0 error
