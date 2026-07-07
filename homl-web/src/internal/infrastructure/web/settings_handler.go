@@ -18,7 +18,7 @@ import (
  * }
  */
 func (h *SettingsHandler) GetSettings(c *gin.Context) {
-	idUser, err := h.Auth.GetUserIdFromToken(c.Request)
+	idUser, err := UserIDFromContext(c)
 	if err != nil {
 		SendGinError(c, err)
 		return
@@ -44,7 +44,7 @@ func (h *SettingsHandler) GetSettings(c *gin.Context) {
  * }
  */
 func (h *SettingsHandler) UpdateSettings(c *gin.Context) {
-	idUser, err := h.Auth.GetUserIdFromToken(c.Request)
+	idUser, err := UserIDFromContext(c)
 	if err != nil {
 		SendGinError(c, err)
 		return
@@ -75,5 +75,4 @@ func (h *SettingsHandler) UpdateSettings(c *gin.Context) {
 // Handler wires the settings HTTP endpoints to their service.
 type SettingsHandler struct {
 	SettingsService application.SettingsService
-	Auth            Authenticator
 }

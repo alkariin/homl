@@ -2,7 +2,15 @@
 // per-user settings and the persistence port.
 package user
 
-import "context"
+import (
+	"context"
+	"time"
+)
+
+// PasswordBcryptCost is the bcrypt work factor for account passwords. 12 is a
+// sane floor for 2026; the pin uses its own (lower) cost since it is a
+// low-entropy secret protected by a hard lockout.
+const PasswordBcryptCost = 12
 
 type User struct {
 	ID                   uint64  `json:"id" db:"id"`
@@ -73,6 +81,13 @@ type Repository interface {
 	CreateAuth(ctx context.Context, userid uint64, td *TokenDetails) error
 	FetchAuth(ctx context.Context, authD *AccessDetails) (uint64, error)
 	UpdatePinAndFingerprint(ctx context.Context, user *User, removePkey bool, removePin bool) error
+
+	// StoreResetToken persists a single-use password-reset token bound to a
+	// user id, expiring after ttl.
+	StoreResetToken(ctx context.Context, userId uint64, token string, ttl time.Duration) error
+	// ConsumeResetToken atomically resolves and invalidates a reset token,
+	// returning the bound user id. It errors if the token is unknown or expired.
+	ConsumeResetToken(ctx context.Context, token string) (uint64, error)
 
 	FindSettingsByIdUser(ctx context.Context, idUser uint64) (*Settings, error)
 	UpdateSettings(ctx context.Context, s *Settings, idUser uint64) error

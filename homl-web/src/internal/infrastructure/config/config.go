@@ -9,10 +9,15 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
 )
+
+// minSecretLength is the minimum accepted length for the JWT/encryption
+// secrets. Anything shorter is rejected at startup.
+const minSecretLength = 32
 
 type Config struct {
 	Environment   string
@@ -32,6 +37,11 @@ type Config struct {
 
 	RedisAddress  string
 	RedisPassword string
+
+	SmtpHost     string
+	SmtpPort     string
+	SmtpFrom     string
+	SmtpPassword string
 }
 
 // Load reads the .env file if present, then materializes the configuration
@@ -45,7 +55,7 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("could not parse HANDLER_TIMEOUT as int: %w", err)
 	}
 
-	return &Config{
+	cfg := &Config{
 		Environment:    os.Getenv("ENVIRONMENT"),
 		AccessSecret:   os.Getenv("ACCESS_SECRET"),
 		RefreshSecret:  os.Getenv("REFRESH_SECRET"),
@@ -60,12 +70,60 @@ func Load() (*Config, error) {
 		MysqlDatabase:  os.Getenv("MYSQL_DATABASE"),
 		RedisAddress:   os.Getenv("REDIS_ADDRESS"),
 		RedisPassword:  os.Getenv("REDIS_PASSWORD"),
-	}, nil
+		SmtpHost:       os.Getenv("SMTP_HOST"),
+		SmtpPort:       os.Getenv("SMTP_PORT"),
+		SmtpFrom:       os.Getenv("SMTP_FROM"),
+		SmtpPassword:   os.Getenv("SMTP_PASSWORD"),
+	}
+
+	if err := cfg.validate(); err != nil {
+		return nil, err
+	}
+
+	if !cfg.isProd() {
+		log.Printf("WARNING: ENVIRONMENT is %q, not PROD — tokens are longer-lived and gin runs in debug mode. Do not use this in production.", cfg.Environment)
+	}
+
+	return cfg, nil
+}
+
+// validate rejects configurations that would silently weaken security: unset,
+// placeholder or too-short secrets, and (outside DEV) a wildcard/empty CORS
+// origin.
+func (c *Config) validate() error {
+	secrets := map[string]string{
+		"ACCESS_SECRET":  c.AccessSecret,
+		"REFRESH_SECRET": c.RefreshSecret,
+		"ENCRYPT_SECRET": c.EncryptSecret,
+	}
+	for name, value := range secrets {
+		if value == "" {
+			return fmt.Errorf("%s must be set", name)
+		}
+		if strings.Contains(value, "change_me") {
+			return fmt.Errorf("%s still holds a placeholder value; set a real secret", name)
+		}
+		if len(value) < minSecretLength {
+			return fmt.Errorf("%s must be at least %d characters", name, minSecretLength)
+		}
+	}
+
+	if !c.IsDev() {
+		if c.CorsOrigin == "" || c.CorsOrigin == "*" {
+			return fmt.Errorf("CORS_ORIGIN must be an explicit origin outside DEV (got %q)", c.CorsOrigin)
+		}
+	}
+
+	return nil
 }
 
 // IsDev reports whether the service runs in the development environment.
 func (c *Config) IsDev() bool {
 	return c.Environment == "DEV"
+}
+
+func (c *Config) isProd() bool {
+	return c.Environment == "PROD"
 }
 
 // loadDotEnv loads env vars from .env if present.
