@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Design palette (Figma "Search Page" export).
+/// Design palette of the app.
 const Color yellow = Color(0xFFD3A934);
 const Color blue = Color(0xFF14B7EB);
 const Color background = Color(0xFFFBFBFB);

@@ -4,8 +4,8 @@ import 'package:intl/intl.dart';
 import 'package:homl/components/tag.dart';
 import 'package:homl/data/models/event.dart';
 
-/// Figma-style event card: white, radius 15, soft shadow. Sized by its
-/// parent (grid cell); overflowing tags/description are clipped or faded.
+/// Event card: white, radius 15, soft shadow. Sized by its parent (grid
+/// cell); overflowing tags/description are clipped or faded.
 class EventCard extends StatelessWidget {
   final Event event;
 
@@ -45,8 +45,8 @@ class EventCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           if (event.tags.isNotEmpty)
-            // With a description the tags keep a single clipped row (as the
-            // truncated chip of the Figma export); alone they fill the card.
+            // With a description the tags keep a single clipped row;
+            // alone they fill the card.
             _tagsArea(
               singleRow: event.description.isNotEmpty,
               child: Wrap(
