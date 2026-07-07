@@ -10,7 +10,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
+	"runtime/debug"
 	"sync"
 	"time"
 
@@ -32,7 +34,10 @@ func Timeout(timeout time.Duration, errTimeout *apperror.Error) gin.HandlerFunc 
 		// update gin request context
 		c.Request = c.Request.WithContext(ctx)
 
-		finished := make(chan struct{})        // to indicate handler finished
+		// Both channels are buffered so the handler goroutine can always send
+		// and exit even when the timeout branch was taken and nobody receives
+		// anymore (an unbuffered send would leak the goroutine forever).
+		finished := make(chan struct{}, 1)     // to indicate handler finished
 		panicChan := make(chan interface{}, 1) // used to handle panics if we can't recover
 
 		go func() {
@@ -47,9 +52,10 @@ func Timeout(timeout time.Duration, errTimeout *apperror.Error) gin.HandlerFunc 
 		}()
 
 		select {
-		case <-panicChan:
+		case p := <-panicChan:
 			// if we cannot recover from panic,
 			// send internal server error
+			log.Printf("panic recovered in handler: %v\n%s", p, debug.Stack())
 			e := apperror.NewInternal()
 			tw.ResponseWriter.WriteHeader(e.Status())
 			eResp, _ := json.Marshal(gin.H{
@@ -70,9 +76,13 @@ func Timeout(timeout time.Duration, errTimeout *apperror.Error) gin.HandlerFunc 
 			// tw.wbuf will have been written to already when gin writes to tw.Write()
 			tw.ResponseWriter.Write(tw.wbuf.Bytes())
 		case <-ctx.Done():
-			// timeout has occurred, send errTimeout and write headers
+			// timeout has occurred, send errTimeout and write headers.
+			// The handler goroutine may still be running: mark the writer as
+			// timed out first (under the lock) so its later writes are dropped,
+			// and never touch the gin.Context here (c.Abort would race with it).
 			tw.mu.Lock()
 			defer tw.mu.Unlock()
+			tw.timedOut = true
 			// ResponseWriter from gin
 			tw.ResponseWriter.Header().Set("Content-Type", "application/json")
 			tw.ResponseWriter.WriteHeader(errTimeout.Status())
@@ -80,8 +90,6 @@ func Timeout(timeout time.Duration, errTimeout *apperror.Error) gin.HandlerFunc 
 				"error": errTimeout,
 			})
 			tw.ResponseWriter.Write(eResp)
-			c.Abort()
-			tw.SetTimedOut()
 		}
 	}
 }
@@ -138,11 +146,6 @@ func (tw *timeoutWriter) writeHeader(code int) {
 // In http.ResponseWriter interface
 func (tw *timeoutWriter) Header() http.Header {
 	return tw.h
-}
-
-// SetTimeOut sets timedOut field to true
-func (tw *timeoutWriter) SetTimedOut() {
-	tw.timedOut = true
 }
 
 func checkWriteHeaderCode(code int) {

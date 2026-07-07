@@ -165,6 +165,7 @@ func (h *PersonHandler) DeletePerson(c *gin.Context) {
 	err = h.PersonsService.DeletePerson(c.Request.Context(), idPerson, idUser)
 	if err != nil {
 		SendGinError(c, err)
+		return
 	}
 
 	c.Writer.WriteHeader(http.StatusNoContent)

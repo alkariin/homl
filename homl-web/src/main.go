@@ -103,6 +103,14 @@ func main() {
 	srv := &http.Server{
 		Addr:    ":8080",
 		Handler: router,
+		// Bound how long a client may take to send its request so a slow or
+		// malicious peer cannot pin connections open indefinitely (slowloris).
+		// The per-handler business timeout is enforced separately by the
+		// Timeout middleware.
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      20 * time.Second,
+		IdleTimeout:       60 * time.Second,
 	}
 
 	// Graceful server shutdown - https://github.com/gin-gonic/examples/blob/master/graceful-shutdown/graceful-shutdown/server.go
@@ -127,14 +135,14 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// shutdown data sources
-	if err := ds.Close(); err != nil {
-		log.Fatalf("A problem occurred gracefully shutting down data sources: %v\n", err)
-	}
-
-	// Shutdown server
+	// Shutdown the server first so in-flight requests finish while the data
+	// sources are still open, then close the pools.
 	log.Println("Shutting down server...")
 	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatalf("Server forced to shutdown: %v\n", err)
+		log.Printf("Server forced to shutdown: %v\n", err)
+	}
+
+	if err := ds.Close(); err != nil {
+		log.Printf("A problem occurred gracefully shutting down data sources: %v\n", err)
 	}
 }

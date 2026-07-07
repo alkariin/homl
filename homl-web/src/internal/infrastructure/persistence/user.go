@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"time"
 
@@ -10,9 +11,13 @@ import (
 	"github.com/alkariin/homl/homl-web/internal/domain/masterdata"
 	"github.com/alkariin/homl/homl-web/internal/domain/user"
 	"github.com/go-redis/redis/v7"
+	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	"golang.org/x/crypto/bcrypt"
 )
+
+// mysqlDuplicateEntry is MySQL error 1062: duplicate entry for a unique key.
+const mysqlDuplicateEntry = 1062
 
 // passwordBcryptCost aliases the domain constant so it stays reachable inside
 // methods whose "user" parameter shadows the package name.
@@ -51,6 +56,12 @@ func (u *UsersRepository) Registration(ctx context.Context, user *user.User, lan
 	// Next, insert the username, along with the hashed password into the database.
 	res, err := tx.ExecContext(ctx, "INSERT INTO Users (username, password, language) VALUES (?, ?, ?)", user.Username, string(hashedPassword), *language)
 	if err != nil {
+		// An existing username violates the unique key: report it as a
+		// conflict instead of leaking a raw driver error as a 500.
+		var mysqlErr *mysql.MySQLError
+		if errors.As(err, &mysqlErr) && mysqlErr.Number == mysqlDuplicateEntry {
+			return apperror.NewConflict("username", user.Username)
+		}
 		return err
 	}
 
@@ -282,7 +293,10 @@ func (u *UsersRepository) FetchAuth(ctx context.Context, authD *user.AccessDetai
 	if err != nil {
 		return 0, err
 	}
-	userID, _ := strconv.ParseUint(userid, 10, 64)
+	userID, err := strconv.ParseUint(userid, 10, 64)
+	if err != nil {
+		return 0, err
+	}
 	return userID, nil
 }
 
