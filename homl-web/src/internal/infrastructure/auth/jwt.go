@@ -6,7 +6,6 @@ package auth
 import (
 	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -16,13 +15,24 @@ import (
 	"github.com/alkariin/homl/homl-web/internal/domain/user"
 )
 
+// parseUserID reads the "user_id" claim. JSON numbers decode to float64, so we
+// take a typed path instead of formatting/re-parsing the value as a string.
+func parseUserID(claims jwt.MapClaims) (uint64, error) {
+	raw, ok := claims["user_id"].(float64)
+	if !ok {
+		return 0, fmt.Errorf("token misses a valid user_id claim")
+	}
+	return uint64(raw), nil
+}
+
 var ACCESS_TOKEN_EXPIRE_MINUTES = 10
+var DEV_ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 8         // 8 hours, to ease local debugging
 var REFRESH_TOKEN_EXPIRE_MINUTES = 60 * 24 * 365 / 2 // 6 months
 
 type JWT struct {
 	accessSecret  string
 	refreshSecret string
-	dev           bool // dev tokens live one year to ease local debugging
+	dev           bool // dev access tokens live a few hours to ease local debugging
 }
 
 func NewJWT(accessSecret string, refreshSecret string, dev bool) *JWT {
@@ -37,7 +47,7 @@ func (j *JWT) CreateToken(userid uint64) (*user.TokenDetails, error) {
 	td := &user.TokenDetails{}
 	var tokenExpiresMin int
 	if j.dev {
-		tokenExpiresMin = 525600 // 1 year
+		tokenExpiresMin = DEV_ACCESS_TOKEN_EXPIRE_MINUTES
 	} else {
 		tokenExpiresMin = ACCESS_TOKEN_EXPIRE_MINUTES
 	}
@@ -95,7 +105,7 @@ func (j *JWT) VerifyRefresh(refreshToken string) (*user.RefreshDetails, error) {
 	if !ok {
 		return nil, fmt.Errorf("refresh token misses refresh_uuid claim")
 	}
-	userId, err := strconv.ParseUint(fmt.Sprintf("%.f", claims["user_id"]), 10, 64)
+	userId, err := parseUserID(claims)
 	if err != nil {
 		return nil, err
 	}
@@ -131,18 +141,6 @@ func (j *JWT) verifyToken(r *http.Request) (*jwt.Token, error) {
 	return token, nil
 }
 
-// Valid reports whether the request carries a valid access token.
-func (j *JWT) Valid(r *http.Request) error {
-	token, err := j.verifyToken(r)
-	if err != nil {
-		return err
-	}
-	if _, ok := token.Claims.(jwt.Claims); !ok && !token.Valid {
-		return err
-	}
-	return nil
-}
-
 // ExtractAccessDetails parses the request's access token and returns its
 // session metadata.
 func (j *JWT) ExtractAccessDetails(r *http.Request) (*user.AccessDetails, error) {
@@ -156,7 +154,7 @@ func (j *JWT) ExtractAccessDetails(r *http.Request) (*user.AccessDetails, error)
 		if !ok {
 			return nil, fmt.Errorf("access token misses access_uuid claim")
 		}
-		userId, err := strconv.ParseUint(fmt.Sprintf("%.f", claims["user_id"]), 10, 64)
+		userId, err := parseUserID(claims)
 		if err != nil {
 			return nil, err
 		}

@@ -38,7 +38,7 @@ class AppBloc extends Bloc<AppEvent, AppState> {
     emit(state.copyWith(locale: event.locale));
   }
 
-  _onErrorModal(ErrorModal event, Emitter<AppState> emit) {
+  void _onErrorModal(ErrorModal event, Emitter<AppState> emit) {
     emit(state.copyWith(errorModal: event.error));
   }
 
