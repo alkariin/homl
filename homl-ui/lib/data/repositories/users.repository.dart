@@ -17,13 +17,21 @@ class UserNotFoundFailure implements Exception {}
 class UserOtherFailure implements Exception {}
 
 class UsersRepository {
-  final apiInstance = Api();
+  late final apiInstance = Api();
 
   Future<AuthenticationStatus> login(String username, String password) async {
-    final response = await apiInstance.api.post('/login', data: {
-      'username': username,
-      'password': password,
-    });
+    late Response<dynamic> response;
+    try {
+      response = await apiInstance.api.post('/login', data: {
+        'username': username,
+        'password': password,
+      });
+    } on DioException catch (err) {
+      if (err.response?.statusCode == 401) {
+        throw UserRequestFailure();
+      }
+      throw UserOtherFailure();
+    }
 
     if (response.data == null || !response.data!.containsKey('refresh_token')) {
       throw UserNotFoundFailure();

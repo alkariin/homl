@@ -172,6 +172,48 @@ abstract class AppLocalizations {
   /// **'Enter the PIN code'**
   String get account_enterPin;
 
+  /// No description provided for @login_usernameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'username'**
+  String get login_usernameLabel;
+
+  /// No description provided for @login_passwordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'password'**
+  String get login_passwordLabel;
+
+  /// No description provided for @login_submit.
+  ///
+  /// In en, this message translates to:
+  /// **'login'**
+  String get login_submit;
+
+  /// No description provided for @login_register.
+  ///
+  /// In en, this message translates to:
+  /// **'Register'**
+  String get login_register;
+
+  /// No description provided for @login_incorrectCredentials.
+  ///
+  /// In en, this message translates to:
+  /// **'Incorrect email or password'**
+  String get login_incorrectCredentials;
+
+  /// No description provided for @login_invalidEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'The email is not valid'**
+  String get login_invalidEmail;
+
+  /// No description provided for @login_invalidPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Must contain at least one number, one uppercase and lowercase letter, one special character, and at least 8 or more characters'**
+  String get login_invalidPassword;
+
   /// No description provided for @settings.
   ///
   /// In en, this message translates to:
@@ -262,23 +304,11 @@ abstract class AppLocalizations {
   /// **'Filter by tag'**
   String get list_filterLabel;
 
-  /// No description provided for @list_manageCategories.
-  ///
-  /// In en, this message translates to:
-  /// **'Manage categories'**
-  String get list_manageCategories;
-
   /// No description provided for @list_noEvents.
   ///
   /// In en, this message translates to:
   /// **'No events found'**
   String get list_noEvents;
-
-  /// No description provided for @categories_title.
-  ///
-  /// In en, this message translates to:
-  /// **'Categories'**
-  String get categories_title;
 
   /// No description provided for @categories_newCategory.
   ///

@@ -46,6 +46,28 @@ class AppLocalizationsDe extends AppLocalizations {
   String get account_enterPin => 'Enter the PIN code';
 
   @override
+  String get login_usernameLabel => 'Benutzername';
+
+  @override
+  String get login_passwordLabel => 'Passwort';
+
+  @override
+  String get login_submit => 'Anmelden';
+
+  @override
+  String get login_register => 'Registrieren';
+
+  @override
+  String get login_incorrectCredentials => 'E-Mail oder Passwort falsch';
+
+  @override
+  String get login_invalidEmail => 'Die E-Mail-Adresse ist ungultig';
+
+  @override
+  String get login_invalidPassword =>
+      'Muss mindestens eine Zahl, einen Gross- und einen Kleinbuchstaben, ein Sonderzeichen und mindestens 8 Zeichen enthalten';
+
+  @override
   String get settings => 'Settings';
 
   @override
@@ -91,13 +113,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get list_filterLabel => 'Nach Tag filtern';
 
   @override
-  String get list_manageCategories => 'Kategorien verwalten';
-
-  @override
   String get list_noEvents => 'Keine Ereignisse gefunden';
-
-  @override
-  String get categories_title => 'Kategorien';
 
   @override
   String get categories_newCategory => 'Neue Kategorie';

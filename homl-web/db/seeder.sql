@@ -6,7 +6,7 @@
 -- All statements use INSERT IGNORE so this file is safe to run multiple times.
 
 INSERT IGNORE INTO Users (id, username, password, language)
-VALUES (1, "demo@homl.local", "$2b$08$DkXywmHRdycapf.Nev6K7u7bh/s2SIlrLStC94tfAsvt0sGBukdzK", "fr");
+VALUES (1, "demo@homl.local", "$2b$08$DkXywmHRdycapf.Nev6K7u7bh/s2SIlrLStC94tfAsvt0sGBukdzK", "en");
 
 INSERT IGNORE INTO Categories (id, category, color, isLocked, idUser)
 VALUES (1, "7k/SRG8=", "#ffff60", 1, 1); -- Dates
