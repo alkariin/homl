@@ -232,6 +232,18 @@ abstract class AppLocalizations {
   /// **'Select language'**
   String get settings_selectLanguage;
 
+  /// No description provided for @settings_homeTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Home screen'**
+  String get settings_homeTab;
+
+  /// No description provided for @settings_selectHomeTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Select home screen'**
+  String get settings_selectHomeTab;
+
   /// No description provided for @global_cancel.
   ///
   /// In en, this message translates to:

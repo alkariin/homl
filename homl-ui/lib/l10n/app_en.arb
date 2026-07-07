@@ -24,6 +24,8 @@
   "settings": "Settings",
   "settings_language": "Language",
   "settings_selectLanguage": "Select language",
+  "settings_homeTab": "Home screen",
+  "settings_selectHomeTab": "Select home screen",
 
   "global_cancel": "Cancel",
   "global_save": "Save",
