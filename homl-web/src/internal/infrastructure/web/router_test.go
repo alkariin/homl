@@ -11,12 +11,25 @@ import (
 
 	"github.com/alkariin/homl/homl-web/internal/domain/category"
 	"github.com/alkariin/homl/homl-web/internal/domain/event"
+	"github.com/alkariin/homl/homl-web/internal/domain/user"
 	"github.com/alkariin/homl/homl-web/internal/infrastructure/auth"
 	"github.com/alkariin/homl/homl-web/test/mocks"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
+
+// fakeSessions is a session store that treats every well-formed access token as
+// a live session for testUserID, so the auth middleware's session check passes
+// in tests without a real Redis.
+type fakeSessions struct{}
+
+func (fakeSessions) FetchAuth(*user.AccessDetails) (uint64, error) { return testUserID, nil }
+
+// allowAllLimiter is a no-op rate limiter for tests.
+type allowAllLimiter struct{}
+
+func (allowAllLimiter) Allow(string, int, time.Duration) (bool, error) { return true, nil }
 
 // These HTTP integration tests replace the old Postman suite: they boot the
 // real Gin router (SetupRouter) wired with mocked services and assert the
@@ -52,14 +65,16 @@ func newTestServer() (*gin.Engine, *serverMocks) {
 		persons:    new(mocks.MockPersonsService),
 		settings:   new(mocks.MockSettingsService),
 	}
+	authenticator := &TokenAuthenticator{Tokens: testJWT, Sessions: fakeSessions{}}
 	server := &Server{
-		Tokens:   testJWT,
-		User:     &UserHandler{UsersService: sm.users, Tokens: testJWT, Auth: sm.users},
-		Category: &CategoryHandler{CategoriesService: sm.categories, Auth: sm.users},
-		Tag:      &TagHandler{TagsService: sm.tags, Auth: sm.users},
-		Person:   &PersonHandler{PersonsService: sm.persons, Auth: sm.users},
-		Event:    &EventHandler{EventsService: sm.events, Auth: sm.users},
-		Settings: &SettingsHandler{SettingsService: sm.settings, Auth: sm.users},
+		Auth:        authenticator,
+		RateLimiter: allowAllLimiter{},
+		User:        &UserHandler{UsersService: sm.users, Tokens: testJWT},
+		Category:    &CategoryHandler{CategoriesService: sm.categories},
+		Tag:         &TagHandler{TagsService: sm.tags},
+		Person:      &PersonHandler{PersonsService: sm.persons},
+		Event:       &EventHandler{EventsService: sm.events},
+		Settings:    &SettingsHandler{SettingsService: sm.settings},
 	}
 	router := SetupRouter(server, "", 5*time.Second, false, "")
 	return router, sm
@@ -197,7 +212,6 @@ func TestProtectedRouteRejectsInvalidToken(t *testing.T) {
 func TestGetCategoriesEndpoint(t *testing.T) {
 	router, sm := newTestServer()
 
-	sm.users.On("GetUserIdFromToken", mock.Anything).Return(testUserID, nil)
 	sm.categories.On("GetCategories", testUserID).Return([]category.GetCategoryResponse{
 		{Id: 1, Category: "Dates", Color: "#ffff60", IsLocked: true},
 	}, nil)
@@ -215,7 +229,6 @@ func TestGetCategoriesEndpoint(t *testing.T) {
 func TestCreateCategoryEndpoint(t *testing.T) {
 	router, sm := newTestServer()
 
-	sm.users.On("GetUserIdFromToken", mock.Anything).Return(testUserID, nil)
 	sm.categories.On("CreateCategory", mock.AnythingOfType("*category.Category")).Return(nil)
 
 	rec := doRequest(router, http.MethodPost, "/categories",
@@ -227,7 +240,6 @@ func TestCreateCategoryEndpoint(t *testing.T) {
 
 func TestCreateCategoryRejectsNonHexColor(t *testing.T) {
 	router, sm := newTestServer()
-	sm.users.On("GetUserIdFromToken", mock.Anything).Return(testUserID, nil)
 
 	rec := doRequest(router, http.MethodPost, "/categories",
 		`{"category":"Noces","color":"red"}`, authHeader())
@@ -239,7 +251,6 @@ func TestCreateCategoryRejectsNonHexColor(t *testing.T) {
 func TestUpdateCategoryEndpoint(t *testing.T) {
 	router, sm := newTestServer()
 
-	sm.users.On("GetUserIdFromToken", mock.Anything).Return(testUserID, nil)
 	sm.categories.On("UpdateCategory", mock.AnythingOfType("*category.Category")).Return(nil)
 
 	rec := doRequest(router, http.MethodPatch, "/categories/5",
@@ -252,7 +263,6 @@ func TestUpdateCategoryEndpoint(t *testing.T) {
 func TestDeleteCategoryEndpoint(t *testing.T) {
 	router, sm := newTestServer()
 
-	sm.users.On("GetUserIdFromToken", mock.Anything).Return(testUserID, nil)
 	sm.categories.On("DeleteCategory", uint(5), testUserID, false).Return(nil)
 
 	rec := doRequest(router, http.MethodDelete, "/categories/5", `{"moveTags":false}`, authHeader())
@@ -266,7 +276,6 @@ func TestDeleteCategoryEndpoint(t *testing.T) {
 func TestGetEventsEndpoint(t *testing.T) {
 	router, sm := newTestServer()
 
-	sm.users.On("GetUserIdFromToken", mock.Anything).Return(testUserID, nil)
 	sm.events.On("GetEvents", testUserID, mock.Anything).Return([]event.GetEventsResponse{
 		{Event: event.Event{Id: 1, Description: "cool"}},
 	}, nil)
@@ -283,7 +292,6 @@ func TestGetEventsEndpoint(t *testing.T) {
 func TestCreateEventEndpoint(t *testing.T) {
 	router, sm := newTestServer()
 
-	sm.users.On("GetUserIdFromToken", mock.Anything).Return(testUserID, nil)
 	sm.events.On("CreateEvent", testUserID, mock.AnythingOfType("*event.Event"), mock.Anything).Return(nil)
 
 	rec := doRequest(router, http.MethodPost, "/events",
@@ -295,7 +303,6 @@ func TestCreateEventEndpoint(t *testing.T) {
 
 func TestCreateEventRejectsMissingDate(t *testing.T) {
 	router, sm := newTestServer()
-	sm.users.On("GetUserIdFromToken", mock.Anything).Return(testUserID, nil)
 
 	rec := doRequest(router, http.MethodPost, "/events", `{"tagsId":[1]}`, authHeader())
 
@@ -306,7 +313,6 @@ func TestCreateEventRejectsMissingDate(t *testing.T) {
 func TestDeleteEventEndpoint(t *testing.T) {
 	router, sm := newTestServer()
 
-	sm.users.On("GetUserIdFromToken", mock.Anything).Return(testUserID, nil)
 	sm.events.On("DeleteEvent", uint(9)).Return(nil)
 
 	rec := doRequest(router, http.MethodDelete, "/events/9", "", authHeader())

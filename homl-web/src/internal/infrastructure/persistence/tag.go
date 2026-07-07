@@ -13,7 +13,7 @@ import (
 // methods of CategoriesRepository.
 
 func (c *CategoriesRepository) CreateTag(tagNameEncrypt string, idCategory uint) error {
-	_, err := c.DB.Query("INSERT INTO Tags (tag, idCategory) VALUES (?, ?)", tagNameEncrypt, idCategory)
+	_, err := c.DB.Exec("INSERT INTO Tags (tag, idCategory) VALUES (?, ?)", tagNameEncrypt, idCategory)
 	return err
 }
 

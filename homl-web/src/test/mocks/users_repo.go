@@ -1,6 +1,8 @@
 package mocks
 
 import (
+	"time"
+
 	"github.com/alkariin/homl/homl-web/internal/domain/user"
 	"github.com/stretchr/testify/mock"
 )
@@ -224,4 +226,26 @@ func (m *MockUsersRepo) UpdateSettings(s *user.Settings, idUser uint64) error {
 	}
 
 	return r0
+}
+
+func (m *MockUsersRepo) StoreResetToken(userId uint64, token string, ttl time.Duration) error {
+	ret := m.Called(userId, token, ttl)
+
+	var r0 error
+	if ret.Get(0) != nil {
+		r0 = ret.Get(0).(error)
+	}
+
+	return r0
+}
+
+func (m *MockUsersRepo) ConsumeResetToken(token string) (uint64, error) {
+	ret := m.Called(token)
+
+	var r1 error
+	if ret.Get(1) != nil {
+		r1 = ret.Get(1).(error)
+	}
+
+	return ret.Get(0).(uint64), r1
 }

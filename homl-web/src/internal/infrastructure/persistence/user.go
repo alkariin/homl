@@ -14,6 +14,13 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// passwordBcryptCost aliases the domain constant so it stays reachable inside
+// methods whose "user" parameter shadows the package name.
+const passwordBcryptCost = user.PasswordBcryptCost
+
+// resetTokenKeyPrefix namespaces single-use password-reset tokens in Redis.
+const resetTokenKeyPrefix = "reset:"
+
 type UsersRepository struct {
 	DB     *sql.DB
 	Redis  *redis.Client
@@ -35,32 +42,26 @@ func (u *UsersRepository) Registration(user *user.User, language *user.Language)
 		return err
 	}
 
-	// Salt and hash the password using the bcrypt algorithm
-	// The second argument is the cost of hashing, which we arbitrarily set as 8 (this value can be more or less, depending on the computing power you wish to utilize)
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), 8)
+	// Salt and hash the password using the bcrypt algorithm.
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), passwordBcryptCost)
 	if err != nil {
 		return err
 	}
 
-	// Next, insert the username, along with the hashed password into the database
-	_, err = tx.Query("INSERT INTO Users (username, password, language) VALUES (?, ?, ?)", user.Username, string(hashedPassword), *language)
+	// Next, insert the username, along with the hashed password into the database.
+	res, err := tx.Exec("INSERT INTO Users (username, password, language) VALUES (?, ?, ?)", user.Username, string(hashedPassword), *language)
 	if err != nil {
 		tx.Rollback()
 		return err
 	}
 
-	// Get user id
-	result := tx.QueryRow("SELECT id FROM Users WHERE username=? AND password=?", user.Username, string(hashedPassword))
-	if result == nil {
-		tx.Rollback()
-		return apperror.NewInternal()
-	}
-
-	err = result.Scan(&user.ID)
+	// Get the inserted user id.
+	insertedID, err := res.LastInsertId()
 	if err != nil {
 		tx.Rollback()
 		return err
 	}
+	user.ID = uint64(insertedID)
 
 	// Create default categories
 	categories := masterdata.DefaultCategories()
@@ -73,7 +74,7 @@ func (u *UsersRepository) Registration(user *user.User, language *user.Language)
 			return err
 		}
 
-		_, err = tx.Query("INSERT INTO Categories (category, color, isLocked, idUser) VALUES (?, ?, ?, ?)", encCategory, categories[i].Color, 1, user.ID)
+		_, err = tx.Exec("INSERT INTO Categories (category, color, isLocked, idUser) VALUES (?, ?, ?, ?)", encCategory, categories[i].Color, 1, user.ID)
 		if err != nil {
 			tx.Rollback()
 			return err
@@ -156,17 +157,15 @@ func (u *UsersRepository) FindPkeyAndChallengeById(idUser uint64) (*user.User, e
 }
 
 func (u *UsersRepository) UpdatePassword(idUser uint64, hashedPassword string) error {
-	result := u.DB.QueryRow("UPDATE Users SET password=? WHERE id=?", hashedPassword, idUser)
-	if result == nil {
-		return apperror.NewInternal()
+	if _, err := u.DB.Exec("UPDATE Users SET password=? WHERE id=?", hashedPassword, idUser); err != nil {
+		return err
 	}
 	return nil
 }
 
 func (u *UsersRepository) UpdateChallenge(idUser uint64, challenge *string) error {
-	result := u.DB.QueryRow("UPDATE Users SET challenge=? WHERE id=?", challenge, idUser)
-	if result == nil {
-		return apperror.NewInternal()
+	if _, err := u.DB.Exec("UPDATE Users SET challenge=? WHERE id=?", challenge, idUser); err != nil {
+		return err
 	}
 	return nil
 }
@@ -303,5 +302,28 @@ func (u *UsersRepository) FetchAuth(authD *user.AccessDetails) (uint64, error) {
 		return 0, err
 	}
 	userID, _ := strconv.ParseUint(userid, 10, 64)
+	return userID, nil
+}
+
+func (u *UsersRepository) StoreResetToken(userId uint64, token string, ttl time.Duration) error {
+	return u.Redis.Set(resetTokenKeyPrefix+token, strconv.FormatUint(userId, 10), ttl).Err()
+}
+
+func (u *UsersRepository) ConsumeResetToken(token string) (uint64, error) {
+	key := resetTokenKeyPrefix + token
+
+	// GET then DEL in a single transaction so a token can be redeemed at most
+	// once, even under concurrent requests.
+	getCmd := u.Redis.TxPipeline()
+	val := getCmd.Get(key)
+	getCmd.Del(key)
+	if _, err := getCmd.Exec(); err != nil {
+		return 0, apperror.NewAuthorization("Not authorized")
+	}
+
+	userID, err := strconv.ParseUint(val.Val(), 10, 64)
+	if err != nil {
+		return 0, apperror.NewAuthorization("Not authorized")
+	}
 	return userID, nil
 }

@@ -34,7 +34,7 @@ func (h *TagHandler) CreateTag(c *gin.Context) {
 		return
 	}
 
-	idUser, err := h.Auth.GetUserIdFromToken(c.Request)
+	idUser, err := UserIDFromContext(c)
 	if err != nil {
 		SendGinError(c, err)
 		return
@@ -78,7 +78,7 @@ func (h *TagHandler) UpdateTag(c *gin.Context) {
 		return
 	}
 
-	idUser, err := h.Auth.GetUserIdFromToken(c.Request)
+	idUser, err := UserIDFromContext(c)
 	if err != nil {
 		SendGinError(c, err)
 		return
@@ -105,7 +105,7 @@ func (h *TagHandler) DeleteTag(c *gin.Context) {
 	}
 	id := uint(idParam)
 
-	idUser, err := h.Auth.GetUserIdFromToken(c.Request)
+	idUser, err := UserIDFromContext(c)
 	if err != nil {
 		SendGinError(c, err)
 		return
@@ -123,5 +123,4 @@ func (h *TagHandler) DeleteTag(c *gin.Context) {
 // Handler wires the tags HTTP endpoints to their service.
 type TagHandler struct {
 	TagsService application.TagsService
-	Auth        Authenticator
 }
