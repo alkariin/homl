@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'package:homl/helpers/colors.dart';
 
-/// Global theme derived from the Figma "Search Page" export: Encode Sans,
-/// white surfaces with hairline grey borders and the yellow #D3A934 accent.
+/// Global theme of the app: Encode Sans, white surfaces with hairline grey
+/// borders and the yellow #D3A934 accent.
 ThemeData homlTheme() {
   const fontFamily = 'Encode Sans';
 

@@ -3,7 +3,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import 'package:homl/helpers/colors.dart' as palette;
 
-/// Figma-style chip: thin colored border, lightly tinted fill, radius 4.
+/// Tag chip: thin colored border, lightly tinted fill, radius 4.
 /// The border uses a darkened version of the category color so the pastel
 /// presets stay visible on white.
 class Tag extends StatelessWidget {

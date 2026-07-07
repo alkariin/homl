@@ -3,8 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:homl/helpers/colors.dart';
 
 /// Decorative page background: two large diagonal sweeps (white and
-/// translucent yellow, from the Figma export) plus a soft yellow glow in the
-/// top-right corner.
+/// translucent yellow) plus a soft yellow glow in the top-right corner.
 ///
 /// Everything is sized relative to the available space, like a background
 /// image, so the shapes always overflow the screen and scale with it instead
