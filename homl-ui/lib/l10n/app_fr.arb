@@ -24,6 +24,8 @@
   "settings": "Parametres",
   "settings_language": "Langue",
   "settings_selectLanguage": "Selectionner la langue",
+  "settings_homeTab": "Ecran d'accueil",
+  "settings_selectHomeTab": "Selectionner l'ecran d'accueil",
 
   "global_cancel": "Annuler",
   "global_save": "Enregistrer",
