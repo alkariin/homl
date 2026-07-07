@@ -47,6 +47,28 @@ class AppLocalizationsFr extends AppLocalizations {
   String get account_enterPin => 'Entrer le code PIN';
 
   @override
+  String get login_usernameLabel => 'identifiant';
+
+  @override
+  String get login_passwordLabel => 'mot de passe';
+
+  @override
+  String get login_submit => 'connexion';
+
+  @override
+  String get login_register => 'Creer un compte';
+
+  @override
+  String get login_incorrectCredentials => 'Email ou mot de passe incorrect';
+
+  @override
+  String get login_invalidEmail => 'L\'email n\'est pas valide';
+
+  @override
+  String get login_invalidPassword =>
+      'Doit contenir au moins un chiffre, une majuscule et une minuscule, un caractere special, et au moins 8 caracteres';
+
+  @override
   String get settings => 'Parametres';
 
   @override
