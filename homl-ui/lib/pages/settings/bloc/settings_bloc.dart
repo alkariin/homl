@@ -19,6 +19,7 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
   SettingsBloc(this.localization, this.settingsRepository)
       : super(const SettingsState.initial()) {
     on<UpdateLanguage>(_onUpdateLanguage);
+    on<UpdateDefaultScreen>(_onUpdateDefaultScreen);
     on<UpdateSettings>(_onUpdateSettings);
     on<EndModal>(_onEndModal);
     on<ErrorModal>(_onErrorModal);
@@ -36,6 +37,13 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
       UpdateLanguage event, Emitter<SettingsState> emit) async {
     final Settings newSettings =
         state.settings!.copyWith(language: event.language);
+    await settingsRepository.setSettings(newSettings);
+  }
+
+  Future<void> _onUpdateDefaultScreen(
+      UpdateDefaultScreen event, Emitter<SettingsState> emit) async {
+    final Settings newSettings =
+        state.settings!.copyWith(defaultScreen: event.defaultScreen);
     await settingsRepository.setSettings(newSettings);
   }
 
