@@ -13,6 +13,14 @@
   "account_pinSwitchError": "PIN couldn't be configured",
   "account_enterPin": "Enter the PIN code",
 
+  "login_usernameLabel": "username",
+  "login_passwordLabel": "password",
+  "login_submit": "login",
+  "login_register": "Register",
+  "login_incorrectCredentials": "Incorrect email or password",
+  "login_invalidEmail": "The email is not valid",
+  "login_invalidPassword": "Must contain at least one number, one uppercase and lowercase letter, one special character, and at least 8 or more characters",
+
   "settings": "Settings",
   "settings_language": "Language",
   "settings_selectLanguage": "Select language",

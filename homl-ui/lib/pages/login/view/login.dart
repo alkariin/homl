@@ -5,6 +5,7 @@ import 'package:homl/components/button.dart';
 import 'package:homl/components/input.dart';
 import 'package:homl/data/repositories/users.repository.dart';
 import 'package:homl/helpers/validations.dart';
+import 'package:homl/l10n/app_localizations.dart';
 import 'package:homl/pages/login/bloc/login_bloc.dart';
 import 'package:homl/pages/register/view/register.dart';
 
@@ -37,14 +38,16 @@ class _LoginViewState extends State<LoginView> {
 
   @override
   Widget build(BuildContext context) {
+    final localization = AppLocalizations.of(context)!;
+
     return BlocListener<LoginBloc, LoginState>(
         listener: (context, state) {
           if (state.isLoginIncorrect) {
             ScaffoldMessenger.of(context)
               ..hideCurrentSnackBar()
               ..showSnackBar(
-                const SnackBar(
-                  content: Text('Incorrect email or password'),
+                SnackBar(
+                  content: Text(localization.login_incorrectCredentials),
                   backgroundColor: Colors.redAccent,
                 ),
               );
@@ -61,31 +64,31 @@ class _LoginViewState extends State<LoginView> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Input(
-                      labelText: 'username',
+                      labelText: localization.login_usernameLabel,
                       onChange: (username) => context
                           .read<LoginBloc>()
                           .add(LoginUsernameChanged(username)),
                       initialValue: context.read<LoginBloc>().state.username,
                       validator: (username) {
                         if (isEmailValid(username)) return null;
-                        return "The email is not valid";
+                        return localization.login_invalidEmail;
                       }),
                   const Padding(padding: EdgeInsets.all(12)),
                   Input(
                     inputType: InputType.password,
-                    labelText: 'password',
+                    labelText: localization.login_passwordLabel,
                     onChange: (password) => context
                         .read<LoginBloc>()
                         .add(LoginPasswordChanged(password)),
                     initialValue: context.read<LoginBloc>().state.password,
                     validator: (password) {
                       if (isPasswordValid(password)) return null;
-                      return "Must contain at least one number, one uppercase and lowercase letter, one special character, and at least 8 or more characters";
+                      return localization.login_invalidPassword;
                     },
                   ),
                   const Padding(padding: EdgeInsets.all(12)),
                   Button(
-                    text: 'login',
+                    text: localization.login_submit,
                     onPressed: () {
                       if (_formKey.currentState!.validate()) {
                         context.read<LoginBloc>().add(LoginSubmitted());
@@ -96,7 +99,7 @@ class _LoginViewState extends State<LoginView> {
                       onPressed: () => Navigator.of(context).push(
                           MaterialPageRoute(
                               builder: (context) => const RegisterPage())),
-                      child: const Text("Register"))
+                      child: Text(localization.login_register))
                 ],
               ),
             ),
