@@ -14,6 +14,13 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// passwordBcryptCost aliases the domain constant so it stays reachable inside
+// methods whose "user" parameter shadows the package name.
+const passwordBcryptCost = user.PasswordBcryptCost
+
+// resetTokenKeyPrefix namespaces single-use password-reset tokens in Redis.
+const resetTokenKeyPrefix = "reset:"
+
 type UsersRepository struct {
 	DB     *sqlx.DB
 	Redis  *redis.Client
@@ -35,19 +42,19 @@ func (u *UsersRepository) Registration(ctx context.Context, user *user.User, lan
 	}
 	defer tx.Rollback() // no-op once Commit succeeds
 
-	// Salt and hash the password using the bcrypt algorithm
-	// The second argument is the cost of hashing, which we arbitrarily set as 8 (this value can be more or less, depending on the computing power you wish to utilize)
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), 8)
+	// Salt and hash the password using the bcrypt algorithm.
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), passwordBcryptCost)
 	if err != nil {
 		return err
 	}
 
-	// Next, insert the username, along with the hashed password into the database
+	// Next, insert the username, along with the hashed password into the database.
 	res, err := tx.ExecContext(ctx, "INSERT INTO Users (username, password, language) VALUES (?, ?, ?)", user.Username, string(hashedPassword), *language)
 	if err != nil {
 		return err
 	}
 
+	// Get the inserted user id.
 	insertedID, err := res.LastInsertId()
 	if err != nil {
 		return err
@@ -276,5 +283,28 @@ func (u *UsersRepository) FetchAuth(ctx context.Context, authD *user.AccessDetai
 		return 0, err
 	}
 	userID, _ := strconv.ParseUint(userid, 10, 64)
+	return userID, nil
+}
+
+func (u *UsersRepository) StoreResetToken(ctx context.Context, userId uint64, token string, ttl time.Duration) error {
+	return u.Redis.WithContext(ctx).Set(resetTokenKeyPrefix+token, strconv.FormatUint(userId, 10), ttl).Err()
+}
+
+func (u *UsersRepository) ConsumeResetToken(ctx context.Context, token string) (uint64, error) {
+	key := resetTokenKeyPrefix + token
+
+	// GET then DEL in a single transaction so a token can be redeemed at most
+	// once, even under concurrent requests.
+	getCmd := u.Redis.WithContext(ctx).TxPipeline()
+	val := getCmd.Get(key)
+	getCmd.Del(key)
+	if _, err := getCmd.Exec(); err != nil {
+		return 0, apperror.NewAuthorization("Not authorized")
+	}
+
+	userID, err := strconv.ParseUint(val.Val(), 10, 64)
+	if err != nil {
+		return 0, apperror.NewAuthorization("Not authorized")
+	}
 	return userID, nil
 }

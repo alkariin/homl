@@ -67,7 +67,7 @@ func (h *EventHandler) GetEvents(c *gin.Context) {
 		body.Tags = c.QueryArray("tags")
 	}
 
-	userId, err := h.Auth.GetUserIdFromToken(c.Request)
+	userId, err := UserIDFromContext(c)
 	if err != nil {
 		SendGinError(c, err)
 		return
@@ -118,7 +118,7 @@ func (h *EventHandler) CreateEvent(c *gin.Context) {
 		Date:        body.Date,
 	}
 
-	idUser, err := h.Auth.GetUserIdFromToken(c.Request)
+	idUser, err := UserIDFromContext(c)
 	if err != nil {
 		SendGinError(c, err)
 		return
@@ -173,7 +173,7 @@ func (h *EventHandler) UpdateEvent(c *gin.Context) {
 		Date:        body.Date,
 	}
 
-	idUser, err := h.Auth.GetUserIdFromToken(c.Request)
+	idUser, err := UserIDFromContext(c)
 	if err != nil {
 		SendGinError(c, err)
 		return
@@ -212,5 +212,4 @@ func (h *EventHandler) DeleteEvent(c *gin.Context) {
 // Handler wires the events HTTP endpoints to their service.
 type EventHandler struct {
 	EventsService application.EventsService
-	Auth          Authenticator
 }

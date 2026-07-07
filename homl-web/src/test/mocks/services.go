@@ -61,8 +61,8 @@ func (m *MockUsersService) ResetPassword(ctx context.Context, user *user.User) e
 	return errAt(m.Called(user), 0)
 }
 
-func (m *MockUsersService) ConfirmResetPassword(ctx context.Context, newPassword string, idUser uint64) (map[string]string, error) {
-	ret := m.Called(newPassword, idUser)
+func (m *MockUsersService) ConfirmResetPassword(ctx context.Context, newPassword string, resetToken string) (map[string]string, error) {
+	ret := m.Called(newPassword, resetToken)
 	return tokensAt(ret, 0), errAt(ret, 1)
 }
 
