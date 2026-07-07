@@ -15,5 +15,37 @@
 
   "settings": "Settings",
   "settings_language": "Language",
-  "settings_selectLanguage": "Select language"
+  "settings_selectLanguage": "Select language",
+
+  "global_cancel": "Cancel",
+  "global_save": "Save",
+  "global_delete": "Delete",
+
+  "nav_categories": "Categories",
+  "nav_search": "Search",
+  "nav_add": "Add",
+
+  "insert_tagInputLabel": "Add a tag",
+  "insert_descriptionLabel": "Description",
+  "insert_submit": "Create event",
+  "insert_eventCreated": "Event created",
+  "insert_noTagsError": "Add at least one tag",
+
+  "list_filterLabel": "Filter by tag",
+  "list_manageCategories": "Manage categories",
+  "list_noEvents": "No events found",
+
+  "categories_title": "Categories",
+  "categories_newCategory": "New category",
+  "categories_editCategory": "Edit category",
+  "categories_deleteCategory": "Delete category?",
+  "categories_deleteMoveTags": "Move the tags to the Other category",
+  "categories_categoryName": "Name",
+  "categories_color": "Color",
+  "categories_newTag": "New tag",
+  "categories_renameTag": "Rename tag",
+  "categories_deleteTag": "Delete tag",
+  "categories_addSynonym": "Add a synonym",
+  "categories_detachSynonym": "Detach synonym",
+  "categories_synonymName": "Synonym"
 }

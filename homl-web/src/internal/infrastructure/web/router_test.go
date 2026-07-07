@@ -2,6 +2,7 @@ package web
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -24,7 +25,9 @@ import (
 // in tests without a real Redis.
 type fakeSessions struct{}
 
-func (fakeSessions) FetchAuth(*user.AccessDetails) (uint64, error) { return testUserID, nil }
+func (fakeSessions) FetchAuth(context.Context, *user.AccessDetails) (uint64, error) {
+	return testUserID, nil
+}
 
 // allowAllLimiter is a no-op rate limiter for tests.
 type allowAllLimiter struct{}

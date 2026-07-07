@@ -1,6 +1,7 @@
 package application
 
 import (
+	"context"
 	"strings"
 
 	"github.com/alkariin/homl/homl-web/internal/apperror"
@@ -10,9 +11,9 @@ import (
 
 // TagsService holds the tag use cases of the Category aggregate.
 type TagsService interface {
-	CreateTag(idUser uint64, t *category.Tag) error
-	UpdateTag(idUser uint64, t *category.Tag) error
-	DeleteTag(idTag uint, idUser uint64) error
+	CreateTag(ctx context.Context, idUser uint64, t *category.Tag) (uint, error)
+	UpdateTag(ctx context.Context, idUser uint64, t *category.Tag) error
+	DeleteTag(ctx context.Context, idTag uint, idUser uint64) error
 }
 
 type tagsService struct {
@@ -32,18 +33,19 @@ func NewTagsService(c *TSConfig) TagsService {
 	}
 }
 
-// CreateTag implements TagsService.
-func (t *tagsService) CreateTag(idUser uint64, tag *category.Tag) error {
+// validateTag runs the checks shared by CreateTag and UpdateTag and returns
+// the tag name ready to be encrypted.
+func (t *tagsService) validateTag(ctx context.Context, idUser uint64, tag *category.Tag) (string, error) {
 
 	// Check that the idCategory is not Persons
-	idCategoryDate, err := t.CategoriesRepository.FindLastIdByIdUser(idUser)
+	idCategoryDate, err := t.CategoriesRepository.FindLastIdByIdUser(ctx, idUser)
 	if err != nil {
-		return err
+		return "", err
 	}
 	idCategoryPerson := idCategoryDate + 1
 
 	if tag.IdCategory == idCategoryPerson {
-		return apperror.NewBadRequest("The given idCategory is not valid")
+		return "", apperror.NewBadRequest("The given idCategory is not valid")
 	}
 
 	// Check that the tag is not blacklisted
@@ -53,56 +55,90 @@ func (t *tagsService) CreateTag(idUser uint64, tag *category.Tag) error {
 
 	for _, e := range blacklistTags {
 		if e == uTag {
-			return apperror.NewBadRequest("The given tag is not accepted")
+			return "", apperror.NewBadRequest("The given tag is not accepted")
 		}
 	}
 
 	// Check that idCategory is the one of the user
-	err = t.CategoriesRepository.CheckLastIdByIdAndIdUser(idUser, tag.IdCategory)
+	err = t.CategoriesRepository.CheckLastIdByIdAndIdUser(ctx, idUser, tag.IdCategory)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	encTag, err := t.Crypto.Encrypt(uTag)
-	if err != nil {
-		return err
+	if err := t.validateParent(ctx, idUser, tag); err != nil {
+		return "", err
 	}
 
-	err = t.CategoriesRepository.CreateTag(encTag, tag.IdCategory)
+	return uTag, nil
+}
+
+// validateParent enforces the synonym rules: one level of depth only, parent
+// owned by the same user and living in the same category.
+func (t *tagsService) validateParent(ctx context.Context, idUser uint64, tag *category.Tag) error {
+	if tag.IdParentTag == nil {
+		return nil
+	}
+
+	if *tag.IdParentTag == tag.Id {
+		return apperror.NewBadRequest("A tag cannot be its own synonym")
+	}
+
+	parent, err := t.CategoriesRepository.FindTagForUser(ctx, *tag.IdParentTag, idUser)
 	if err != nil {
-		return err
+		return apperror.NewBadRequest("The given idParentTag is not valid")
+	}
+
+	if parent.IdParentTag != nil {
+		return apperror.NewBadRequest("A synonym cannot be a parent tag")
+	}
+
+	if parent.IdCategory != tag.IdCategory {
+		return apperror.NewBadRequest("A synonym must be in the same category as its parent")
 	}
 
 	return nil
 }
 
-// UpdateTag implements TagsService.
-func (t *tagsService) UpdateTag(idUser uint64, tag *category.Tag) error {
-
-	// Check that the idCategory is not Persons
-	idCategoryDate, err := t.CategoriesRepository.FindLastIdByIdUser(idUser)
+// CreateTag implements TagsService. It returns the id of the created tag.
+func (t *tagsService) CreateTag(ctx context.Context, idUser uint64, tag *category.Tag) (uint, error) {
+	uTag, err := t.validateTag(ctx, idUser, tag)
 	if err != nil {
-		return err
-	}
-	idCategoryPerson := idCategoryDate + 1
-
-	if tag.IdCategory == idCategoryPerson {
-		return apperror.NewBadRequest("The given idCategory is not valid")
+		return 0, err
 	}
 
-	// Check that the tag is not blacklisted
-	blacklistTags := masterdata.BlacklistedTags()
+	encTag, err := t.Crypto.Encrypt(uTag)
+	if err != nil {
+		return 0, err
+	}
 
-	uTag := strings.Title(tag.Tag)
+	return t.CategoriesRepository.CreateTag(ctx, encTag, tag.IdCategory, tag.IdParentTag)
+}
 
-	for _, e := range blacklistTags {
-		if e == uTag {
-			return apperror.NewBadRequest("The given tag is not accepted")
+// UpdateTag implements TagsService.
+func (t *tagsService) UpdateTag(ctx context.Context, idUser uint64, tag *category.Tag) error {
+	// Check that the tag exists and belongs to the user, and that it is not a
+	// person tag (nicknames are only managed through the person endpoints)
+	storedTag, err := t.CategoriesRepository.FindTagForUser(ctx, tag.Id, idUser)
+	if err != nil {
+		return apperror.NewBadRequest("The given tag is not valid")
+	}
+
+	if storedTag.IdPerson != 0 {
+		return apperror.NewBadRequest("The given tag is not valid")
+	}
+
+	// A tag that has synonyms cannot become a synonym itself (depth is one)
+	if tag.IdParentTag != nil {
+		hasSynonyms, err := t.CategoriesRepository.HasSynonyms(ctx, tag.Id)
+		if err != nil {
+			return err
+		}
+		if hasSynonyms {
+			return apperror.NewBadRequest("A tag with synonyms cannot become a synonym")
 		}
 	}
 
-	// Check that idCategory is the one of the user
-	err = t.CategoriesRepository.CheckLastIdByIdAndIdUser(idUser, tag.IdCategory)
+	uTag, err := t.validateTag(ctx, idUser, tag)
 	if err != nil {
 		return err
 	}
@@ -112,15 +148,10 @@ func (t *tagsService) UpdateTag(idUser uint64, tag *category.Tag) error {
 		return err
 	}
 
-	err = t.CategoriesRepository.UpdateTag(encTag, tag.IdCategory, tag.Id)
-	if err != nil {
-		return err
-	}
-
-	return err
+	return t.CategoriesRepository.UpdateTag(ctx, encTag, tag.IdCategory, tag.Id, tag.IdParentTag)
 }
 
 // DeleteTag implements TagsService.
-func (t *tagsService) DeleteTag(idTag uint, idUser uint64) error {
-	return t.CategoriesRepository.DeleteTag(idTag, idUser)
+func (t *tagsService) DeleteTag(ctx context.Context, idTag uint, idUser uint64) error {
+	return t.CategoriesRepository.DeleteTag(ctx, idTag, idUser)
 }

@@ -1,6 +1,7 @@
 package application
 
 import (
+	"context"
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/base64"
@@ -31,15 +32,15 @@ type SMTPConfig struct {
 
 // UsersService is the use-case port of the User aggregate (auth included).
 type UsersService interface {
-	Registration(u *user.User, language *user.Language) (map[string]string, error)
-	Login(u *user.User) (map[string]string, error)
-	Logout(accessDetails *user.AccessDetails) error
-	Refresh(refreshInput *user.RefreshInput) (map[string]string, error)
-	ResetPassword(u *user.User) error
-	ConfirmResetPassword(newPassword string, resetToken string) (map[string]string, error)
-	UpdatePassword(oldPassword string, newPassword string, idUser uint64) (map[string]string, error)
-	Challenge(refreshToken string) (*string, error)
-	SecureAuth(u *user.User) (*user.UserResponse, error)
+	Registration(ctx context.Context, u *user.User, language *user.Language) (map[string]string, error)
+	Login(ctx context.Context, u *user.User) (map[string]string, error)
+	Logout(ctx context.Context, accessDetails *user.AccessDetails) error
+	Refresh(ctx context.Context, refreshInput *user.RefreshInput) (map[string]string, error)
+	ResetPassword(ctx context.Context, u *user.User) error
+	ConfirmResetPassword(ctx context.Context, newPassword string, resetToken string) (map[string]string, error)
+	UpdatePassword(ctx context.Context, oldPassword string, newPassword string, idUser uint64) (map[string]string, error)
+	Challenge(ctx context.Context, refreshToken string) (*string, error)
+	SecureAuth(ctx context.Context, u *user.User) (*user.UserResponse, error)
 }
 
 type usersService struct {
@@ -65,21 +66,21 @@ func NewUsersService(c *UserConfig) UsersService {
 	}
 }
 
-func (u *usersService) Registration(usr *user.User, language *user.Language) (map[string]string, error) {
-	err := u.UsersRepository.Registration(usr, language)
+func (u *usersService) Registration(ctx context.Context, usr *user.User, language *user.Language) (map[string]string, error) {
+	err := u.UsersRepository.Registration(ctx, usr, language)
 	if err != nil {
 		return nil, err
 	}
 
 	// The account is committed at this point; if token creation fails the
 	// user simply logs in afterwards.
-	return u.createSession(usr.ID)
+	return u.createSession(ctx, usr.ID)
 }
 
-func (u *usersService) Login(user *user.User) (map[string]string, error) {
+func (u *usersService) Login(ctx context.Context, user *user.User) (map[string]string, error) {
 	// Get the existing entry present in the database for the given username
 	// We create another instance of `User` to store the credentials we get from the database
-	storedUser, err := u.UsersRepository.FindByUsername(user.Username)
+	storedUser, err := u.UsersRepository.FindByUsername(ctx, user.Username)
 	if err != nil {
 		return nil, apperror.NewAuthorization("Not authorized")
 	}
@@ -92,23 +93,23 @@ func (u *usersService) Login(user *user.User) (map[string]string, error) {
 
 	// Reset pin counter
 	if storedUser.IsPinEnabled {
-		err = u.UsersRepository.ResetPinCounter(storedUser.ID)
+		err = u.UsersRepository.ResetPinCounter(ctx, storedUser.ID)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return u.createSession(storedUser.ID)
+	return u.createSession(ctx, storedUser.ID)
 }
 
 // createSession mints a fresh access/refresh token pair and stores its
 // metadata in the auth store.
-func (u *usersService) createSession(idUser uint64) (map[string]string, error) {
+func (u *usersService) createSession(ctx context.Context, idUser uint64) (map[string]string, error) {
 	ts, err := u.Tokens.CreateToken(idUser)
 	if err != nil {
 		return nil, err
 	}
-	err = u.UsersRepository.CreateAuth(idUser, ts)
+	err = u.UsersRepository.CreateAuth(ctx, idUser, ts)
 	if err != nil {
 		return nil, err
 	}
@@ -119,13 +120,13 @@ func (u *usersService) createSession(idUser uint64) (map[string]string, error) {
 	return tokens, nil
 }
 
-func (u *usersService) Logout(accessDetails *user.AccessDetails) error {
-	err := u.UsersRepository.UpdateChallenge(accessDetails.UserId, nil)
+func (u *usersService) Logout(ctx context.Context, accessDetails *user.AccessDetails) error {
+	err := u.UsersRepository.UpdateChallenge(ctx, accessDetails.UserId, nil)
 	if err != nil {
 		return err
 	}
 
-	deleted, delErr := u.UsersRepository.DeleteAuth(accessDetails.AccessUuid)
+	deleted, delErr := u.UsersRepository.DeleteAuth(ctx, accessDetails.AccessUuid)
 	if delErr != nil || deleted == 0 {
 		return apperror.NewInternal()
 	}
@@ -133,7 +134,7 @@ func (u *usersService) Logout(accessDetails *user.AccessDetails) error {
 	return nil
 }
 
-func (u *usersService) Refresh(ri *user.RefreshInput) (map[string]string, error) {
+func (u *usersService) Refresh(ctx context.Context, ri *user.RefreshInput) (map[string]string, error) {
 	// Some pre-required
 
 	if ri.Pin != nil && ri.Signature == nil {
@@ -149,7 +150,7 @@ func (u *usersService) Refresh(ri *user.RefreshInput) (map[string]string, error)
 	// Enforce the second factor server-side: a valid refresh token alone must
 	// not be enough once the account has pin or fingerprint enabled, otherwise
 	// the extra factor is only a client-side illusion.
-	secureUser, err := u.UsersRepository.FindById(rd.UserId)
+	secureUser, err := u.UsersRepository.FindById(ctx, rd.UserId)
 	if err != nil {
 		return nil, apperror.NewAuthorization("Not authorized")
 	}
@@ -168,7 +169,7 @@ func (u *usersService) Refresh(ri *user.RefreshInput) (map[string]string, error)
 			return nil, err
 		}
 
-		storedUser, err := u.UsersRepository.FindPkeyAndChallengeById(rd.UserId)
+		storedUser, err := u.UsersRepository.FindPkeyAndChallengeById(ctx, rd.UserId)
 		if err != nil {
 			return nil, err
 		}
@@ -180,7 +181,7 @@ func (u *usersService) Refresh(ri *user.RefreshInput) (map[string]string, error)
 		// Consume the challenge before verifying so it can be used at most once,
 		// even if verification fails. This prevents replaying a captured
 		// challenge/signature pair.
-		if err := u.UsersRepository.UpdateChallenge(rd.UserId, nil); err != nil {
+		if err := u.UsersRepository.UpdateChallenge(ctx, rd.UserId, nil); err != nil {
 			return nil, err
 		}
 
@@ -199,33 +200,33 @@ func (u *usersService) Refresh(ri *user.RefreshInput) (map[string]string, error)
 
 	// Verification of pin
 	if ri.Pin != nil {
-		err = u.UsersRepository.CheckPin(rd.UserId, *ri.Pin)
+		err = u.UsersRepository.CheckPin(ctx, rd.UserId, *ri.Pin)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	//Delete the previous Refresh Token
-	deleted, delErr := u.UsersRepository.DeleteAuth(rd.RefreshUuid)
+	deleted, delErr := u.UsersRepository.DeleteAuth(ctx, rd.RefreshUuid)
 	if delErr != nil || deleted == 0 { // if any goes wrong
 		return nil, apperror.NewAuthorization("Not authorized")
 	}
 	//Create new pairs of refresh and access tokens
-	tokens, err := u.createSession(rd.UserId)
+	tokens, err := u.createSession(ctx, rd.UserId)
 	if err != nil {
 		return nil, apperror.NewStatusForbidden()
 	}
 	return tokens, nil
 }
 
-func (u *usersService) ResetPassword(usr *user.User) error {
+func (u *usersService) ResetPassword(ctx context.Context, usr *user.User) error {
 	if _, err := mail.ParseAddress(usr.Username); err != nil {
 		return apperror.NewStatusUnprocessableEntity()
 	}
 
 	// Always return success regardless of whether the email is known, so the
 	// endpoint cannot be used to enumerate accounts.
-	idUser, err := u.UsersRepository.FindIdByUsername(usr.Username)
+	idUser, err := u.UsersRepository.FindIdByUsername(ctx, usr.Username)
 	if err != nil {
 		return nil
 	}
@@ -237,7 +238,7 @@ func (u *usersService) ResetPassword(usr *user.User) error {
 		log.Printf("reset password: could not generate token: %v", err)
 		return nil
 	}
-	if err := u.UsersRepository.StoreResetToken(idUser, token, resetTokenTTL); err != nil {
+	if err := u.UsersRepository.StoreResetToken(ctx, idUser, token, resetTokenTTL); err != nil {
 		log.Printf("reset password: could not store token: %v", err)
 		return nil
 	}
@@ -274,16 +275,16 @@ func (u *usersService) sendResetEmail(to string, link string) error {
 // ConfirmResetPassword sets a new password for the user bound to resetToken. The
 // token is consumed (revoked) on use, so it works at most once and never grants
 // access to any other endpoint.
-func (u *usersService) ConfirmResetPassword(newPassword string, resetToken string) (map[string]string, error) {
-	idUser, err := u.UsersRepository.ConsumeResetToken(resetToken)
+func (u *usersService) ConfirmResetPassword(ctx context.Context, newPassword string, resetToken string) (map[string]string, error) {
+	idUser, err := u.UsersRepository.ConsumeResetToken(ctx, resetToken)
 	if err != nil {
 		return nil, apperror.NewAuthorization("Not authorized")
 	}
-	return u.generateAndUpdatePassword(newPassword, idUser)
+	return u.generateAndUpdatePassword(ctx, newPassword, idUser)
 }
 
-func (u *usersService) UpdatePassword(oldPassword string, newPassword string, idUser uint64) (map[string]string, error) {
-	storedPassword, err := u.UsersRepository.FindPasswordById(idUser)
+func (u *usersService) UpdatePassword(ctx context.Context, oldPassword string, newPassword string, idUser uint64) (map[string]string, error) {
+	storedPassword, err := u.UsersRepository.FindPasswordById(ctx, idUser)
 	if err != nil {
 		return nil, err
 	}
@@ -294,10 +295,10 @@ func (u *usersService) UpdatePassword(oldPassword string, newPassword string, id
 		return nil, apperror.NewAuthorization("Not authorized")
 	}
 
-	return u.generateAndUpdatePassword(newPassword, idUser)
+	return u.generateAndUpdatePassword(ctx, newPassword, idUser)
 }
 
-func (u *usersService) generateAndUpdatePassword(newPassword string, idUser uint64) (map[string]string, error) {
+func (u *usersService) generateAndUpdatePassword(ctx context.Context, newPassword string, idUser uint64) (map[string]string, error) {
 	// Salt and hash the password using the bcrypt algorithm.
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), user.PasswordBcryptCost)
 	if err != nil {
@@ -305,15 +306,15 @@ func (u *usersService) generateAndUpdatePassword(newPassword string, idUser uint
 	}
 
 	// Store new password
-	err = u.UsersRepository.UpdatePassword(idUser, string(hashedPassword))
+	err = u.UsersRepository.UpdatePassword(ctx, idUser, string(hashedPassword))
 	if err != nil {
 		return nil, err
 	}
 
-	return u.createSession(idUser)
+	return u.createSession(ctx, idUser)
 }
 
-func (u *usersService) Challenge(refreshToken string) (*string, error) {
+func (u *usersService) Challenge(ctx context.Context, refreshToken string) (*string, error) {
 	// 32 random bytes (256 bits) rendered as URL-safe base64, untruncated, so
 	// the challenge keeps its full entropy.
 	bytes := make([]byte, 32)
@@ -329,7 +330,7 @@ func (u *usersService) Challenge(refreshToken string) (*string, error) {
 		return nil, apperror.NewAuthorization("Refresh token expired")
 	}
 
-	err = u.UsersRepository.UpdateChallenge(rd.UserId, &challenge)
+	err = u.UsersRepository.UpdateChallenge(ctx, rd.UserId, &challenge)
 	if err != nil {
 		return nil, err
 	}
@@ -345,7 +346,7 @@ func (u *usersService) Challenge(refreshToken string) (*string, error) {
  *   pkey?: string
  * }
  */
-func (u *usersService) SecureAuth(usr *user.User) (*user.UserResponse, error) {
+func (u *usersService) SecureAuth(ctx context.Context, usr *user.User) (*user.UserResponse, error) {
 	// Some pre-required
 
 	if usr.IsFingerprintEnabled && usr.IsPinEnabled {
@@ -392,12 +393,12 @@ func (u *usersService) SecureAuth(usr *user.User) (*user.UserResponse, error) {
 	}
 
 	// request
-	if err := u.UsersRepository.UpdatePinAndFingerprint(usr, removePkey, removePin); err != nil {
+	if err := u.UsersRepository.UpdatePinAndFingerprint(ctx, usr, removePkey, removePin); err != nil {
 		return nil, err
 	}
 
 	// Get new values and send them back
-	res, err := u.UsersRepository.FindById(usr.ID)
+	res, err := u.UsersRepository.FindById(ctx, usr.ID)
 	if err != nil {
 		return nil, err
 	}

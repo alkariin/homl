@@ -1,6 +1,7 @@
 package application_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/alkariin/homl/homl-web/internal/application"
@@ -11,6 +12,8 @@ import (
 )
 
 func TestCreateTag(t *testing.T) {
+	ctx := context.Background()
+
 	t.Run("Rejects a tag pointing at the Persons category", func(t *testing.T) {
 		catRepo := new(mocks.MockCategoriesRepo)
 		svc := application.NewTagsService(&application.TSConfig{CategoriesRepository: catRepo, Crypto: testCrypto})
@@ -18,10 +21,10 @@ func TestCreateTag(t *testing.T) {
 		// Persons category id = last date id + 1.
 		catRepo.On("FindLastIdByIdUser", uint64(1)).Return(uint(3), nil)
 
-		err := svc.CreateTag(1, &category.Tag{Tag: "Anything", IdCategory: 4})
+		_, err := svc.CreateTag(ctx, 1, &category.Tag{Tag: "Anything", IdCategory: 4})
 
 		assert.Error(t, err)
-		catRepo.AssertNotCalled(t, "CreateTag", mock.Anything, mock.Anything)
+		catRepo.AssertNotCalled(t, "CreateTag", mock.Anything, mock.Anything, mock.Anything)
 	})
 
 	t.Run("Rejects a blacklisted tag (month name)", func(t *testing.T) {
@@ -31,10 +34,10 @@ func TestCreateTag(t *testing.T) {
 		catRepo.On("FindLastIdByIdUser", uint64(1)).Return(uint(3), nil)
 
 		// "january" -> title-cased "January" is in BLACKLIST_TAGS.
-		err := svc.CreateTag(1, &category.Tag{Tag: "january", IdCategory: 2})
+		_, err := svc.CreateTag(ctx, 1, &category.Tag{Tag: "january", IdCategory: 2})
 
 		assert.Error(t, err)
-		catRepo.AssertNotCalled(t, "CreateTag", mock.Anything, mock.Anything)
+		catRepo.AssertNotCalled(t, "CreateTag", mock.Anything, mock.Anything, mock.Anything)
 	})
 
 	t.Run("Creates a valid tag (encrypted, title-cased)", func(t *testing.T) {
@@ -46,9 +49,164 @@ func TestCreateTag(t *testing.T) {
 		catRepo.On("CreateTag", mock.MatchedBy(func(enc string) bool {
 			dec, err := testCrypto.Decrypt(enc)
 			return err == nil && dec == "Cinema"
-		}), uint(2)).Return(nil)
+		}), uint(2), (*uint)(nil)).Return(uint(1), nil)
 
-		err := svc.CreateTag(1, &category.Tag{Tag: "cinema", IdCategory: 2})
+		id, err := svc.CreateTag(ctx, 1, &category.Tag{Tag: "cinema", IdCategory: 2})
+
+		assert.NoError(t, err)
+		assert.Equal(t, uint(1), id)
+		catRepo.AssertExpectations(t)
+	})
+
+	t.Run("Creates a synonym of a valid main tag of the same category", func(t *testing.T) {
+		catRepo := new(mocks.MockCategoriesRepo)
+		svc := application.NewTagsService(&application.TSConfig{CategoriesRepository: catRepo, Crypto: testCrypto})
+
+		idParent := uint(10)
+
+		catRepo.On("FindLastIdByIdUser", uint64(1)).Return(uint(3), nil)
+		catRepo.On("CheckLastIdByIdAndIdUser", uint64(1), uint(2)).Return(nil)
+		// The parent exists for the user, is a main tag (no parent of its own)
+		// and lives in the same category.
+		catRepo.On("FindTagForUser", idParent, uint64(1)).
+			Return(&category.Tag{Id: idParent, Tag: "enc", IdCategory: 2, IdParentTag: nil}, nil)
+		catRepo.On("CreateTag", mock.MatchedBy(func(enc string) bool {
+			dec, err := testCrypto.Decrypt(enc)
+			return err == nil && dec == "Movies"
+		}), uint(2), &idParent).Return(uint(11), nil)
+
+		id, err := svc.CreateTag(ctx, 1, &category.Tag{Tag: "movies", IdCategory: 2, IdParentTag: &idParent})
+
+		assert.NoError(t, err)
+		assert.Equal(t, uint(11), id)
+		catRepo.AssertExpectations(t)
+	})
+
+	t.Run("Rejects a synonym whose parent is itself a synonym", func(t *testing.T) {
+		catRepo := new(mocks.MockCategoriesRepo)
+		svc := application.NewTagsService(&application.TSConfig{CategoriesRepository: catRepo, Crypto: testCrypto})
+
+		idParent := uint(10)
+		idGrandParent := uint(4)
+
+		catRepo.On("FindLastIdByIdUser", uint64(1)).Return(uint(3), nil)
+		catRepo.On("CheckLastIdByIdAndIdUser", uint64(1), uint(2)).Return(nil)
+		// The parent is already a synonym: depth is limited to one level.
+		catRepo.On("FindTagForUser", idParent, uint64(1)).
+			Return(&category.Tag{Id: idParent, IdCategory: 2, IdParentTag: &idGrandParent}, nil)
+
+		_, err := svc.CreateTag(ctx, 1, &category.Tag{Tag: "movies", IdCategory: 2, IdParentTag: &idParent})
+
+		assert.Error(t, err)
+		catRepo.AssertNotCalled(t, "CreateTag", mock.Anything, mock.Anything, mock.Anything)
+	})
+
+	t.Run("Rejects a synonym whose parent is in a different category", func(t *testing.T) {
+		catRepo := new(mocks.MockCategoriesRepo)
+		svc := application.NewTagsService(&application.TSConfig{CategoriesRepository: catRepo, Crypto: testCrypto})
+
+		idParent := uint(10)
+
+		catRepo.On("FindLastIdByIdUser", uint64(1)).Return(uint(3), nil)
+		catRepo.On("CheckLastIdByIdAndIdUser", uint64(1), uint(2)).Return(nil)
+		// The parent lives in category 1, the new synonym targets category 2.
+		catRepo.On("FindTagForUser", idParent, uint64(1)).
+			Return(&category.Tag{Id: idParent, IdCategory: 1, IdParentTag: nil}, nil)
+
+		_, err := svc.CreateTag(ctx, 1, &category.Tag{Tag: "movies", IdCategory: 2, IdParentTag: &idParent})
+
+		assert.Error(t, err)
+		catRepo.AssertNotCalled(t, "CreateTag", mock.Anything, mock.Anything, mock.Anything)
+	})
+
+	t.Run("Rejects a blacklisted synonym name", func(t *testing.T) {
+		catRepo := new(mocks.MockCategoriesRepo)
+		svc := application.NewTagsService(&application.TSConfig{CategoriesRepository: catRepo, Crypto: testCrypto})
+
+		idParent := uint(10)
+
+		catRepo.On("FindLastIdByIdUser", uint64(1)).Return(uint(3), nil)
+
+		// "january" -> title-cased "January" is in BLACKLIST_TAGS, synonym or not.
+		_, err := svc.CreateTag(ctx, 1, &category.Tag{Tag: "january", IdCategory: 2, IdParentTag: &idParent})
+
+		assert.Error(t, err)
+		catRepo.AssertNotCalled(t, "CreateTag", mock.Anything, mock.Anything, mock.Anything)
+	})
+}
+
+func TestUpdateTag(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("Rejects a tag being its own synonym", func(t *testing.T) {
+		catRepo := new(mocks.MockCategoriesRepo)
+		svc := application.NewTagsService(&application.TSConfig{CategoriesRepository: catRepo, Crypto: testCrypto})
+
+		idTag := uint(7)
+
+		// The tag exists, belongs to the user and is not a person tag.
+		catRepo.On("FindTagForUser", idTag, uint64(1)).
+			Return(&category.Tag{Id: idTag, IdCategory: 2, IdPerson: 0}, nil)
+		catRepo.On("HasSynonyms", idTag).Return(false, nil)
+		catRepo.On("FindLastIdByIdUser", uint64(1)).Return(uint(3), nil)
+		catRepo.On("CheckLastIdByIdAndIdUser", uint64(1), uint(2)).Return(nil)
+
+		err := svc.UpdateTag(ctx, 1, &category.Tag{Id: idTag, Tag: "cinema", IdCategory: 2, IdParentTag: &idTag})
+
+		assert.Error(t, err)
+		catRepo.AssertNotCalled(t, "UpdateTag", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	})
+
+	t.Run("Rejects turning a tag that has synonyms into a synonym", func(t *testing.T) {
+		catRepo := new(mocks.MockCategoriesRepo)
+		svc := application.NewTagsService(&application.TSConfig{CategoriesRepository: catRepo, Crypto: testCrypto})
+
+		idTag := uint(7)
+		idParent := uint(10)
+
+		catRepo.On("FindTagForUser", idTag, uint64(1)).
+			Return(&category.Tag{Id: idTag, IdCategory: 2, IdPerson: 0}, nil)
+		// The tag already has synonyms of its own: depth would exceed one level.
+		catRepo.On("HasSynonyms", idTag).Return(true, nil)
+
+		err := svc.UpdateTag(ctx, 1, &category.Tag{Id: idTag, Tag: "cinema", IdCategory: 2, IdParentTag: &idParent})
+
+		assert.Error(t, err)
+		catRepo.AssertNotCalled(t, "UpdateTag", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	})
+
+	t.Run("Rejects updating a person tag", func(t *testing.T) {
+		catRepo := new(mocks.MockCategoriesRepo)
+		svc := application.NewTagsService(&application.TSConfig{CategoriesRepository: catRepo, Crypto: testCrypto})
+
+		idTag := uint(7)
+
+		// Person tags are only managed through the person endpoints.
+		catRepo.On("FindTagForUser", idTag, uint64(1)).
+			Return(&category.Tag{Id: idTag, IdCategory: 4, IdPerson: 9}, nil)
+
+		err := svc.UpdateTag(ctx, 1, &category.Tag{Id: idTag, Tag: "cinema", IdCategory: 2})
+
+		assert.Error(t, err)
+		catRepo.AssertNotCalled(t, "UpdateTag", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	})
+
+	t.Run("Updates a valid tag (encrypted, title-cased)", func(t *testing.T) {
+		catRepo := new(mocks.MockCategoriesRepo)
+		svc := application.NewTagsService(&application.TSConfig{CategoriesRepository: catRepo, Crypto: testCrypto})
+
+		idTag := uint(7)
+
+		catRepo.On("FindTagForUser", idTag, uint64(1)).
+			Return(&category.Tag{Id: idTag, IdCategory: 2, IdPerson: 0}, nil)
+		catRepo.On("FindLastIdByIdUser", uint64(1)).Return(uint(3), nil)
+		catRepo.On("CheckLastIdByIdAndIdUser", uint64(1), uint(2)).Return(nil)
+		catRepo.On("UpdateTag", mock.MatchedBy(func(enc string) bool {
+			dec, err := testCrypto.Decrypt(enc)
+			return err == nil && dec == "Cinema"
+		}), uint(2), idTag, (*uint)(nil)).Return(nil)
+
+		err := svc.UpdateTag(ctx, 1, &category.Tag{Id: idTag, Tag: "cinema", IdCategory: 2})
 
 		assert.NoError(t, err)
 		catRepo.AssertExpectations(t)
@@ -62,7 +220,7 @@ func TestDeleteTag(t *testing.T) {
 
 		catRepo.On("DeleteTag", uint(5), uint64(1)).Return(nil)
 
-		err := svc.DeleteTag(5, 1)
+		err := svc.DeleteTag(context.Background(), 5, 1)
 
 		assert.NoError(t, err)
 		catRepo.AssertExpectations(t)

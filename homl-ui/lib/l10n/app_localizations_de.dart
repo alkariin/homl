@@ -53,4 +53,86 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get settings_selectLanguage => 'Select language';
+
+  @override
+  String get global_cancel => 'Abbrechen';
+
+  @override
+  String get global_save => 'Speichern';
+
+  @override
+  String get global_delete => 'Löschen';
+
+  @override
+  String get nav_categories => 'Kategorien';
+
+  @override
+  String get nav_search => 'Suchen';
+
+  @override
+  String get nav_add => 'Hinzufügen';
+
+  @override
+  String get insert_tagInputLabel => 'Tag hinzufügen';
+
+  @override
+  String get insert_descriptionLabel => 'Beschreibung';
+
+  @override
+  String get insert_submit => 'Ereignis erstellen';
+
+  @override
+  String get insert_eventCreated => 'Ereignis erstellt';
+
+  @override
+  String get insert_noTagsError => 'Mindestens einen Tag hinzufügen';
+
+  @override
+  String get list_filterLabel => 'Nach Tag filtern';
+
+  @override
+  String get list_manageCategories => 'Kategorien verwalten';
+
+  @override
+  String get list_noEvents => 'Keine Ereignisse gefunden';
+
+  @override
+  String get categories_title => 'Kategorien';
+
+  @override
+  String get categories_newCategory => 'Neue Kategorie';
+
+  @override
+  String get categories_editCategory => 'Kategorie bearbeiten';
+
+  @override
+  String get categories_deleteCategory => 'Kategorie löschen?';
+
+  @override
+  String get categories_deleteMoveTags =>
+      'Tags in die Kategorie Other verschieben';
+
+  @override
+  String get categories_categoryName => 'Name';
+
+  @override
+  String get categories_color => 'Farbe';
+
+  @override
+  String get categories_newTag => 'Neuer Tag';
+
+  @override
+  String get categories_renameTag => 'Tag umbenennen';
+
+  @override
+  String get categories_deleteTag => 'Tag löschen';
+
+  @override
+  String get categories_addSynonym => 'Synonym hinzufügen';
+
+  @override
+  String get categories_detachSynonym => 'Synonym trennen';
+
+  @override
+  String get categories_synonymName => 'Synonym';
 }

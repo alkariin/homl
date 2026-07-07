@@ -33,9 +33,13 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     on<EndModal>(_onEndModal);
     on<ErrorModal>(_onErrorModal);
     on<Init>(_onInit);
+    on<RefreshEvents>(_onRefreshEvents);
     on<CreateTag>(_onCreateTag);
     on<UpdateTag>(_onUpdateTag);
     on<DeleteTag>(_onDeleteTag);
+    on<CreateCategory>(_onCreateCategory);
+    on<UpdateCategory>(_onUpdateCategory);
+    on<DeleteCategory>(_onDeleteCategory);
 
     _settingsSubscription =
         settingsRepository.settingsStream.listen((settings) {
@@ -50,32 +54,104 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     add(Init());
   }
 
-  _onCreateTag(CreateTag event, Emitter<HomeState> emit) {}
+  Map<String, TagView> _buildTagsMap(List<Category> categories) {
+    Map<String, TagView> tagMap = {};
 
-  _onUpdateTag(UpdateTag event, Emitter<HomeState> emit) {}
+    for (var category in categories) {
+      for (var tag in category.tags) {
+        tagMap[tag.tag] = TagView(
+            tag.id, category.color, tag.tag, category.id, tag.idParentTag);
+      }
+    }
 
-  _onDeleteTag(DeleteTag event, Emitter<HomeState> emit) {}
+    var sortedEntries = tagMap.entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
+    return Map.fromEntries(sortedEntries);
+  }
+
+  /// Re-fetches the categories (and the tags map) after any tag/category CRUD.
+  Future<void> _refreshCategories(Emitter<HomeState> emit) async {
+    final categories = await categoriesRepository.getCategories();
+    emit(state.copyWith(
+        categories: categories, allTagsMap: _buildTagsMap(categories)));
+  }
 
   _onInit(Init event, Emitter<HomeState> emit) async {
     try {
       final events = await eventsRepository.getEvents();
       final categories = await categoriesRepository.getCategories();
 
-      Map<String, TagView> tagMap = {};
-
-      for (var category in categories) {
-        for (var tag in category.tags) {
-          tagMap[tag.tag] =
-              TagView(tag.id, category.color, tag.tag, category.id);
-        }
-      }
-
-      var sortedEntries = tagMap.entries.toList()
-        ..sort((a, b) => a.key.compareTo(b.key));
-      Map<String, TagView> sortedTagsMap = Map.fromEntries(sortedEntries);
-
       emit(state.copyWith(
-          events: events, categories: categories, allTagsMap: sortedTagsMap));
+          events: events,
+          categories: categories,
+          allTagsMap: _buildTagsMap(categories)));
+    } catch (_) {
+      emit(state.copyWith(modal: localization.global_unexpectedError));
+    }
+  }
+
+  _onRefreshEvents(RefreshEvents event, Emitter<HomeState> emit) async {
+    try {
+      final events = await eventsRepository.getEvents();
+      emit(state.copyWith(events: events));
+    } catch (_) {
+      emit(state.copyWith(modal: localization.global_unexpectedError));
+    }
+  }
+
+  _onCreateTag(CreateTag event, Emitter<HomeState> emit) async {
+    try {
+      await tagsRepository.createTag(event.text, event.idCategory,
+          idParentTag: event.idParentTag);
+      await _refreshCategories(emit);
+    } catch (_) {
+      emit(state.copyWith(modal: localization.global_unexpectedError));
+    }
+  }
+
+  _onUpdateTag(UpdateTag event, Emitter<HomeState> emit) async {
+    try {
+      await tagsRepository.updateTag(event.id, event.text, event.idCategory,
+          idParentTag: event.idParentTag);
+      await _refreshCategories(emit);
+    } catch (_) {
+      emit(state.copyWith(modal: localization.global_unexpectedError));
+    }
+  }
+
+  _onDeleteTag(DeleteTag event, Emitter<HomeState> emit) async {
+    try {
+      await tagsRepository.deleteTag(event.id);
+      await _refreshCategories(emit);
+    } catch (_) {
+      emit(state.copyWith(modal: localization.global_unexpectedError));
+    }
+  }
+
+  _onCreateCategory(CreateCategory event, Emitter<HomeState> emit) async {
+    try {
+      await categoriesRepository.createCategory(event.name, event.color);
+      await _refreshCategories(emit);
+    } catch (_) {
+      emit(state.copyWith(modal: localization.global_unexpectedError));
+    }
+  }
+
+  _onUpdateCategory(UpdateCategory event, Emitter<HomeState> emit) async {
+    try {
+      await categoriesRepository.updateCategory(
+          event.id, event.name, event.color);
+      await _refreshCategories(emit);
+    } catch (_) {
+      emit(state.copyWith(modal: localization.global_unexpectedError));
+    }
+  }
+
+  _onDeleteCategory(DeleteCategory event, Emitter<HomeState> emit) async {
+    try {
+      await categoriesRepository.deleteCategory(event.id,
+          moveTags: event.moveTags);
+      await _refreshCategories(emit);
     } catch (_) {
       emit(state.copyWith(modal: localization.global_unexpectedError));
     }
@@ -90,7 +166,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
   }
 
   _onEndModal(EndModal event, Emitter<HomeState> emit) {
-    emit(state.copyWith(modal: null));
+    emit(state.copyWith(clearModal: true));
   }
 
   @override

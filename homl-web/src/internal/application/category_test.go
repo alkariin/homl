@@ -1,6 +1,7 @@
 package application_test
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -23,7 +24,7 @@ func TestCreateCategory(t *testing.T) {
 			return err == nil && dec == "Noces" && c.Color == "red" && !c.IsLocked && c.IdUser == 42
 		})).Return(nil)
 
-		err := svc.CreateCategory(&category.Category{Category: "noces", Color: "red", IdUser: 42})
+		err := svc.CreateCategory(context.Background(), &category.Category{Category: "noces", Color: "red", IdUser: 42})
 
 		assert.NoError(t, err)
 		mockRepo.AssertExpectations(t)
@@ -35,7 +36,7 @@ func TestCreateCategory(t *testing.T) {
 
 		mockRepo.On("Create", mock.Anything).Return(errors.New("db down"))
 
-		err := svc.CreateCategory(&category.Category{Category: "Noces", Color: "red"})
+		err := svc.CreateCategory(context.Background(), &category.Category{Category: "Noces", Color: "red"})
 
 		assert.Error(t, err)
 		mockRepo.AssertExpectations(t)
@@ -54,7 +55,7 @@ func TestUpdateCategory(t *testing.T) {
 			IsLocked: true,
 		}, nil)
 
-		err := svc.UpdateCategory(&category.Category{Id: 1, Category: "Renamed", Color: "#ffffff"})
+		err := svc.UpdateCategory(context.Background(), &category.Category{Id: 1, Category: "Renamed", Color: "#ffffff"})
 
 		assert.Error(t, err)
 		// Update must never be reached.
@@ -77,7 +78,7 @@ func TestUpdateCategory(t *testing.T) {
 			return err == nil && dec == "Trips" && c.Color == "#000000"
 		})).Return(nil)
 
-		err := svc.UpdateCategory(&category.Category{Id: 2, Category: "Trips", Color: "#000000"})
+		err := svc.UpdateCategory(context.Background(), &category.Category{Id: 2, Category: "Trips", Color: "#000000"})
 
 		assert.NoError(t, err)
 		mockRepo.AssertExpectations(t)
@@ -101,7 +102,7 @@ func TestGetCategories(t *testing.T) {
 		}
 		mockRepo.On("GetAllCategoriesWithTags", uint64(7)).Return(categories, tags, nil)
 
-		res, err := svc.GetCategories(7)
+		res, err := svc.GetCategories(context.Background(), 7)
 
 		assert.NoError(t, err)
 		assert.Len(t, res, 2)
@@ -122,7 +123,7 @@ func TestDeleteCategory(t *testing.T) {
 
 		mockRepo.On("Delete", uint(3), uint64(9), true).Return(nil)
 
-		err := svc.DeleteCategory(3, 9, true)
+		err := svc.DeleteCategory(context.Background(), 3, 9, true)
 
 		assert.NoError(t, err)
 		mockRepo.AssertExpectations(t)

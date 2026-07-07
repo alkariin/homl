@@ -6,7 +6,11 @@ class TagView {
   final String tagName;
   final int idCategory;
 
-  const TagView(this.id, this.color, this.tagName, this.idCategory);
+  /// Id of the main tag when this tag is a synonym (null = main tag).
+  final int? idParentTag;
+
+  const TagView(this.id, this.color, this.tagName, this.idCategory,
+      [this.idParentTag]);
 }
 
 class HomeState extends Equatable {
@@ -39,17 +43,19 @@ class HomeState extends Equatable {
       List<Category>? categories,
       Settings? settings,
       Map<String, TagView>? allTagsMap,
-      String? modal}) {
+      String? modal,
+      bool clearModal = false}) {
     return HomeState(
       username: username ?? this.username,
       events: events ?? this.events,
       categories: categories ?? this.categories,
       settings: settings ?? this.settings,
       allTagsMap: allTagsMap ?? this.allTagsMap,
-      modal: modal ?? this.modal,
+      modal: clearModal ? null : (modal ?? this.modal),
     );
   }
 
   @override
-  List<Object?> get props => [username, events, categories, settings, modal];
+  List<Object?> get props =>
+      [username, events, categories, settings, allTagsMap, modal];
 }
