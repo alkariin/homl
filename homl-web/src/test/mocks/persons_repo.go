@@ -1,16 +1,20 @@
 package mocks
 
 import (
+	"context"
+
 	"github.com/alkariin/homl/homl-web/internal/domain/person"
 	"github.com/stretchr/testify/mock"
 )
 
 // MockPersonsRepo is a programmable testify mock for person.Repository.
+// The ctx argument is deliberately not forwarded to m.Called so expectations
+// stay expressed on the business arguments only.
 type MockPersonsRepo struct {
 	mock.Mock
 }
 
-func (m *MockPersonsRepo) FindById(idPerson uint) (*person.Person, error) {
+func (m *MockPersonsRepo) FindById(ctx context.Context, idPerson uint) (*person.Person, error) {
 	ret := m.Called(idPerson)
 
 	var r0 *person.Person
@@ -26,7 +30,7 @@ func (m *MockPersonsRepo) FindById(idPerson uint) (*person.Person, error) {
 	return r0, r1
 }
 
-func (m *MockPersonsRepo) FindPersonsWithTagsAndCategories(idUser uint64) (map[uint]person.Person, map[uint][]person.Nickname, error) {
+func (m *MockPersonsRepo) FindPersonsWithTagsAndCategories(ctx context.Context, idUser uint64) (map[uint]person.Person, map[uint][]person.Nickname, error) {
 	ret := m.Called(idUser)
 
 	var r0 map[uint]person.Person
@@ -47,7 +51,7 @@ func (m *MockPersonsRepo) FindPersonsWithTagsAndCategories(idUser uint64) (map[u
 	return r0, r1, r2
 }
 
-func (m *MockPersonsRepo) CreatePersonWithTags(encFirstname string, encLastname string, encMainTagName string, idCategoryPerson uint, nicknames []string) error {
+func (m *MockPersonsRepo) CreatePersonWithTags(ctx context.Context, encFirstname string, encLastname string, encMainTagName string, idCategoryPerson uint, nicknames []string) error {
 	ret := m.Called(encFirstname, encLastname, encMainTagName, idCategoryPerson, nicknames)
 
 	var r0 error
@@ -58,7 +62,7 @@ func (m *MockPersonsRepo) CreatePersonWithTags(encFirstname string, encLastname 
 	return r0
 }
 
-func (m *MockPersonsRepo) CheckPersonIdsWithTagsAndCategories(idUser uint64, idPerson uint) error {
+func (m *MockPersonsRepo) CheckPersonIdsWithTagsAndCategories(ctx context.Context, idUser uint64, idPerson uint) error {
 	ret := m.Called(idUser, idPerson)
 
 	var r0 error
@@ -70,6 +74,7 @@ func (m *MockPersonsRepo) CheckPersonIdsWithTagsAndCategories(idUser uint64, idP
 }
 
 func (m *MockPersonsRepo) UpdatePersonWithTags(
+	ctx context.Context,
 	storedPerson *person.Person,
 	encFirstname string,
 	encLastname string,
@@ -89,7 +94,7 @@ func (m *MockPersonsRepo) UpdatePersonWithTags(
 	return r0
 }
 
-func (m *MockPersonsRepo) DeletePerson(idPerson uint, idUser uint64) error {
+func (m *MockPersonsRepo) DeletePerson(ctx context.Context, idPerson uint, idUser uint64) error {
 	ret := m.Called(idPerson, idUser)
 
 	var r0 error

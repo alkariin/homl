@@ -5,6 +5,7 @@
 package mocks
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/alkariin/homl/homl-web/internal/domain/category"
@@ -13,6 +14,9 @@ import (
 	"github.com/alkariin/homl/homl-web/internal/domain/user"
 	"github.com/stretchr/testify/mock"
 )
+
+// The ctx argument of the service methods is deliberately not forwarded to
+// m.Called so expectations stay expressed on the business arguments only.
 
 func errAt(ret mock.Arguments, i int) error {
 	if ret.Get(i) != nil {
@@ -34,40 +38,40 @@ type MockUsersService struct {
 	mock.Mock
 }
 
-func (m *MockUsersService) Registration(u *user.User, language *user.Language) (map[string]string, error) {
+func (m *MockUsersService) Registration(ctx context.Context, u *user.User, language *user.Language) (map[string]string, error) {
 	ret := m.Called(u, language)
 	return tokensAt(ret, 0), errAt(ret, 1)
 }
 
-func (m *MockUsersService) Login(user *user.User) (map[string]string, error) {
+func (m *MockUsersService) Login(ctx context.Context, user *user.User) (map[string]string, error) {
 	ret := m.Called(user)
 	return tokensAt(ret, 0), errAt(ret, 1)
 }
 
-func (m *MockUsersService) Logout(accessDetails *user.AccessDetails) error {
+func (m *MockUsersService) Logout(ctx context.Context, accessDetails *user.AccessDetails) error {
 	return errAt(m.Called(accessDetails), 0)
 }
 
-func (m *MockUsersService) Refresh(refreshInput *user.RefreshInput) (map[string]string, error) {
+func (m *MockUsersService) Refresh(ctx context.Context, refreshInput *user.RefreshInput) (map[string]string, error) {
 	ret := m.Called(refreshInput)
 	return tokensAt(ret, 0), errAt(ret, 1)
 }
 
-func (m *MockUsersService) ResetPassword(user *user.User) error {
+func (m *MockUsersService) ResetPassword(ctx context.Context, user *user.User) error {
 	return errAt(m.Called(user), 0)
 }
 
-func (m *MockUsersService) ConfirmResetPassword(newPassword string, resetToken string) (map[string]string, error) {
+func (m *MockUsersService) ConfirmResetPassword(ctx context.Context, newPassword string, resetToken string) (map[string]string, error) {
 	ret := m.Called(newPassword, resetToken)
 	return tokensAt(ret, 0), errAt(ret, 1)
 }
 
-func (m *MockUsersService) UpdatePassword(oldPassword string, newPassword string, idUser uint64) (map[string]string, error) {
+func (m *MockUsersService) UpdatePassword(ctx context.Context, oldPassword string, newPassword string, idUser uint64) (map[string]string, error) {
 	ret := m.Called(oldPassword, newPassword, idUser)
 	return tokensAt(ret, 0), errAt(ret, 1)
 }
 
-func (m *MockUsersService) Challenge(refreshToken string) (*string, error) {
+func (m *MockUsersService) Challenge(ctx context.Context, refreshToken string) (*string, error) {
 	ret := m.Called(refreshToken)
 	var r0 *string
 	if ret.Get(0) != nil {
@@ -85,7 +89,7 @@ func (m *MockUsersService) GetUserIdFromToken(request *http.Request) (uint64, er
 	return r0, errAt(ret, 1)
 }
 
-func (m *MockUsersService) SecureAuth(u *user.User) (*user.UserResponse, error) {
+func (m *MockUsersService) SecureAuth(ctx context.Context, u *user.User) (*user.UserResponse, error) {
 	ret := m.Called(u)
 	var r0 *user.UserResponse
 	if ret.Get(0) != nil {
@@ -100,7 +104,7 @@ type MockCategoriesService struct {
 	mock.Mock
 }
 
-func (m *MockCategoriesService) GetCategories(idUser uint64) ([]category.GetCategoryResponse, error) {
+func (m *MockCategoriesService) GetCategories(ctx context.Context, idUser uint64) ([]category.GetCategoryResponse, error) {
 	ret := m.Called(idUser)
 	var r0 []category.GetCategoryResponse
 	if ret.Get(0) != nil {
@@ -109,15 +113,15 @@ func (m *MockCategoriesService) GetCategories(idUser uint64) ([]category.GetCate
 	return r0, errAt(ret, 1)
 }
 
-func (m *MockCategoriesService) CreateCategory(category *category.Category) error {
+func (m *MockCategoriesService) CreateCategory(ctx context.Context, category *category.Category) error {
 	return errAt(m.Called(category), 0)
 }
 
-func (m *MockCategoriesService) UpdateCategory(category *category.Category) error {
+func (m *MockCategoriesService) UpdateCategory(ctx context.Context, category *category.Category) error {
 	return errAt(m.Called(category), 0)
 }
 
-func (m *MockCategoriesService) DeleteCategory(idCategory uint, idUser uint64, moveTags bool) error {
+func (m *MockCategoriesService) DeleteCategory(ctx context.Context, idCategory uint, idUser uint64, moveTags bool) error {
 	return errAt(m.Called(idCategory, idUser, moveTags), 0)
 }
 
@@ -127,7 +131,7 @@ type MockEventsService struct {
 	mock.Mock
 }
 
-func (m *MockEventsService) GetEvents(idUser uint64, tags []string) ([]event.GetEventsResponse, error) {
+func (m *MockEventsService) GetEvents(ctx context.Context, idUser uint64, tags []string) ([]event.GetEventsResponse, error) {
 	ret := m.Called(idUser, tags)
 	var r0 []event.GetEventsResponse
 	if ret.Get(0) != nil {
@@ -136,15 +140,15 @@ func (m *MockEventsService) GetEvents(idUser uint64, tags []string) ([]event.Get
 	return r0, errAt(ret, 1)
 }
 
-func (m *MockEventsService) CreateEvent(idUser uint64, event *event.Event, tagsId []uint) error {
+func (m *MockEventsService) CreateEvent(ctx context.Context, idUser uint64, event *event.Event, tagsId []uint) error {
 	return errAt(m.Called(idUser, event, tagsId), 0)
 }
 
-func (m *MockEventsService) UpdateEvent(idUser uint64, event *event.Event, tagsId []uint) error {
+func (m *MockEventsService) UpdateEvent(ctx context.Context, idUser uint64, event *event.Event, tagsId []uint) error {
 	return errAt(m.Called(idUser, event, tagsId), 0)
 }
 
-func (m *MockEventsService) DeleteEvent(idEvent uint) error {
+func (m *MockEventsService) DeleteEvent(ctx context.Context, idEvent uint) error {
 	return errAt(m.Called(idEvent), 0)
 }
 
@@ -154,15 +158,20 @@ type MockTagsService struct {
 	mock.Mock
 }
 
-func (m *MockTagsService) CreateTag(idUser uint64, tag *category.Tag) error {
+func (m *MockTagsService) CreateTag(ctx context.Context, idUser uint64, tag *category.Tag) (uint, error) {
+	ret := m.Called(idUser, tag)
+	var r0 uint
+	if ret.Get(0) != nil {
+		r0 = ret.Get(0).(uint)
+	}
+	return r0, errAt(ret, 1)
+}
+
+func (m *MockTagsService) UpdateTag(ctx context.Context, idUser uint64, tag *category.Tag) error {
 	return errAt(m.Called(idUser, tag), 0)
 }
 
-func (m *MockTagsService) UpdateTag(idUser uint64, tag *category.Tag) error {
-	return errAt(m.Called(idUser, tag), 0)
-}
-
-func (m *MockTagsService) DeleteTag(idTag uint, idUser uint64) error {
+func (m *MockTagsService) DeleteTag(ctx context.Context, idTag uint, idUser uint64) error {
 	return errAt(m.Called(idTag, idUser), 0)
 }
 
@@ -172,7 +181,7 @@ type MockPersonsService struct {
 	mock.Mock
 }
 
-func (m *MockPersonsService) GetPersons(idUser uint64) ([]person.GetPersonsResponse, error) {
+func (m *MockPersonsService) GetPersons(ctx context.Context, idUser uint64) ([]person.GetPersonsResponse, error) {
 	ret := m.Called(idUser)
 	var r0 []person.GetPersonsResponse
 	if ret.Get(0) != nil {
@@ -181,15 +190,15 @@ func (m *MockPersonsService) GetPersons(idUser uint64) ([]person.GetPersonsRespo
 	return r0, errAt(ret, 1)
 }
 
-func (m *MockPersonsService) CreatePerson(person *person.Person, nicknames []string, idUser uint64) error {
+func (m *MockPersonsService) CreatePerson(ctx context.Context, person *person.Person, nicknames []string, idUser uint64) error {
 	return errAt(m.Called(person, nicknames, idUser), 0)
 }
 
-func (m *MockPersonsService) UpdatePerson(person *person.Person, nicknames []person.Nickname, idUser uint64) error {
+func (m *MockPersonsService) UpdatePerson(ctx context.Context, person *person.Person, nicknames []person.Nickname, idUser uint64) error {
 	return errAt(m.Called(person, nicknames, idUser), 0)
 }
 
-func (m *MockPersonsService) DeletePerson(idPerson uint, idUser uint64) error {
+func (m *MockPersonsService) DeletePerson(ctx context.Context, idPerson uint, idUser uint64) error {
 	return errAt(m.Called(idPerson, idUser), 0)
 }
 
@@ -199,7 +208,7 @@ type MockSettingsService struct {
 	mock.Mock
 }
 
-func (m *MockSettingsService) GetSettings(idUser uint64) (*user.SettingsResponse, error) {
+func (m *MockSettingsService) GetSettings(ctx context.Context, idUser uint64) (*user.SettingsResponse, error) {
 	ret := m.Called(idUser)
 	var r0 *user.SettingsResponse
 	if ret.Get(0) != nil {
@@ -208,7 +217,7 @@ func (m *MockSettingsService) GetSettings(idUser uint64) (*user.SettingsResponse
 	return r0, errAt(ret, 1)
 }
 
-func (m *MockSettingsService) UpdateSettings(idUser uint64, newSettings *user.Settings) (*user.SettingsResponse, error) {
+func (m *MockSettingsService) UpdateSettings(ctx context.Context, idUser uint64, newSettings *user.Settings) (*user.SettingsResponse, error) {
 	ret := m.Called(idUser, newSettings)
 	var r0 *user.SettingsResponse
 	if ret.Get(0) != nil {

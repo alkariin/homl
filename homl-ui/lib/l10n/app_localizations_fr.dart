@@ -54,4 +54,86 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get settings_selectLanguage => 'Selectionner la langue';
+
+  @override
+  String get global_cancel => 'Annuler';
+
+  @override
+  String get global_save => 'Enregistrer';
+
+  @override
+  String get global_delete => 'Supprimer';
+
+  @override
+  String get nav_categories => 'Categories';
+
+  @override
+  String get nav_search => 'Rechercher';
+
+  @override
+  String get nav_add => 'Ajouter';
+
+  @override
+  String get insert_tagInputLabel => 'Ajouter un tag';
+
+  @override
+  String get insert_descriptionLabel => 'Description';
+
+  @override
+  String get insert_submit => 'Creer l\'evenement';
+
+  @override
+  String get insert_eventCreated => 'Evenement cree';
+
+  @override
+  String get insert_noTagsError => 'Ajouter au moins un tag';
+
+  @override
+  String get list_filterLabel => 'Filtrer par tag';
+
+  @override
+  String get list_manageCategories => 'Gerer les categories';
+
+  @override
+  String get list_noEvents => 'Aucun evenement trouve';
+
+  @override
+  String get categories_title => 'Categories';
+
+  @override
+  String get categories_newCategory => 'Nouvelle categorie';
+
+  @override
+  String get categories_editCategory => 'Modifier la categorie';
+
+  @override
+  String get categories_deleteCategory => 'Supprimer la categorie ?';
+
+  @override
+  String get categories_deleteMoveTags =>
+      'Deplacer les tags vers la categorie Other';
+
+  @override
+  String get categories_categoryName => 'Nom';
+
+  @override
+  String get categories_color => 'Couleur';
+
+  @override
+  String get categories_newTag => 'Nouveau tag';
+
+  @override
+  String get categories_renameTag => 'Renommer le tag';
+
+  @override
+  String get categories_deleteTag => 'Supprimer le tag';
+
+  @override
+  String get categories_addSynonym => 'Ajouter un synonyme';
+
+  @override
+  String get categories_detachSynonym => 'Detacher le synonyme';
+
+  @override
+  String get categories_synonymName => 'Synonyme';
 }

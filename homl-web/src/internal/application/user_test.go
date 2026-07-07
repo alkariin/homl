@@ -1,6 +1,7 @@
 package application_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/alkariin/homl/homl-web/internal/application"
@@ -41,7 +42,7 @@ func TestSecureAuth(t *testing.T) {
 		mockUsersRepo.On("UpdatePinAndFingerprint", u, removePkey, removePin).Return(nil)
 		mockUsersRepo.On("FindById", u.ID).Return(u, nil)
 
-		resultUser, err := usersService.SecureAuth(u)
+		resultUser, err := usersService.SecureAuth(context.Background(), u)
 
 		assert.NoError(t, err)
 		assert.Equal(t, resultUser, userResponse)
@@ -55,7 +56,7 @@ func TestSecureAuth(t *testing.T) {
 			IsPinEnabled:         true,
 		}
 
-		resultUser, err := usersService.SecureAuth(u)
+		resultUser, err := usersService.SecureAuth(context.Background(), u)
 
 		assert.Nil(t, resultUser)
 		assert.Error(t, err)
@@ -68,7 +69,7 @@ func TestSecureAuth(t *testing.T) {
 			Pin:                  &pin,
 		}
 
-		resultUser, err := usersService.SecureAuth(u)
+		resultUser, err := usersService.SecureAuth(context.Background(), u)
 
 		assert.Nil(t, resultUser)
 		assert.Error(t, err)
@@ -81,7 +82,7 @@ func TestSecureAuth(t *testing.T) {
 			Pin:          &pin,
 		}
 
-		resultUser, err := usersService.SecureAuth(u)
+		resultUser, err := usersService.SecureAuth(context.Background(), u)
 
 		assert.Nil(t, resultUser)
 		assert.Error(t, err)
@@ -94,7 +95,7 @@ func TestSecureAuth(t *testing.T) {
 			Pin:          &pin,
 		}
 
-		resultUser, err := usersService.SecureAuth(u)
+		resultUser, err := usersService.SecureAuth(context.Background(), u)
 
 		assert.Nil(t, resultUser)
 		assert.Error(t, err)
@@ -108,7 +109,7 @@ func TestSecureAuth(t *testing.T) {
 			Pkey:                 &pkey,
 		}
 
-		resultUser, err := usersService.SecureAuth(u)
+		resultUser, err := usersService.SecureAuth(context.Background(), u)
 
 		assert.Nil(t, resultUser)
 		assert.Error(t, err)
@@ -127,7 +128,7 @@ func TestLogin(t *testing.T) {
 		mockRepo.On("FindByUsername", "demo@homl.local").Return(stored, nil)
 		mockRepo.On("CreateAuth", uint64(1), mock.AnythingOfType("*user.TokenDetails")).Return(nil)
 
-		tokens, err := svc.Login(&user.User{Username: "demo@homl.local", Password: password})
+		tokens, err := svc.Login(context.Background(), &user.User{Username: "demo@homl.local", Password: password})
 
 		assert.NoError(t, err)
 		assert.NotEmpty(t, tokens["access_token"])
@@ -142,7 +143,7 @@ func TestLogin(t *testing.T) {
 		stored := &user.User{ID: 1, Username: "demo@homl.local", Password: string(hashed)}
 		mockRepo.On("FindByUsername", "demo@homl.local").Return(stored, nil)
 
-		tokens, err := svc.Login(&user.User{Username: "demo@homl.local", Password: "wrong-password"})
+		tokens, err := svc.Login(context.Background(), &user.User{Username: "demo@homl.local", Password: "wrong-password"})
 
 		assert.Error(t, err)
 		assert.Nil(t, tokens)
@@ -155,7 +156,7 @@ func TestLogin(t *testing.T) {
 
 		mockRepo.On("FindByUsername", "ghost@homl.local").Return(nil, assert.AnError)
 
-		tokens, err := svc.Login(&user.User{Username: "ghost@homl.local", Password: password})
+		tokens, err := svc.Login(context.Background(), &user.User{Username: "ghost@homl.local", Password: password})
 
 		assert.Error(t, err)
 		assert.Nil(t, tokens)
@@ -171,7 +172,7 @@ func TestLogout(t *testing.T) {
 		mockRepo.On("UpdateChallenge", uint64(1), (*string)(nil)).Return(nil)
 		mockRepo.On("DeleteAuth", "uuid-1").Return(int64(1), nil)
 
-		err := svc.Logout(ad)
+		err := svc.Logout(context.Background(), ad)
 
 		assert.NoError(t, err)
 		mockRepo.AssertExpectations(t)
@@ -185,7 +186,7 @@ func TestLogout(t *testing.T) {
 		mockRepo.On("UpdateChallenge", uint64(1), (*string)(nil)).Return(nil)
 		mockRepo.On("DeleteAuth", "uuid-missing").Return(int64(0), nil)
 
-		err := svc.Logout(ad)
+		err := svc.Logout(context.Background(), ad)
 
 		assert.Error(t, err)
 		mockRepo.AssertExpectations(t)
@@ -201,7 +202,7 @@ func TestResetPassword(t *testing.T) {
 		mockRepo.On("FindIdByUsername", "demo@homl.local").Return(uint64(1), nil)
 		mockRepo.On("StoreResetToken", uint64(1), mock.AnythingOfType("string"), mock.AnythingOfType("time.Duration")).Return(nil)
 
-		err := svc.ResetPassword(&user.User{Username: "demo@homl.local"})
+		err := svc.ResetPassword(context.Background(), &user.User{Username: "demo@homl.local"})
 
 		assert.NoError(t, err)
 		mockRepo.AssertExpectations(t)
@@ -213,7 +214,7 @@ func TestResetPassword(t *testing.T) {
 
 		mockRepo.On("FindIdByUsername", "ghost@homl.local").Return(uint64(0), assert.AnError)
 
-		err := svc.ResetPassword(&user.User{Username: "ghost@homl.local"})
+		err := svc.ResetPassword(context.Background(), &user.User{Username: "ghost@homl.local"})
 
 		assert.NoError(t, err)
 		mockRepo.AssertNotCalled(t, "StoreResetToken")
@@ -223,7 +224,7 @@ func TestResetPassword(t *testing.T) {
 		mockRepo := new(mocks.MockUsersRepo)
 		svc := application.NewUsersService(&application.UserConfig{UsersRepository: mockRepo, Tokens: testTokens})
 
-		err := svc.ResetPassword(&user.User{Username: "not-an-email"})
+		err := svc.ResetPassword(context.Background(), &user.User{Username: "not-an-email"})
 
 		assert.Error(t, err)
 		mockRepo.AssertNotCalled(t, "FindIdByUsername")
@@ -239,7 +240,7 @@ func TestConfirmResetPassword(t *testing.T) {
 		mockRepo.On("UpdatePassword", uint64(1), mock.AnythingOfType("string")).Return(nil)
 		mockRepo.On("CreateAuth", uint64(1), mock.AnythingOfType("*user.TokenDetails")).Return(nil)
 
-		tokens, err := svc.ConfirmResetPassword("NewPass123!", "reset-token")
+		tokens, err := svc.ConfirmResetPassword(context.Background(), "NewPass123!", "reset-token")
 
 		assert.NoError(t, err)
 		assert.NotEmpty(t, tokens["access_token"])
@@ -252,7 +253,7 @@ func TestConfirmResetPassword(t *testing.T) {
 
 		mockRepo.On("ConsumeResetToken", "bad-token").Return(uint64(0), assert.AnError)
 
-		tokens, err := svc.ConfirmResetPassword("NewPass123!", "bad-token")
+		tokens, err := svc.ConfirmResetPassword(context.Background(), "NewPass123!", "bad-token")
 
 		assert.Error(t, err)
 		assert.Nil(t, tokens)

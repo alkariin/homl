@@ -16,8 +16,12 @@ var idCategoryValidation = "required"
 /** input:
  * {
  *   tag: string,
- *   idCategory: uint
+ *   idCategory: uint,
+ *   idParentTag?: uint  // makes the new tag a synonym of an existing main tag
+ *                       // of the same category (one level of depth only)
  * }
+ * output:
+ * { id: uint }
  */
 func (h *TagHandler) CreateTag(c *gin.Context) {
 	var tag *category.Tag
@@ -40,20 +44,22 @@ func (h *TagHandler) CreateTag(c *gin.Context) {
 		return
 	}
 
-	err = h.TagsService.CreateTag(idUser, tag)
+	idTag, err := h.TagsService.CreateTag(c.Request.Context(), idUser, tag)
 	if err != nil {
 		SendGinError(c, err)
 		return
 	}
 
-	c.Writer.WriteHeader(http.StatusCreated)
+	c.JSON(http.StatusCreated, gin.H{"id": idTag})
 }
 
 /** input:
  * id: uint
  * {
  *   tag: string,
- *   idCategory: uint
+ *   idCategory: uint,
+ *   idParentTag?: uint  // full-state semantics: omitted or null detaches the
+ *                       // tag from its parent (it becomes a main tag again)
  * }
  */
 func (h *TagHandler) UpdateTag(c *gin.Context) {
@@ -84,7 +90,7 @@ func (h *TagHandler) UpdateTag(c *gin.Context) {
 		return
 	}
 
-	err = h.TagsService.UpdateTag(idUser, tag)
+	err = h.TagsService.UpdateTag(c.Request.Context(), idUser, tag)
 	if err != nil {
 		SendGinError(c, err)
 		return
@@ -96,6 +102,9 @@ func (h *TagHandler) UpdateTag(c *gin.Context) {
 /** input:
  * id: uint
  * {}
+ *
+ * Deleting a synonym repoints its tagged events to the parent tag; deleting a
+ * main tag promotes its oldest synonym as the new main tag.
  */
 func (h *TagHandler) DeleteTag(c *gin.Context) {
 	idParam, err := strconv.ParseUint(c.Param("id"), 10, 32)
@@ -111,7 +120,7 @@ func (h *TagHandler) DeleteTag(c *gin.Context) {
 		return
 	}
 
-	err = h.TagsService.DeleteTag(id, idUser)
+	err = h.TagsService.DeleteTag(c.Request.Context(), id, idUser)
 	if err != nil {
 		SendGinError(c, err)
 		return

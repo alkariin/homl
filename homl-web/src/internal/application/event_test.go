@@ -1,6 +1,7 @@
 package application_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -12,7 +13,35 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+func TestGetEvents(t *testing.T) {
+	t.Run("Deduplicates the requested tag names before querying the repository", func(t *testing.T) {
+		eventsRepo := new(mocks.MockEventsRepo)
+		svc := application.NewEventsService(&application.ESConfig{
+			EventsRepository: eventsRepo,
+			Crypto:           testCrypto,
+		})
+
+		// "A" is requested twice: the repository matches events against ALL
+		// requested names, so the duplicate must be dropped.
+		eventsRepo.On("FindEventsWithTags", mock.MatchedBy(func(encTags []string) bool {
+			if len(encTags) != 2 {
+				return false
+			}
+			dec0, err0 := testCrypto.Decrypt(encTags[0])
+			dec1, err1 := testCrypto.Decrypt(encTags[1])
+			return err0 == nil && err1 == nil && dec0 == "A" && dec1 == "a-different"
+		}), uint64(1)).Return(map[uint]event.Event{}, map[uint][]category.Tag{}, nil)
+
+		res, err := svc.GetEvents(context.Background(), 1, []string{"A", "a-different", "A"})
+
+		assert.NoError(t, err)
+		assert.Empty(t, res)
+		eventsRepo.AssertExpectations(t)
+	})
+}
+
 func TestCreateEvent(t *testing.T) {
+	ctx := context.Background()
 	date := time.Date(1993, time.December, 1, 0, 0, 0, 0, time.UTC)
 
 	t.Run("Builds fresh month and year tags when none exist yet", func(t *testing.T) {
@@ -37,7 +66,7 @@ func TestCreateEvent(t *testing.T) {
 			mock.Anything, mock.Anything, uint64(1),
 		).Return(nil)
 
-		err := svc.CreateEvent(1, &event.Event{Date: date}, []uint{})
+		err := svc.CreateEvent(ctx, 1, &event.Event{Date: date}, []uint{})
 
 		assert.NoError(t, err)
 		eventsRepo.AssertExpectations(t)
@@ -65,7 +94,7 @@ func TestCreateEvent(t *testing.T) {
 			mock.Anything, mock.Anything, uint64(1),
 		).Return(nil)
 
-		err := svc.CreateEvent(1, &event.Event{Date: date}, []uint{})
+		err := svc.CreateEvent(ctx, 1, &event.Event{Date: date}, []uint{})
 
 		assert.NoError(t, err)
 		eventsRepo.AssertExpectations(t)
@@ -79,7 +108,7 @@ func TestDeleteEvent(t *testing.T) {
 
 		eventsRepo.On("Delete", uint(12)).Return(nil)
 
-		err := svc.DeleteEvent(12)
+		err := svc.DeleteEvent(context.Background(), 12)
 
 		assert.NoError(t, err)
 		eventsRepo.AssertExpectations(t)

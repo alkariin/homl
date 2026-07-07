@@ -52,7 +52,7 @@ class HomePage extends StatelessWidget {
                       username)),
               BlocProvider(
                   create: (BuildContext context) =>
-                      ListBloc(localization, _tagsRepository)),
+                      ListBloc(localization, _eventsRepository)),
             ],
             child: BlocBuilder<HomeBloc, HomeState>(builder: (context, state) {
               return HomeView(
@@ -166,11 +166,14 @@ class _HomeViewState extends State<HomeView>
                 curve: Curves.ease);
           });
         },
-        items: const [
+        items: [
           BottomNavigationBarItem(
-              icon: Icon(Icons.format_list_bulleted_add), label: "Categories"),
-          BottomNavigationBarItem(icon: Icon(Icons.search), label: "Search"),
-          BottomNavigationBarItem(icon: Icon(Icons.add), label: "Add"),
+              icon: const Icon(Icons.format_list_bulleted_add),
+              label: localization.nav_categories),
+          BottomNavigationBarItem(
+              icon: const Icon(Icons.search), label: localization.nav_search),
+          BottomNavigationBarItem(
+              icon: const Icon(Icons.add), label: localization.nav_add),
         ],
         selectedItemColor: Colors.amber[800],
       ),

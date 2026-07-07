@@ -1,62 +1,102 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:homl/l10n/app_localizations.dart';
 
-import 'package:homl/components/tag.dart';
+import 'package:homl/components/event_card.dart';
+import 'package:homl/components/tag_input.dart';
+import 'package:homl/pages/categories/view/category_management.dart';
 import 'package:homl/pages/home/bloc/home_bloc.dart';
 import 'package:homl/pages/list/bloc/list_bloc.dart';
 
-class ListPage extends StatefulWidget {
+class ListPage extends StatelessWidget {
   const ListPage({super.key});
 
   static Route<void> route() {
-    return MaterialPageRoute<void>(builder: (_) => ListPage());
-  }
-
-  @override
-  State<ListPage> createState() => _ListPageState();
-}
-
-class _ListPageState extends State<ListPage> {
-  @override
-  void initState() {
-    super.initState();
+    return MaterialPageRoute<void>(builder: (_) => const ListPage());
   }
 
   @override
   Widget build(BuildContext context) {
-    return Column(children: [
-      SizedBox(
-        height: 50,
-        child:
-            BlocBuilder<HomeBloc, HomeState>(builder: (homeContext, homeState) {
-          return BlocBuilder<ListBloc, ListState>(
-              builder: (listContext, listState) {
-            String? findTagColor(String tagName) {
-              return homeState.allTagsMap[tagName]?.color;
-            }
+    var localization = AppLocalizations.of(context)!;
 
-            void onDeleteTag(int tagId) {
-              listContext.read<ListBloc>().add(RemoveTagFromHeader(tagId));
-            }
+    return BlocListener<ListBloc, ListState>(
+      listener: (context, state) {
+        final listBloc = context.read<ListBloc>();
+        if (state.modal != null) {
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(SnackBar(
+              content: Text(state.modal!),
+              action: SnackBarAction(label: 'close', onPressed: () {}),
+              duration: const Duration(seconds: 5),
+            )).closed.then((_) {
+              listBloc.add(EndListModal());
+            });
+        }
+      },
+      child: BlocBuilder<HomeBloc, HomeState>(builder: (context, homeState) {
+        return BlocBuilder<ListBloc, ListState>(
+            builder: (context, listState) {
+          final listBloc = context.read<ListBloc>();
+          final homeBloc = context.read<HomeBloc>();
 
-            return Row(
-                children: listState.tags
-                    .map((tag) => Tag(
-                        id: tag.id,
-                        text: tag.tag,
-                        color: findTagColor(tag.tag),
-                        onDeleteTag: onDeleteTag,
-                        isDate: false))
-                    .toList());
-          });
-        }),
-      ),
-      Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[],
-        ),
-      ),
-    ]);
+          Future<void> openCategoryManagement() async {
+            final tapped = await Navigator.of(context)
+                .push<TagView?>(CategoryManagementPage.route(homeBloc));
+            if (tapped != null) {
+              listBloc.add(AddFilterTag(tapped.tagName));
+            }
+          }
+
+          return Column(children: [
+            Padding(
+              padding: const EdgeInsets.all(10),
+              child: TagInput(
+                labelText: localization.list_filterLabel,
+                tags: listState.filters
+                    .map((name) => TagChipData(
+                        id: homeState.allTagsMap[name]?.id ?? -1,
+                        name: name,
+                        color: homeState.allTagsMap[name]?.color))
+                    .toList(),
+                suggestions: homeState.allTagsMap.values
+                    .map((tagView) => TagChipData(
+                        id: tagView.id,
+                        name: tagView.tagName,
+                        color: tagView.color))
+                    .toList(),
+                onAddTag: (name) =>
+                    context.read<ListBloc>().add(AddFilterTag(name)),
+                onRemoveTag: (tag) =>
+                    context.read<ListBloc>().add(RemoveFilterTag(tag.name)),
+                trailing: IconButton(
+                  icon: const FaIcon(FontAwesomeIcons.tags),
+                  tooltip: localization.list_manageCategories,
+                  onPressed: openCategoryManagement,
+                ),
+              ),
+            ),
+            Expanded(
+              child: listState.loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : listState.events.isEmpty
+                      ? Center(child: Text(localization.list_noEvents))
+                      : ListView.builder(
+                          itemCount: listState.events.length,
+                          itemBuilder: (context, index) {
+                            final event = listState.events[index];
+                            return EventCard(
+                              event: event,
+                              tagColorResolver: (tagName) =>
+                                  homeState.allTagsMap[tagName]?.color,
+                            );
+                          },
+                        ),
+            ),
+          ]);
+        });
+      }),
+    );
   }
 }

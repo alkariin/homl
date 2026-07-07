@@ -21,8 +21,10 @@ type Event struct {
  * Send only the idCategory of each tag so that it doesn't require a joining with categories table.
  * The FE knows the categories because it does the GET Categories during the initialization.
  *
- * query:
- *   ?tags=<name>&tags=<name> (optional filter, repeat the param per tag)
+ * The tags filter uses AND semantics: only events matching ALL the given tag
+ * names are returned. A name matches through its whole synonym group (main
+ * tag + synonyms). Browsers cannot send a GET body, so it is carried as
+ * repeated query parameters (?tags=<name>&tags=<name>).
  *
  * response:
  * [
@@ -34,7 +36,8 @@ type Event struct {
  *       {
  *         id: uint,
  *         tag: string,
- *         idCategory: uint
+ *         idCategory: uint,
+ *         idParentTag: uint | null
  *       }
  *     ]
  *   }
@@ -49,7 +52,7 @@ func (h *EventHandler) GetEvents(c *gin.Context) {
 		return
 	}
 
-	events, err := h.EventsService.GetEvents(userId, tags)
+	events, err := h.EventsService.GetEvents(c.Request.Context(), userId, tags)
 	if err != nil {
 		SendGinError(c, err)
 		return
@@ -100,7 +103,7 @@ func (h *EventHandler) CreateEvent(c *gin.Context) {
 		return
 	}
 
-	err = h.EventsService.CreateEvent(idUser, event, body.TagsId)
+	err = h.EventsService.CreateEvent(c.Request.Context(), idUser, event, body.TagsId)
 	if err != nil {
 		SendGinError(c, err)
 	}
@@ -155,7 +158,7 @@ func (h *EventHandler) UpdateEvent(c *gin.Context) {
 		return
 	}
 
-	err = h.EventsService.UpdateEvent(idUser, event, body.TagsId)
+	err = h.EventsService.UpdateEvent(c.Request.Context(), idUser, event, body.TagsId)
 	if err != nil {
 		SendGinError(c, err)
 	}
@@ -176,7 +179,7 @@ func (h *EventHandler) DeleteEvent(c *gin.Context) {
 	}
 	id := uint(idParam)
 
-	err = h.EventsService.DeleteEvent(id)
+	err = h.EventsService.DeleteEvent(c.Request.Context(), id)
 	if err != nil {
 		SendGinError(c, err)
 		return
