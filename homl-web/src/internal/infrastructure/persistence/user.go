@@ -2,7 +2,6 @@ package persistence
 
 import (
 	"context"
-	"database/sql"
 	"strconv"
 	"time"
 
@@ -11,6 +10,7 @@ import (
 	"github.com/alkariin/homl/homl-web/internal/domain/masterdata"
 	"github.com/alkariin/homl/homl-web/internal/domain/user"
 	"github.com/go-redis/redis/v7"
+	"github.com/jmoiron/sqlx"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -22,12 +22,12 @@ const passwordBcryptCost = user.PasswordBcryptCost
 const resetTokenKeyPrefix = "reset:"
 
 type UsersRepository struct {
-	DB     *sql.DB
+	DB     *sqlx.DB
 	Redis  *redis.Client
 	Crypto application.Encryptor
 }
 
-func NewUsersRepository(db *sql.DB, redis *redis.Client, crypto application.Encryptor) user.Repository {
+func NewUsersRepository(db *sqlx.DB, redis *redis.Client, crypto application.Encryptor) user.Repository {
 	return &UsersRepository{
 		DB:     db,
 		Redis:  redis,
@@ -35,12 +35,12 @@ func NewUsersRepository(db *sql.DB, redis *redis.Client, crypto application.Encr
 	}
 }
 
-func (u *UsersRepository) Registration(user *user.User, language *user.Language) error {
-	ctx := context.Background()
-	tx, err := u.DB.BeginTx(ctx, nil)
+func (u *UsersRepository) Registration(ctx context.Context, user *user.User, language *user.Language) error {
+	tx, err := u.DB.BeginTxx(ctx, nil)
 	if err != nil {
 		return err
 	}
+	defer tx.Rollback() // no-op once Commit succeeds
 
 	// Salt and hash the password using the bcrypt algorithm.
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), passwordBcryptCost)
@@ -49,16 +49,14 @@ func (u *UsersRepository) Registration(user *user.User, language *user.Language)
 	}
 
 	// Next, insert the username, along with the hashed password into the database.
-	res, err := tx.Exec("INSERT INTO Users (username, password, language) VALUES (?, ?, ?)", user.Username, string(hashedPassword), *language)
+	res, err := tx.ExecContext(ctx, "INSERT INTO Users (username, password, language) VALUES (?, ?, ?)", user.Username, string(hashedPassword), *language)
 	if err != nil {
-		tx.Rollback()
 		return err
 	}
 
 	// Get the inserted user id.
 	insertedID, err := res.LastInsertId()
 	if err != nil {
-		tx.Rollback()
 		return err
 	}
 	user.ID = uint64(insertedID)
@@ -70,110 +68,92 @@ func (u *UsersRepository) Registration(user *user.User, language *user.Language)
 	for i := 0; i < len(categories); i++ {
 		encCategory, err := u.Crypto.Encrypt(categories[i].Name)
 		if err != nil {
-			tx.Rollback()
 			return err
 		}
 
-		_, err = tx.Exec("INSERT INTO Categories (category, color, isLocked, idUser) VALUES (?, ?, ?, ?)", encCategory, categories[i].Color, 1, user.ID)
+		res, err := tx.ExecContext(ctx, "INSERT INTO Categories (category, color, isLocked, idUser) VALUES (?, ?, ?, ?)", encCategory, categories[i].Color, 1, user.ID)
 		if err != nil {
-			tx.Rollback()
 			return err
 		}
 
 		if i == 0 { // Get id of the category "dates"
-			row := tx.QueryRow("SELECT LAST_INSERT_ID();")
-			err = row.Scan(&idCategoryDate)
+			insertedCategoryID, err := res.LastInsertId()
 			if err != nil {
-				tx.Rollback()
 				return err
 			}
+			idCategoryDate = uint(insertedCategoryID)
 		}
 	}
 
 	if idCategoryDate == 0 {
-		tx.Rollback()
 		return apperror.NewInternal()
 	}
 
 	return tx.Commit()
 }
 
-func (r *UsersRepository) FindById(idUser uint64) (*user.User, error) {
+func (r *UsersRepository) FindById(ctx context.Context, idUser uint64) (*user.User, error) {
 	user := user.User{}
-	row := r.DB.QueryRow("SELECT id, username, isFingerprintEnabled, isPinEnabled FROM Users WHERE id = ?;", idUser)
-	err := row.Scan(&user.ID, &user.Username, &user.IsFingerprintEnabled, &user.IsPinEnabled)
+	err := r.DB.GetContext(ctx, &user, "SELECT id, username, isFingerprintEnabled, isPinEnabled FROM Users WHERE id = ?;", idUser)
 	if err != nil {
 		return nil, err
 	}
 	return &user, nil
 }
 
-func (u *UsersRepository) FindIdByUsername(username string) (uint64, error) {
-	storedUser := &user.User{}
-	result := u.DB.QueryRow("SELECT id FROM Users WHERE username=?", username)
-	err := result.Scan(&storedUser.ID)
+func (u *UsersRepository) FindIdByUsername(ctx context.Context, username string) (uint64, error) {
+	var idUser uint64
+	err := u.DB.GetContext(ctx, &idUser, "SELECT id FROM Users WHERE username=?", username)
 	if err != nil {
 		return 0, err
 	}
-	return storedUser.ID, nil
+	return idUser, nil
 }
 
-func (u *UsersRepository) FindPasswordById(idUser uint64) (*string, error) {
+func (u *UsersRepository) FindPasswordById(ctx context.Context, idUser uint64) (*string, error) {
 	var password string
-	result := u.DB.QueryRow("SELECT password FROM Users WHERE id=?", idUser)
-	err := result.Scan(&password)
+	err := u.DB.GetContext(ctx, &password, "SELECT password FROM Users WHERE id=?", idUser)
 	if err != nil {
 		return nil, err
 	}
 	return &password, nil
 }
 
-func (u *UsersRepository) FindByUsername(username string) (*user.User, error) {
+func (u *UsersRepository) FindByUsername(ctx context.Context, username string) (*user.User, error) {
 	// Get the existing entry present in the database for the given username
 	// We create another instance of `User` to store the credentials we get from the database
 	storedUser := &user.User{}
-	result := u.DB.QueryRow("SELECT id, password, isPinEnabled FROM Users WHERE username=?", username)
-	// Store the obtained password in `storedUser`
-	err := result.Scan(&storedUser.ID, &storedUser.Password, &storedUser.IsPinEnabled)
+	err := u.DB.GetContext(ctx, storedUser, "SELECT id, password, isPinEnabled FROM Users WHERE username=?", username)
 	if err != nil {
-		// If an entry with the username does not exist, send an "Unauthorized"(401) status
-		if err == sql.ErrNoRows {
-			return nil, err
-		}
-		// If the error is of any other type, send a 500 status
+		// sql.ErrNoRows when the username does not exist; the caller maps it to a 401
 		return nil, err
 	}
 	return storedUser, nil
 }
 
-func (u *UsersRepository) FindPkeyAndChallengeById(idUser uint64) (*user.User, error) {
+func (u *UsersRepository) FindPkeyAndChallengeById(ctx context.Context, idUser uint64) (*user.User, error) {
 	storedUser := &user.User{}
-	result := u.DB.QueryRow("SELECT pkey, challenge FROM Users WHERE id=?", idUser)
-	err := result.Scan(&storedUser.Pkey, &storedUser.Challenge)
+	err := u.DB.GetContext(ctx, storedUser, "SELECT pkey, challenge FROM Users WHERE id=?", idUser)
 	if err != nil {
 		return nil, apperror.NewInternal()
 	}
 	return storedUser, nil
 }
 
-func (u *UsersRepository) UpdatePassword(idUser uint64, hashedPassword string) error {
-	if _, err := u.DB.Exec("UPDATE Users SET password=? WHERE id=?", hashedPassword, idUser); err != nil {
-		return err
-	}
-	return nil
+func (u *UsersRepository) UpdatePassword(ctx context.Context, idUser uint64, hashedPassword string) error {
+	_, err := u.DB.ExecContext(ctx, "UPDATE Users SET password=? WHERE id=?", hashedPassword, idUser)
+	return err
 }
 
-func (u *UsersRepository) UpdateChallenge(idUser uint64, challenge *string) error {
-	if _, err := u.DB.Exec("UPDATE Users SET challenge=? WHERE id=?", challenge, idUser); err != nil {
-		return err
-	}
-	return nil
+func (u *UsersRepository) UpdateChallenge(ctx context.Context, idUser uint64, challenge *string) error {
+	_, err := u.DB.ExecContext(ctx, "UPDATE Users SET challenge=? WHERE id=?", challenge, idUser)
+	return err
 }
 
-func (r *UsersRepository) ResetPinCounter(idUser uint64) error {
+func (r *UsersRepository) ResetPinCounter(ctx context.Context, idUser uint64) error {
 	// MySQL reports 0 affected rows when the counter is already 0, so the
 	// affected-rows count cannot distinguish "no such user" from "no-op reset".
-	_, err := r.DB.Exec("UPDATE Users SET pinTryCounter = 0 WHERE id = ?", idUser)
+	_, err := r.DB.ExecContext(ctx, "UPDATE Users SET pinTryCounter = 0 WHERE id = ?", idUser)
 	if err != nil {
 		return err
 	}
@@ -181,11 +161,11 @@ func (r *UsersRepository) ResetPinCounter(idUser uint64) error {
 	return nil
 }
 
-func (r *UsersRepository) CheckPin(idUser uint64, pin string) error {
+func (r *UsersRepository) CheckPin(ctx context.Context, idUser uint64, pin string) error {
 	// Fetch the stored (hashed) pin and the current failure counter.
 	var storedPin *string
 	var pinTryCounter *uint
-	row := r.DB.QueryRow(`SELECT pin, pinTryCounter FROM Users WHERE id = ?`, idUser)
+	row := r.DB.QueryRowContext(ctx, `SELECT pin, pinTryCounter FROM Users WHERE id = ?`, idUser)
 	if err := row.Scan(&storedPin, &pinTryCounter); err != nil {
 		return err
 	}
@@ -203,7 +183,7 @@ func (r *UsersRepository) CheckPin(idUser uint64, pin string) error {
 	// Constant-time comparison against the bcrypt hash.
 	if err := bcrypt.CompareHashAndPassword([]byte(*storedPin), []byte(pin)); err != nil {
 		// Wrong pin: increment the failure counter.
-		res, err2 := r.DB.Exec("UPDATE Users SET pinTryCounter = IFNULL(pinTryCounter, 0) + 1 WHERE id = ?", idUser)
+		res, err2 := r.DB.ExecContext(ctx, "UPDATE Users SET pinTryCounter = IFNULL(pinTryCounter, 0) + 1 WHERE id = ?", idUser)
 		if err2 != nil {
 			return err2
 		}
@@ -213,7 +193,7 @@ func (r *UsersRepository) CheckPin(idUser uint64, pin string) error {
 
 		// Re-read the counter to tell the FE whether the pin just got locked.
 		var counter *uint
-		if err2 := r.DB.QueryRow(`SELECT pinTryCounter FROM Users WHERE id = ?`, idUser).Scan(&counter); err2 != nil {
+		if err2 := r.DB.QueryRowContext(ctx, `SELECT pinTryCounter FROM Users WHERE id = ?`, idUser).Scan(&counter); err2 != nil {
 			return err2
 		}
 		if counter != nil && *counter >= 3 {
@@ -224,13 +204,13 @@ func (r *UsersRepository) CheckPin(idUser uint64, pin string) error {
 
 	// Correct pin: reset the counter. Tolerate a no-op update (counter already 0)
 	// since this driver's RowsAffected reports changed rows, not matched rows.
-	if _, err := r.DB.Exec("UPDATE Users SET pinTryCounter = 0 WHERE id = ?", idUser); err != nil {
+	if _, err := r.DB.ExecContext(ctx, "UPDATE Users SET pinTryCounter = 0 WHERE id = ?", idUser); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (r *UsersRepository) UpdatePinAndFingerprint(user *user.User, removePkey bool, removePin bool) error {
+func (r *UsersRepository) UpdatePinAndFingerprint(ctx context.Context, user *user.User, removePkey bool, removePin bool) error {
 	query := "UPDATE Users SET isFingerprintEnabled = ?, isPinEnabled = ?"
 	args := []interface{}{user.IsFingerprintEnabled, user.IsPinEnabled}
 
@@ -258,7 +238,7 @@ func (r *UsersRepository) UpdatePinAndFingerprint(user *user.User, removePkey bo
 	query += " WHERE id = ?"
 	args = append(args, user.ID)
 
-	res, err := r.DB.Exec(query, args...)
+	res, err := r.DB.ExecContext(ctx, query, args...)
 	if err != nil {
 		return err
 	}
@@ -271,8 +251,8 @@ func (r *UsersRepository) UpdatePinAndFingerprint(user *user.User, removePkey bo
 	return nil
 }
 
-func (u *UsersRepository) DeleteAuth(givenUuid string) (int64, error) {
-	deleted, err := u.Redis.Del(givenUuid).Result()
+func (u *UsersRepository) DeleteAuth(ctx context.Context, givenUuid string) (int64, error) {
+	deleted, err := u.Redis.WithContext(ctx).Del(givenUuid).Result()
 	if err != nil {
 		return 0, err
 	}
@@ -280,24 +260,25 @@ func (u *UsersRepository) DeleteAuth(givenUuid string) (int64, error) {
 	return deleted, nil
 }
 
-func (u *UsersRepository) CreateAuth(userid uint64, td *user.TokenDetails) error {
+func (u *UsersRepository) CreateAuth(ctx context.Context, userid uint64, td *user.TokenDetails) error {
 	at := time.Unix(td.AtExpires, 0) //converting Unix to UTC(to Time object)
 	rt := time.Unix(td.RtExpires, 0)
 	now := time.Now()
 
-	errAccess := u.Redis.Set(td.AccessUuid, strconv.Itoa(int(userid)), at.Sub(now)).Err()
+	rdb := u.Redis.WithContext(ctx)
+	errAccess := rdb.Set(td.AccessUuid, strconv.Itoa(int(userid)), at.Sub(now)).Err()
 	if errAccess != nil {
 		return errAccess
 	}
-	errRefresh := u.Redis.Set(td.RefreshUuid, strconv.Itoa(int(userid)), rt.Sub(now)).Err()
+	errRefresh := rdb.Set(td.RefreshUuid, strconv.Itoa(int(userid)), rt.Sub(now)).Err()
 	if errRefresh != nil {
 		return errRefresh
 	}
 	return nil
 }
 
-func (u *UsersRepository) FetchAuth(authD *user.AccessDetails) (uint64, error) {
-	userid, err := u.Redis.Get(authD.AccessUuid).Result()
+func (u *UsersRepository) FetchAuth(ctx context.Context, authD *user.AccessDetails) (uint64, error) {
+	userid, err := u.Redis.WithContext(ctx).Get(authD.AccessUuid).Result()
 	if err != nil {
 		return 0, err
 	}
@@ -305,16 +286,16 @@ func (u *UsersRepository) FetchAuth(authD *user.AccessDetails) (uint64, error) {
 	return userID, nil
 }
 
-func (u *UsersRepository) StoreResetToken(userId uint64, token string, ttl time.Duration) error {
-	return u.Redis.Set(resetTokenKeyPrefix+token, strconv.FormatUint(userId, 10), ttl).Err()
+func (u *UsersRepository) StoreResetToken(ctx context.Context, userId uint64, token string, ttl time.Duration) error {
+	return u.Redis.WithContext(ctx).Set(resetTokenKeyPrefix+token, strconv.FormatUint(userId, 10), ttl).Err()
 }
 
-func (u *UsersRepository) ConsumeResetToken(token string) (uint64, error) {
+func (u *UsersRepository) ConsumeResetToken(ctx context.Context, token string) (uint64, error) {
 	key := resetTokenKeyPrefix + token
 
 	// GET then DEL in a single transaction so a token can be redeemed at most
 	// once, even under concurrent requests.
-	getCmd := u.Redis.TxPipeline()
+	getCmd := u.Redis.WithContext(ctx).TxPipeline()
 	val := getCmd.Get(key)
 	getCmd.Del(key)
 	if _, err := getCmd.Exec(); err != nil {

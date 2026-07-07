@@ -1,6 +1,7 @@
 package application
 
 import (
+	"context"
 	"sort"
 	"strings"
 
@@ -10,10 +11,10 @@ import (
 
 // CategoriesService is the use-case port of the Category aggregate.
 type CategoriesService interface {
-	GetCategories(idUser uint64) ([]category.GetCategoryResponse, error)
-	CreateCategory(c *category.Category) error
-	UpdateCategory(c *category.Category) error
-	DeleteCategory(idCategory uint, idUser uint64, moveTags bool) error
+	GetCategories(ctx context.Context, idUser uint64) ([]category.GetCategoryResponse, error)
+	CreateCategory(ctx context.Context, c *category.Category) error
+	UpdateCategory(ctx context.Context, c *category.Category) error
+	DeleteCategory(ctx context.Context, idCategory uint, idUser uint64, moveTags bool) error
 }
 
 type categoriesService struct {
@@ -33,9 +34,9 @@ func NewCategoriesService(c *CSConfig) CategoriesService {
 	}
 }
 
-func (c *categoriesService) GetCategories(idUser uint64) ([]category.GetCategoryResponse, error) {
+func (c *categoriesService) GetCategories(ctx context.Context, idUser uint64) ([]category.GetCategoryResponse, error) {
 	// Returns all categories with all tags, but without the tags of the category persons
-	categories, tags, err := c.CategoriesRepository.GetAllCategoriesWithTags(idUser)
+	categories, tags, err := c.CategoriesRepository.GetAllCategoriesWithTags(ctx, idUser)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +66,7 @@ func (c *categoriesService) GetCategories(idUser uint64) ([]category.GetCategory
 	return responses, nil
 }
 
-func (c *categoriesService) CreateCategory(newCategory *category.Category) error {
+func (c *categoriesService) CreateCategory(ctx context.Context, newCategory *category.Category) error {
 	uCategory := strings.Title(newCategory.Category)
 	encCategory, err := c.Crypto.Encrypt(uCategory)
 	if err != nil {
@@ -80,7 +81,7 @@ func (c *categoriesService) CreateCategory(newCategory *category.Category) error
 		IdUser:   newCategory.IdUser,
 	}
 
-	err = c.CategoriesRepository.Create(cat)
+	err = c.CategoriesRepository.Create(ctx, cat)
 	if err != nil {
 		return err
 	}
@@ -88,13 +89,13 @@ func (c *categoriesService) CreateCategory(newCategory *category.Category) error
 	return nil
 }
 
-func (c *categoriesService) UpdateCategory(newCategory *category.Category) error {
+func (c *categoriesService) UpdateCategory(ctx context.Context, newCategory *category.Category) error {
 	encCategory, err := c.Crypto.Encrypt(newCategory.Category)
 	if err != nil {
 		return err
 	}
 
-	storedCategory, err := c.CategoriesRepository.FindById(newCategory.Id)
+	storedCategory, err := c.CategoriesRepository.FindById(ctx, newCategory.Id)
 	if err != nil {
 		return err
 	}
@@ -110,7 +111,7 @@ func (c *categoriesService) UpdateCategory(newCategory *category.Category) error
 		Color:    newCategory.Color,
 	}
 
-	err = c.CategoriesRepository.Update(cat)
+	err = c.CategoriesRepository.Update(ctx, cat)
 	if err != nil {
 		return err
 	}
@@ -118,6 +119,6 @@ func (c *categoriesService) UpdateCategory(newCategory *category.Category) error
 	return nil
 }
 
-func (c *categoriesService) DeleteCategory(idCategory uint, idUser uint64, moveTags bool) error {
-	return c.CategoriesRepository.Delete(idCategory, idUser, moveTags)
+func (c *categoriesService) DeleteCategory(ctx context.Context, idCategory uint, idUser uint64, moveTags bool) error {
+	return c.CategoriesRepository.Delete(ctx, idCategory, idUser, moveTags)
 }

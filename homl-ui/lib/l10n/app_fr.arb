@@ -15,6 +15,38 @@
 
   "settings": "Parametres",
   "settings_language": "Langue",
-  "settings_selectLanguage": "Selectionner la langue"
+  "settings_selectLanguage": "Selectionner la langue",
+
+  "global_cancel": "Annuler",
+  "global_save": "Enregistrer",
+  "global_delete": "Supprimer",
+
+  "nav_categories": "Categories",
+  "nav_search": "Rechercher",
+  "nav_add": "Ajouter",
+
+  "insert_tagInputLabel": "Ajouter un tag",
+  "insert_descriptionLabel": "Description",
+  "insert_submit": "Creer l'evenement",
+  "insert_eventCreated": "Evenement cree",
+  "insert_noTagsError": "Ajouter au moins un tag",
+
+  "list_filterLabel": "Filtrer par tag",
+  "list_manageCategories": "Gerer les categories",
+  "list_noEvents": "Aucun evenement trouve",
+
+  "categories_title": "Categories",
+  "categories_newCategory": "Nouvelle categorie",
+  "categories_editCategory": "Modifier la categorie",
+  "categories_deleteCategory": "Supprimer la categorie ?",
+  "categories_deleteMoveTags": "Deplacer les tags vers la categorie Other",
+  "categories_categoryName": "Nom",
+  "categories_color": "Couleur",
+  "categories_newTag": "Nouveau tag",
+  "categories_renameTag": "Renommer le tag",
+  "categories_deleteTag": "Supprimer le tag",
+  "categories_addSynonym": "Ajouter un synonyme",
+  "categories_detachSynonym": "Detacher le synonyme",
+  "categories_synonymName": "Synonyme"
 }
 

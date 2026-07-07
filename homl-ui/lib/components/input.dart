@@ -12,6 +12,10 @@ class Input extends StatelessWidget {
   final String? errorText;
   final InputType? inputType;
 
+  /// More than 1 line turns the input into a textarea
+  final int maxLines;
+  final int? minLines;
+
   /// The state can be controlled by the parent or the component itself
   final bool? toggleEye;
   final Function()? onToggleEye;
@@ -25,6 +29,8 @@ class Input extends StatelessWidget {
       this.onBlur,
       this.errorText,
       this.inputType,
+      this.maxLines = 1,
+      this.minLines,
       this.toggleEye,
       this.onToggleEye,
       this.controller,
@@ -37,8 +43,8 @@ class Input extends StatelessWidget {
         return _PasswordInput(labelText, onChange, initialValue, validator,
             onBlur, errorText, toggleEye, onToggleEye, controller);
       default:
-        return _NormalInput(
-            labelText, onChange, initialValue, validator, onBlur, errorText);
+        return _NormalInput(labelText, onChange, initialValue, validator,
+            onBlur, errorText, maxLines, minLines, controller);
     }
   }
 }
@@ -52,9 +58,13 @@ class _NormalInput extends StatefulWidget {
   final String? Function(String value) validator;
   final void Function(String value)? onBlur;
   final String? errorText;
+  final int maxLines;
+  final int? minLines;
+  final TextEditingController? controller;
 
   const _NormalInput(this.labelText, this.onChange, this.initialValue,
-      this.validator, this.onBlur, this.errorText);
+      this.validator, this.onBlur, this.errorText, this.maxLines,
+      this.minLines, this.controller);
 
   @override
   State<_NormalInput> createState() => _NormalInputState();
@@ -65,17 +75,20 @@ class _NormalInputState extends State<_NormalInput> {
   final formKey = GlobalKey<FormFieldState>();
 
   /// Here to put the initial value and to get the text value afterward
-  late TextEditingController controller;
+  late TextEditingController _controller;
 
   @override
   void initState() {
     super.initState();
-    controller = TextEditingController(text: widget.initialValue);
+    _controller =
+        widget.controller ?? TextEditingController(text: widget.initialValue);
   }
 
   @override
   void dispose() {
-    controller.dispose();
+    if (widget.controller == null) {
+      _controller.dispose();
+    }
     super.dispose();
   }
 
@@ -83,8 +96,8 @@ class _NormalInputState extends State<_NormalInput> {
   Widget build(BuildContext context) {
     focusNode.addListener(() {
       if (focusNode.hasFocus) return;
-      widget.onBlur?.call(controller.text);
-      if (controller.text.isEmpty) {
+      widget.onBlur?.call(_controller.text);
+      if (_controller.text.isEmpty) {
         formKey.currentState?.reset();
       } else if (formKey.currentState?.validate() ?? false) {
         formKey.currentState?.save();
@@ -95,7 +108,11 @@ class _NormalInputState extends State<_NormalInput> {
         key: formKey,
         onChanged: widget.onChange,
         focusNode: focusNode,
-        controller: controller,
+        controller: _controller,
+        maxLines: widget.maxLines,
+        minLines: widget.minLines,
+        keyboardType:
+            widget.maxLines > 1 ? TextInputType.multiline : null,
         decoration: InputDecoration(
           labelText: widget.labelText,
           errorText: widget.errorText,
