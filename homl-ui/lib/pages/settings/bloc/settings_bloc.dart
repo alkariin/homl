@@ -39,15 +39,15 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     await settingsRepository.setSettings(newSettings);
   }
 
-  _onErrorModal(ErrorModal event, Emitter<SettingsState> emit) {
+  void _onErrorModal(ErrorModal event, Emitter<SettingsState> emit) {
     emit(state.copyWith(errorModal: event.error));
   }
 
-  _onEndModal(EndModal event, Emitter<SettingsState> emit) {
+  void _onEndModal(EndModal event, Emitter<SettingsState> emit) {
     emit(state.copyWith(errorModal: null));
   }
 
-  _onUpdateSettings(UpdateSettings event, Emitter<SettingsState> emit) {
+  void _onUpdateSettings(UpdateSettings event, Emitter<SettingsState> emit) {
     emit(state.copyWith(settings: event.settings));
   }
 
