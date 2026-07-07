@@ -16,6 +16,7 @@ var constantsJSON []byte
 type Category struct {
 	Name  string
 	Color string
+	Kind  string
 }
 
 type constants struct {

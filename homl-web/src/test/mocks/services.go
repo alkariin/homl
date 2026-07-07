@@ -148,8 +148,8 @@ func (m *MockEventsService) UpdateEvent(ctx context.Context, idUser uint64, even
 	return errAt(m.Called(idUser, event, tagsId), 0)
 }
 
-func (m *MockEventsService) DeleteEvent(ctx context.Context, idEvent uint) error {
-	return errAt(m.Called(idEvent), 0)
+func (m *MockEventsService) DeleteEvent(ctx context.Context, idEvent uint, idUser uint64) error {
+	return errAt(m.Called(idEvent, idUser), 0)
 }
 
 /* ------------------------------ TagsService ------------------------------ */

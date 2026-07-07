@@ -316,7 +316,7 @@ func TestCreateEventRejectsMissingDate(t *testing.T) {
 func TestDeleteEventEndpoint(t *testing.T) {
 	router, sm := newTestServer()
 
-	sm.events.On("DeleteEvent", uint(9)).Return(nil)
+	sm.events.On("DeleteEvent", uint(9), testUserID).Return(nil)
 
 	rec := doRequest(router, http.MethodDelete, "/events/9", "", authHeader())
 

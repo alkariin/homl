@@ -53,7 +53,8 @@ func TestCreateEvent(t *testing.T) {
 			Crypto:               testCrypto,
 		})
 
-		catRepo.On("FindLastIdByIdUser", uint64(1)).Return(uint(3), nil)
+		catRepo.On("CheckTagsBelongToUser", []uint{}, uint64(1)).Return(nil)
+		catRepo.On("FindIdByKind", uint64(1), category.KindDate).Return(uint(3), nil)
 		// No existing tag for either the month or the year.
 		catRepo.On("FindTagIdByTagAndIdCategory", mock.Anything, uint(3)).Return(uint(0), nil)
 
@@ -81,7 +82,8 @@ func TestCreateEvent(t *testing.T) {
 			Crypto:               testCrypto,
 		})
 
-		catRepo.On("FindLastIdByIdUser", uint64(1)).Return(uint(3), nil)
+		catRepo.On("CheckTagsBelongToUser", []uint{}, uint64(1)).Return(nil)
+		catRepo.On("FindIdByKind", uint64(1), category.KindDate).Return(uint(3), nil)
 		catRepo.On("FindTagIdByTagAndIdCategory", mock.Anything, uint(3)).Return(uint(77), nil)
 
 		eventsRepo.On("CreateEventWithTags",
@@ -102,13 +104,13 @@ func TestCreateEvent(t *testing.T) {
 }
 
 func TestDeleteEvent(t *testing.T) {
-	t.Run("Forwards the id to the repository", func(t *testing.T) {
+	t.Run("Forwards the id and the owner to the repository", func(t *testing.T) {
 		eventsRepo := new(mocks.MockEventsRepo)
 		svc := application.NewEventsService(&application.ESConfig{EventsRepository: eventsRepo})
 
-		eventsRepo.On("Delete", uint(12)).Return(nil)
+		eventsRepo.On("Delete", uint(12), uint64(1)).Return(nil)
 
-		err := svc.DeleteEvent(context.Background(), 12)
+		err := svc.DeleteEvent(context.Background(), 12, 1)
 
 		assert.NoError(t, err)
 		eventsRepo.AssertExpectations(t)

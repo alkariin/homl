@@ -102,7 +102,13 @@ func (h *CategoryHandler) UpdateCategory(c *gin.Context) {
 	v1 := GinInputParams{Field: category.Category, Validation: categoryValidation}
 	v2 := GinInputParams{Field: category.Color, Validation: colorValidation}
 	if CheckGinInput(v1, v2) {
-		SendGinError(c, apperror.NewInternal())
+		SendGinError(c, apperror.NewStatusUnprocessableEntity())
+		return
+	}
+
+	category.IdUser, err = UserIDFromContext(c)
+	if err != nil {
+		SendGinError(c, err)
 		return
 	}
 
