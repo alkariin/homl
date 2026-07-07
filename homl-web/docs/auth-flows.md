@@ -94,7 +94,7 @@ it.
 refresh token alone is not enough.
 
 The fingerprint factor is a challenge–response over ed25519: the client first
-fetches a one-time challenge (`GET /challenge`), signs it with the private key
+fetches a one-time challenge (`POST /challenge`), signs it with the private key
 stored in the device's secure enclave, and sends the signature along with the
 refresh. The server verifies against the public key (`pkey`) registered at
 enrollment.
@@ -108,7 +108,7 @@ sequenceDiagram
     participant R as Redis
 
     opt fingerprint enabled: fetch a one-time challenge first
-        C->>S: GET /challenge {refresh_token}
+        C->>S: POST /challenge {refresh_token}
         S->>S: 32 random bytes, base64url
         S->>M: UPDATE Users SET challenge
         S-->>C: 200 challenge

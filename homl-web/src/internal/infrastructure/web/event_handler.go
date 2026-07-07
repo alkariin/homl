@@ -1,7 +1,6 @@
 package web
 
 import (
-	"io"
 	"net/http"
 	"strconv"
 	"time"
@@ -22,10 +21,8 @@ type Event struct {
  * Send only the idCategory of each tag so that it doesn't require a joining with categories table.
  * The FE knows the categories because it does the GET Categories during the initialization.
  *
- * input:
- * {
- *   tags?: []string
- * }
+ * query:
+ *   ?tags=<name>&tags=<name> (optional filter, repeat the param per tag)
  *
  * response:
  * [
@@ -44,16 +41,7 @@ type Event struct {
  * ]
  */
 func (h *EventHandler) GetEvents(c *gin.Context) {
-	type bodyRequest struct {
-		Tags []string `json:"tags"`
-	}
-	var body bodyRequest
-
-	err := c.ShouldBindJSON(&body)
-	if err != nil && err != io.EOF {
-		SendGinMyCustomError(c, err, apperror.NewStatusUnprocessableEntity())
-		return
-	}
+	tags := c.QueryArray("tags")
 
 	userId, err := UserIDFromContext(c)
 	if err != nil {
@@ -61,7 +49,7 @@ func (h *EventHandler) GetEvents(c *gin.Context) {
 		return
 	}
 
-	events, err := h.EventsService.GetEvents(userId, body.Tags)
+	events, err := h.EventsService.GetEvents(userId, tags)
 	if err != nil {
 		SendGinError(c, err)
 		return
