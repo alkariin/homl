@@ -1,20 +1,34 @@
 part of 'list_bloc.dart';
 
 class ListState extends Equatable {
-  final List<Tag> tags;
-  final String modal;
+  /// Tag names used to filter the events (AND semantics, synonym-aware).
+  final List<String> filters;
+  final List<Event> events;
+  final bool loading;
+  final String? modal;
 
-  const ListState(this.tags, this.modal);
+  const ListState(
+      {required this.filters,
+      required this.events,
+      required this.loading,
+      this.modal});
 
-  ListState.initial() : this([], "");
+  ListState.initial() : this(filters: [], events: [], loading: false);
 
-  ListState copyWith({List<Tag>? tags, String? modal}) {
+  ListState copyWith(
+      {List<String>? filters,
+      List<Event>? events,
+      bool? loading,
+      String? modal,
+      bool clearModal = false}) {
     return ListState(
-      tags ?? this.tags,
-      modal ?? this.modal,
+      filters: filters ?? this.filters,
+      events: events ?? this.events,
+      loading: loading ?? this.loading,
+      modal: clearModal ? null : (modal ?? this.modal),
     );
   }
 
   @override
-  List<Object> get props => [tags, modal];
+  List<Object?> get props => [filters, events, loading, modal];
 }
