@@ -32,10 +32,8 @@
   "insert_noTagsError": "Mindestens einen Tag hinzufügen",
 
   "list_filterLabel": "Nach Tag filtern",
-  "list_manageCategories": "Kategorien verwalten",
   "list_noEvents": "Keine Ereignisse gefunden",
 
-  "categories_title": "Kategorien",
   "categories_newCategory": "Neue Kategorie",
   "categories_editCategory": "Kategorie bearbeiten",
   "categories_deleteCategory": "Kategorie löschen?",

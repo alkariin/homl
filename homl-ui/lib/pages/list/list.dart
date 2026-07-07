@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:homl/l10n/app_localizations.dart';
 
 import 'package:homl/components/bubbles_background.dart';
 import 'package:homl/components/event_card.dart';
 import 'package:homl/components/tag_input.dart';
-import 'package:homl/pages/categories/view/category_management.dart';
 import 'package:homl/pages/home/bloc/home_bloc.dart';
 import 'package:homl/pages/list/bloc/list_bloc.dart';
 
@@ -38,17 +36,6 @@ class ListPage extends StatelessWidget {
       },
       child: BlocBuilder<HomeBloc, HomeState>(builder: (context, homeState) {
         return BlocBuilder<ListBloc, ListState>(builder: (context, listState) {
-          final listBloc = context.read<ListBloc>();
-          final homeBloc = context.read<HomeBloc>();
-
-          Future<void> openCategoryManagement() async {
-            final tapped = await Navigator.of(context)
-                .push<TagView?>(CategoryManagementPage.route(homeBloc));
-            if (tapped != null) {
-              listBloc.add(AddFilterTag(tapped.tagName));
-            }
-          }
-
           return BubblesBackground(
             child: Column(children: [
               Padding(
@@ -72,11 +59,6 @@ class ListPage extends StatelessWidget {
                       context.read<ListBloc>().add(AddFilterTag(name)),
                   onRemoveTag: (tag) =>
                       context.read<ListBloc>().add(RemoveFilterTag(tag.name)),
-                  trailing: IconButton(
-                    icon: const FaIcon(FontAwesomeIcons.tags),
-                    tooltip: localization.list_manageCategories,
-                    onPressed: openCategoryManagement,
-                  ),
                 ),
               ),
               Expanded(
