@@ -13,6 +13,12 @@ class UpdateLanguage extends SettingsEvent {
   final Language language;
 }
 
+class UpdateDefaultScreen extends SettingsEvent {
+  const UpdateDefaultScreen(this.defaultScreen);
+
+  final bool defaultScreen;
+}
+
 class UpdateSettings extends SettingsEvent {
   const UpdateSettings(this.settings);
 

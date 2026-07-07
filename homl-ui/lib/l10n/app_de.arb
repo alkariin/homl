@@ -16,6 +16,8 @@
   "settings": "Settings",
   "settings_language": "Language",
   "settings_selectLanguage": "Select language",
+  "settings_homeTab": "Startbildschirm",
+  "settings_selectHomeTab": "Startbildschirm auswählen",
 
   "global_cancel": "Abbrechen",
   "global_save": "Speichern",

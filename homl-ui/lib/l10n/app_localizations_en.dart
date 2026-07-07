@@ -55,6 +55,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settings_selectLanguage => 'Select language';
 
   @override
+  String get settings_homeTab => 'Home screen';
+
+  @override
+  String get settings_selectHomeTab => 'Select home screen';
+
+  @override
   String get global_cancel => 'Cancel';
 
   @override

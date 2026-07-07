@@ -56,6 +56,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settings_selectLanguage => 'Selectionner la langue';
 
   @override
+  String get settings_homeTab => 'Ecran d\'accueil';
+
+  @override
+  String get settings_selectHomeTab => 'Selectionner l\'ecran d\'accueil';
+
+  @override
   String get global_cancel => 'Annuler';
 
   @override

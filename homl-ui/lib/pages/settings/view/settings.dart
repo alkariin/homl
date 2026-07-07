@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:homl/l10n/app_localizations.dart';
 import 'package:homl/data/repositories/settings.repository.dart';
+import 'package:homl/pages/settings/view/home_tab_dialog.dart';
 import 'package:homl/pages/settings/view/language_dialog.dart';
 
 import 'package:homl/pages/settings/bloc/settings_bloc.dart';
@@ -71,6 +72,15 @@ class SettingsView extends StatelessWidget {
                     title: Text(localization.settings_language),
                     onTap: () {
                       Navigator.push(context, LanguageDialog.route(context));
+                    },
+                  ),
+                  ListTile(
+                    title: Text(localization.settings_homeTab),
+                    subtitle: Text(state.settings?.defaultScreen ?? false
+                        ? localization.nav_add
+                        : localization.nav_search),
+                    onTap: () {
+                      Navigator.push(context, HomeTabDialog.route(context));
                     },
                   ),
                 ],
