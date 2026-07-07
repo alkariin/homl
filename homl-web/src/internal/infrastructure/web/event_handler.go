@@ -106,6 +106,7 @@ func (h *EventHandler) CreateEvent(c *gin.Context) {
 	err = h.EventsService.CreateEvent(c.Request.Context(), idUser, event, body.TagsId)
 	if err != nil {
 		SendGinError(c, err)
+		return
 	}
 
 	c.Writer.WriteHeader(http.StatusCreated)
@@ -161,6 +162,7 @@ func (h *EventHandler) UpdateEvent(c *gin.Context) {
 	err = h.EventsService.UpdateEvent(c.Request.Context(), idUser, event, body.TagsId)
 	if err != nil {
 		SendGinError(c, err)
+		return
 	}
 
 	c.Writer.WriteHeader(http.StatusNoContent)

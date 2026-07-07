@@ -166,7 +166,8 @@ func (u *usersService) Refresh(ctx context.Context, ri *user.RefreshInput) (map[
 	if signature != nil {
 		signatureDecoded, err := base64.StdEncoding.DecodeString(*signature)
 		if err != nil {
-			return nil, err
+			// A malformed signature is a failed authentication, not a server error.
+			return nil, apperror.NewAuthorization("Not authorized")
 		}
 
 		storedUser, err := u.UsersRepository.FindPkeyAndChallengeById(ctx, rd.UserId)
