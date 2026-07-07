@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 import 'package:homl/components/tag.dart';
 import 'package:homl/data/models/event.dart';
 
+/// Event card: white, radius 15, soft shadow. Sized by its parent (grid
+/// cell); overflowing tags/description are clipped or faded.
 class EventCard extends StatelessWidget {
   final Event event;
 
@@ -17,24 +19,37 @@ class EventCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final locale = Localizations.localeOf(context).toString();
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      child: Padding(
-        padding: const EdgeInsets.all(10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 20,
+            spreadRadius: 1,
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Text(
               DateFormat.yMMMd(locale).format(event.date),
-              style: Theme.of(context).textTheme.titleSmall,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
             ),
-            if (event.description.isNotEmpty) ...[
-              const SizedBox(height: 5),
-              Text(event.description),
-            ],
-            if (event.tags.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              Wrap(
+          ),
+          const SizedBox(height: 10),
+          if (event.tags.isNotEmpty)
+            // With a description the tags keep a single clipped row;
+            // alone they fill the card.
+            _tagsArea(
+              singleRow: event.description.isNotEmpty,
+              child: Wrap(
                 spacing: 5,
                 runSpacing: 5,
                 children: event.tags
@@ -44,10 +59,31 @@ class EventCard extends StatelessWidget {
                         color: tagColorResolver(tag.tag)))
                     .toList(),
               ),
+            ),
+          if (event.description.isNotEmpty) ...[
+            if (event.tags.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              const Divider(),
             ],
+            const SizedBox(height: 8),
+            Expanded(
+              child: Text(
+                event.description,
+                overflow: TextOverflow.fade,
+                style: const TextStyle(fontSize: 12, height: 1.25),
+              ),
+            ),
           ],
-        ),
+        ],
       ),
     );
+  }
+
+  Widget _tagsArea({required bool singleRow, required Widget child}) {
+    final clipped = ClipRect(
+      child: Align(alignment: Alignment.topLeft, child: child),
+    );
+    if (singleRow) return SizedBox(height: 28, child: clipped);
+    return Flexible(child: clipped);
   }
 }

@@ -5,6 +5,7 @@ import 'package:homl/l10n/app_localizations.dart';
 
 import 'package:homl/components/pin_dialog.dart';
 import 'package:homl/helpers/language.dart';
+import 'package:homl/helpers/theme.dart';
 import 'package:homl/pages/app/bloc/app_bloc.dart';
 import 'package:homl/pages/home/view/home.dart';
 import 'package:homl/pages/login/bloc/login_bloc.dart';
@@ -91,6 +92,7 @@ class _AppViewState extends State<AppView> {
     return BlocBuilder<AppBloc, AppState>(builder: (context, state) {
       return MaterialApp(
         navigatorKey: _navigatorKey,
+        theme: homlTheme(),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         locale: Locale(state.locale.text),

@@ -13,6 +13,14 @@
   "account_pinSwitchError": "Le code PIN n'a pas pu etre configure",
   "account_enterPin": "Entrer le code PIN",
 
+  "login_usernameLabel": "identifiant",
+  "login_passwordLabel": "mot de passe",
+  "login_submit": "connexion",
+  "login_register": "Creer un compte",
+  "login_incorrectCredentials": "Email ou mot de passe incorrect",
+  "login_invalidEmail": "L'email n'est pas valide",
+  "login_invalidPassword": "Doit contenir au moins un chiffre, une majuscule et une minuscule, un caractere special, et au moins 8 caracteres",
+
   "settings": "Parametres",
   "settings_language": "Langue",
   "settings_selectLanguage": "Selectionner la langue",
@@ -32,10 +40,8 @@
   "insert_noTagsError": "Ajouter au moins un tag",
 
   "list_filterLabel": "Filtrer par tag",
-  "list_manageCategories": "Gerer les categories",
   "list_noEvents": "Aucun evenement trouve",
 
-  "categories_title": "Categories",
   "categories_newCategory": "Nouvelle categorie",
   "categories_editCategory": "Modifier la categorie",
   "categories_deleteCategory": "Supprimer la categorie ?",
