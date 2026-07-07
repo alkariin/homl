@@ -45,21 +45,28 @@ class RegisterBloc extends Bloc<RegisterEvent, RegisterState> {
     RegisterSubmitted event,
     Emitter<RegisterState> emit,
   ) async {
+    if (state.status == RegisterStatus.submitting) return;
     if (state.username.isNotEmpty && state.password.isNotEmpty) {
+      // Reset the flag so a second failed attempt re-triggers the listener.
+      emit(state.update(
+          isRegisterIncorrect: false, status: RegisterStatus.submitting));
       try {
         await _usersRepository.register(
             state.username, state.password, _language);
-        emit(state.update(isRegisterIncorrect: false));
-
-        // emit(state.copyWith(status: FormzStatus.submissionSuccess));
+        emit(state.update(status: RegisterStatus.editing));
       } on UserRequestFailure catch (err) {
         log('Registration request failed', name: 'RegisterBloc', error: err);
-        // emit(state.copyWith(status: FormzStatus.submissionFailure));
+        emit(state.update(
+            isRegisterIncorrect: true, status: RegisterStatus.editing));
       } on UserNotFoundFailure catch (err) {
         log('Registration failed: user not found',
             name: 'RegisterBloc', error: err);
+        emit(state.update(
+            isRegisterIncorrect: true, status: RegisterStatus.editing));
       } catch (err) {
         log('Unexpected registration error', name: 'RegisterBloc', error: err);
+        emit(state.update(
+            isRegisterIncorrect: true, status: RegisterStatus.editing));
       }
     }
   }

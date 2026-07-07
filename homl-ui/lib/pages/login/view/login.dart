@@ -3,7 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:homl/components/button.dart';
 import 'package:homl/components/input.dart';
-import 'package:homl/data/repositories/users.repository.dart';
 import 'package:homl/helpers/validations.dart';
 import 'package:homl/l10n/app_localizations.dart';
 import 'package:homl/pages/login/bloc/login_bloc.dart';
@@ -18,11 +17,11 @@ class LoginPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (BuildContext context) =>
-          LoginBloc(context.read<UsersRepository>()),
-      child: const LoginView(),
-    );
+    // The LoginBloc is provided at the app level (see app.dart) so that the
+    // AppView can read the logged-in username after authentication. Creating
+    // a page-local bloc here would swallow the events and leave the global
+    // one empty.
+    return const LoginView();
   }
 }
 
@@ -40,7 +39,7 @@ class _LoginViewState extends State<LoginView> {
   Widget build(BuildContext context) {
     final localization = AppLocalizations.of(context)!;
 
-    return BlocListener<LoginBloc, LoginState>(
+    return BlocConsumer<LoginBloc, LoginState>(
         listener: (context, state) {
           if (state.isLoginIncorrect) {
             ScaffoldMessenger.of(context)
@@ -53,7 +52,7 @@ class _LoginViewState extends State<LoginView> {
               );
           }
         },
-        child: Scaffold(
+        builder: (context, state) => Scaffold(
             body: Align(
           alignment: const Alignment(0, -1 / 3),
           child: Form(
@@ -87,14 +86,16 @@ class _LoginViewState extends State<LoginView> {
                     },
                   ),
                   const Padding(padding: EdgeInsets.all(12)),
-                  Button(
-                    text: localization.login_submit,
-                    onPressed: () {
-                      if (_formKey.currentState!.validate()) {
-                        context.read<LoginBloc>().add(LoginSubmitted());
-                      }
-                    },
-                  ),
+                  state.status == LoginStatus.submitting
+                      ? const Center(child: CircularProgressIndicator())
+                      : Button(
+                          text: localization.login_submit,
+                          onPressed: () {
+                            if (_formKey.currentState!.validate()) {
+                              context.read<LoginBloc>().add(LoginSubmitted());
+                            }
+                          },
+                        ),
                   TextButton(
                       onPressed: () => Navigator.of(context).push(
                           MaterialPageRoute(
