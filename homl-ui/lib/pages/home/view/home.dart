@@ -79,7 +79,8 @@ class _HomeViewState extends State<HomeView>
   @override
   void initState() {
     super.initState();
-    _currentIndex = widget.defaultView ? 1 : 0;
+    // defaultScreen setting: false opens on Search, true on Add.
+    _currentIndex = widget.defaultView ? 2 : 1;
   }
 
   @override

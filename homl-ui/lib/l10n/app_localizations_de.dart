@@ -77,6 +77,12 @@ class AppLocalizationsDe extends AppLocalizations {
   String get settings_selectLanguage => 'Select language';
 
   @override
+  String get settings_homeTab => 'Startbildschirm';
+
+  @override
+  String get settings_selectHomeTab => 'Startbildschirm auswählen';
+
+  @override
   String get global_cancel => 'Abbrechen';
 
   @override
