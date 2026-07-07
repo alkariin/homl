@@ -21,8 +21,13 @@ class Api {
   String? accessToken;
   late final StreamController<AuthenticationStatus> _controller;
 
+  /// Single-flight guard: concurrent 401s all await the same refresh attempt.
+  Future<bool>? _refreshInFlight;
+
   Stream<AuthenticationStatus> get status async* {
-    yield AuthenticationStatus.unauthenticated;
+    // Stay on the splash screen until the token refresh resolves instead of
+    // flashing the login page.
+    yield AuthenticationStatus.unknown;
     yield* _controller.stream;
   }
 
@@ -49,7 +54,7 @@ class Api {
       if (response.statusCode == 201 &&
           response.data != null &&
           response.data!.containsKey('refresh_token')) {
-        LocalStorageManager.setValue(
+        await LocalStorageManager.setValue(
             LocalStorageKey.refreshToken, response.data!['refresh_token']);
         accessToken = response.data!['access_token'];
 
@@ -64,7 +69,7 @@ class Api {
         if (error.response?.data?['error']?['message'] == "Pin is locked") {
           accessToken = null;
           // don't remove the pinKeypair so that after the login, the keypair is still here and the next login will happen with the pin again
-          LocalStorageManager.remove(LocalStorageKey.refreshToken);
+          await LocalStorageManager.remove(LocalStorageKey.refreshToken);
           _controller.add(AuthenticationStatus.unauthenticated);
           return true; // to avoid to see the keyboard disappearing + appearing again on the view
         } else {
@@ -75,7 +80,7 @@ class Api {
         log('Refresh token rejected, clearing local auth state', name: 'Api');
         // refresh token is wrong so log out user.
         accessToken = null;
-        LocalStorageManager.remove(LocalStorageKey.refreshToken);
+        await LocalStorageManager.remove(LocalStorageKey.refreshToken);
         _controller.add(AuthenticationStatus.unauthenticated);
       }
       return false;
@@ -83,6 +88,23 @@ class Api {
       log('Unexpected error while refreshing token', name: 'Api');
       return false;
     }
+  }
+
+  /// Refreshes the access token with the stored refresh token, making sure a
+  /// single refresh request is in flight at any time.
+  Future<bool> _refreshAccessToken() {
+    return _refreshInFlight ??= _doRefreshAccessToken().whenComplete(() {
+      _refreshInFlight = null;
+    });
+  }
+
+  Future<bool> _doRefreshAccessToken() async {
+    final refreshToken =
+        await LocalStorageManager.getValue(LocalStorageKey.refreshToken);
+    if (refreshToken == null) {
+      return false;
+    }
+    return _refreshToken(refreshToken);
   }
 
   Future<String> _askForChallengeString(String refreshToken) async {
@@ -95,6 +117,7 @@ class Api {
     final options = Options(
       method: requestOptions.method,
       headers: requestOptions.headers,
+      extra: {...requestOptions.extra, _retriedKey: true},
     );
 
     return api.request<dynamic>(requestOptions.path,
@@ -108,81 +131,58 @@ class Api {
   }
 
   Future<bool> sendPinAuth(String pin) async {
-    final pinKeypairPromise =
-        LocalStorageManager.getValue(LocalStorageKey.pinKeypair);
-    final refreshTokenPromise =
-        LocalStorageManager.getValue(LocalStorageKey.refreshToken);
-    return Future.wait([pinKeypairPromise, refreshTokenPromise])
-        .then((value) async {
-      final pinKeypair = value[0];
-      final refreshToken = value[1];
+    final pinKeypair =
+        await LocalStorageManager.getValue(LocalStorageKey.pinKeypair);
+    final refreshToken =
+        await LocalStorageManager.getValue(LocalStorageKey.refreshToken);
 
-      if (pinKeypair != null && refreshToken != null) {
-        try {
-          final challenge = await _askForChallengeString(refreshToken);
-          final signature = await encryption.signData(challenge, pinKeypair);
-          return _refreshToken(refreshToken,
-              signature: base64.encode(signature.bytes), pin: pin);
-        } catch (e) {
-          log('Error with pin $e');
-          return false;
-        }
-      } else {
-        return false;
-      }
-    });
+    if (pinKeypair == null || refreshToken == null) {
+      return false;
+    }
+
+    try {
+      final challenge = await _askForChallengeString(refreshToken);
+      final signature = await encryption.signData(challenge, pinKeypair);
+      return await _refreshToken(refreshToken,
+          signature: base64.encode(signature.bytes), pin: pin);
+    } catch (e) {
+      log('Error with pin $e');
+      return false;
+    }
   }
 
   Future<void> cancelPinAuth() async {
     _controller.add(AuthenticationStatus.unauthenticated);
   }
 
-  Api._internal() {
-    if (baseUrl.isEmpty) {
+  static const _retriedKey = 'homl_retried';
+
+  /// Paths that must never trigger an automatic token refresh: a 401 there is
+  /// a real authentication failure, not an expired access token.
+  static const _noRefreshPaths = ['/login', '/refresh', '/registration'];
+
+  Api._internal() : this.internal(initFromStorage: true);
+
+  @visibleForTesting
+  Api.internal({String? baseUrlOverride, bool initFromStorage = true}) {
+    final effectiveBaseUrl = baseUrlOverride ?? baseUrl;
+    if (effectiveBaseUrl.isEmpty) {
       throw StateError(
           'API_BASE_URL is not set. Run with --dart-define=API_BASE_URL=<url>');
     }
 
-    _controller = StreamController<AuthenticationStatus>();
+    _controller = StreamController<AuthenticationStatus>.broadcast();
 
     api = Dio(BaseOptions(
-      baseUrl: baseUrl,
+      baseUrl: effectiveBaseUrl,
       contentType: Headers.jsonContentType,
       responseType: ResponseType.json,
       connectTimeout: const Duration(seconds: 10),
     ));
-    // we get the value from the local storage because the user is not logged in atm so we cannot know if the user activated the fingerprint
-    final isFingerprintEnabled =
-        LocalStorageManager.getValue(LocalStorageKey.isFingerprintEnabled);
-    final refreshToken =
-        LocalStorageManager.getValue(LocalStorageKey.refreshToken);
-    final pinKeypairPromise =
-        LocalStorageManager.getValue(LocalStorageKey.pinKeypair);
 
-    Future.wait([isFingerprintEnabled, pinKeypairPromise, refreshToken])
-        .then((value) {
-      final isFingerPrintEnabled = value[0];
-      final keyPair = value[1];
-      final refreshToken = value[2];
-      if (isFingerPrintEnabled == "true" && refreshToken != null) {
-        try {
-          _askForChallengeString(refreshToken).then((challenge) {
-            signData(challenge).then((signature) {
-              _refreshToken(refreshToken,
-                  signature: base64.encode(signature.bytes));
-            });
-          });
-        } catch (e) {
-          log('Error with fingerprint $e');
-        }
-      } else if (keyPair != null && refreshToken != null) {
-        _controller.add(AuthenticationStatus.pinCheck);
-      } else {
-        if (refreshToken != null) {
-          _refreshToken(refreshToken);
-        }
-      }
-    });
+    if (initFromStorage) {
+      unawaited(_initAuthFromStorage());
+    }
 
     // Create interceptor which will manage tokens for each request
     api.interceptors
@@ -193,16 +193,23 @@ class Api {
       return handler.next(options);
     }, onError: (DioException error, handler) async {
       log('HTTP interceptor caught an error', name: 'Api');
-      if ((error.response?.statusCode == 401 &&
-          error.response.toString() == "Invalid JWT")) {
-        // TODO: check this condition, it no longer seems to trigger as expected.
+      final path = error.requestOptions.path;
+      final alreadyRetried = error.requestOptions.extra[_retriedKey] == true;
+      final isAuthPath =
+          _noRefreshPaths.any((noRefreshPath) => path.endsWith(noRefreshPath));
+
+      if (error.response?.statusCode == 401 && !isAuthPath && !alreadyRetried) {
         log('Access token expired, attempting refresh', name: 'Api');
-        final refreshToken =
-            await LocalStorageManager.getValue(LocalStorageKey.refreshToken);
-        if (refreshToken != null) {
-          await _refreshToken(refreshToken);
-          return handler.resolve(await _retry(error.requestOptions));
+        final refreshed = await _refreshAccessToken();
+        if (refreshed) {
+          try {
+            return handler.resolve(await _retry(error.requestOptions));
+          } on DioException catch (retryError) {
+            return handler.next(retryError);
+          }
         }
+        // The refresh failed: propagate the original 401 to the caller.
+        return handler.next(error);
       } else if (error.type == DioExceptionType.connectionTimeout) {
         log('Connection timeout', name: 'Api', error: error);
       } else if (error.type == DioExceptionType.unknown) {
@@ -224,6 +231,51 @@ class Api {
         compact: true,
         maxWidth: 90,
       ));
+    }
+  }
+
+  /// Restores the authentication state on app start: fingerprint or PIN based
+  /// re-authentication when enabled, plain refresh token otherwise.
+  Future<void> _initAuthFromStorage() async {
+    try {
+      // we get the value from the local storage because the user is not logged
+      // in atm so we cannot know if the user activated the fingerprint
+      final isFingerprintEnabled =
+          await LocalStorageManager.getBool(LocalStorageKey.isFingerprintEnabled);
+      final keyPair =
+          await LocalStorageManager.getValue(LocalStorageKey.pinKeypair);
+      final refreshToken =
+          await LocalStorageManager.getValue(LocalStorageKey.refreshToken);
+
+      if (refreshToken == null) {
+        _controller.add(AuthenticationStatus.unauthenticated);
+        return;
+      }
+
+      if (isFingerprintEnabled) {
+        try {
+          final challenge = await _askForChallengeString(refreshToken);
+          final signature = await signData(challenge);
+          final refreshed = await _refreshToken(refreshToken,
+              signature: base64.encode(signature.bytes));
+          if (!refreshed) {
+            _controller.add(AuthenticationStatus.unauthenticated);
+          }
+        } catch (e) {
+          log('Error with fingerprint $e', name: 'Api');
+          _controller.add(AuthenticationStatus.unauthenticated);
+        }
+      } else if (keyPair != null) {
+        _controller.add(AuthenticationStatus.pinCheck);
+      } else {
+        final refreshed = await _refreshToken(refreshToken);
+        if (!refreshed) {
+          _controller.add(AuthenticationStatus.unauthenticated);
+        }
+      }
+    } catch (e) {
+      log('Error while restoring the authentication state $e', name: 'Api');
+      _controller.add(AuthenticationStatus.unauthenticated);
     }
   }
 }
