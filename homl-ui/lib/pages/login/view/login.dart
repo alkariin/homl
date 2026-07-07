@@ -43,7 +43,10 @@ class _LoginViewState extends State<LoginView> {
             ScaffoldMessenger.of(context)
               ..hideCurrentSnackBar()
               ..showSnackBar(
-                const SnackBar(content: Text('Authentication Failure')),
+                const SnackBar(
+                  content: Text('Incorrect email or password'),
+                  backgroundColor: Colors.redAccent,
+                ),
               );
           }
         },
