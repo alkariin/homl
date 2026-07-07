@@ -21,6 +21,7 @@ const (
 	UnsupportedMediaType      Type = "UNSUPPORTED_MEDIA_TYPE"      // for http 415
 	StatusUnprocessableEntity Type = "STATUS_UNPROCESSABLE_ENTITY" // for http 422
 	StatusForbidden           Type = "STATUS_FORBIDDEN"            // for http 403
+	TooManyRequests           Type = "TOO_MANY_REQUESTS"           // rate limited - 429
 )
 
 // Error holds a custom error for the application
@@ -72,6 +73,8 @@ func (e *Error) Status() int {
 		return http.StatusUnprocessableEntity
 	case StatusForbidden:
 		return http.StatusForbidden
+	case TooManyRequests:
+		return http.StatusTooManyRequests
 	default:
 		return http.StatusInternalServerError
 	}
@@ -169,6 +172,15 @@ func NewStatusForbidden() *Error {
 	return &Error{
 		Type:     StatusForbidden,
 		Message:  fmt.Sprintf("Forbidden"),
+		IsCustom: true,
+	}
+}
+
+// NewTooManyRequests to create an error for 429
+func NewTooManyRequests() *Error {
+	return &Error{
+		Type:     TooManyRequests,
+		Message:  "Too many requests",
 		IsCustom: true,
 	}
 }

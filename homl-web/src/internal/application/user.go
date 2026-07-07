@@ -5,8 +5,10 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/base64"
+	"log"
 	"net/mail"
 	"net/smtp"
+	"time"
 
 	"github.com/alkariin/homl/homl-web/internal/apperror"
 	"github.com/alkariin/homl/homl-web/internal/domain/user"
@@ -17,6 +19,17 @@ import (
 // bcrypt default; the low-entropy nature of a pin makes a strong factor worth it.
 const bcryptCost = 10
 
+// resetTokenTTL bounds the lifetime of a single-use password-reset token.
+const resetTokenTTL = 15 * time.Minute
+
+// SMTPConfig holds the credentials used to send password-reset emails.
+type SMTPConfig struct {
+	Host     string
+	Port     string
+	From     string
+	Password string
+}
+
 // UsersService is the use-case port of the User aggregate (auth included).
 type UsersService interface {
 	Registration(ctx context.Context, u *user.User, language *user.Language) (map[string]string, error)
@@ -24,7 +37,7 @@ type UsersService interface {
 	Logout(ctx context.Context, accessDetails *user.AccessDetails) error
 	Refresh(ctx context.Context, refreshInput *user.RefreshInput) (map[string]string, error)
 	ResetPassword(ctx context.Context, u *user.User) error
-	ConfirmResetPassword(ctx context.Context, newPassword string, idUser uint64) (map[string]string, error)
+	ConfirmResetPassword(ctx context.Context, newPassword string, resetToken string) (map[string]string, error)
 	UpdatePassword(ctx context.Context, oldPassword string, newPassword string, idUser uint64) (map[string]string, error)
 	Challenge(ctx context.Context, refreshToken string) (*string, error)
 	SecureAuth(ctx context.Context, u *user.User) (*user.UserResponse, error)
@@ -34,12 +47,14 @@ type usersService struct {
 	UsersRepository user.Repository
 	Tokens          TokenIssuer
 	Host            string // public host used in password-reset links
+	SMTP            SMTPConfig
 }
 
 type UserConfig struct {
 	UsersRepository user.Repository
 	Tokens          TokenIssuer
 	Host            string
+	SMTP            SMTPConfig
 }
 
 func NewUsersService(c *UserConfig) UsersService {
@@ -47,6 +62,7 @@ func NewUsersService(c *UserConfig) UsersService {
 		UsersRepository: c.UsersRepository,
 		Tokens:          c.Tokens,
 		Host:            c.Host,
+		SMTP:            c.SMTP,
 	}
 }
 
@@ -203,53 +219,67 @@ func (u *usersService) Refresh(ctx context.Context, ri *user.RefreshInput) (map[
 	return tokens, nil
 }
 
-func (u *usersService) ResetPassword(ctx context.Context, user *user.User) error {
-	_, err := mail.ParseAddress(user.Username)
-	if err != nil {
+func (u *usersService) ResetPassword(ctx context.Context, usr *user.User) error {
+	if _, err := mail.ParseAddress(usr.Username); err != nil {
 		return apperror.NewStatusUnprocessableEntity()
 	}
 
-	// Get user id
-	idUser, err := u.UsersRepository.FindIdByUsername(ctx, user.Username)
+	// Always return success regardless of whether the email is known, so the
+	// endpoint cannot be used to enumerate accounts.
+	idUser, err := u.UsersRepository.FindIdByUsername(ctx, usr.Username)
 	if err != nil {
-		return err
+		return nil
 	}
 
-	td, err := u.Tokens.CreateToken(idUser)
+	// Issue a dedicated single-use reset token (not an access token) with a
+	// short TTL, stored server-side so it can be revoked on first use.
+	token, err := generateResetToken()
 	if err != nil {
-		return err
+		log.Printf("reset password: could not generate token: %v", err)
+		return nil
+	}
+	if err := u.UsersRepository.StoreResetToken(ctx, idUser, token, resetTokenTTL); err != nil {
+		log.Printf("reset password: could not store token: %v", err)
+		return nil
 	}
 
-	link := u.Host + "/reset?email=" + user.Username + "&token=" + td.AccessToken
-
-	// Sender data.
-	from := "no_reply@homl.ch"
-	password := "<Email Password>"
-
-	// Receiver email address.
-	to := []string{
-		user.Username,
+	link := u.Host + "/reset?token=" + token
+	if err := u.sendResetEmail(usr.Username, link); err != nil {
+		// Do not leak the failure to the caller (would reveal the address exists).
+		log.Printf("reset password: could not send email: %v", err)
 	}
 
-	// smtp server configuration.
-	smtpHost := "smtp.gmail.com"
-	smtpPort := "587"
-
-	// Message.
-	message := []byte("Click here to reset your password: " + link)
-
-	// Authentication.
-	auth := smtp.PlainAuth("", from, password, smtpHost)
-
-	// Sending email.
-	return smtp.SendMail(smtpHost+":"+smtpPort, auth, from, to, message)
+	return nil
 }
 
-// ConfirmResetPassword sets a new password for the user identified by idUser,
-// which the handler derives from the reset token. The target account is never
-// taken from the request body, so a valid token cannot be used to reset another
-// user's password.
-func (u *usersService) ConfirmResetPassword(ctx context.Context, newPassword string, idUser uint64) (map[string]string, error) {
+// generateResetToken returns a 256-bit URL-safe random token.
+func generateResetToken() (string, error) {
+	bytes := make([]byte, 32)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(bytes), nil
+}
+
+func (u *usersService) sendResetEmail(to string, link string) error {
+	if u.SMTP.Host == "" {
+		// SMTP not configured (e.g. local dev): skip sending.
+		log.Printf("reset password: SMTP not configured, reset link for %s not sent", to)
+		return nil
+	}
+	message := []byte("Click here to reset your password: " + link)
+	auth := smtp.PlainAuth("", u.SMTP.From, u.SMTP.Password, u.SMTP.Host)
+	return smtp.SendMail(u.SMTP.Host+":"+u.SMTP.Port, auth, u.SMTP.From, []string{to}, message)
+}
+
+// ConfirmResetPassword sets a new password for the user bound to resetToken. The
+// token is consumed (revoked) on use, so it works at most once and never grants
+// access to any other endpoint.
+func (u *usersService) ConfirmResetPassword(ctx context.Context, newPassword string, resetToken string) (map[string]string, error) {
+	idUser, err := u.UsersRepository.ConsumeResetToken(ctx, resetToken)
+	if err != nil {
+		return nil, apperror.NewAuthorization("Not authorized")
+	}
 	return u.generateAndUpdatePassword(ctx, newPassword, idUser)
 }
 
@@ -269,9 +299,8 @@ func (u *usersService) UpdatePassword(ctx context.Context, oldPassword string, n
 }
 
 func (u *usersService) generateAndUpdatePassword(ctx context.Context, newPassword string, idUser uint64) (map[string]string, error) {
-	// Salt and hash the password using the bcrypt algorithm
-	// The second argument is the cost of hashing, which we arbitrarily set as 8 (this value can be more or less, depending on the computing power you wish to utilize)
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), 8)
+	// Salt and hash the password using the bcrypt algorithm.
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), user.PasswordBcryptCost)
 	if err != nil {
 		return nil, apperror.NewStatusUnprocessableEntity()
 	}
@@ -286,14 +315,14 @@ func (u *usersService) generateAndUpdatePassword(ctx context.Context, newPasswor
 }
 
 func (u *usersService) Challenge(ctx context.Context, refreshToken string) (*string, error) {
-	length := 10
-	bytes := make([]byte, length)
+	// 32 random bytes (256 bits) rendered as URL-safe base64, untruncated, so
+	// the challenge keeps its full entropy.
+	bytes := make([]byte, 32)
 	_, err := rand.Read(bytes)
 	if err != nil {
 		return nil, err
 	}
-	randomString := base64.URLEncoding.EncodeToString(bytes)
-	challenge := randomString[:length]
+	challenge := base64.RawURLEncoding.EncodeToString(bytes)
 
 	// Store the challenge
 	rd, err := u.Tokens.VerifyRefresh(refreshToken)

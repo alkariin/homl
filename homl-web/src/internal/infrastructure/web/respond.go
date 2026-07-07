@@ -16,7 +16,7 @@ func init() {
 }
 
 func SendGinMyCustomError(c *gin.Context, err error, replacedError *apperror.Error) {
-	log.Printf("Not app error: " + err.Error())
+	log.Printf("Not app error: %s", err.Error())
 	SendGinError(c, replacedError)
 }
 
@@ -26,7 +26,7 @@ func SendGinError(c *gin.Context, err error) {
 	e := apperror.IsError(err)
 	if e == nil {
 		// replace by empty message, don't give any info
-		log.Printf("Not app error: " + err.Error())
+		log.Printf("Not app error: %s", err.Error())
 		resultError = apperror.NewInternal()
 	} else {
 		resultError = e

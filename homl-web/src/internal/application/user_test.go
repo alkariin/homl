@@ -192,3 +192,71 @@ func TestLogout(t *testing.T) {
 		mockRepo.AssertExpectations(t)
 	})
 }
+
+func TestResetPassword(t *testing.T) {
+	t.Run("Stores a single-use token for a known email", func(t *testing.T) {
+		mockRepo := new(mocks.MockUsersRepo)
+		// SMTP left unconfigured, so no email is actually sent.
+		svc := application.NewUsersService(&application.UserConfig{UsersRepository: mockRepo, Tokens: testTokens})
+
+		mockRepo.On("FindIdByUsername", "demo@homl.local").Return(uint64(1), nil)
+		mockRepo.On("StoreResetToken", uint64(1), mock.AnythingOfType("string"), mock.AnythingOfType("time.Duration")).Return(nil)
+
+		err := svc.ResetPassword(context.Background(), &user.User{Username: "demo@homl.local"})
+
+		assert.NoError(t, err)
+		mockRepo.AssertExpectations(t)
+	})
+
+	t.Run("Stays silent on an unknown email (no enumeration)", func(t *testing.T) {
+		mockRepo := new(mocks.MockUsersRepo)
+		svc := application.NewUsersService(&application.UserConfig{UsersRepository: mockRepo, Tokens: testTokens})
+
+		mockRepo.On("FindIdByUsername", "ghost@homl.local").Return(uint64(0), assert.AnError)
+
+		err := svc.ResetPassword(context.Background(), &user.User{Username: "ghost@homl.local"})
+
+		assert.NoError(t, err)
+		mockRepo.AssertNotCalled(t, "StoreResetToken")
+	})
+
+	t.Run("Rejects a malformed email", func(t *testing.T) {
+		mockRepo := new(mocks.MockUsersRepo)
+		svc := application.NewUsersService(&application.UserConfig{UsersRepository: mockRepo, Tokens: testTokens})
+
+		err := svc.ResetPassword(context.Background(), &user.User{Username: "not-an-email"})
+
+		assert.Error(t, err)
+		mockRepo.AssertNotCalled(t, "FindIdByUsername")
+	})
+}
+
+func TestConfirmResetPassword(t *testing.T) {
+	t.Run("Consumes the token and sets the new password", func(t *testing.T) {
+		mockRepo := new(mocks.MockUsersRepo)
+		svc := application.NewUsersService(&application.UserConfig{UsersRepository: mockRepo, Tokens: testTokens})
+
+		mockRepo.On("ConsumeResetToken", "reset-token").Return(uint64(1), nil)
+		mockRepo.On("UpdatePassword", uint64(1), mock.AnythingOfType("string")).Return(nil)
+		mockRepo.On("CreateAuth", uint64(1), mock.AnythingOfType("*user.TokenDetails")).Return(nil)
+
+		tokens, err := svc.ConfirmResetPassword(context.Background(), "NewPass123!", "reset-token")
+
+		assert.NoError(t, err)
+		assert.NotEmpty(t, tokens["access_token"])
+		mockRepo.AssertExpectations(t)
+	})
+
+	t.Run("Rejects an unknown or expired token", func(t *testing.T) {
+		mockRepo := new(mocks.MockUsersRepo)
+		svc := application.NewUsersService(&application.UserConfig{UsersRepository: mockRepo, Tokens: testTokens})
+
+		mockRepo.On("ConsumeResetToken", "bad-token").Return(uint64(0), assert.AnError)
+
+		tokens, err := svc.ConfirmResetPassword(context.Background(), "NewPass123!", "bad-token")
+
+		assert.Error(t, err)
+		assert.Nil(t, tokens)
+		mockRepo.AssertNotCalled(t, "UpdatePassword")
+	})
+}

@@ -8,15 +8,17 @@ import (
 )
 
 // Server groups the per-feature HTTP handlers wired into the router, plus the
-// token parser backing the auth middleware.
+// authenticator backing the auth middleware and the rate limiter guarding the
+// public auth endpoints.
 type Server struct {
-	Tokens   TokenParser
-	User     *UserHandler
-	Category *CategoryHandler
-	Tag      *TagHandler
-	Person   *PersonHandler
-	Event    *EventHandler
-	Settings *SettingsHandler
+	Auth        Authenticator
+	RateLimiter RateLimiter
+	User        *UserHandler
+	Category    *CategoryHandler
+	Tag         *TagHandler
+	Person      *PersonHandler
+	Event       *EventHandler
+	Settings    *SettingsHandler
 }
 
 func SetupRouter(s *Server, baseUrl string, timeoutDuration time.Duration, isDev bool, corsOrigin string) *gin.Engine {
@@ -30,16 +32,23 @@ func SetupRouter(s *Server, baseUrl string, timeoutDuration time.Duration, isDev
 	g := router.Group(baseUrl)
 	g.Use(Timeout(timeoutDuration, apperror.NewServiceUnavailable()))
 
-	authRequired := TokenAuthMiddleware(s.Tokens)
+	authRequired := TokenAuthMiddleware(s.Auth)
 
-	g.POST("/registration", s.User.Registration)
-	g.POST("/login", s.User.Login)
+	// Per-IP throttling on the unauthenticated auth endpoints (anti-bruteforce
+	// / anti-email-bombing). Tuned per endpoint.
+	loginLimit := RateLimit(s.RateLimiter, "login", 10, time.Minute)
+	refreshLimit := RateLimit(s.RateLimiter, "refresh", 30, time.Minute)
+	challengeLimit := RateLimit(s.RateLimiter, "challenge", 30, time.Minute)
+	resetLimit := RateLimit(s.RateLimiter, "reset", 5, time.Hour)
+
+	g.POST("/registration", loginLimit, s.User.Registration)
+	g.POST("/login", loginLimit, s.User.Login)
 	g.POST("/logout", authRequired, s.User.Logout)
-	g.POST("/refresh", s.User.Refresh)
+	g.POST("/refresh", refreshLimit, s.User.Refresh)
 	g.PUT("/password", authRequired, s.User.UpdatePassword)
-	g.POST("/resetPassword", s.User.ResetPassword)
-	g.POST("/confirmResetPassword", authRequired, s.User.ConfirmResetPassword)
-	g.GET("/challenge", s.User.Challenge)
+	g.POST("/resetPassword", resetLimit, s.User.ResetPassword)
+	g.POST("/confirmResetPassword", resetLimit, s.User.ConfirmResetPassword)
+	g.POST("/challenge", challengeLimit, s.User.Challenge)
 	g.PUT("/secureAuth", authRequired, s.User.SecureAuth)
 
 	g.GET("/categories", authRequired, s.Category.GetCategories)
