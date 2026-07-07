@@ -1,7 +1,6 @@
 package web
 
 import (
-	"io"
 	"net/http"
 	"strconv"
 	"time"
@@ -24,13 +23,8 @@ type Event struct {
  *
  * The tags filter uses AND semantics: only events matching ALL the given tag
  * names are returned. A name matches through its whole synonym group (main
- * tag + synonyms). It can be sent as a JSON body or as repeated query
- * parameters (?tags=a&tags=b) since browsers cannot send a GET body.
- *
- * input:
- * {
- *   tags?: []string
- * }
+ * tag + synonyms). Browsers cannot send a GET body, so it is carried as
+ * repeated query parameters (?tags=<name>&tags=<name>).
  *
  * response:
  * [
@@ -50,22 +44,7 @@ type Event struct {
  * ]
  */
 func (h *EventHandler) GetEvents(c *gin.Context) {
-	type bodyRequest struct {
-		Tags []string `json:"tags"`
-	}
-	var body bodyRequest
-
-	err := c.ShouldBindJSON(&body)
-	if err != nil && err != io.EOF {
-		SendGinMyCustomError(c, err, apperror.NewStatusUnprocessableEntity())
-		return
-	}
-
-	// Browsers cannot send a GET body, so the tags filter is also accepted as
-	// repeated query parameters (?tags=a&tags=b). The body takes precedence.
-	if len(body.Tags) == 0 {
-		body.Tags = c.QueryArray("tags")
-	}
+	tags := c.QueryArray("tags")
 
 	userId, err := UserIDFromContext(c)
 	if err != nil {
@@ -73,7 +52,7 @@ func (h *EventHandler) GetEvents(c *gin.Context) {
 		return
 	}
 
-	events, err := h.EventsService.GetEvents(c.Request.Context(), userId, body.Tags)
+	events, err := h.EventsService.GetEvents(c.Request.Context(), userId, tags)
 	if err != nil {
 		SendGinError(c, err)
 		return
