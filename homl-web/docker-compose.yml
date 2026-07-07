@@ -13,9 +13,14 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-change_me_mysql}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-homl}
       REDIS_PASSWORD: ${REDIS_PASSWORD:-change_me_redis}
-      ACCESS_SECRET: ${ACCESS_SECRET:-change_me_access_secret}
-      REFRESH_SECRET: ${REFRESH_SECRET:-change_me_refresh_secret}
-      ENCRYPT_SECRET: ${ENCRYPT_SECRET:-change_me_encrypt_secret}
+      CORS_ORIGIN: ${CORS_ORIGIN:?CORS_ORIGIN required (explicit origin, no wildcard, outside DEV)}
+      ACCESS_SECRET: ${ACCESS_SECRET:?ACCESS_SECRET required}
+      REFRESH_SECRET: ${REFRESH_SECRET:?REFRESH_SECRET required}
+      ENCRYPT_SECRET: ${ENCRYPT_SECRET:?ENCRYPT_SECRET required}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_FROM: ${SMTP_FROM:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
     ports:
       - 8080:8080
     depends_on:
