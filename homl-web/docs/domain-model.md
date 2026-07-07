@@ -15,88 +15,83 @@ that acts as its persistence port (implemented in
 classDiagram
     direction LR
 
-    namespace UserAggregate {
-        class User {
-            +uint64 ID
-            +string Username
-            +string Password
-            +bool IsFingerprintEnabled
-            +bool IsPinEnabled
-            +string Pin
-            +uint PinTryCounter
-            +string Pkey
-            +string Challenge
-        }
-        class Settings {
-            <<value object>>
-            +Language Language
-            +bool DefaultScreen
-        }
-        class TokenDetails {
-            <<value object>>
-            +string AccessToken
-            +string RefreshToken
-            +string AccessUuid
-            +string RefreshUuid
-            +int64 AtExpires
-            +int64 RtExpires
-        }
-        class AccessDetails {
-            <<value object>>
-            +string AccessUuid
-            +uint64 UserId
-        }
-        class RefreshDetails {
-            <<value object>>
-            +string RefreshUuid
-            +uint64 UserId
-        }
+    %% UserAggregate
+    class User {
+        +uint64 ID
+        +string Username
+        +string Password
+        +bool IsFingerprintEnabled
+        +bool IsPinEnabled
+        +string Pin
+        +uint PinTryCounter
+        +string Pkey
+        +string Challenge
+    }
+    class Settings {
+        <<value object>>
+        +Language Language
+        +bool DefaultScreen
+    }
+    class TokenDetails {
+        <<value object>>
+        +string AccessToken
+        +string RefreshToken
+        +string AccessUuid
+        +string RefreshUuid
+        +int64 AtExpires
+        +int64 RtExpires
+    }
+    class AccessDetails {
+        <<value object>>
+        +string AccessUuid
+        +uint64 UserId
+    }
+    class RefreshDetails {
+        <<value object>>
+        +string RefreshUuid
+        +uint64 UserId
     }
 
-    namespace CategoryAggregate {
-        class Category {
-            +uint Id
-            +string Category
-            +string Color
-            +bool IsLocked
-            +uint64 IdUser
-        }
-        class Tag {
-            +uint Id
-            +string Tag
-            +uint IdCategory
-            +uint IdPerson
-        }
+    %% CategoryAggregate
+    class Category {
+        +uint Id
+        +string Category
+        +string Color
+        +bool IsLocked
+        +uint64 IdUser
+    }
+    class Tag {
+        +uint Id
+        +string Tag
+        +uint IdCategory
+        +uint IdPerson
     }
 
-    namespace PersonAggregate {
-        class Person {
-            +uint Id
-            +string Firstname
-            +string Lastname
-            +string IdCategory
-        }
-        class Nickname {
-            <<projection>>
-            +uint Id
-            +string Nickname
-        }
+    %% PersonAggregate
+    class Person {
+        +uint Id
+        +string Firstname
+        +string Lastname
+        +string IdCategory
+    }
+    class Nickname {
+        <<projection>>
+        +uint Id
+        +string Nickname
     }
 
-    namespace EventAggregate {
-        class Event {
-            +uint Id
-            +string Description
-            +time.Time Date
-        }
+    %% EventAggregate
+    class Event {
+        +uint Id
+        +string Description
+        +time.Time Date
     }
 
-    namespace Masterdata {
-        class DefaultCategory {
-            <<reference data>>
-            +string Name
-            +string Color
-        }
+    %% Masterdata
+    class DefaultCategory {
+        <<reference data>>
+        +string Name
+        +string Color
     }
 
     User "1" *-- "1" Settings : stored on Users row
