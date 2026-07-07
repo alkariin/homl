@@ -91,13 +91,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get list_filterLabel => 'Nach Tag filtern';
 
   @override
-  String get list_manageCategories => 'Kategorien verwalten';
-
-  @override
   String get list_noEvents => 'Keine Ereignisse gefunden';
-
-  @override
-  String get categories_title => 'Kategorien';
 
   @override
   String get categories_newCategory => 'Neue Kategorie';

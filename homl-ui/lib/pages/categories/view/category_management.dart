@@ -9,65 +9,9 @@ import 'package:homl/data/models/tag.dart';
 import 'package:homl/helpers/colors.dart';
 import 'package:homl/pages/home/bloc/home_bloc.dart';
 
-/// Categories/tags/synonyms management. Tapping a tag pops the page and
-/// returns its [TagView] so the caller can insert it as a search filter.
-class CategoryManagementPage extends StatelessWidget {
-  final HomeBloc homeBloc;
-
-  const CategoryManagementPage({super.key, required this.homeBloc});
-
-  static Route<TagView?> route(HomeBloc homeBloc) {
-    return MaterialPageRoute<TagView?>(
-        builder: (_) => CategoryManagementPage(homeBloc: homeBloc));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocProvider.value(
-      value: homeBloc,
-      child: CategoryManagementView(homeBloc),
-    );
-  }
-}
-
-class CategoryManagementView extends StatelessWidget {
-  final HomeBloc homeBloc;
-
-  const CategoryManagementView(this.homeBloc, {super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    var localization = AppLocalizations.of(context)!;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(localization.categories_title),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        tooltip: localization.categories_newCategory,
-        child: const Icon(Icons.add),
-        onPressed: () => categoryDialog(
-          context,
-          title: localization.categories_newCategory,
-          onSubmit: (name, color) => homeBloc.add(CreateCategory(name, color)),
-        ),
-      ),
-      body: CategoryManagementBody(
-        onTagSelected: (tag) => Navigator.pop(context, tag),
-      ),
-    );
-  }
-}
-
-/// Categories list, reused by the pushed management page and the Categories
-/// tab. [onTagSelected] receives the tapped tag (pop with result, or switch
-/// to the search tab).
+/// Categories list shown in the Categories tab: every category with its tags
+/// and synonyms, with full CRUD management. [onTagSelected] receives the
+/// tapped tag so the caller can insert it as a search filter.
 class CategoryManagementBody extends StatelessWidget {
   final void Function(TagView tag) onTagSelected;
 

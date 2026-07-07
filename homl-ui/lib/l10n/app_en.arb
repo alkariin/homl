@@ -32,10 +32,8 @@
   "insert_noTagsError": "Add at least one tag",
 
   "list_filterLabel": "Filter by tag",
-  "list_manageCategories": "Manage categories",
   "list_noEvents": "No events found",
 
-  "categories_title": "Categories",
   "categories_newCategory": "New category",
   "categories_editCategory": "Edit category",
   "categories_deleteCategory": "Delete category?",

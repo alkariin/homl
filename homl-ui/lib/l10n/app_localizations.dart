@@ -262,23 +262,11 @@ abstract class AppLocalizations {
   /// **'Filter by tag'**
   String get list_filterLabel;
 
-  /// No description provided for @list_manageCategories.
-  ///
-  /// In en, this message translates to:
-  /// **'Manage categories'**
-  String get list_manageCategories;
-
   /// No description provided for @list_noEvents.
   ///
   /// In en, this message translates to:
   /// **'No events found'**
   String get list_noEvents;
-
-  /// No description provided for @categories_title.
-  ///
-  /// In en, this message translates to:
-  /// **'Categories'**
-  String get categories_title;
 
   /// No description provided for @categories_newCategory.
   ///

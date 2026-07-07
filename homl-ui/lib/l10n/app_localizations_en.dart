@@ -91,13 +91,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get list_filterLabel => 'Filter by tag';
 
   @override
-  String get list_manageCategories => 'Manage categories';
-
-  @override
   String get list_noEvents => 'No events found';
-
-  @override
-  String get categories_title => 'Categories';
 
   @override
   String get categories_newCategory => 'New category';
