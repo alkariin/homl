@@ -15,7 +15,7 @@ type EventsService interface {
 	GetEvents(ctx context.Context, idUser uint64, tags []string) ([]event.GetEventsResponse, error)
 	CreateEvent(ctx context.Context, idUser uint64, e *event.Event, tagsId []uint) error
 	UpdateEvent(ctx context.Context, idUser uint64, e *event.Event, tagsId []uint) error
-	DeleteEvent(ctx context.Context, idEvent uint) error
+	DeleteEvent(ctx context.Context, idEvent uint, idUser uint64) error
 }
 
 type eventsService struct {
@@ -87,6 +87,12 @@ func (e *eventsService) GetEvents(ctx context.Context, idUser uint64, tags []str
 }
 
 func (e *eventsService) CreateEvent(ctx context.Context, idUser uint64, event *event.Event, tagsId []uint) error {
+	// The tag ids come straight from the client: refuse any that live in
+	// another user's categories.
+	if err := e.CategoriesRepository.CheckTagsBelongToUser(ctx, tagsId, idUser); err != nil {
+		return err
+	}
+
 	tags, err := e.buildDateTags(ctx, idUser, event.Date)
 	if err != nil {
 		return err
@@ -96,6 +102,10 @@ func (e *eventsService) CreateEvent(ctx context.Context, idUser uint64, event *e
 }
 
 func (e *eventsService) UpdateEvent(ctx context.Context, idUser uint64, event *event.Event, tagsId []uint) error {
+	if err := e.CategoriesRepository.CheckTagsBelongToUser(ctx, tagsId, idUser); err != nil {
+		return err
+	}
+
 	tags, err := e.buildDateTags(ctx, idUser, event.Date)
 	if err != nil {
 		return err
@@ -107,7 +117,7 @@ func (e *eventsService) UpdateEvent(ctx context.Context, idUser uint64, event *e
 // buildDateTags returns the month and year tags of the event's date, reusing
 // the existing tag ids when the user already has them in his date category.
 func (e *eventsService) buildDateTags(ctx context.Context, idUser uint64, date time.Time) ([]category.Tag, error) {
-	idCategoryDate, err := e.CategoriesRepository.FindLastIdByIdUser(ctx, idUser)
+	idCategoryDate, err := e.CategoriesRepository.FindIdByKind(ctx, idUser, category.KindDate)
 	if err != nil {
 		return nil, err
 	}
@@ -137,6 +147,6 @@ func (e *eventsService) buildDateTags(ctx context.Context, idUser uint64, date t
 	return tags, nil
 }
 
-func (e *eventsService) DeleteEvent(ctx context.Context, idEvent uint) error {
-	return e.EventsRepository.Delete(ctx, idEvent)
+func (e *eventsService) DeleteEvent(ctx context.Context, idEvent uint, idUser uint64) error {
+	return e.EventsRepository.Delete(ctx, idEvent, idUser)
 }

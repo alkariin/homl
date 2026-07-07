@@ -49,13 +49,13 @@ func TestUpdateCategory(t *testing.T) {
 		svc := application.NewCategoriesService(&application.CSConfig{CategoriesRepository: mockRepo, Crypto: testCrypto})
 
 		oldEncrypted, _ := testCrypto.Encrypt("Dates")
-		mockRepo.On("FindById", uint(1)).Return(&category.Category{
+		mockRepo.On("FindByIdForUser", uint(1), uint64(9)).Return(&category.Category{
 			Id:       1,
 			Category: oldEncrypted,
 			IsLocked: true,
 		}, nil)
 
-		err := svc.UpdateCategory(context.Background(), &category.Category{Id: 1, Category: "Renamed", Color: "#ffffff"})
+		err := svc.UpdateCategory(context.Background(), &category.Category{Id: 1, Category: "Renamed", Color: "#ffffff", IdUser: 9})
 
 		assert.Error(t, err)
 		// Update must never be reached.
@@ -68,7 +68,7 @@ func TestUpdateCategory(t *testing.T) {
 		svc := application.NewCategoriesService(&application.CSConfig{CategoriesRepository: mockRepo, Crypto: testCrypto})
 
 		stored, _ := testCrypto.Encrypt("Holidays")
-		mockRepo.On("FindById", uint(2)).Return(&category.Category{
+		mockRepo.On("FindByIdForUser", uint(2), uint64(9)).Return(&category.Category{
 			Id:       2,
 			Category: stored,
 			IsLocked: false,
@@ -78,7 +78,7 @@ func TestUpdateCategory(t *testing.T) {
 			return err == nil && dec == "Trips" && c.Color == "#000000"
 		})).Return(nil)
 
-		err := svc.UpdateCategory(context.Background(), &category.Category{Id: 2, Category: "Trips", Color: "#000000"})
+		err := svc.UpdateCategory(context.Background(), &category.Category{Id: 2, Category: "Trips", Color: "#000000", IdUser: 9})
 
 		assert.NoError(t, err)
 		mockRepo.AssertExpectations(t)

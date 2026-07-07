@@ -36,15 +36,14 @@ func NewTagsService(c *TSConfig) TagsService {
 // validateTag runs the checks shared by CreateTag and UpdateTag and returns
 // the tag name ready to be encrypted.
 func (t *tagsService) validateTag(ctx context.Context, idUser uint64, tag *category.Tag) (string, error) {
-
-	// Check that the idCategory is not Persons
-	idCategoryDate, err := t.CategoriesRepository.FindLastIdByIdUser(ctx, idUser)
+	// The target category must belong to the user and must not be the persons
+	// category (person tags are only managed through the person endpoints).
+	targetCategory, err := t.CategoriesRepository.FindByIdForUser(ctx, tag.IdCategory, idUser)
 	if err != nil {
-		return "", err
+		return "", apperror.NewBadRequest("The given idCategory is not valid")
 	}
-	idCategoryPerson := idCategoryDate + 1
 
-	if tag.IdCategory == idCategoryPerson {
+	if targetCategory.Kind == category.KindPerson {
 		return "", apperror.NewBadRequest("The given idCategory is not valid")
 	}
 
@@ -57,12 +56,6 @@ func (t *tagsService) validateTag(ctx context.Context, idUser uint64, tag *categ
 		if e == uTag {
 			return "", apperror.NewBadRequest("The given tag is not accepted")
 		}
-	}
-
-	// Check that idCategory is the one of the user
-	err = t.CategoriesRepository.CheckLastIdByIdAndIdUser(ctx, idUser, tag.IdCategory)
-	if err != nil {
-		return "", err
 	}
 
 	if err := t.validateParent(ctx, idUser, tag); err != nil {

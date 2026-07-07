@@ -95,7 +95,8 @@ func (c *categoriesService) UpdateCategory(ctx context.Context, newCategory *cat
 		return err
 	}
 
-	storedCategory, err := c.CategoriesRepository.FindById(ctx, newCategory.Id)
+	// Scoped load: doubles as the ownership check for the update below.
+	storedCategory, err := c.CategoriesRepository.FindByIdForUser(ctx, newCategory.Id, newCategory.IdUser)
 	if err != nil {
 		return err
 	}
@@ -109,6 +110,7 @@ func (c *categoriesService) UpdateCategory(ctx context.Context, newCategory *cat
 		Id:       newCategory.Id,
 		Category: encCategory,
 		Color:    newCategory.Color,
+		IdUser:   newCategory.IdUser,
 	}
 
 	err = c.CategoriesRepository.Update(ctx, cat)

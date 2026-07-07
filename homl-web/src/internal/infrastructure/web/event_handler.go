@@ -181,7 +181,13 @@ func (h *EventHandler) DeleteEvent(c *gin.Context) {
 	}
 	id := uint(idParam)
 
-	err = h.EventsService.DeleteEvent(c.Request.Context(), id)
+	idUser, err := UserIDFromContext(c)
+	if err != nil {
+		SendGinError(c, err)
+		return
+	}
+
+	err = h.EventsService.DeleteEvent(c.Request.Context(), id, idUser)
 	if err != nil {
 		SendGinError(c, err)
 		return

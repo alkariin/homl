@@ -91,23 +91,19 @@ func (s *personsService) CreatePerson(ctx context.Context, person *person.Person
 		return err
 	}
 
-	// Get idCategoryPerson
-	idCategoryDate, err := s.CategoriesRepository.FindLastIdByIdUser(ctx, idUser)
+	idCategoryPerson, err := s.CategoriesRepository.FindIdByKind(ctx, idUser, category.KindPerson)
 	if err != nil {
 		return err
 	}
-	idCategoryPerson := idCategoryDate + 1
 
 	return s.PersonsRepository.CreatePersonWithTags(ctx, encFirstname, encLastname, encMainTagName, idCategoryPerson, nicknames)
 }
 
 func (s *personsService) UpdatePerson(ctx context.Context, person *person.Person, nicknames []person.Nickname, idUser uint64) error {
-	// Get idCategoryPerson
-	idCategoryDate, err := s.CategoriesRepository.FindLastIdByIdUser(ctx, idUser)
+	idCategoryPerson, err := s.CategoriesRepository.FindIdByKind(ctx, idUser, category.KindPerson)
 	if err != nil {
 		return err
 	}
-	idCategoryPerson := idCategoryDate + 1
 
 	// Verify if the given id is a person of the user
 	err = s.PersonsRepository.CheckPersonIdsWithTagsAndCategories(ctx, idUser, person.Id)

@@ -18,8 +18,10 @@ func TestCreateTag(t *testing.T) {
 		catRepo := new(mocks.MockCategoriesRepo)
 		svc := application.NewTagsService(&application.TSConfig{CategoriesRepository: catRepo, Crypto: testCrypto})
 
-		// Persons category id = last date id + 1.
-		catRepo.On("FindLastIdByIdUser", uint64(1)).Return(uint(3), nil)
+		// Category 4 is the user's persons category: tags there are managed
+		// through the person endpoints only.
+		catRepo.On("FindByIdForUser", uint(4), uint64(1)).
+			Return(&category.Category{Id: 4, Kind: category.KindPerson}, nil)
 
 		_, err := svc.CreateTag(ctx, 1, &category.Tag{Tag: "Anything", IdCategory: 4})
 
@@ -31,7 +33,8 @@ func TestCreateTag(t *testing.T) {
 		catRepo := new(mocks.MockCategoriesRepo)
 		svc := application.NewTagsService(&application.TSConfig{CategoriesRepository: catRepo, Crypto: testCrypto})
 
-		catRepo.On("FindLastIdByIdUser", uint64(1)).Return(uint(3), nil)
+		catRepo.On("FindByIdForUser", uint(2), uint64(1)).
+			Return(&category.Category{Id: 2, Kind: category.KindCustom}, nil)
 
 		// "january" -> title-cased "January" is in BLACKLIST_TAGS.
 		_, err := svc.CreateTag(ctx, 1, &category.Tag{Tag: "january", IdCategory: 2})
@@ -44,8 +47,8 @@ func TestCreateTag(t *testing.T) {
 		catRepo := new(mocks.MockCategoriesRepo)
 		svc := application.NewTagsService(&application.TSConfig{CategoriesRepository: catRepo, Crypto: testCrypto})
 
-		catRepo.On("FindLastIdByIdUser", uint64(1)).Return(uint(3), nil)
-		catRepo.On("CheckLastIdByIdAndIdUser", uint64(1), uint(2)).Return(nil)
+		catRepo.On("FindByIdForUser", uint(2), uint64(1)).
+			Return(&category.Category{Id: 2, Kind: category.KindCustom}, nil)
 		catRepo.On("CreateTag", mock.MatchedBy(func(enc string) bool {
 			dec, err := testCrypto.Decrypt(enc)
 			return err == nil && dec == "Cinema"
@@ -64,8 +67,8 @@ func TestCreateTag(t *testing.T) {
 
 		idParent := uint(10)
 
-		catRepo.On("FindLastIdByIdUser", uint64(1)).Return(uint(3), nil)
-		catRepo.On("CheckLastIdByIdAndIdUser", uint64(1), uint(2)).Return(nil)
+		catRepo.On("FindByIdForUser", uint(2), uint64(1)).
+			Return(&category.Category{Id: 2, Kind: category.KindCustom}, nil)
 		// The parent exists for the user, is a main tag (no parent of its own)
 		// and lives in the same category.
 		catRepo.On("FindTagForUser", idParent, uint64(1)).
@@ -89,8 +92,8 @@ func TestCreateTag(t *testing.T) {
 		idParent := uint(10)
 		idGrandParent := uint(4)
 
-		catRepo.On("FindLastIdByIdUser", uint64(1)).Return(uint(3), nil)
-		catRepo.On("CheckLastIdByIdAndIdUser", uint64(1), uint(2)).Return(nil)
+		catRepo.On("FindByIdForUser", uint(2), uint64(1)).
+			Return(&category.Category{Id: 2, Kind: category.KindCustom}, nil)
 		// The parent is already a synonym: depth is limited to one level.
 		catRepo.On("FindTagForUser", idParent, uint64(1)).
 			Return(&category.Tag{Id: idParent, IdCategory: 2, IdParentTag: &idGrandParent}, nil)
@@ -107,8 +110,8 @@ func TestCreateTag(t *testing.T) {
 
 		idParent := uint(10)
 
-		catRepo.On("FindLastIdByIdUser", uint64(1)).Return(uint(3), nil)
-		catRepo.On("CheckLastIdByIdAndIdUser", uint64(1), uint(2)).Return(nil)
+		catRepo.On("FindByIdForUser", uint(2), uint64(1)).
+			Return(&category.Category{Id: 2, Kind: category.KindCustom}, nil)
 		// The parent lives in category 1, the new synonym targets category 2.
 		catRepo.On("FindTagForUser", idParent, uint64(1)).
 			Return(&category.Tag{Id: idParent, IdCategory: 1, IdParentTag: nil}, nil)
@@ -125,7 +128,8 @@ func TestCreateTag(t *testing.T) {
 
 		idParent := uint(10)
 
-		catRepo.On("FindLastIdByIdUser", uint64(1)).Return(uint(3), nil)
+		catRepo.On("FindByIdForUser", uint(2), uint64(1)).
+			Return(&category.Category{Id: 2, Kind: category.KindCustom}, nil)
 
 		// "january" -> title-cased "January" is in BLACKLIST_TAGS, synonym or not.
 		_, err := svc.CreateTag(ctx, 1, &category.Tag{Tag: "january", IdCategory: 2, IdParentTag: &idParent})
@@ -148,8 +152,8 @@ func TestUpdateTag(t *testing.T) {
 		catRepo.On("FindTagForUser", idTag, uint64(1)).
 			Return(&category.Tag{Id: idTag, IdCategory: 2, IdPerson: 0}, nil)
 		catRepo.On("HasSynonyms", idTag).Return(false, nil)
-		catRepo.On("FindLastIdByIdUser", uint64(1)).Return(uint(3), nil)
-		catRepo.On("CheckLastIdByIdAndIdUser", uint64(1), uint(2)).Return(nil)
+		catRepo.On("FindByIdForUser", uint(2), uint64(1)).
+			Return(&category.Category{Id: 2, Kind: category.KindCustom}, nil)
 
 		err := svc.UpdateTag(ctx, 1, &category.Tag{Id: idTag, Tag: "cinema", IdCategory: 2, IdParentTag: &idTag})
 
@@ -199,8 +203,8 @@ func TestUpdateTag(t *testing.T) {
 
 		catRepo.On("FindTagForUser", idTag, uint64(1)).
 			Return(&category.Tag{Id: idTag, IdCategory: 2, IdPerson: 0}, nil)
-		catRepo.On("FindLastIdByIdUser", uint64(1)).Return(uint(3), nil)
-		catRepo.On("CheckLastIdByIdAndIdUser", uint64(1), uint(2)).Return(nil)
+		catRepo.On("FindByIdForUser", uint(2), uint64(1)).
+			Return(&category.Category{Id: 2, Kind: category.KindCustom}, nil)
 		catRepo.On("UpdateTag", mock.MatchedBy(func(enc string) bool {
 			dec, err := testCrypto.Decrypt(enc)
 			return err == nil && dec == "Cinema"

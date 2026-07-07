@@ -125,6 +125,47 @@ func (c *CategoriesRepository) DeleteTag(ctx context.Context, idTag uint, idUser
 	return tx.Commit()
 }
 
+// CheckTagsBelongToUser verifies that every id in tagsId is a tag living in
+// one of the user's categories. Without this check a client could attach
+// another user's tag ids to its own events — and read their decrypted names
+// back through GetEvents.
+func (c *CategoriesRepository) CheckTagsBelongToUser(ctx context.Context, tagsId []uint, idUser uint64) error {
+	if len(tagsId) == 0 {
+		return nil
+	}
+
+	// Deduplicate so the count comparison below cannot be fooled.
+	unique := make(map[uint]struct{}, len(tagsId))
+	for _, id := range tagsId {
+		unique[id] = struct{}{}
+	}
+	ids := make([]uint, 0, len(unique))
+	for id := range unique {
+		ids = append(ids, id)
+	}
+
+	query, args, err := sqlx.In(`
+		SELECT COUNT(*)
+		FROM Tags t
+		INNER JOIN Categories c ON t.idCategory = c.id
+		WHERE t.id IN (?)
+		AND c.idUser = ?
+	`, ids, idUser)
+	if err != nil {
+		return err
+	}
+
+	var owned int
+	if err := c.DB.GetContext(ctx, &owned, c.DB.Rebind(query), args...); err != nil {
+		return err
+	}
+
+	if owned != len(ids) {
+		return apperror.NewBadRequest("One or more tag ids are not valid")
+	}
+	return nil
+}
+
 // FindTagForUser loads a tag and checks it belongs to the given user.
 func (c *CategoriesRepository) FindTagForUser(ctx context.Context, idTag uint, idUser uint64) (*category.Tag, error) {
 	var tag category.Tag

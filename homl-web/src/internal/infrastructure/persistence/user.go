@@ -72,32 +72,20 @@ func (u *UsersRepository) Registration(ctx context.Context, user *user.User, lan
 	}
 	user.ID = uint64(insertedID)
 
-	// Create default categories
+	// Create default categories, each carrying its explicit kind (date,
+	// person, other) so the services never have to rely on id arithmetic.
 	categories := masterdata.DefaultCategories()
 
-	var idCategoryDate uint = 0
 	for i := 0; i < len(categories); i++ {
 		encCategory, err := u.Crypto.Encrypt(categories[i].Name)
 		if err != nil {
 			return err
 		}
 
-		res, err := tx.ExecContext(ctx, "INSERT INTO Categories (category, color, isLocked, idUser) VALUES (?, ?, ?, ?)", encCategory, categories[i].Color, 1, user.ID)
+		_, err = tx.ExecContext(ctx, "INSERT INTO Categories (category, color, isLocked, kind, idUser) VALUES (?, ?, ?, ?, ?)", encCategory, categories[i].Color, 1, categories[i].Kind, user.ID)
 		if err != nil {
 			return err
 		}
-
-		if i == 0 { // Get id of the category "dates"
-			insertedCategoryID, err := res.LastInsertId()
-			if err != nil {
-				return err
-			}
-			idCategoryDate = uint(insertedCategoryID)
-		}
-	}
-
-	if idCategoryDate == 0 {
-		return apperror.NewInternal()
 	}
 
 	return tx.Commit()
