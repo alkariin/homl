@@ -7,7 +7,7 @@ class InsertState extends Equatable {
   final DateTime date;
   final String description;
   final InsertStatus status;
-  final String? modal;
+  final AppMessage? modal;
 
   const InsertState(
       {required this.tagNames,
@@ -28,7 +28,7 @@ class InsertState extends Equatable {
       DateTime? date,
       String? description,
       InsertStatus? status,
-      String? modal,
+      AppMessage? modal,
       bool clearModal = false}) {
     return InsertState(
       tagNames: tagNames ?? this.tagNames,

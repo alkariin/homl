@@ -4,6 +4,7 @@ import 'package:homl/l10n/app_localizations.dart';
 import 'package:homl/components/button.dart';
 import 'package:homl/components/input.dart';
 
+import 'package:homl/helpers/app_message.dart';
 import 'package:homl/helpers/validations.dart';
 import 'package:homl/pages/account/bloc/account_bloc.dart';
 
@@ -44,6 +45,7 @@ class _PasswordDialogViewState extends State<PasswordDialogView> {
   late TextEditingController _oldController;
   late TextEditingController _newController;
   late TextEditingController _confirmController;
+  final _formKey = GlobalKey<FormState>();
 
   @override
   void initState() {
@@ -67,11 +69,10 @@ class _PasswordDialogViewState extends State<PasswordDialogView> {
   @override
   Widget build(BuildContext context) {
     var localization = AppLocalizations.of(context)!;
-    final formKey = GlobalKey<FormState>();
 
     return BlocListener<AccountBloc, AccountState>(
       listener: (context, state) {
-        if (state.isFormSubmitted && state.responseError == "") {
+        if (state.isFormSubmitted && state.responseError == null) {
           Navigator.pop(context);
         }
       },
@@ -81,7 +82,7 @@ class _PasswordDialogViewState extends State<PasswordDialogView> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10),
             child: Form(
-                key: formKey,
+                key: _formKey,
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
                   Input(
                     inputType: InputType.password,
@@ -93,7 +94,7 @@ class _PasswordDialogViewState extends State<PasswordDialogView> {
                     }),
                     validator: (password) {
                       if (isPasswordValid(password)) return null;
-                      return "Enter you current password";
+                      return localization.account_currentPasswordError;
                     },
                     controller: _oldController,
                   ),
@@ -107,7 +108,7 @@ class _PasswordDialogViewState extends State<PasswordDialogView> {
                     }),
                     validator: (password) {
                       if (isPasswordValid(password)) return null;
-                      return "Must contain at least one number, one uppercase and lowercase letter, one special character, and at least 8 or more characters";
+                      return localization.login_invalidPassword;
                     },
                     controller: _newController,
                   ),
@@ -123,16 +124,16 @@ class _PasswordDialogViewState extends State<PasswordDialogView> {
                       if (password != "" && password == _newController.text) {
                         return null;
                       }
-                      return "Passwords aren't identical";
+                      return localization.account_passwordsNotIdentical;
                     },
                     controller: _confirmController,
                   ),
                   BlocBuilder<AccountBloc, AccountState>(
                       builder: (context, state) {
                     return Visibility(
-                      visible: state.responseError != "",
+                      visible: state.responseError != null,
                       child: Text(
-                        state.responseError,
+                        state.responseError?.localize(localization) ?? "",
                         style: const TextStyle(
                           color: Color.fromARGB(255, 255, 0, 0),
                         ),
@@ -140,9 +141,9 @@ class _PasswordDialogViewState extends State<PasswordDialogView> {
                     );
                   }),
                   Button(
-                    text: 'Update',
+                    text: localization.global_update,
                     onPressed: () {
-                      if (formKey.currentState!.validate()) {
+                      if (_formKey.currentState!.validate()) {
                         context.read<AccountBloc>().add(
                             Submit(_oldController.text, _newController.text));
                       }

@@ -10,6 +10,7 @@ import 'package:homl/components/tag.dart';
 import 'package:homl/components/tag_input.dart';
 import 'package:homl/data/repositories/events.repository.dart';
 import 'package:homl/data/repositories/tags.repository.dart';
+import 'package:homl/helpers/app_message.dart';
 import 'package:homl/pages/home/bloc/home_bloc.dart';
 import 'package:homl/pages/insert/bloc/insert_bloc.dart';
 import 'package:homl/pages/list/bloc/list_bloc.dart';
@@ -23,14 +24,9 @@ class InsertPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var localization = AppLocalizations.of(context)!;
-
     return BlocProvider(
       create: (context) => InsertBloc(
-          localization,
-          context.read<EventsRepository>(),
-          context.read<TagsRepository>(),
-          context.read<HomeBloc>()),
+          context.read<EventsRepository>(), context.read<TagsRepository>()),
       child: const InsertView(),
     );
   }
@@ -73,8 +69,9 @@ class _InsertViewState extends State<InsertView> {
           ScaffoldMessenger.of(context)
             ..hideCurrentSnackBar()
             ..showSnackBar(SnackBar(
-              content: Text(state.modal!),
-              action: SnackBarAction(label: 'close', onPressed: () {}),
+              content: Text(state.modal!.localize(localization)),
+              action: SnackBarAction(
+                  label: localization.global_close, onPressed: () {}),
               duration: const Duration(seconds: 5),
             )).closed.then((_) {
               insertBloc.add(EndInsertModal());
@@ -158,8 +155,9 @@ class _InsertViewState extends State<InsertView> {
                         ? const Center(child: CircularProgressIndicator())
                         : Button(
                             text: localization.insert_submit,
-                            onPressed: () =>
-                                context.read<InsertBloc>().add(SubmitEvent()),
+                            onPressed: () => context.read<InsertBloc>().add(
+                                SubmitEvent(homeState.categories,
+                                    homeState.allTagsMap)),
                           ),
                   ],
                 ),

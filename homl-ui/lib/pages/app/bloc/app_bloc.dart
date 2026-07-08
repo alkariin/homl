@@ -5,7 +5,9 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/material.dart';
 
+import 'package:homl/data/models/settings.dart';
 import 'package:homl/data/repositories/settings.repository.dart';
+import 'package:homl/helpers/app_message.dart';
 import 'package:homl/helpers/language.dart';
 
 part 'app_event.dart';
@@ -13,12 +15,13 @@ part 'app_state.dart';
 
 class AppBloc extends Bloc<AppEvent, AppState> {
   final SettingsRepository settingsRepository;
-  late StreamSubscription _settingsSubscription;
+  late StreamSubscription<Settings> _settingsSubscription;
 
   AppBloc(Language defaultLanguage, this.settingsRepository)
       : super(AppState(locale: defaultLanguage)) {
     on<UpdateLocale>(_onUpdateLocale);
     on<ErrorModal>(_onErrorModal);
+    on<EndErrorModal>(_onEndErrorModal);
 
     _settingsSubscription =
         settingsRepository.settingsStream.listen((settings) {
@@ -30,7 +33,7 @@ class AppBloc extends Bloc<AppEvent, AppState> {
     }, onError: (error) {
       log('Failed to retrieve settings stream event',
           name: 'AppBloc', error: error);
-      add(const ErrorModal("An issue appeared"));
+      add(const ErrorModal(AppMessage.unexpectedError));
     });
   }
 
@@ -40,6 +43,10 @@ class AppBloc extends Bloc<AppEvent, AppState> {
 
   void _onErrorModal(ErrorModal event, Emitter<AppState> emit) {
     emit(state.copyWith(errorModal: event.error));
+  }
+
+  void _onEndErrorModal(EndErrorModal event, Emitter<AppState> emit) {
+    emit(state.copyWith(clearErrorModal: true));
   }
 
   @override

@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:homl/l10n/app_localizations.dart';
 import 'package:homl/data/repositories/settings.repository.dart';
+import 'package:homl/helpers/app_message.dart';
 import 'package:homl/pages/settings/view/home_tab_dialog.dart';
 import 'package:homl/pages/settings/view/language_dialog.dart';
 
@@ -16,12 +17,11 @@ class SettingsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var localization = AppLocalizations.of(context)!;
     return MultiBlocProvider(
       providers: [
         BlocProvider(
             create: (BuildContext context) =>
-                SettingsBloc(localization, context.read<SettingsRepository>())),
+                SettingsBloc(context.read<SettingsRepository>())),
       ],
       child: const SettingsView(),
     );
@@ -43,8 +43,9 @@ class SettingsView extends StatelessWidget {
               ScaffoldMessenger.of(context)
                 ..hideCurrentSnackBar()
                 ..showSnackBar(SnackBar(
-                  content: Text(state.errorModal!),
-                  action: SnackBarAction(label: 'close', onPressed: () {}),
+                  content: Text(state.errorModal!.localize(localization)),
+                  action: SnackBarAction(
+                      label: localization.global_close, onPressed: () {}),
                   duration: const Duration(seconds: 5),
                 )).closed.then(
                   (_) {

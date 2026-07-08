@@ -43,6 +43,16 @@ class UpdateDescription extends InsertEvent {
   List<Object> get props => [text];
 }
 
-class SubmitEvent extends InsertEvent {}
+class SubmitEvent extends InsertEvent {
+  /// Current categories and known tags, provided by the view from the
+  /// HomeBloc state so this bloc does not hold a reference to another bloc.
+  final List<Category> categories;
+  final Map<String, TagView> knownTags;
+
+  const SubmitEvent(this.categories, this.knownTags);
+
+  @override
+  List<Object> get props => [categories];
+}
 
 class EndInsertModal extends InsertEvent {}

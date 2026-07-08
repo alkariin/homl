@@ -21,7 +21,10 @@ class UpdateSettings extends HomeEvent {
 class ErrorModal extends HomeEvent {
   const ErrorModal(this.error);
 
-  final String error;
+  final AppMessage error;
+
+  @override
+  List<Object?> get props => [error];
 }
 
 // ----
