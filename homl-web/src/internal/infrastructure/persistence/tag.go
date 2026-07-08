@@ -216,12 +216,12 @@ func (c *CategoriesRepository) FindMainTagIdOfPerson(ctx context.Context, idPers
 
 // CreateAllTags inserts the tags that do not exist yet and returns every tag id.
 // Rolling back on failure is the caller's responsibility (defer tx.Rollback()).
-func CreateAllTags(ctx context.Context, tx *sqlx.Tx, crypto application.Encryptor, tags []category.Tag) ([]uint, error) {
+func CreateAllTags(ctx context.Context, tx *sqlx.Tx, crypto application.Encryptor, tags []category.Tag, idUser uint64) ([]uint, error) {
 	// Create date tags if needed
 	var tagsId = []uint{}
 	for _, tag := range tags {
 		if tag.Id == 0 {
-			encTag, err := crypto.Encrypt(tag.Tag)
+			encTag, err := crypto.Encrypt(tag.Tag, idUser)
 			if err != nil {
 				return nil, err
 			}

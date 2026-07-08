@@ -76,7 +76,7 @@ func (c *CategoriesRepository) GetAllCategoriesWithTags(ctx context.Context, idU
 
 		// if the category is empty, Tag will be null
 		if sqlTag.Id.Valid && sqlTag.Tag.Valid {
-			decTag, err := c.Crypto.Decrypt(sqlTag.Tag.String)
+			decTag, err := c.Crypto.Decrypt(sqlTag.Tag.String, idUser)
 			if err != nil {
 				return nil, nil, err
 			}

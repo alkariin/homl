@@ -27,8 +27,8 @@ func TestGetEvents(t *testing.T) {
 			if len(encTags) != 2 {
 				return false
 			}
-			dec0, err0 := testCrypto.Decrypt(encTags[0])
-			dec1, err1 := testCrypto.Decrypt(encTags[1])
+			dec0, err0 := testCrypto.Decrypt(encTags[0], 1)
+			dec1, err1 := testCrypto.Decrypt(encTags[1], 1)
 			return err0 == nil && err1 == nil && dec0 == "A" && dec1 == "a-different"
 		}), uint64(1)).Return(map[uint]event.Event{}, map[uint][]category.Tag{}, nil)
 

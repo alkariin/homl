@@ -98,7 +98,7 @@ func (t *tagsService) CreateTag(ctx context.Context, idUser uint64, tag *categor
 		return 0, err
 	}
 
-	encTag, err := t.Crypto.Encrypt(uTag)
+	encTag, err := t.Crypto.Encrypt(uTag, idUser)
 	if err != nil {
 		return 0, err
 	}
@@ -135,7 +135,7 @@ func (t *tagsService) UpdateTag(ctx context.Context, idUser uint64, tag *categor
 		return err
 	}
 
-	encTag, err := t.Crypto.Encrypt(uTag)
+	encTag, err := t.Crypto.Encrypt(uTag, idUser)
 	if err != nil {
 		return err
 	}

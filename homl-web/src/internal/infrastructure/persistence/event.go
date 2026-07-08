@@ -97,7 +97,7 @@ func (e *EventsRepository) FindEventsWithTags(ctx context.Context, encTags []str
 		}
 		event.Description = nullStringToString(description)
 
-		decTag, err := e.Crypto.Decrypt(tag.Tag)
+		decTag, err := e.Crypto.Decrypt(tag.Tag, idUser)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -120,14 +120,14 @@ func (e *EventsRepository) CreateEventWithTags(ctx context.Context, tags []categ
 	}
 	defer tx.Rollback() // no-op once Commit succeeds
 
-	otherTagsId, err := CreateAllTags(ctx, tx, e.Crypto, tags)
+	otherTagsId, err := CreateAllTags(ctx, tx, e.Crypto, tags, idUser)
 	if err != nil {
 		return err
 	}
 	tagsId = append(tagsId, otherTagsId...)
 
 	// it works even if the description has been omitted
-	encDescription, err := e.Crypto.Encrypt(event.Description)
+	encDescription, err := e.Crypto.Encrypt(event.Description, idUser)
 	if err != nil {
 		return err
 	}
@@ -171,13 +171,13 @@ func (e *EventsRepository) UpdateEventWithTags(ctx context.Context, tags []categ
 		return err
 	}
 
-	otherTagsId, err := CreateAllTags(ctx, tx, e.Crypto, tags)
+	otherTagsId, err := CreateAllTags(ctx, tx, e.Crypto, tags, idUser)
 	if err != nil {
 		return err
 	}
 	tagsId = append(tagsId, otherTagsId...)
 
-	encDescription, err := e.Crypto.Encrypt(event.Description)
+	encDescription, err := e.Crypto.Encrypt(event.Description, idUser)
 	if err != nil {
 		return err
 	}

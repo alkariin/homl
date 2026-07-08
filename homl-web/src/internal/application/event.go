@@ -49,7 +49,7 @@ func (e *eventsService) GetEvents(ctx context.Context, idUser uint64, tags []str
 		}
 		seen[t] = true
 
-		encTag, err := e.Crypto.Encrypt(t)
+		encTag, err := e.Crypto.Encrypt(t, idUser)
 		if err != nil {
 			return nil, err
 		}
@@ -70,7 +70,7 @@ func (e *eventsService) GetEvents(ctx context.Context, idUser uint64, tags []str
 	var responses = make([]event.GetEventsResponse, 0)
 	for _, k := range keys {
 		evt := resEvents[uint(k)]
-		decDescription, err := e.Crypto.Decrypt(evt.Description)
+		decDescription, err := e.Crypto.Decrypt(evt.Description, idUser)
 		if err != nil {
 			return nil, err
 		}
@@ -127,7 +127,7 @@ func (e *eventsService) buildDateTags(ctx context.Context, idUser uint64, date t
 
 	var tags []category.Tag
 	for _, name := range []string{month, year} {
-		encName, err := e.Crypto.Encrypt(name)
+		encName, err := e.Crypto.Encrypt(name, idUser)
 		if err != nil {
 			return nil, err
 		}

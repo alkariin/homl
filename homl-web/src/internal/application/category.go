@@ -48,7 +48,7 @@ func (c *categoriesService) GetCategories(ctx context.Context, idUser uint64) ([
 	var responses = make([]category.GetCategoryResponse, 0)
 	for _, k := range keys {
 		cat := categories[uint(k)]
-		decCategory, err := c.Crypto.Decrypt(cat.Category)
+		decCategory, err := c.Crypto.Decrypt(cat.Category, idUser)
 		if err != nil {
 			return nil, err
 		}
@@ -67,7 +67,7 @@ func (c *categoriesService) GetCategories(ctx context.Context, idUser uint64) ([
 
 func (c *categoriesService) CreateCategory(ctx context.Context, newCategory *category.Category) error {
 	uCategory := titleCase(newCategory.Category)
-	encCategory, err := c.Crypto.Encrypt(uCategory)
+	encCategory, err := c.Crypto.Encrypt(uCategory, newCategory.IdUser)
 	if err != nil {
 		return err
 	}
@@ -89,7 +89,7 @@ func (c *categoriesService) CreateCategory(ctx context.Context, newCategory *cat
 }
 
 func (c *categoriesService) UpdateCategory(ctx context.Context, newCategory *category.Category) error {
-	encCategory, err := c.Crypto.Encrypt(newCategory.Category)
+	encCategory, err := c.Crypto.Encrypt(newCategory.Category, newCategory.IdUser)
 	if err != nil {
 		return err
 	}

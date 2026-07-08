@@ -122,6 +122,9 @@ seed: ## Seed the database with demo data (idempotent)
 	docker exec -i mysql_container mysql \
 	  -u$(MYSQL_USER) -p$(MYSQL_PASSWORD) $(MYSQL_DATABASE) < db/seeder.sql
 
+seed-gen: ## Regenerate db/seeder.sql (encrypts demo data with ENCRYPT_SECRET)
+	cd src && go run ./cmd/seedgen > ../db/seeder.sql
+
 ##@ Cleanup
 
 clean: ## Remove stack, named volumes, orphan containers, and built images
@@ -136,5 +139,5 @@ _network:
 
 .PHONY: help dev up down local vendor build \
         test test-cover test-docker test-e2e \
-        db-up db-down migrateup migratedown migratefix migratecreate seed \
+        db-up db-down migrateup migratedown migratefix migratecreate seed seed-gen \
         clean _network
