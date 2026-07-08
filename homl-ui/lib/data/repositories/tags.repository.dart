@@ -1,6 +1,12 @@
 import 'package:dio/dio.dart';
 import 'package:homl/data/repositories/api.dart';
 
+/// Exception thrown when a tags request fails
+class TagsRequestFailure implements Exception {}
+
+/// Exception thrown when the created tag payload is empty
+class TagsNotFoundFailure implements Exception {}
+
 class TagsRepository {
   final apiInstance = Api();
 
@@ -16,10 +22,10 @@ class TagsRepository {
       });
 
       if (response.data == null) {
-        throw Exception();
+        throw TagsNotFoundFailure();
       }
     } on DioException catch (_) {
-      throw Exception();
+      throw TagsRequestFailure();
     }
 
     return response.data!['id'] as int;
@@ -36,7 +42,7 @@ class TagsRepository {
         if (idParentTag != null) 'idParentTag': idParentTag,
       });
     } on DioException catch (_) {
-      throw Exception();
+      throw TagsRequestFailure();
     }
   }
 
@@ -44,7 +50,7 @@ class TagsRepository {
     try {
       await apiInstance.api.delete<void>('/tags/$id');
     } on DioException catch (_) {
-      throw Exception();
+      throw TagsRequestFailure();
     }
   }
 }
