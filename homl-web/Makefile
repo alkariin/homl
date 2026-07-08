@@ -118,11 +118,11 @@ migratefix: ## Force migration version (use after a failed migration)
 migratecreate: ## Create a new migration file pair
 	migrate create -ext sql -dir db/migrations -seq mysql
 
-seed: ## Seed the database with demo data (idempotent)
+seed: seed-gen ## Seed the database with demo data (idempotent)
 	docker exec -i mysql_container mysql \
 	  -u$(MYSQL_USER) -p$(MYSQL_PASSWORD) $(MYSQL_DATABASE) < db/seeder.sql
 
-seed-gen: ## Regenerate db/seeder.sql (encrypts demo data with ENCRYPT_SECRET)
+seed-gen: ## Generate db/seeder.sql (encrypts demo data with ENCRYPT_SECRET)
 	cd src && go run ./cmd/seedgen > ../db/seeder.sql
 
 ##@ Cleanup

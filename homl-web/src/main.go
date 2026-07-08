@@ -76,6 +76,12 @@ func inject(cfg *config.Config, d *db.DataSources) *gin.Engine {
 	server := &web.Server{
 		Auth:        authenticator,
 		RateLimiter: limiter,
+		Health: &web.HealthHandler{
+			CheckDB: d.DB.PingContext,
+			CheckRedis: func(ctx context.Context) error {
+				return d.RedisClient.Ping(ctx).Err()
+			},
+		},
 		User:        &web.UserHandler{UsersService: usersService, Tokens: jwt},
 		Category:    &web.CategoryHandler{CategoriesService: categoriesService},
 		Tag:         &web.TagHandler{TagsService: tagsService},

@@ -58,6 +58,7 @@ func (c *categoriesService) GetCategories(ctx context.Context, idUser uint64) ([
 			Category: decCategory,
 			Color:    cat.Color,
 			IsLocked: cat.IsLocked,
+			Kind:     cat.Kind,
 			Tags:     tags[cat.Id],
 		}
 		responses = append(responses, response)
