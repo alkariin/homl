@@ -46,6 +46,34 @@ class AppLocalizationsEn extends AppLocalizations {
   String get account_enterPin => 'Enter the PIN code';
 
   @override
+  String get account_pinEnabled => 'PIN has been successfully enabled';
+
+  @override
+  String get account_pinDisabled => 'PIN has been successfully disabled';
+
+  @override
+  String get account_pinIncorrect => 'Pin code is not correct';
+
+  @override
+  String get account_returnToLogin => 'Return to login';
+
+  @override
+  String get account_passwordUpdated => 'Your password has been updated';
+
+  @override
+  String get account_passwordIncorrect => 'The password is not correct';
+
+  @override
+  String get account_passwordUpdateError =>
+      'An error appeared during the update, try again later';
+
+  @override
+  String get account_currentPasswordError => 'Enter your current password';
+
+  @override
+  String get account_passwordsNotIdentical => 'Passwords aren\'t identical';
+
+  @override
   String get login_usernameLabel => 'username';
 
   @override
@@ -66,6 +94,12 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get login_invalidPassword =>
       'Must contain at least one number, one uppercase and lowercase letter, one special character, and at least 8 or more characters';
+
+  @override
+  String get register_submit => 'Register';
+
+  @override
+  String get register_failure => 'Registration failed';
 
   @override
   String get settings => 'Settings';
@@ -90,6 +124,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get global_delete => 'Delete';
+
+  @override
+  String get global_close => 'Close';
+
+  @override
+  String get global_update => 'Update';
 
   @override
   String get nav_categories => 'Categories';
