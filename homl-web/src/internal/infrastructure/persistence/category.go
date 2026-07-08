@@ -27,6 +27,11 @@ func (c *CategoriesRepository) FindByIdForUser(ctx context.Context, id uint, idU
 	var storedCategory category.Category
 	err := c.DB.GetContext(ctx, &storedCategory, "SELECT id, category, color, isLocked, kind FROM Categories WHERE id = ? AND idUser = ?", id, idUser)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			// Unknown id or a category owned by someone else: same answer, so
+			// the endpoint cannot be used to probe other users' category ids.
+			return nil, apperror.NewNotFound("category", strconv.FormatUint(uint64(id), 10))
+		}
 		return nil, err
 	}
 	return &storedCategory, nil

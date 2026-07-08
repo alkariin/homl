@@ -28,6 +28,7 @@ func MaxBodySize(n int64) gin.HandlerFunc {
 type Server struct {
 	Auth        Authenticator
 	RateLimiter RateLimiter
+	Health      *HealthHandler
 	User        *UserHandler
 	Category    *CategoryHandler
 	Tag         *TagHandler
@@ -50,6 +51,13 @@ func SetupRouter(s *Server, baseUrl string, timeoutDuration time.Duration, isDev
 		panic(err)
 	}
 	router.Use(CorsMiddleware(corsOrigin))
+	router.Use(SecurityHeaders())
+
+	// Liveness/readiness probe: outside the API group, unauthenticated, not
+	// rate limited (orchestrators poll it).
+	if s.Health != nil {
+		router.GET("/healthz", s.Health.Healthz)
+	}
 
 	g := router.Group(baseUrl)
 	g.Use(MaxBodySize(maxRequestBodyBytes))

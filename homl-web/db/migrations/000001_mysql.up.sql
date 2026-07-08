@@ -2,8 +2,7 @@
 /*!40014 SET FOREIGN_KEY_CHECKS=0 */;
 /*!40101 SET SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
 /*!40111 SET SQL_NOTES=0 */;
-DROP TABLE IF EXISTS Categories;
-CREATE TABLE `Categories` (
+CREATE TABLE IF NOT EXISTS `Categories` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `category` varchar(255) NOT NULL,
   `color` varchar(255) NOT NULL,
@@ -13,15 +12,13 @@ CREATE TABLE `Categories` (
   KEY `categories_fk` (`idUser`),
   CONSTRAINT `categories_fk` FOREIGN KEY (`idUser`) REFERENCES `Users` (`id`) ON DELETE CASCADE
 );
-DROP TABLE IF EXISTS Events;
-CREATE TABLE `Events` (
+CREATE TABLE IF NOT EXISTS `Events` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `description` text NULL,
   `date` date NOT NULL,
   PRIMARY KEY (`id`)
 );
-DROP TABLE IF EXISTS EventsTags;
-CREATE TABLE `EventsTags` (
+CREATE TABLE IF NOT EXISTS `EventsTags` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `idTag` int unsigned NOT NULL,
   `idEvent` int unsigned NOT NULL,
@@ -34,8 +31,7 @@ CREATE TABLE `EventsTags` (
   CONSTRAINT `eventsTags_fk2` FOREIGN KEY (`idEvent`) REFERENCES `Events` (`id`) ON DELETE CASCADE,
   CONSTRAINT `eventsTags_fk3` FOREIGN KEY (`idUser`) REFERENCES `Users` (`id`) ON DELETE CASCADE
 );
-DROP TABLE IF EXISTS Persons;
-CREATE TABLE `Persons` (
+CREATE TABLE IF NOT EXISTS `Persons` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `firstname` varchar(255) NOT NULL,
   `lastname` varchar(255) NOT NULL,
@@ -44,8 +40,7 @@ CREATE TABLE `Persons` (
   KEY `persons_fk` (`idCategory`),
   CONSTRAINT `persons_fk` FOREIGN KEY (`idCategory`) REFERENCES `Categories` (`id`)
 );
-DROP TABLE IF EXISTS Tags;
-CREATE TABLE `Tags` (
+CREATE TABLE IF NOT EXISTS `Tags` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `tag` varchar(255) NOT NULL,
   `idCategory` int unsigned NOT NULL,
@@ -57,8 +52,7 @@ CREATE TABLE `Tags` (
   CONSTRAINT `tags_fk` FOREIGN KEY (`idCategory`) REFERENCES `Categories` (`id`) ON DELETE CASCADE,
   CONSTRAINT `tags_fk2` FOREIGN KEY (`idPerson`) REFERENCES `Persons` (`id`) ON DELETE CASCADE
 );
-DROP TABLE IF EXISTS Users;
-CREATE TABLE `Users` (
+CREATE TABLE IF NOT EXISTS `Users` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `username` varchar(255) NOT NULL,
   `password` varchar(255) NOT NULL,
