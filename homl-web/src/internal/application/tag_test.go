@@ -50,7 +50,7 @@ func TestCreateTag(t *testing.T) {
 		catRepo.On("FindByIdForUser", uint(2), uint64(1)).
 			Return(&category.Category{Id: 2, Kind: category.KindCustom}, nil)
 		catRepo.On("CreateTag", mock.MatchedBy(func(enc string) bool {
-			dec, err := testCrypto.Decrypt(enc)
+			dec, err := testCrypto.Decrypt(enc, 1)
 			return err == nil && dec == "Cinema"
 		}), uint(2), (*uint)(nil)).Return(uint(1), nil)
 
@@ -74,7 +74,7 @@ func TestCreateTag(t *testing.T) {
 		catRepo.On("FindTagForUser", idParent, uint64(1)).
 			Return(&category.Tag{Id: idParent, Tag: "enc", IdCategory: 2, IdParentTag: nil}, nil)
 		catRepo.On("CreateTag", mock.MatchedBy(func(enc string) bool {
-			dec, err := testCrypto.Decrypt(enc)
+			dec, err := testCrypto.Decrypt(enc, 1)
 			return err == nil && dec == "Movies"
 		}), uint(2), &idParent).Return(uint(11), nil)
 
@@ -206,7 +206,7 @@ func TestUpdateTag(t *testing.T) {
 		catRepo.On("FindByIdForUser", uint(2), uint64(1)).
 			Return(&category.Category{Id: 2, Kind: category.KindCustom}, nil)
 		catRepo.On("UpdateTag", mock.MatchedBy(func(enc string) bool {
-			dec, err := testCrypto.Decrypt(enc)
+			dec, err := testCrypto.Decrypt(enc, 1)
 			return err == nil && dec == "Cinema"
 		}), uint(2), idTag, (*uint)(nil)).Return(nil)
 

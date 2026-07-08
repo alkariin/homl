@@ -98,7 +98,7 @@ func (u *UsersRepository) Registration(ctx context.Context, user *user.User, lan
 	categories := masterdata.DefaultCategories()
 
 	for i := 0; i < len(categories); i++ {
-		encCategory, err := u.Crypto.Encrypt(categories[i].Name)
+		encCategory, err := u.Crypto.Encrypt(categories[i].Name, user.ID)
 		if err != nil {
 			return err
 		}

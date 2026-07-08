@@ -25,7 +25,7 @@ func inject(cfg *config.Config, d *db.DataSources) *gin.Engine {
 	log.Println("Injecting data sources")
 
 	// infrastructure adapters
-	aes := crypto.NewAES(cfg.EncryptSecret)
+	aes := crypto.NewKeyring(cfg.EncryptSecret)
 	jwt := auth.NewJWT(cfg.AccessSecret, cfg.RefreshSecret, cfg.IsDev())
 	limiter := ratelimit.NewRedisLimiter(d.RedisClient)
 
