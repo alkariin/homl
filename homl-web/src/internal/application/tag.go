@@ -2,7 +2,6 @@ package application
 
 import (
 	"context"
-	"strings"
 
 	"github.com/alkariin/homl/homl-web/internal/apperror"
 	"github.com/alkariin/homl/homl-web/internal/domain/category"
@@ -50,7 +49,7 @@ func (t *tagsService) validateTag(ctx context.Context, idUser uint64, tag *categ
 	// Check that the tag is not blacklisted
 	blacklistTags := masterdata.BlacklistedTags()
 
-	uTag := strings.Title(tag.Tag)
+	uTag := titleCase(tag.Tag)
 
 	for _, e := range blacklistTags {
 		if e == uTag {
