@@ -2,17 +2,18 @@ part of 'app_bloc.dart';
 
 class AppState extends Equatable {
   final Language locale; // only language used when unlogged
-  final String? errorModal;
+  final AppMessage? errorModal;
 
   const AppState({required this.locale, this.errorModal});
 
-  AppState copyWith({Language? locale, String? errorModal}) {
+  AppState copyWith(
+      {Language? locale, AppMessage? errorModal, bool clearErrorModal = false}) {
     return AppState(
       locale: locale ?? this.locale,
-      errorModal: errorModal ?? this.errorModal,
+      errorModal: clearErrorModal ? null : (errorModal ?? this.errorModal),
     );
   }
 
   @override
-  List<Object> get props => [locale];
+  List<Object?> get props => [locale, errorModal];
 }

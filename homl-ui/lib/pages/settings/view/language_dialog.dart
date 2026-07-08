@@ -47,8 +47,8 @@ class _DialogItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    onTap(String value) async {
-      Language language = longStringToLanguage(text);
+    void onTap(String value) {
+      Language language = longStringToLanguage(value);
       context.read<SettingsBloc>().add(UpdateLanguage(language));
       Navigator.of(context).pop();
     }

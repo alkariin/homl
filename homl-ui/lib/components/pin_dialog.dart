@@ -63,7 +63,6 @@ class _PinDialogViewState extends State<PinDialogView> {
   @override
   Widget build(BuildContext context) {
     var localization = AppLocalizations.of(context)!;
-    final formKey = GlobalKey<FormState>();
     const focusedBorderColor = Color.fromRGBO(23, 171, 144, 1);
     const fillColor = Color.fromRGBO(243, 246, 249, 0);
     const borderColor = Color.fromRGBO(23, 171, 144, 0.4);
@@ -98,18 +97,19 @@ class _PinDialogViewState extends State<PinDialogView> {
                     defaultPinTheme: defaultPinTheme,
                     separatorBuilder: (index) => const SizedBox(width: 8),
                     hapticFeedbackType: HapticFeedbackType.lightImpact,
-                    onCompleted: (value) {
-                      widget.onChanged(pinController.text).then((isValid) {
-                        if (!isValid) {
-                          pinController.text = "";
-                          setState(() {
-                            showError = true;
-                          });
-                        }
-                      });
+                    onCompleted: (value) async {
+                      final isValid =
+                          await widget.onChanged(pinController.text);
+                      if (!mounted) return;
+                      if (!isValid) {
+                        pinController.text = "";
+                        setState(() {
+                          showError = true;
+                        });
+                      }
                     },
                     forceErrorState: showError,
-                    errorText: "Pin code is not correct",
+                    errorText: localization.account_pinIncorrect,
                     cursor: Column(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
@@ -146,7 +146,7 @@ class _PinDialogViewState extends State<PinDialogView> {
                         onPressed: () {
                           widget.returnToLogin!();
                         },
-                        child: const Text("Return to login"),
+                        child: Text(localization.account_returnToLogin),
                       ))
               ],
             ),

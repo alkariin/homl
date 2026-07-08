@@ -15,6 +15,10 @@ class Submit extends AccountEvent {
 
   @override
   List<Object> get props => [oldPassword, newPassword];
+
+  /// Never log the passwords (events are logged by the bloc observer).
+  @override
+  String toString() => 'Submit([REDACTED], [REDACTED])';
 }
 
 class ResetPasswordDialogState extends AccountEvent {}
@@ -34,3 +38,6 @@ class SubmitPin extends AccountEvent {
 class ResetPinViewState extends AccountEvent {}
 
 class InitValues extends AccountEvent {}
+
+/// Clears the modal message once the view displayed it.
+class EndAccountModal extends AccountEvent {}
