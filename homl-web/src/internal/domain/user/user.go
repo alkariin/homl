@@ -77,9 +77,19 @@ type Repository interface {
 	UpdateChallenge(ctx context.Context, idUser uint64, challenge *string) error
 	ResetPinCounter(ctx context.Context, idUser uint64) error
 	CheckPin(ctx context.Context, idUser uint64, pin string) error
-	DeleteAuth(ctx context.Context, givenUuid string) (int64, error)
 	CreateAuth(ctx context.Context, userid uint64, td *TokenDetails) error
 	FetchAuth(ctx context.Context, authD *AccessDetails) (uint64, error)
+	// RevokeSessionByAccess / RevokeSessionByRefresh delete a whole session
+	// pair (access + refresh) given either of its uuids, returning how many
+	// keys were removed (0 = the session was already gone).
+	RevokeSessionByAccess(ctx context.Context, accessUuid string) (int64, error)
+	RevokeSessionByRefresh(ctx context.Context, refreshUuid string) (int64, error)
+	// RevokeAllSessions deletes every live session of the user, so stolen
+	// tokens do not survive a password change or reset.
+	RevokeAllSessions(ctx context.Context, idUser uint64) error
+	// RefreshSessionExists reports whether a refresh token uuid still has a
+	// live (non-revoked) session.
+	RefreshSessionExists(ctx context.Context, refreshUuid string) (bool, error)
 	UpdatePinAndFingerprint(ctx context.Context, user *User, removePkey bool, removePin bool) error
 
 	// StoreResetToken persists a single-use password-reset token bound to a

@@ -126,7 +126,9 @@ func (u *usersService) Logout(ctx context.Context, accessDetails *user.AccessDet
 		return err
 	}
 
-	deleted, delErr := u.UsersRepository.DeleteAuth(ctx, accessDetails.AccessUuid)
+	// Revoke the whole pair: leaving the refresh token alive would let a
+	// "logged-out" session resurrect itself through /refresh for months.
+	deleted, delErr := u.UsersRepository.RevokeSessionByAccess(ctx, accessDetails.AccessUuid)
 	if delErr != nil || deleted == 0 {
 		return apperror.NewInternal()
 	}
@@ -207,8 +209,9 @@ func (u *usersService) Refresh(ctx context.Context, ri *user.RefreshInput) (map[
 		}
 	}
 
-	//Delete the previous Refresh Token
-	deleted, delErr := u.UsersRepository.DeleteAuth(ctx, rd.RefreshUuid)
+	// Rotate: revoke the previous session pair (refresh + its access token).
+	// deleted == 0 means the refresh token was already used or revoked.
+	deleted, delErr := u.UsersRepository.RevokeSessionByRefresh(ctx, rd.RefreshUuid)
 	if delErr != nil || deleted == 0 { // if any goes wrong
 		return nil, apperror.NewAuthorization("Not authorized")
 	}
@@ -312,6 +315,13 @@ func (u *usersService) generateAndUpdatePassword(ctx context.Context, newPasswor
 		return nil, err
 	}
 
+	// A credential rotation invalidates every existing session: a stolen
+	// refresh token must not survive the password change that was meant to
+	// evict the thief. The fresh session below is minted afterwards.
+	if err := u.UsersRepository.RevokeAllSessions(ctx, idUser); err != nil {
+		return nil, err
+	}
+
 	return u.createSession(ctx, idUser)
 }
 
@@ -329,6 +339,16 @@ func (u *usersService) Challenge(ctx context.Context, refreshToken string) (*str
 	rd, err := u.Tokens.VerifyRefresh(refreshToken)
 	if err != nil {
 		return nil, apperror.NewAuthorization("Refresh token expired")
+	}
+
+	// A signed-but-revoked refresh token (logout, rotation, password change)
+	// must not be able to keep minting challenges.
+	alive, err := u.UsersRepository.RefreshSessionExists(ctx, rd.RefreshUuid)
+	if err != nil {
+		return nil, err
+	}
+	if !alive {
+		return nil, apperror.NewAuthorization("Not authorized")
 	}
 
 	err = u.UsersRepository.UpdateChallenge(ctx, rd.UserId, &challenge)
