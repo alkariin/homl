@@ -161,12 +161,55 @@ func (m *MockUsersRepo) UpdatePinAndFingerprint(ctx context.Context, s *user.Use
 	return r0
 }
 
-func (m *MockUsersRepo) DeleteAuth(ctx context.Context, givenUuid string) (int64, error) {
-	ret := m.Called(givenUuid)
+func (m *MockUsersRepo) RevokeSessionByAccess(ctx context.Context, accessUuid string) (int64, error) {
+	ret := m.Called(accessUuid)
 
 	var r0 int64
 	if ret.Get(0) != nil {
 		r0 = ret.Get(0).(int64)
+	}
+
+	var r1 error
+	if ret.Get(1) != nil {
+		r1 = ret.Get(1).(error)
+	}
+
+	return r0, r1
+}
+
+func (m *MockUsersRepo) RevokeSessionByRefresh(ctx context.Context, refreshUuid string) (int64, error) {
+	ret := m.Called(refreshUuid)
+
+	var r0 int64
+	if ret.Get(0) != nil {
+		r0 = ret.Get(0).(int64)
+	}
+
+	var r1 error
+	if ret.Get(1) != nil {
+		r1 = ret.Get(1).(error)
+	}
+
+	return r0, r1
+}
+
+func (m *MockUsersRepo) RevokeAllSessions(ctx context.Context, idUser uint64) error {
+	ret := m.Called(idUser)
+
+	var r0 error
+	if ret.Get(0) != nil {
+		r0 = ret.Get(0).(error)
+	}
+
+	return r0
+}
+
+func (m *MockUsersRepo) RefreshSessionExists(ctx context.Context, refreshUuid string) (bool, error) {
+	ret := m.Called(refreshUuid)
+
+	var r0 bool
+	if ret.Get(0) != nil {
+		r0 = ret.Get(0).(bool)
 	}
 
 	var r1 error

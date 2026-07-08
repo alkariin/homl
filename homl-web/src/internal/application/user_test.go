@@ -170,7 +170,7 @@ func TestLogout(t *testing.T) {
 
 		ad := &user.AccessDetails{AccessUuid: "uuid-1", UserId: 1}
 		mockRepo.On("UpdateChallenge", uint64(1), (*string)(nil)).Return(nil)
-		mockRepo.On("DeleteAuth", "uuid-1").Return(int64(1), nil)
+		mockRepo.On("RevokeSessionByAccess", "uuid-1").Return(int64(1), nil)
 
 		err := svc.Logout(context.Background(), ad)
 
@@ -184,7 +184,7 @@ func TestLogout(t *testing.T) {
 
 		ad := &user.AccessDetails{AccessUuid: "uuid-missing", UserId: 1}
 		mockRepo.On("UpdateChallenge", uint64(1), (*string)(nil)).Return(nil)
-		mockRepo.On("DeleteAuth", "uuid-missing").Return(int64(0), nil)
+		mockRepo.On("RevokeSessionByAccess", "uuid-missing").Return(int64(0), nil)
 
 		err := svc.Logout(context.Background(), ad)
 
@@ -238,6 +238,7 @@ func TestConfirmResetPassword(t *testing.T) {
 
 		mockRepo.On("ConsumeResetToken", "reset-token").Return(uint64(1), nil)
 		mockRepo.On("UpdatePassword", uint64(1), mock.AnythingOfType("string")).Return(nil)
+		mockRepo.On("RevokeAllSessions", uint64(1)).Return(nil)
 		mockRepo.On("CreateAuth", uint64(1), mock.AnythingOfType("*user.TokenDetails")).Return(nil)
 
 		tokens, err := svc.ConfirmResetPassword(context.Background(), "NewPass123!", "reset-token")
@@ -257,6 +258,102 @@ func TestConfirmResetPassword(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.Nil(t, tokens)
+		mockRepo.AssertNotCalled(t, "UpdatePassword")
+	})
+}
+
+func TestRefresh(t *testing.T) {
+	// mintRefreshToken returns a valid refresh token for user 1 along with its uuid.
+	mintRefreshToken := func(t *testing.T) (string, string) {
+		t.Helper()
+		td, err := testTokens.CreateToken(1)
+		assert.NoError(t, err)
+		return td.RefreshToken, td.RefreshUuid
+	}
+
+	t.Run("Rotates the session pair and mints new tokens", func(t *testing.T) {
+		mockRepo := new(mocks.MockUsersRepo)
+		svc := application.NewUsersService(&application.UserConfig{UsersRepository: mockRepo, Tokens: testTokens})
+
+		refreshToken, refreshUuid := mintRefreshToken(t)
+
+		mockRepo.On("FindById", uint64(1)).Return(&user.User{ID: 1}, nil)
+		mockRepo.On("RevokeSessionByRefresh", refreshUuid).Return(int64(2), nil)
+		mockRepo.On("CreateAuth", uint64(1), mock.AnythingOfType("*user.TokenDetails")).Return(nil)
+
+		tokens, err := svc.Refresh(context.Background(), &user.RefreshInput{Refresh_token: refreshToken})
+
+		assert.NoError(t, err)
+		assert.NotEmpty(t, tokens["access_token"])
+		assert.NotEmpty(t, tokens["refresh_token"])
+		mockRepo.AssertExpectations(t)
+	})
+
+	t.Run("Rejects a refresh token that was already used or revoked", func(t *testing.T) {
+		mockRepo := new(mocks.MockUsersRepo)
+		svc := application.NewUsersService(&application.UserConfig{UsersRepository: mockRepo, Tokens: testTokens})
+
+		refreshToken, refreshUuid := mintRefreshToken(t)
+
+		mockRepo.On("FindById", uint64(1)).Return(&user.User{ID: 1}, nil)
+		// 0 deleted keys: the session was already rotated out or revoked.
+		mockRepo.On("RevokeSessionByRefresh", refreshUuid).Return(int64(0), nil)
+
+		tokens, err := svc.Refresh(context.Background(), &user.RefreshInput{Refresh_token: refreshToken})
+
+		assert.Error(t, err)
+		assert.Nil(t, tokens)
+		mockRepo.AssertNotCalled(t, "CreateAuth")
+	})
+
+	t.Run("Requires the pin when the account has pin auth enabled", func(t *testing.T) {
+		mockRepo := new(mocks.MockUsersRepo)
+		svc := application.NewUsersService(&application.UserConfig{UsersRepository: mockRepo, Tokens: testTokens})
+
+		refreshToken, _ := mintRefreshToken(t)
+
+		mockRepo.On("FindById", uint64(1)).Return(&user.User{ID: 1, IsPinEnabled: true}, nil)
+
+		tokens, err := svc.Refresh(context.Background(), &user.RefreshInput{Refresh_token: refreshToken})
+
+		assert.Error(t, err)
+		assert.Nil(t, tokens)
+		mockRepo.AssertNotCalled(t, "RevokeSessionByRefresh")
+	})
+}
+
+func TestUpdatePassword(t *testing.T) {
+	t.Run("Revokes every session before minting the new one", func(t *testing.T) {
+		mockRepo := new(mocks.MockUsersRepo)
+		svc := application.NewUsersService(&application.UserConfig{UsersRepository: mockRepo, Tokens: testTokens})
+
+		oldHash, _ := bcrypt.GenerateFromPassword([]byte("OldPass123!"), bcrypt.MinCost)
+		oldHashStr := string(oldHash)
+		mockRepo.On("FindPasswordById", uint64(1)).Return(&oldHashStr, nil)
+		mockRepo.On("UpdatePassword", uint64(1), mock.AnythingOfType("string")).Return(nil)
+		mockRepo.On("RevokeAllSessions", uint64(1)).Return(nil)
+		mockRepo.On("CreateAuth", uint64(1), mock.AnythingOfType("*user.TokenDetails")).Return(nil)
+
+		tokens, err := svc.UpdatePassword(context.Background(), "OldPass123!", "NewPass123!", 1)
+
+		assert.NoError(t, err)
+		assert.NotEmpty(t, tokens["access_token"])
+		mockRepo.AssertExpectations(t)
+	})
+
+	t.Run("Rejects a wrong old password without touching sessions", func(t *testing.T) {
+		mockRepo := new(mocks.MockUsersRepo)
+		svc := application.NewUsersService(&application.UserConfig{UsersRepository: mockRepo, Tokens: testTokens})
+
+		oldHash, _ := bcrypt.GenerateFromPassword([]byte("OldPass123!"), bcrypt.MinCost)
+		oldHashStr := string(oldHash)
+		mockRepo.On("FindPasswordById", uint64(1)).Return(&oldHashStr, nil)
+
+		tokens, err := svc.UpdatePassword(context.Background(), "WrongPass!", "NewPass123!", 1)
+
+		assert.Error(t, err)
+		assert.Nil(t, tokens)
+		mockRepo.AssertNotCalled(t, "RevokeAllSessions")
 		mockRepo.AssertNotCalled(t, "UpdatePassword")
 	})
 }
