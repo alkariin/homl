@@ -3,7 +3,6 @@ package application
 import (
 	"context"
 	"sort"
-	"strings"
 
 	"github.com/alkariin/homl/homl-web/internal/domain/category"
 	"github.com/alkariin/homl/homl-web/internal/domain/person"
@@ -74,8 +73,8 @@ func (s *personsService) GetPersons(ctx context.Context, idUser uint64) ([]perso
 }
 
 func (s *personsService) CreatePerson(ctx context.Context, person *person.Person, nicknames []string, idUser uint64) error {
-	firstname := strings.Title(person.Firstname)
-	lastname := strings.Title(person.Lastname)
+	firstname := titleCase(person.Firstname)
+	lastname := titleCase(person.Lastname)
 	encFirstname, err := s.Crypto.Encrypt(firstname)
 	if err != nil {
 		return err
@@ -123,8 +122,8 @@ func (s *personsService) UpdatePerson(ctx context.Context, person *person.Person
 		return err
 	}
 
-	firstname := strings.Title(person.Firstname)
-	lastname := strings.Title(person.Lastname)
+	firstname := titleCase(person.Firstname)
+	lastname := titleCase(person.Lastname)
 	encFirstname, err := s.Crypto.Encrypt(firstname)
 	if err != nil {
 		return err

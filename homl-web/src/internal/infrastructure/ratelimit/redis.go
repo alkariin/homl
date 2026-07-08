@@ -4,9 +4,10 @@
 package ratelimit
 
 import (
+	"context"
 	"time"
 
-	"github.com/go-redis/redis/v7"
+	"github.com/redis/go-redis/v9"
 )
 
 // RedisLimiter implements a fixed-window counter in Redis.
@@ -32,8 +33,8 @@ var allowScript = redis.NewScript(`
 // Allow increments the counter for key and reports whether it stays within
 // limit for the current window. Only the first hit of a window sets the expiry,
 // so the window is fixed and resets once it elapses.
-func (r *RedisLimiter) Allow(key string, limit int, window time.Duration) (bool, error) {
-	count, err := allowScript.Run(r.client, []string{key}, window.Milliseconds()).Int64()
+func (r *RedisLimiter) Allow(ctx context.Context, key string, limit int, window time.Duration) (bool, error) {
+	count, err := allowScript.Run(ctx, r.client, []string{key}, window.Milliseconds()).Int64()
 	if err != nil {
 		return false, err
 	}

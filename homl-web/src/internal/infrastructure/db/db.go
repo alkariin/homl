@@ -1,13 +1,14 @@
 package db
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"time"
 
-	"github.com/go-redis/redis/v7"
 	_ "github.com/go-sql-driver/mysql" // imported for side effects only
 	"github.com/jmoiron/sqlx"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/alkariin/homl/homl-web/internal/infrastructure/config"
 )
@@ -55,7 +56,9 @@ func initRedis(cfg *config.Config) (*redis.Client, error) {
 		Password: cfg.RedisPassword,
 	})
 
-	_, err := rdb.Ping().Result()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	_, err := rdb.Ping(ctx).Result()
 	if err != nil {
 		return nil, err
 	}

@@ -11,18 +11,14 @@ import (
 	"github.com/alkariin/homl/homl-web/internal/application"
 	"github.com/alkariin/homl/homl-web/internal/domain/masterdata"
 	"github.com/alkariin/homl/homl-web/internal/domain/user"
-	"github.com/go-redis/redis/v7"
 	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
+	"github.com/redis/go-redis/v9"
 	"golang.org/x/crypto/bcrypt"
 )
 
 // mysqlDuplicateEntry is MySQL error 1062: duplicate entry for a unique key.
 const mysqlDuplicateEntry = 1062
-
-// passwordBcryptCost aliases the domain constant so it stays reachable inside
-// methods whose "user" parameter shadows the package name.
-const passwordBcryptCost = user.PasswordBcryptCost
 
 // resetTokenKeyPrefix namespaces single-use password-reset tokens in Redis.
 const resetTokenKeyPrefix = "reset:"
@@ -70,6 +66,8 @@ func NewUsersRepository(db *sqlx.DB, redis *redis.Client, crypto application.Enc
 	}
 }
 
+// Registration stores the user (password already hashed by the application
+// layer) and seeds their default categories in one transaction.
 func (u *UsersRepository) Registration(ctx context.Context, user *user.User, language *user.Language) error {
 	tx, err := u.DB.BeginTxx(ctx, nil)
 	if err != nil {
@@ -77,14 +75,7 @@ func (u *UsersRepository) Registration(ctx context.Context, user *user.User, lan
 	}
 	defer tx.Rollback() // no-op once Commit succeeds
 
-	// Salt and hash the password using the bcrypt algorithm.
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), passwordBcryptCost)
-	if err != nil {
-		return err
-	}
-
-	// Next, insert the username, along with the hashed password into the database.
-	res, err := tx.ExecContext(ctx, "INSERT INTO Users (username, password, language) VALUES (?, ?, ?)", user.Username, string(hashedPassword), *language)
+	res, err := tx.ExecContext(ctx, "INSERT INTO Users (username, password, language) VALUES (?, ?, ?)", user.Username, user.Password, *language)
 	if err != nil {
 		// An existing username violates the unique key: report it as a
 		// conflict instead of leaking a raw driver error as a 500.
@@ -201,7 +192,7 @@ func (r *UsersRepository) CheckPin(ctx context.Context, idUser uint64, pin strin
 
 	// Hard lockout: once locked, even a correct pin is refused until the user
 	// re-authenticates with their password (which resets the counter on Login).
-	if pinTryCounter != nil && *pinTryCounter >= 3 {
+	if pinTryCounter != nil && *pinTryCounter >= user.MaxPinTries {
 		return apperror.NewAuthorization("Pin is locked") // this string is used in FE
 	}
 
@@ -225,7 +216,7 @@ func (r *UsersRepository) CheckPin(ctx context.Context, idUser uint64, pin strin
 		if err2 := r.DB.QueryRowContext(ctx, `SELECT pinTryCounter FROM Users WHERE id = ?`, idUser).Scan(&counter); err2 != nil {
 			return err2
 		}
-		if counter != nil && *counter >= 3 {
+		if counter != nil && *counter >= user.MaxPinTries {
 			return apperror.NewAuthorization("Pin is locked") // this string is used in FE
 		}
 		return apperror.NewAuthorization("Pin code not correct")
@@ -285,23 +276,21 @@ func (u *UsersRepository) CreateAuth(ctx context.Context, userid uint64, td *use
 	rt := time.Unix(td.RtExpires, 0)
 	now := time.Now()
 
-	pipe := u.Redis.WithContext(ctx).TxPipeline()
-	pipe.Set(accessKeyPrefix+td.AccessUuid, sessionValue(userid, td.RefreshUuid), at.Sub(now))
-	pipe.Set(refreshKeyPrefix+td.RefreshUuid, sessionValue(userid, td.AccessUuid), rt.Sub(now))
+	pipe := u.Redis.TxPipeline()
+	pipe.Set(ctx, accessKeyPrefix+td.AccessUuid, sessionValue(userid, td.RefreshUuid), at.Sub(now))
+	pipe.Set(ctx, refreshKeyPrefix+td.RefreshUuid, sessionValue(userid, td.AccessUuid), rt.Sub(now))
 	// Index the pair for revoke-all. The set lives as long as the longest
 	// refresh token; stale members are dropped on every revocation.
 	userKey := userSessionsKey + strconv.FormatUint(userid, 10)
-	pipe.SAdd(userKey, td.AccessUuid, td.RefreshUuid)
-	pipe.Expire(userKey, rt.Sub(now))
-	_, err := pipe.Exec()
+	pipe.SAdd(ctx, userKey, td.AccessUuid, td.RefreshUuid)
+	pipe.Expire(ctx, userKey, rt.Sub(now))
+	_, err := pipe.Exec(ctx)
 	return err
 }
 
 // revokeSession deletes both halves of a session given one of its uuids.
 func (u *UsersRepository) revokeSession(ctx context.Context, uuid string, keyPrefix string, partnerPrefix string) (int64, error) {
-	rdb := u.Redis.WithContext(ctx)
-
-	val, err := rdb.Get(keyPrefix + uuid).Result()
+	val, err := u.Redis.Get(ctx, keyPrefix+uuid).Result()
 	if err == redis.Nil {
 		return 0, nil
 	}
@@ -314,10 +303,10 @@ func (u *UsersRepository) revokeSession(ctx context.Context, uuid string, keyPre
 		return 0, err
 	}
 
-	pipe := rdb.TxPipeline()
-	deleted := pipe.Del(keyPrefix+uuid, partnerPrefix+partnerUuid)
-	pipe.SRem(userSessionsKey+strconv.FormatUint(userID, 10), uuid, partnerUuid)
-	if _, err := pipe.Exec(); err != nil {
+	pipe := u.Redis.TxPipeline()
+	deleted := pipe.Del(ctx, keyPrefix+uuid, partnerPrefix+partnerUuid)
+	pipe.SRem(ctx, userSessionsKey+strconv.FormatUint(userID, 10), uuid, partnerUuid)
+	if _, err := pipe.Exec(ctx); err != nil {
 		return 0, err
 	}
 	return deleted.Val(), nil
@@ -339,10 +328,9 @@ func (u *UsersRepository) RevokeSessionByRefresh(ctx context.Context, refreshUui
 // RevokeAllSessions deletes every live session of the user (password change
 // or reset): a stolen refresh token must not survive a credential rotation.
 func (u *UsersRepository) RevokeAllSessions(ctx context.Context, idUser uint64) error {
-	rdb := u.Redis.WithContext(ctx)
 	userKey := userSessionsKey + strconv.FormatUint(idUser, 10)
 
-	uuids, err := rdb.SMembers(userKey).Result()
+	uuids, err := u.Redis.SMembers(ctx, userKey).Result()
 	if err != nil {
 		return err
 	}
@@ -354,13 +342,13 @@ func (u *UsersRepository) RevokeAllSessions(ctx context.Context, idUser uint64) 
 	}
 	keys = append(keys, userKey)
 
-	return rdb.Del(keys...).Err()
+	return u.Redis.Del(ctx, keys...).Err()
 }
 
 // RefreshSessionExists reports whether a refresh token uuid still has a live
 // session (i.e. has not been revoked or rotated out).
 func (u *UsersRepository) RefreshSessionExists(ctx context.Context, refreshUuid string) (bool, error) {
-	n, err := u.Redis.WithContext(ctx).Exists(refreshKeyPrefix + refreshUuid).Result()
+	n, err := u.Redis.Exists(ctx, refreshKeyPrefix+refreshUuid).Result()
 	if err != nil {
 		return false, err
 	}
@@ -368,7 +356,7 @@ func (u *UsersRepository) RefreshSessionExists(ctx context.Context, refreshUuid 
 }
 
 func (u *UsersRepository) FetchAuth(ctx context.Context, authD *user.AccessDetails) (uint64, error) {
-	val, err := u.Redis.WithContext(ctx).Get(accessKeyPrefix + authD.AccessUuid).Result()
+	val, err := u.Redis.Get(ctx, accessKeyPrefix+authD.AccessUuid).Result()
 	if err != nil {
 		return 0, err
 	}
@@ -380,7 +368,7 @@ func (u *UsersRepository) FetchAuth(ctx context.Context, authD *user.AccessDetai
 }
 
 func (u *UsersRepository) StoreResetToken(ctx context.Context, userId uint64, token string, ttl time.Duration) error {
-	return u.Redis.WithContext(ctx).Set(resetTokenKeyPrefix+token, strconv.FormatUint(userId, 10), ttl).Err()
+	return u.Redis.Set(ctx, resetTokenKeyPrefix+token, strconv.FormatUint(userId, 10), ttl).Err()
 }
 
 func (u *UsersRepository) ConsumeResetToken(ctx context.Context, token string) (uint64, error) {
@@ -388,10 +376,10 @@ func (u *UsersRepository) ConsumeResetToken(ctx context.Context, token string) (
 
 	// GET then DEL in a single transaction so a token can be redeemed at most
 	// once, even under concurrent requests.
-	getCmd := u.Redis.WithContext(ctx).TxPipeline()
-	val := getCmd.Get(key)
-	getCmd.Del(key)
-	if _, err := getCmd.Exec(); err != nil {
+	getCmd := u.Redis.TxPipeline()
+	val := getCmd.Get(ctx, key)
+	getCmd.Del(ctx, key)
+	if _, err := getCmd.Exec(ctx); err != nil {
 		return 0, apperror.NewAuthorization("Not authorized")
 	}
 

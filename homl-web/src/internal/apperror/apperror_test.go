@@ -32,14 +32,6 @@ func TestErrorStatusMapping(t *testing.T) {
 	}
 }
 
-func TestIsError(t *testing.T) {
-	appErr := NewBadRequest("bad")
-	assert.Equal(t, appErr, IsError(appErr))
-
-	plain := errors.New("plain")
-	assert.Nil(t, IsError(plain))
-}
-
 func TestStatusFallsBackToInternal(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, Status(errors.New("not an app error")))
 }

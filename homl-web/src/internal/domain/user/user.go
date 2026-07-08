@@ -12,6 +12,10 @@ import (
 // low-entropy secret protected by a hard lockout.
 const PasswordBcryptCost = 12
 
+// MaxPinTries is the hard lockout threshold for wrong pin attempts. Once
+// reached, even a correct pin is refused until a password login resets it.
+const MaxPinTries = 3
+
 type User struct {
 	ID                   uint64  `json:"id" db:"id"`
 	Username             string  `json:"username" db:"username"`

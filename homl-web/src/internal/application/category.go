@@ -3,7 +3,6 @@ package application
 import (
 	"context"
 	"sort"
-	"strings"
 
 	"github.com/alkariin/homl/homl-web/internal/apperror"
 	"github.com/alkariin/homl/homl-web/internal/domain/category"
@@ -67,7 +66,7 @@ func (c *categoriesService) GetCategories(ctx context.Context, idUser uint64) ([
 }
 
 func (c *categoriesService) CreateCategory(ctx context.Context, newCategory *category.Category) error {
-	uCategory := strings.Title(newCategory.Category)
+	uCategory := titleCase(newCategory.Category)
 	encCategory, err := c.Crypto.Encrypt(uCategory)
 	if err != nil {
 		return err

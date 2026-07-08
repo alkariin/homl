@@ -67,7 +67,16 @@ func NewUsersService(c *UserConfig) UsersService {
 }
 
 func (u *usersService) Registration(ctx context.Context, usr *user.User, language *user.Language) (map[string]string, error) {
-	err := u.UsersRepository.Registration(ctx, usr, language)
+	// Hash here so no persistence layer ever sees the plaintext password
+	// (password changes already hash in this layer, via
+	// generateAndUpdatePassword).
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(usr.Password), user.PasswordBcryptCost)
+	if err != nil {
+		return nil, err
+	}
+	usr.Password = string(hashedPassword)
+
+	err = u.UsersRepository.Registration(ctx, usr, language)
 	if err != nil {
 		return nil, err
 	}

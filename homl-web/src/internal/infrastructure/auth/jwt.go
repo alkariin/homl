@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/twinj/uuid"
+	"github.com/google/uuid"
 
 	"github.com/alkariin/homl/homl-web/internal/domain/user"
 )
@@ -52,10 +52,10 @@ func (j *JWT) CreateToken(userid uint64) (*user.TokenDetails, error) {
 		tokenExpiresMin = ACCESS_TOKEN_EXPIRE_MINUTES
 	}
 	td.AtExpires = time.Now().Add(time.Minute * time.Duration(tokenExpiresMin)).Unix()
-	td.AccessUuid = uuid.NewV4().String()
+	td.AccessUuid = uuid.NewString()
 
 	td.RtExpires = time.Now().Add(time.Minute * time.Duration(REFRESH_TOKEN_EXPIRE_MINUTES)).Unix()
-	td.RefreshUuid = uuid.NewV4().String()
+	td.RefreshUuid = uuid.NewString()
 
 	var err error
 	//Creating Access Token
