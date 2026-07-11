@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/twinj/uuid"
+	"github.com/google/uuid"
 
 	"github.com/alkariin/homl/homl-web/internal/domain/user"
 )
@@ -52,10 +52,10 @@ func (j *JWT) CreateToken(userid uint64) (*user.TokenDetails, error) {
 		tokenExpiresMin = ACCESS_TOKEN_EXPIRE_MINUTES
 	}
 	td.AtExpires = time.Now().Add(time.Minute * time.Duration(tokenExpiresMin)).Unix()
-	td.AccessUuid = uuid.NewV4().String()
+	td.AccessUuid = uuid.NewString()
 
 	td.RtExpires = time.Now().Add(time.Minute * time.Duration(REFRESH_TOKEN_EXPIRE_MINUTES)).Unix()
-	td.RefreshUuid = uuid.NewV4().String()
+	td.RefreshUuid = uuid.NewString()
 
 	var err error
 	//Creating Access Token
@@ -116,12 +116,12 @@ func (j *JWT) VerifyRefresh(refreshToken string) (*user.RefreshDetails, error) {
 	}, nil
 }
 
+// extractToken returns the raw token from an "Authorization: Bearer <token>"
+// header, or "" when the header is absent or uses another scheme.
 func extractToken(r *http.Request) string {
-	bearToken := r.Header.Get("Authorization")
-	//normally Authorization the_token_xxx
-	strArr := strings.Split(bearToken, " ")
-	if len(strArr) == 2 {
-		return strArr[1]
+	parts := strings.SplitN(r.Header.Get("Authorization"), " ", 2)
+	if len(parts) == 2 && strings.EqualFold(parts[0], "Bearer") {
+		return strings.TrimSpace(parts[1])
 	}
 	return ""
 }

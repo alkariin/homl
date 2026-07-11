@@ -16,6 +16,13 @@ FROM alpine:3.20
 WORKDIR /app
 COPY --from=builder /homlback /app/homlback
 
+# Run as an unprivileged user: the service needs no root capability.
+RUN adduser -D -u 10001 homl
+USER homl
+
 EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s \
+  CMD wget -qO- http://localhost:8080/healthz >/dev/null || exit 1
 
 CMD ["/app/homlback"]

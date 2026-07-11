@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"database/sql"
+	"strconv"
 
 	"github.com/alkariin/homl/homl-web/internal/apperror"
 	"github.com/alkariin/homl/homl-web/internal/application"
@@ -22,28 +23,27 @@ func NewCategoriesRepository(db *sqlx.DB, crypto application.Encryptor) category
 	}
 }
 
-func (c *CategoriesRepository) FindById(ctx context.Context, id uint) (*category.Category, error) {
+func (c *CategoriesRepository) FindByIdForUser(ctx context.Context, id uint, idUser uint64) (*category.Category, error) {
 	var storedCategory category.Category
-	err := c.DB.GetContext(ctx, &storedCategory, "SELECT category, color, isLocked FROM Categories WHERE id = ?", id)
+	err := c.DB.GetContext(ctx, &storedCategory, "SELECT id, category, color, isLocked, kind FROM Categories WHERE id = ? AND idUser = ?", id, idUser)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			// Unknown id or a category owned by someone else: same answer, so
+			// the endpoint cannot be used to probe other users' category ids.
+			return nil, apperror.NewNotFound("category", strconv.FormatUint(uint64(id), 10))
+		}
 		return nil, err
 	}
 	return &storedCategory, nil
 }
 
-func (c *CategoriesRepository) FindLastIdByIdUser(ctx context.Context, idUser uint64) (uint, error) {
-	var idCategoryDate uint
-	// the date category must be the first one
-	err := c.DB.GetContext(ctx, &idCategoryDate, "SELECT id FROM Categories WHERE idUser = ? LIMIT 1;", idUser)
+func (c *CategoriesRepository) FindIdByKind(ctx context.Context, idUser uint64, kind category.Kind) (uint, error) {
+	var id uint
+	err := c.DB.GetContext(ctx, &id, "SELECT id FROM Categories WHERE idUser = ? AND kind = ?", idUser, kind)
 	if err != nil {
 		return 0, err
 	}
-	return idCategoryDate, nil
-}
-
-func (c *CategoriesRepository) CheckLastIdByIdAndIdUser(ctx context.Context, idUser uint64, idCategory uint) error {
-	var resId uint
-	return c.DB.GetContext(ctx, &resId, "SELECT id FROM Categories WHERE id = ? AND idUser = ? LIMIT 1;", idCategory, idUser)
+	return id, nil
 }
 
 // Returns all categories with all tags, but without the tags of the category persons
@@ -55,7 +55,7 @@ func (c *CategoriesRepository) GetAllCategoriesWithTags(ctx context.Context, idU
 	}
 
 	results, err := c.DB.QueryxContext(ctx, `
-		SELECT Categories.Id, category, color, isLocked, Tags.id, tag, Tags.idParentTag
+		SELECT Categories.Id, category, color, isLocked, kind, Tags.id, tag, Tags.idParentTag
 		FROM Categories
 		LEFT JOIN Tags
 		ON Categories.id = Tags.idCategory
@@ -74,14 +74,14 @@ func (c *CategoriesRepository) GetAllCategoriesWithTags(ctx context.Context, idU
 		var sqlTag SQLTag
 		var t category.TagDTO
 		var cat category.Category
-		err = results.Scan(&cat.Id, &cat.Category, &cat.Color, &cat.IsLocked, &sqlTag.Id, &sqlTag.Tag, &sqlTag.IdParentTag)
+		err = results.Scan(&cat.Id, &cat.Category, &cat.Color, &cat.IsLocked, &cat.Kind, &sqlTag.Id, &sqlTag.Tag, &sqlTag.IdParentTag)
 		if err != nil {
 			return nil, nil, err
 		}
 
 		// if the category is empty, Tag will be null
 		if sqlTag.Id.Valid && sqlTag.Tag.Valid {
-			decTag, err := c.Crypto.Decrypt(sqlTag.Tag.String)
+			decTag, err := c.Crypto.Decrypt(sqlTag.Tag.String, idUser)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -101,31 +101,29 @@ func (c *CategoriesRepository) GetAllCategoriesWithTags(ctx context.Context, idU
 	return categories, tags, nil
 }
 
-func (c *CategoriesRepository) Create(ctx context.Context, category *category.Category) error {
+func (c *CategoriesRepository) Create(ctx context.Context, cat *category.Category) error {
+	kind := cat.Kind
+	if kind == "" {
+		kind = category.KindCustom
+	}
 	_, err := c.DB.ExecContext(ctx,
-		"INSERT INTO Categories (category, color, isLocked, idUser) VALUES (?, ?, ?, ?)",
-		category.Category, category.Color, category.IsLocked, category.IdUser,
+		"INSERT INTO Categories (category, color, isLocked, kind, idUser) VALUES (?, ?, ?, ?, ?)",
+		cat.Category, cat.Color, cat.IsLocked, kind, cat.IdUser,
 	)
 
 	return err
 }
 
 func (c *CategoriesRepository) Update(ctx context.Context, category *category.Category) error {
-	res, err := c.DB.ExecContext(ctx,
-		"UPDATE Categories SET category = ?, color = ? WHERE id = ?",
-		category.Category, category.Color, category.Id,
+	// Scoped to the owner. The affected-rows count is deliberately not
+	// checked: MySQL reports 0 for no-op updates (same values), and ownership
+	// is already verified by the service through FindByIdForUser.
+	_, err := c.DB.ExecContext(ctx,
+		"UPDATE Categories SET category = ?, color = ? WHERE id = ? AND idUser = ?",
+		category.Category, category.Color, category.Id, category.IdUser,
 	)
 
-	if err != nil {
-		return err
-	}
-
-	rowsAffected, err := res.RowsAffected()
-	if rowsAffected == 0 || err != nil {
-		return apperror.NewInternal()
-	}
-
-	return nil
+	return err
 }
 
 func (c *CategoriesRepository) Delete(ctx context.Context, idCategory uint, idUser uint64, moveTags bool) error {
@@ -135,39 +133,38 @@ func (c *CategoriesRepository) Delete(ctx context.Context, idCategory uint, idUs
 	}
 	defer tx.Rollback() // no-op once Commit succeeds
 
-	var category category.Category
-	row := tx.QueryRowContext(ctx, "SELECT isLocked FROM Categories WHERE id = ?", idCategory)
-	err = row.Scan(&category.IsLocked)
+	// Load the category scoped to its owner: an id belonging to another user
+	// is indistinguishable from a missing one.
+	var isLocked bool
+	row := tx.QueryRowContext(ctx, "SELECT isLocked FROM Categories WHERE id = ? AND idUser = ?", idCategory, idUser)
+	err = row.Scan(&isLocked)
 	if err != nil {
-		return apperror.NewInternal()
+		if err == sql.ErrNoRows {
+			return apperror.NewNotFound("category", strconv.FormatUint(uint64(idCategory), 10))
+		}
+		return err
 	}
 
-	if category.IsLocked {
+	if isLocked {
 		return apperror.NewStatusForbidden()
 	}
 
 	if moveTags {
-		var idCategoryDate uint
-		// the date category must be the first one
-		row := tx.QueryRowContext(ctx, "SELECT id FROM Categories WHERE idUser = ? LIMIT 1;", idUser)
-		err = row.Scan(&idCategoryDate)
-		if err != nil {
-			return err
-		}
-		idCategoryOther := idCategoryDate + 2
-
-		res, err := tx.ExecContext(ctx, `UPDATE Tags SET idCategory = ? WHERE idCategory = ?;`, idCategoryOther, idCategory)
+		var idCategoryOther uint
+		row := tx.QueryRowContext(ctx, "SELECT id FROM Categories WHERE idUser = ? AND kind = ?", idUser, category.KindOther)
+		err = row.Scan(&idCategoryOther)
 		if err != nil {
 			return err
 		}
 
-		rowsAffected, err := res.RowsAffected()
-		if rowsAffected == 0 || err != nil {
-			return apperror.NewInternal()
+		// No affected-rows check: deleting an empty category is a legal no-op.
+		_, err := tx.ExecContext(ctx, `UPDATE Tags SET idCategory = ? WHERE idCategory = ?;`, idCategoryOther, idCategory)
+		if err != nil {
+			return err
 		}
 	}
 
-	res, err := tx.ExecContext(ctx, "DELETE FROM Categories WHERE id = ?", idCategory)
+	res, err := tx.ExecContext(ctx, "DELETE FROM Categories WHERE id = ? AND idUser = ?", idCategory, idUser)
 	if err != nil {
 		return err
 	}

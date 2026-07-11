@@ -79,6 +79,9 @@ test-docker: ## Run unit + HTTP integration tests in a Go container (no local Go
 test-e2e: ## Run end-to-end tests against a running stack (make dev first)
 	cd src && go test -tags e2e -count=1 ./test/e2e/...
 
+test-db: ## Run cross-tenant persistence tests (needs db-up + migrateup)
+	cd src && go test -tags dbtest -count=1 ./test/dbtest/...
+
 ##@ Docker
 
 build: ## Build backend Docker image
@@ -118,9 +121,12 @@ migratefix: ## Force migration version (use after a failed migration)
 migratecreate: ## Create a new migration file pair
 	migrate create -ext sql -dir db/migrations -seq mysql
 
-seed: ## Seed the database with demo data (idempotent)
+seed: seed-gen ## Seed the database with demo data (idempotent)
 	docker exec -i mysql_container mysql \
 	  -u$(MYSQL_USER) -p$(MYSQL_PASSWORD) $(MYSQL_DATABASE) < db/seeder.sql
+
+seed-gen: ## Generate db/seeder.sql (encrypts demo data with ENCRYPT_SECRET)
+	cd src && go run ./cmd/seedgen > ../db/seeder.sql
 
 ##@ Cleanup
 
@@ -135,6 +141,6 @@ _network:
 	@docker network create $(DOCKER_NETWORK) 2>/dev/null || true
 
 .PHONY: help dev up down local vendor build \
-        test test-cover test-docker test-e2e \
-        db-up db-down migrateup migratedown migratefix migratecreate seed \
+        test test-cover test-docker test-e2e test-db \
+        db-up db-down migrateup migratedown migratefix migratecreate seed seed-gen \
         clean _network

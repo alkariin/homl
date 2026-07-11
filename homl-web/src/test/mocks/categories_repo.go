@@ -14,8 +14,8 @@ type MockCategoriesRepo struct {
 	mock.Mock
 }
 
-func (m *MockCategoriesRepo) FindById(ctx context.Context, id uint) (*category.Category, error) {
-	ret := m.Called(id)
+func (m *MockCategoriesRepo) FindByIdForUser(ctx context.Context, id uint, idUser uint64) (*category.Category, error) {
+	ret := m.Called(id, idUser)
 
 	var r0 *category.Category
 	if ret.Get(0) != nil {
@@ -30,8 +30,8 @@ func (m *MockCategoriesRepo) FindById(ctx context.Context, id uint) (*category.C
 	return r0, r1
 }
 
-func (m *MockCategoriesRepo) FindLastIdByIdUser(ctx context.Context, idUser uint64) (uint, error) {
-	ret := m.Called(idUser)
+func (m *MockCategoriesRepo) FindIdByKind(ctx context.Context, idUser uint64, kind category.Kind) (uint, error) {
+	ret := m.Called(idUser, kind)
 
 	var r0 uint
 	if ret.Get(0) != nil {
@@ -46,8 +46,8 @@ func (m *MockCategoriesRepo) FindLastIdByIdUser(ctx context.Context, idUser uint
 	return r0, r1
 }
 
-func (m *MockCategoriesRepo) CheckLastIdByIdAndIdUser(ctx context.Context, idUser uint64, idCategory uint) error {
-	ret := m.Called(idUser, idCategory)
+func (m *MockCategoriesRepo) CheckTagsBelongToUser(ctx context.Context, tagsId []uint, idUser uint64) error {
+	ret := m.Called(tagsId, idUser)
 
 	var r0 error
 	if ret.Get(0) != nil {

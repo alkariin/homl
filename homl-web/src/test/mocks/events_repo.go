@@ -58,8 +58,8 @@ func (m *MockEventsRepo) UpdateEventWithTags(ctx context.Context, tags []categor
 	return r0
 }
 
-func (m *MockEventsRepo) Delete(ctx context.Context, id uint) error {
-	ret := m.Called(id)
+func (m *MockEventsRepo) Delete(ctx context.Context, id uint, idUser uint64) error {
+	ret := m.Called(id, idUser)
 
 	var r0 error
 	if ret.Get(0) != nil {

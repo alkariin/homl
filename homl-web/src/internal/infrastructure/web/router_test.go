@@ -32,7 +32,9 @@ func (fakeSessions) FetchAuth(context.Context, *user.AccessDetails) (uint64, err
 // allowAllLimiter is a no-op rate limiter for tests.
 type allowAllLimiter struct{}
 
-func (allowAllLimiter) Allow(string, int, time.Duration) (bool, error) { return true, nil }
+func (allowAllLimiter) Allow(context.Context, string, int, time.Duration) (bool, error) {
+	return true, nil
+}
 
 // These HTTP integration tests replace the old Postman suite: they boot the
 // real Gin router (SetupRouter) wired with mocked services and assert the
@@ -316,7 +318,7 @@ func TestCreateEventRejectsMissingDate(t *testing.T) {
 func TestDeleteEventEndpoint(t *testing.T) {
 	router, sm := newTestServer()
 
-	sm.events.On("DeleteEvent", uint(9)).Return(nil)
+	sm.events.On("DeleteEvent", uint(9), testUserID).Return(nil)
 
 	rec := doRequest(router, http.MethodDelete, "/events/9", "", authHeader())
 
