@@ -76,7 +76,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
         categories: categories, allTagsMap: _buildTagsMap(categories)));
   }
 
-  _onInit(Init event, Emitter<HomeState> emit) async {
+  Future<void> _onInit(Init event, Emitter<HomeState> emit) async {
     try {
       final events = await eventsRepository.getEvents();
       final categories = await categoriesRepository.getCategories();
@@ -90,7 +90,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     }
   }
 
-  _onRefreshEvents(RefreshEvents event, Emitter<HomeState> emit) async {
+  Future<void> _onRefreshEvents(RefreshEvents event, Emitter<HomeState> emit) async {
     try {
       final events = await eventsRepository.getEvents();
       emit(state.copyWith(events: events));
@@ -99,7 +99,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     }
   }
 
-  _onCreateTag(CreateTag event, Emitter<HomeState> emit) async {
+  Future<void> _onCreateTag(CreateTag event, Emitter<HomeState> emit) async {
     try {
       await tagsRepository.createTag(event.text, event.idCategory,
           idParentTag: event.idParentTag);
@@ -109,7 +109,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     }
   }
 
-  _onUpdateTag(UpdateTag event, Emitter<HomeState> emit) async {
+  Future<void> _onUpdateTag(UpdateTag event, Emitter<HomeState> emit) async {
     try {
       await tagsRepository.updateTag(event.id, event.text, event.idCategory,
           idParentTag: event.idParentTag);
@@ -119,7 +119,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     }
   }
 
-  _onDeleteTag(DeleteTag event, Emitter<HomeState> emit) async {
+  Future<void> _onDeleteTag(DeleteTag event, Emitter<HomeState> emit) async {
     try {
       await tagsRepository.deleteTag(event.id);
       await _refreshCategories(emit);
@@ -128,7 +128,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     }
   }
 
-  _onCreateCategory(CreateCategory event, Emitter<HomeState> emit) async {
+  Future<void> _onCreateCategory(CreateCategory event, Emitter<HomeState> emit) async {
     try {
       await categoriesRepository.createCategory(event.name, event.color);
       await _refreshCategories(emit);
@@ -137,7 +137,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     }
   }
 
-  _onUpdateCategory(UpdateCategory event, Emitter<HomeState> emit) async {
+  Future<void> _onUpdateCategory(UpdateCategory event, Emitter<HomeState> emit) async {
     try {
       await categoriesRepository.updateCategory(
           event.id, event.name, event.color);
@@ -147,7 +147,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     }
   }
 
-  _onDeleteCategory(DeleteCategory event, Emitter<HomeState> emit) async {
+  Future<void> _onDeleteCategory(DeleteCategory event, Emitter<HomeState> emit) async {
     try {
       await categoriesRepository.deleteCategory(event.id,
           moveTags: event.moveTags);
@@ -157,15 +157,15 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     }
   }
 
-  _onUpdateSettings(UpdateSettings event, Emitter<HomeState> emit) {
+  void _onUpdateSettings(UpdateSettings event, Emitter<HomeState> emit) {
     emit(state.copyWith(settings: event.settings));
   }
 
-  _onErrorModal(ErrorModal event, Emitter<HomeState> emit) {
+  void _onErrorModal(ErrorModal event, Emitter<HomeState> emit) {
     emit(state.copyWith(modal: event.error));
   }
 
-  _onEndModal(EndModal event, Emitter<HomeState> emit) {
+  void _onEndModal(EndModal event, Emitter<HomeState> emit) {
     emit(state.copyWith(clearModal: true));
   }
 

@@ -51,7 +51,7 @@ class InsertBloc extends Bloc<InsertEvent, InsertState> {
     return null;
   }
 
-  _onAddTag(AddTag event, Emitter<InsertState> emit) {
+  void _onAddTag(AddTag event, Emitter<InsertState> emit) {
     final name = event.name.trim();
     if (name.isEmpty ||
         state.tagNames.any((t) => t.toLowerCase() == name.toLowerCase())) {
@@ -61,20 +61,20 @@ class InsertBloc extends Bloc<InsertEvent, InsertState> {
     emit(state.copyWith(tagNames: [...state.tagNames, name]));
   }
 
-  _onRemoveTag(RemoveTag event, Emitter<InsertState> emit) {
+  void _onRemoveTag(RemoveTag event, Emitter<InsertState> emit) {
     emit(state.copyWith(
         tagNames: state.tagNames.where((t) => t != event.name).toList()));
   }
 
-  _onUpdateDate(UpdateDate event, Emitter<InsertState> emit) {
+  void _onUpdateDate(UpdateDate event, Emitter<InsertState> emit) {
     emit(state.copyWith(date: event.date));
   }
 
-  _onUpdateDescription(UpdateDescription event, Emitter<InsertState> emit) {
+  void _onUpdateDescription(UpdateDescription event, Emitter<InsertState> emit) {
     emit(state.copyWith(description: event.text));
   }
 
-  _onSubmitEvent(SubmitEvent event, Emitter<InsertState> emit) async {
+  Future<void> _onSubmitEvent(SubmitEvent event, Emitter<InsertState> emit) async {
     if (state.status == InsertStatus.submitting) return;
     if (state.tagNames.isEmpty) {
       emit(state.copyWith(modal: localization.insert_noTagsError));
@@ -115,7 +115,7 @@ class InsertBloc extends Bloc<InsertEvent, InsertState> {
     }
   }
 
-  _onEndInsertModal(EndInsertModal event, Emitter<InsertState> emit) {
+  void _onEndInsertModal(EndInsertModal event, Emitter<InsertState> emit) {
     emit(state.copyWith(clearModal: true, status: InsertStatus.editing));
   }
 }
