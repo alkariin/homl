@@ -16,3 +16,9 @@ type TokenIssuer interface {
 	CreateToken(userid uint64) (*user.TokenDetails, error)
 	VerifyRefresh(refreshToken string) (*user.RefreshDetails, error)
 }
+
+// Mailer is the application-side port for outgoing transactional emails.
+// Implemented by infrastructure/mail.
+type Mailer interface {
+	SendPasswordResetCode(to string, code string, language user.Language) error
+}

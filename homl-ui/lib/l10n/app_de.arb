@@ -30,6 +30,33 @@
   "login_invalidEmail": "Die E-Mail-Adresse ist ungültig",
   "login_invalidPassword": "Muss mindestens eine Zahl, einen Groß- und einen Kleinbuchstaben, ein Sonderzeichen und mindestens 8 Zeichen enthalten",
 
+  "login_forgotPassword": "Passwort vergessen?",
+  "login_pinLocked": "Ihre PIN wurde nach zu vielen Versuchen gesperrt. Bitte melden Sie sich mit Ihrem Passwort an.",
+
+  "forgot_title": "Passwort zurücksetzen",
+  "forgot_emailInstructions": "Geben Sie Ihre E-Mail-Adresse ein und wir senden Ihnen einen 6-stelligen Code.",
+  "forgot_sendCode": "Code senden",
+  "forgot_codeInstructions": "Geben Sie den per E-Mail erhaltenen 6-stelligen Code ein und wählen Sie ein neues Passwort.",
+  "forgot_newPasswordLabel": "Neues Passwort",
+  "forgot_confirmPasswordLabel": "Passwort bestätigen",
+  "forgot_submit": "Passwort zurücksetzen",
+  "forgot_resendCode": "Code erneut senden",
+  "forgot_invalidCode": "Der Code ist ungültig oder abgelaufen",
+
+  "account_pinAttemptsRemaining": "{count, plural, =1{1 Versuch übrig} other{{count} Versuche übrig}}",
+  "@account_pinAttemptsRemaining": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+
+  "biometric_failedTitle": "Fingerabdruck-Authentifizierung fehlgeschlagen",
+  "biometric_failedMessage": "Wir konnten Ihren Fingerabdruck nicht überprüfen.",
+  "biometric_retry": "Erneut versuchen",
+  "biometric_usePassword": "Mein Passwort verwenden",
+
   "register_submit": "Registrieren",
   "register_failure": "Registrierung fehlgeschlagen",
 

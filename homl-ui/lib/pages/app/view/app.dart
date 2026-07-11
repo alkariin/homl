@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:homl/l10n/app_localizations.dart';
 
+import 'package:homl/components/biometric_dialog.dart';
 import 'package:homl/components/pin_dialog.dart';
 import 'package:homl/helpers/app_message.dart';
 import 'package:homl/helpers/language.dart';
@@ -79,9 +80,14 @@ class AppView extends StatefulWidget {
 
 class _AppViewState extends State<AppView> {
   final _navigatorKey = GlobalKey<NavigatorState>();
+  final _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
   NavigatorState get _navigator => _navigatorKey.currentState!;
 
-  Future<bool> onPinChanged(String pin) async {
+  /// Guards against stacking a second biometric dialog when a failed retry
+  /// re-emits biometricCheck while the dialog is still shown.
+  bool _biometricDialogShown = false;
+
+  Future<PinAuthResult> onPinChanged(String pin) async {
     return widget._apiInstance.sendPinAuth(pin);
   }
 
@@ -94,6 +100,7 @@ class _AppViewState extends State<AppView> {
     return BlocBuilder<AppCubit, AppState>(builder: (context, state) {
       return MaterialApp(
         navigatorKey: _navigatorKey,
+        scaffoldMessengerKey: _scaffoldMessengerKey,
         theme: homlTheme(),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
@@ -120,6 +127,7 @@ class _AppViewState extends State<AppView> {
               listener: (context, state) {
                 switch (state.status) {
                   case AuthenticationStatus.authenticated:
+                    _biometricDialogShown = false;
                     // get settings here if you want to remove it from authentication_bloc
                     _navigator.pushAndRemoveUntil<void>(
                         HomePage.route(
@@ -127,12 +135,32 @@ class _AppViewState extends State<AppView> {
                         (route) => false);
                     break;
                   case AuthenticationStatus.unauthenticated:
+                    _biometricDialogShown = false;
                     _navigator.pushAndRemoveUntil<void>(
                         LoginPage.route(), (route) => false);
                     break;
                   case AuthenticationStatus.pinCheck:
                     _navigator.push(PinDialog.route(context, onPinChanged,
                         returnToLogin: onReturnToLogin));
+                    break;
+                  case AuthenticationStatus.pinLocked:
+                    _navigator.pushAndRemoveUntil<void>(
+                        LoginPage.route(), (route) => false);
+                    _scaffoldMessengerKey.currentState
+                      ?..hideCurrentSnackBar()
+                      ..showSnackBar(SnackBar(
+                        content: Text(
+                            AppLocalizations.of(context)!.login_pinLocked),
+                        duration: const Duration(seconds: 5),
+                      ));
+                    break;
+                  case AuthenticationStatus.biometricCheck:
+                    if (_biometricDialogShown) break;
+                    _biometricDialogShown = true;
+                    _navigator.push(BiometricDialog.route(context,
+                        onRetry: widget._apiInstance.retryBiometricAuth,
+                        onUsePassword:
+                            widget._apiInstance.cancelBiometricAuth));
                     break;
                   case AuthenticationStatus.unknown:
                     break;

@@ -21,7 +21,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get account_updatePassword => 'Update password';
 
   @override
-  String get account_currentPassword => 'Actual password';
+  String get account_currentPassword => 'Current password';
 
   @override
   String get account_enterPassword => 'Enter the new password';
@@ -52,7 +52,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get account_pinDisabled => 'PIN has been successfully disabled';
 
   @override
-  String get account_pinIncorrect => 'Pin code is not correct';
+  String get account_pinIncorrect => 'The PIN code is not correct';
 
   @override
   String get account_returnToLogin => 'Return to login';
@@ -94,6 +94,65 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get login_invalidPassword =>
       'Must contain at least one number, one uppercase and lowercase letter, one special character, and at least 8 or more characters';
+
+  @override
+  String get login_forgotPassword => 'Forgot password?';
+
+  @override
+  String get login_pinLocked =>
+      'Your PIN has been locked after too many attempts. Please log in with your password.';
+
+  @override
+  String get forgot_title => 'Reset password';
+
+  @override
+  String get forgot_emailInstructions =>
+      'Enter your email address and we will send you a 6-digit code.';
+
+  @override
+  String get forgot_sendCode => 'Send code';
+
+  @override
+  String get forgot_codeInstructions =>
+      'Enter the 6-digit code sent to your email and choose a new password.';
+
+  @override
+  String get forgot_newPasswordLabel => 'New password';
+
+  @override
+  String get forgot_confirmPasswordLabel => 'Confirm password';
+
+  @override
+  String get forgot_submit => 'Reset password';
+
+  @override
+  String get forgot_resendCode => 'Resend code';
+
+  @override
+  String get forgot_invalidCode => 'The code is invalid or has expired';
+
+  @override
+  String account_pinAttemptsRemaining(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count attempts remaining',
+      one: '1 attempt remaining',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get biometric_failedTitle => 'Fingerprint authentication failed';
+
+  @override
+  String get biometric_failedMessage => 'We could not verify your fingerprint.';
+
+  @override
+  String get biometric_retry => 'Try again';
+
+  @override
+  String get biometric_usePassword => 'Use my password';
 
   @override
   String get register_submit => 'Register';
