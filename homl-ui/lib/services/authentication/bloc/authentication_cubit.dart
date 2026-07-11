@@ -37,6 +37,10 @@ class AuthenticationCubit extends Cubit<AuthenticationState> {
         return emit(const AuthenticationState.unknown());
       case AuthenticationStatus.pinCheck:
         return emit(const AuthenticationState.pinCheck());
+      case AuthenticationStatus.pinLocked:
+        return emit(const AuthenticationState.pinLocked());
+      case AuthenticationStatus.biometricCheck:
+        return emit(const AuthenticationState.biometricCheck());
     }
   }
 

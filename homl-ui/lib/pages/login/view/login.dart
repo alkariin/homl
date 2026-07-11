@@ -5,6 +5,7 @@ import 'package:homl/components/button.dart';
 import 'package:homl/components/input.dart';
 import 'package:homl/helpers/validations.dart';
 import 'package:homl/l10n/app_localizations.dart';
+import 'package:homl/pages/forgot_password/view/forgot_password.dart';
 import 'package:homl/pages/login/bloc/login_cubit.dart';
 import 'package:homl/pages/register/view/register.dart';
 
@@ -100,7 +101,11 @@ class _LoginViewState extends State<LoginView> {
                       onPressed: () => Navigator.of(context).push(
                           MaterialPageRoute(
                               builder: (context) => const RegisterPage())),
-                      child: Text(localization.login_register))
+                      child: Text(localization.login_register)),
+                  TextButton(
+                      onPressed: () => Navigator.of(context)
+                          .push(ForgotPasswordPage.route()),
+                      child: Text(localization.login_forgotPassword))
                 ],
               ),
             ),

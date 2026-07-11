@@ -10,7 +10,25 @@ import 'package:homl/helpers/biometric_storage.dart';
 import 'package:homl/helpers/local_storage_manager.dart';
 import 'package:homl/helpers/encryption.dart' as encryption;
 
-enum AuthenticationStatus { unknown, authenticated, unauthenticated, pinCheck }
+enum AuthenticationStatus {
+  unknown,
+  authenticated,
+  unauthenticated,
+  pinCheck,
+  pinLocked,
+  biometricCheck,
+}
+
+/// Outcome of a PIN authentication attempt, carrying the server-side
+/// lockout information so the UI can inform the user.
+class PinAuthResult {
+  final bool success;
+  final bool locked;
+  final int? attemptsRemaining;
+
+  const PinAuthResult(
+      {required this.success, this.locked = false, this.attemptsRemaining});
+}
 
 class Api {
   static final Api _api = Api._internal();
@@ -37,7 +55,13 @@ class Api {
 
   void dispose() => _controller.close();
 
-  Future<bool> _refreshToken(String refreshToken,
+  Future<bool> _refreshToken(String refreshToken, {String? signature}) async {
+    final result =
+        await _refreshTokenWithPin(refreshToken, signature: signature);
+    return result.success;
+  }
+
+  Future<PinAuthResult> _refreshTokenWithPin(String refreshToken,
       {String? signature, String? pin}) async {
     log('Refresh');
     var data = {'refresh_token': refreshToken};
@@ -59,23 +83,32 @@ class Api {
         accessToken = response.data!['access_token'];
 
         _controller.add(AuthenticationStatus.authenticated);
-        return true;
+        return const PinAuthResult(success: true);
       } else {
         log('Unexpected refresh response payload', name: 'Api');
-        return false;
+        return const PinAuthResult(success: false);
       }
     } on DioException catch (error) {
-      if (error.response?.statusCode == 401 && pin != null) {
-        if (error.response?.data?['error']?['message'] == "Pin is locked") {
-          accessToken = null;
-          // don't remove the pinKeypair so that after the login, the keypair is still here and the next login will happen with the pin again
-          await LocalStorageManager.remove(LocalStorageKey.refreshToken);
-          _controller.add(AuthenticationStatus.unauthenticated);
-          return true; // to avoid to see the keyboard disappearing + appearing again on the view
-        } else {
-          // nothing
-          log('PIN validation failed', name: 'Api');
-        }
+      final errorBody = error.response?.data?['error'];
+      final errorCode = errorBody?['code'];
+      // Fall back to message matching for servers that predate error codes.
+      final isPinLocked = errorCode == 'PIN_LOCKED' ||
+          errorBody?['message'] == "Pin is locked";
+      final isPinIncorrect = errorCode == 'PIN_INCORRECT' ||
+          errorBody?['message'] == "Pin code not correct";
+
+      if (error.response?.statusCode == 401 && pin != null && isPinLocked) {
+        accessToken = null;
+        // don't remove the pinKeypair so that after the login, the keypair is still here and the next login will happen with the pin again
+        await LocalStorageManager.remove(LocalStorageKey.refreshToken);
+        _controller.add(AuthenticationStatus.pinLocked);
+        return const PinAuthResult(success: false, locked: true);
+      } else if (error.response?.statusCode == 401 &&
+          pin != null &&
+          isPinIncorrect) {
+        log('PIN validation failed', name: 'Api');
+        return PinAuthResult(
+            success: false, attemptsRemaining: errorBody?['attemptsRemaining']);
       } else {
         log('Refresh token rejected, clearing local auth state', name: 'Api');
         // refresh token is wrong so log out user.
@@ -83,10 +116,10 @@ class Api {
         await LocalStorageManager.remove(LocalStorageKey.refreshToken);
         _controller.add(AuthenticationStatus.unauthenticated);
       }
-      return false;
+      return const PinAuthResult(success: false);
     } catch (_) {
       log('Unexpected error while refreshing token', name: 'Api');
-      return false;
+      return const PinAuthResult(success: false);
     }
   }
 
@@ -130,24 +163,24 @@ class Api {
     return _api;
   }
 
-  Future<bool> sendPinAuth(String pin) async {
+  Future<PinAuthResult> sendPinAuth(String pin) async {
     final pinKeypair =
         await LocalStorageManager.getValue(LocalStorageKey.pinKeypair);
     final refreshToken =
         await LocalStorageManager.getValue(LocalStorageKey.refreshToken);
 
     if (pinKeypair == null || refreshToken == null) {
-      return false;
+      return const PinAuthResult(success: false);
     }
 
     try {
       final challenge = await _askForChallengeString(refreshToken);
       final signature = await encryption.signData(challenge, pinKeypair);
-      return await _refreshToken(refreshToken,
+      return await _refreshTokenWithPin(refreshToken,
           signature: base64.encode(signature.bytes), pin: pin);
     } catch (e) {
       log('Error with pin $e');
-      return false;
+      return const PinAuthResult(success: false);
     }
   }
 
@@ -155,11 +188,54 @@ class Api {
     _controller.add(AuthenticationStatus.unauthenticated);
   }
 
+  /// Authenticates with the biometric-protected keypair. Emits
+  /// [AuthenticationStatus.biometricCheck] when the biometric prompt fails or
+  /// is canceled, so the UI can offer a retry or a password fallback.
+  Future<bool> sendBiometricAuth() async {
+    final refreshToken =
+        await LocalStorageManager.getValue(LocalStorageKey.refreshToken);
+    if (refreshToken == null) {
+      _controller.add(AuthenticationStatus.unauthenticated);
+      return false;
+    }
+
+    try {
+      final challenge = await _askForChallengeString(refreshToken);
+      final signature = await signData(challenge);
+      final refreshed = await _refreshToken(refreshToken,
+          signature: base64.encode(signature.bytes));
+      if (!refreshed) {
+        // A rejected session is a real logout, not a biometric failure:
+        // fall through to the login screen instead of offering a retry.
+        _controller.add(AuthenticationStatus.unauthenticated);
+      }
+      return refreshed;
+    } catch (e) {
+      log('Error with fingerprint $e', name: 'Api');
+      _controller.add(AuthenticationStatus.biometricCheck);
+      return false;
+    }
+  }
+
+  Future<bool> retryBiometricAuth() => sendBiometricAuth();
+
+  /// Falls back to the password login while keeping the refresh token and the
+  /// fingerprint flag, so the next app start offers the fingerprint again.
+  Future<void> cancelBiometricAuth() async {
+    _controller.add(AuthenticationStatus.unauthenticated);
+  }
+
   static const _retriedKey = 'homl_retried';
 
   /// Paths that must never trigger an automatic token refresh: a 401 there is
   /// a real authentication failure, not an expired access token.
-  static const _noRefreshPaths = ['/login', '/refresh', '/registration'];
+  static const _noRefreshPaths = [
+    '/login',
+    '/refresh',
+    '/registration',
+    '/resetPassword',
+    '/confirmResetPassword',
+  ];
 
   Api._internal() : this.internal(initFromStorage: true);
 
@@ -253,18 +329,7 @@ class Api {
       }
 
       if (isFingerprintEnabled) {
-        try {
-          final challenge = await _askForChallengeString(refreshToken);
-          final signature = await signData(challenge);
-          final refreshed = await _refreshToken(refreshToken,
-              signature: base64.encode(signature.bytes));
-          if (!refreshed) {
-            _controller.add(AuthenticationStatus.unauthenticated);
-          }
-        } catch (e) {
-          log('Error with fingerprint $e', name: 'Api');
-          _controller.add(AuthenticationStatus.unauthenticated);
-        }
+        await sendBiometricAuth();
       } else if (keyPair != null) {
         _controller.add(AuthenticationStatus.pinCheck);
       } else {

@@ -30,6 +30,33 @@
   "login_invalidEmail": "The email is not valid",
   "login_invalidPassword": "Must contain at least one number, one uppercase and lowercase letter, one special character, and at least 8 or more characters",
 
+  "login_forgotPassword": "Forgot password?",
+  "login_pinLocked": "Your PIN has been locked after too many attempts. Please log in with your password.",
+
+  "forgot_title": "Reset password",
+  "forgot_emailInstructions": "Enter your email address and we will send you a 6-digit code.",
+  "forgot_sendCode": "Send code",
+  "forgot_codeInstructions": "Enter the 6-digit code sent to your email and choose a new password.",
+  "forgot_newPasswordLabel": "New password",
+  "forgot_confirmPasswordLabel": "Confirm password",
+  "forgot_submit": "Reset password",
+  "forgot_resendCode": "Resend code",
+  "forgot_invalidCode": "The code is invalid or has expired",
+
+  "account_pinAttemptsRemaining": "{count, plural, =1{1 attempt remaining} other{{count} attempts remaining}}",
+  "@account_pinAttemptsRemaining": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+
+  "biometric_failedTitle": "Fingerprint authentication failed",
+  "biometric_failedMessage": "We could not verify your fingerprint.",
+  "biometric_retry": "Try again",
+  "biometric_usePassword": "Use my password",
+
   "register_submit": "Register",
   "register_failure": "Registration failed",
 

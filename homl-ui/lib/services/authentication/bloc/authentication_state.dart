@@ -17,6 +17,12 @@ class AuthenticationState extends Equatable {
   const AuthenticationState.pinCheck()
       : this._(status: AuthenticationStatus.pinCheck);
 
+  const AuthenticationState.pinLocked()
+      : this._(status: AuthenticationStatus.pinLocked);
+
+  const AuthenticationState.biometricCheck()
+      : this._(status: AuthenticationStatus.biometricCheck);
+
   const AuthenticationState.unauthenticated()
       : this._(status: AuthenticationStatus.unauthenticated);
 

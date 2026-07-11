@@ -15,10 +15,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get account => 'Compte';
 
   @override
-  String get account_logout => 'Se deconnecter';
+  String get account_logout => 'Se déconnecter';
 
   @override
-  String get account_updatePassword => 'Mettre a jour le mot de passe';
+  String get account_updatePassword => 'Mettre à jour le mot de passe';
 
   @override
   String get account_currentPassword => 'Mot de passe actuel';
@@ -27,7 +27,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get account_enterPassword => 'Entrer le nouveau mot de passe';
 
   @override
-  String get account_repeatPassword => 'Repeter le mot de passe';
+  String get account_repeatPassword => 'Répéter le mot de passe';
 
   @override
   String get account_fingerprintSwitchText =>
@@ -41,32 +41,32 @@ class AppLocalizationsFr extends AppLocalizations {
   String get account_pinSwitchText => 'Ajouter un code PIN';
 
   @override
-  String get account_pinSwitchError => 'Le code PIN n\'a pas pu etre configure';
+  String get account_pinSwitchError => 'Le code PIN n\'a pas pu être configuré';
 
   @override
   String get account_enterPin => 'Entrer le code PIN';
 
   @override
-  String get account_pinEnabled => 'Le code PIN a ete active';
+  String get account_pinEnabled => 'Le code PIN a été activé';
 
   @override
-  String get account_pinDisabled => 'Le code PIN a ete desactive';
+  String get account_pinDisabled => 'Le code PIN a été désactivé';
 
   @override
   String get account_pinIncorrect => 'Le code PIN est incorrect';
 
   @override
-  String get account_returnToLogin => 'Retour a la connexion';
+  String get account_returnToLogin => 'Retour à la connexion';
 
   @override
-  String get account_passwordUpdated => 'Votre mot de passe a ete mis a jour';
+  String get account_passwordUpdated => 'Votre mot de passe a été mis à jour';
 
   @override
   String get account_passwordIncorrect => 'Le mot de passe est incorrect';
 
   @override
   String get account_passwordUpdateError =>
-      'Une erreur est survenue pendant la mise a jour, reessayez plus tard';
+      'Une erreur est survenue pendant la mise à jour, réessayez plus tard';
 
   @override
   String get account_currentPasswordError => 'Entrez votre mot de passe actuel';
@@ -85,7 +85,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get login_submit => 'connexion';
 
   @override
-  String get login_register => 'Creer un compte';
+  String get login_register => 'Créer un compte';
 
   @override
   String get login_incorrectCredentials => 'Email ou mot de passe incorrect';
@@ -95,28 +95,89 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get login_invalidPassword =>
-      'Doit contenir au moins un chiffre, une majuscule et une minuscule, un caractere special, et au moins 8 caracteres';
+      'Doit contenir au moins un chiffre, une majuscule et une minuscule, un caractère spécial, et au moins 8 caractères';
 
   @override
-  String get register_submit => 'Creer un compte';
+  String get login_forgotPassword => 'Mot de passe oublié ?';
 
   @override
-  String get register_failure => 'L\'inscription a echoue';
+  String get login_pinLocked =>
+      'Votre PIN a été bloqué après trop de tentatives. Veuillez vous connecter avec votre mot de passe.';
 
   @override
-  String get settings => 'Parametres';
+  String get forgot_title => 'Réinitialiser le mot de passe';
+
+  @override
+  String get forgot_emailInstructions =>
+      'Entrez votre adresse email et nous vous enverrons un code à 6 chiffres.';
+
+  @override
+  String get forgot_sendCode => 'Envoyer le code';
+
+  @override
+  String get forgot_codeInstructions =>
+      'Entrez le code à 6 chiffres reçu par email et choisissez un nouveau mot de passe.';
+
+  @override
+  String get forgot_newPasswordLabel => 'Nouveau mot de passe';
+
+  @override
+  String get forgot_confirmPasswordLabel => 'Confirmer le mot de passe';
+
+  @override
+  String get forgot_submit => 'Réinitialiser le mot de passe';
+
+  @override
+  String get forgot_resendCode => 'Renvoyer le code';
+
+  @override
+  String get forgot_invalidCode => 'Le code est invalide ou a expiré';
+
+  @override
+  String account_pinAttemptsRemaining(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tentatives restantes',
+      one: '1 tentative restante',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get biometric_failedTitle =>
+      'Échec de l\'authentification par empreinte';
+
+  @override
+  String get biometric_failedMessage =>
+      'Nous n\'avons pas pu vérifier votre empreinte digitale.';
+
+  @override
+  String get biometric_retry => 'Réessayer';
+
+  @override
+  String get biometric_usePassword => 'Utiliser mon mot de passe';
+
+  @override
+  String get register_submit => 'Créer un compte';
+
+  @override
+  String get register_failure => 'L\'inscription a échoué';
+
+  @override
+  String get settings => 'Paramètres';
 
   @override
   String get settings_language => 'Langue';
 
   @override
-  String get settings_selectLanguage => 'Selectionner la langue';
+  String get settings_selectLanguage => 'Sélectionner la langue';
 
   @override
-  String get settings_homeTab => 'Ecran d\'accueil';
+  String get settings_homeTab => 'Écran d\'accueil';
 
   @override
-  String get settings_selectHomeTab => 'Selectionner l\'ecran d\'accueil';
+  String get settings_selectHomeTab => 'Sélectionner l\'écran d\'accueil';
 
   @override
   String get global_cancel => 'Annuler';
@@ -131,10 +192,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get global_close => 'Fermer';
 
   @override
-  String get global_update => 'Mettre a jour';
+  String get global_update => 'Mettre à jour';
 
   @override
-  String get nav_categories => 'Categories';
+  String get nav_categories => 'Catégories';
 
   @override
   String get nav_search => 'Rechercher';
@@ -149,10 +210,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get insert_descriptionLabel => 'Description';
 
   @override
-  String get insert_submit => 'Creer l\'evenement';
+  String get insert_submit => 'Créer l\'événement';
 
   @override
-  String get insert_eventCreated => 'Evenement cree';
+  String get insert_eventCreated => 'Événement créé';
 
   @override
   String get insert_noTagsError => 'Ajouter au moins un tag';
@@ -161,20 +222,20 @@ class AppLocalizationsFr extends AppLocalizations {
   String get list_filterLabel => 'Filtrer par tag';
 
   @override
-  String get list_noEvents => 'Aucun evenement trouve';
+  String get list_noEvents => 'Aucun événement trouvé';
 
   @override
-  String get categories_newCategory => 'Nouvelle categorie';
+  String get categories_newCategory => 'Nouvelle catégorie';
 
   @override
-  String get categories_editCategory => 'Modifier la categorie';
+  String get categories_editCategory => 'Modifier la catégorie';
 
   @override
-  String get categories_deleteCategory => 'Supprimer la categorie ?';
+  String get categories_deleteCategory => 'Supprimer la catégorie ?';
 
   @override
   String get categories_deleteMoveTags =>
-      'Deplacer les tags vers la categorie Other';
+      'Déplacer les tags vers la catégorie Other';
 
   @override
   String get categories_categoryName => 'Nom';
@@ -195,7 +256,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get categories_addSynonym => 'Ajouter un synonyme';
 
   @override
-  String get categories_detachSynonym => 'Detacher le synonyme';
+  String get categories_detachSynonym => 'Détacher le synonyme';
 
   @override
   String get categories_synonymName => 'Synonyme';
