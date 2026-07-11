@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -5,7 +7,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:homl/data/models/user.dart';
 import 'package:homl/data/repositories/users.repository.dart';
 import 'package:homl/helpers/app_message.dart';
-import 'package:homl/pages/account/bloc/account_bloc.dart';
+import 'package:homl/pages/account/bloc/account_cubit.dart';
 
 class MockUsersRepository extends Mock implements UsersRepository {}
 
@@ -53,63 +55,65 @@ void main() {
         .setMockMethodCallHandler(storageChannel, null);
   });
 
-  Future<AccountBloc> buildInitializedBloc() async {
-    final bloc = AccountBloc(repository);
-    // Wait for the InitValues event triggered by the constructor.
-    await expectLater(
-        bloc.stream, emitsThrough(predicate<AccountState>((s) => s.user != null)));
-    return bloc;
+  Future<AccountCubit> buildInitializedCubit() async {
+    final cubit = AccountCubit(repository);
+    // Wait for the init() call triggered by the constructor.
+    await expectLater(cubit.stream,
+        emitsThrough(predicate<AccountState>((s) => s.user != null)));
+    return cubit;
   }
 
   test('emits the pinEnabled modal when the PIN setup succeeds', () async {
     when(() => repository.secureAuth(any())).thenAnswer((_) async =>
         User(isFingerprintEnabled: false, isPinEnabled: true));
 
-    final bloc = await buildInitializedBloc();
-    bloc.add(const SubmitPin('1234'));
+    final cubit = await buildInitializedCubit();
+    unawaited(cubit.submitPin('1234'));
 
     await expectLater(
-      bloc.stream,
+      cubit.stream,
       emitsThrough(predicate<AccountState>(
           (s) => s.modal == AppMessage.pinEnabled && s.user!.isPinEnabled)),
     );
     expect(storage.containsKey('pinKeypair'), isTrue);
 
-    await bloc.close();
+    await cubit.close();
   });
 
   test('emits the unexpectedError modal when the backend rejects the update',
       () async {
     when(() => repository.secureAuth(any())).thenThrow(UserOtherFailure());
 
-    final bloc = await buildInitializedBloc();
-    bloc.add(const SubmitPin('1234'));
+    final cubit = await buildInitializedCubit();
+    unawaited(cubit.submitPin('1234'));
 
     await expectLater(
-      bloc.stream,
+      cubit.stream,
       emitsThrough(predicate<AccountState>(
           (s) => s.modal == AppMessage.unexpectedError)),
     );
 
-    await bloc.close();
+    await cubit.close();
   });
 
-  test('EndAccountModal clears the modal so it can fire again', () async {
+  test('endModal clears the modal so it can fire again', () async {
     when(() => repository.secureAuth(any())).thenThrow(UserOtherFailure());
 
-    final bloc = await buildInitializedBloc();
-    bloc.add(const SubmitPin('1234'));
+    final cubit = await buildInitializedCubit();
+    unawaited(cubit.submitPin('1234'));
     await expectLater(
-      bloc.stream,
+      cubit.stream,
       emitsThrough(predicate<AccountState>((s) => s.modal != null)),
     );
 
-    bloc.add(EndAccountModal());
-    await expectLater(
-      bloc.stream,
+    // Subscribe before clearing so the synchronous emit is observed.
+    final expectation = expectLater(
+      cubit.stream,
       emitsThrough(predicate<AccountState>((s) => s.modal == null)),
     );
+    cubit.endModal();
+    await expectation;
 
-    await bloc.close();
+    await cubit.close();
   });
 }

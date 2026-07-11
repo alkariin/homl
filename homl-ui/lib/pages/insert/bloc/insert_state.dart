@@ -1,4 +1,4 @@
-part of 'insert_bloc.dart';
+part of 'insert_cubit.dart';
 
 enum InsertStatus { editing, submitting, success }
 

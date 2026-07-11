@@ -1,4 +1,4 @@
-part of 'list_bloc.dart';
+part of 'list_cubit.dart';
 
 class ListState extends Equatable {
   /// Tag names used to filter the events (AND semantics, synonym-aware).

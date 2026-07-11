@@ -1,4 +1,4 @@
-part of 'account_bloc.dart';
+part of 'account_cubit.dart';
 
 class AccountState extends Equatable {
   final User? user;

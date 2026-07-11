@@ -6,21 +6,17 @@ import 'package:homl/data/models/settings.dart';
 import 'package:homl/data/repositories/settings.repository.dart';
 import 'package:homl/data/repositories/api.dart';
 
-part 'authentication_event.dart';
 part 'authentication_state.dart';
 
-class AuthenticationBloc
-    extends Bloc<AuthenticationEvent, AuthenticationState> {
+class AuthenticationCubit extends Cubit<AuthenticationState> {
   final Api _apiInstance = Api();
 
-  AuthenticationBloc(SettingsRepository settingsRepository)
+  AuthenticationCubit(SettingsRepository settingsRepository)
       : _settingsRepository = settingsRepository,
         super(const AuthenticationState.unknown()) {
-    on<_AuthenticationStatusChanged>(_onAuthenticationStatusChanged);
-
     _authenticationStatusSubscription = _apiInstance.status.listen((status) {
       if (state.status != status) {
-        add(_AuthenticationStatusChanged(status));
+        _statusChanged(status);
       }
     });
   }
@@ -29,16 +25,8 @@ class AuthenticationBloc
   late StreamSubscription<AuthenticationStatus>
       _authenticationStatusSubscription;
 
-  @override
-  Future<void> close() {
-    _authenticationStatusSubscription.cancel();
-    return super.close();
-  }
-
-  Future<void> _onAuthenticationStatusChanged(
-      _AuthenticationStatusChanged event,
-      Emitter<AuthenticationState> emit) async {
-    switch (event.status) {
+  Future<void> _statusChanged(AuthenticationStatus status) async {
+    switch (status) {
       case AuthenticationStatus.unauthenticated:
         return emit(const AuthenticationState.unauthenticated());
       case AuthenticationStatus.authenticated:
@@ -50,5 +38,11 @@ class AuthenticationBloc
       case AuthenticationStatus.pinCheck:
         return emit(const AuthenticationState.pinCheck());
     }
+  }
+
+  @override
+  Future<void> close() {
+    _authenticationStatusSubscription.cancel();
+    return super.close();
   }
 }

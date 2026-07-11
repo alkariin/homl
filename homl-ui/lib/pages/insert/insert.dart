@@ -11,9 +11,9 @@ import 'package:homl/components/tag_input.dart';
 import 'package:homl/data/repositories/events.repository.dart';
 import 'package:homl/data/repositories/tags.repository.dart';
 import 'package:homl/helpers/app_message.dart';
-import 'package:homl/pages/home/bloc/home_bloc.dart';
-import 'package:homl/pages/insert/bloc/insert_bloc.dart';
-import 'package:homl/pages/list/bloc/list_bloc.dart';
+import 'package:homl/pages/home/bloc/home_cubit.dart';
+import 'package:homl/pages/insert/bloc/insert_cubit.dart';
+import 'package:homl/pages/list/bloc/list_cubit.dart';
 
 class InsertPage extends StatelessWidget {
   const InsertPage({super.key});
@@ -25,7 +25,7 @@ class InsertPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => InsertBloc(
+      create: (context) => InsertCubit(
           context.read<EventsRepository>(), context.read<TagsRepository>()),
       child: const InsertView(),
     );
@@ -53,9 +53,9 @@ class _InsertViewState extends State<InsertView> {
     var localization = AppLocalizations.of(context)!;
     final locale = Localizations.localeOf(context).toString();
 
-    return BlocListener<InsertBloc, InsertState>(
+    return BlocListener<InsertCubit, InsertState>(
       listener: (context, state) {
-        final insertBloc = context.read<InsertBloc>();
+        final insertCubit = context.read<InsertCubit>();
         if (state.status == InsertStatus.success) {
           _descriptionController.clear();
           ScaffoldMessenger.of(context)
@@ -63,8 +63,8 @@ class _InsertViewState extends State<InsertView> {
             ..showSnackBar(
                 SnackBar(content: Text(localization.insert_eventCreated)));
           // Keep the search tab in sync with the new event
-          context.read<ListBloc>().add(FetchEvents());
-          insertBloc.add(EndInsertModal());
+          context.read<ListCubit>().fetchEvents();
+          insertCubit.endModal();
         } else if (state.modal != null) {
           ScaffoldMessenger.of(context)
             ..hideCurrentSnackBar()
@@ -74,13 +74,13 @@ class _InsertViewState extends State<InsertView> {
                   label: localization.global_close, onPressed: () {}),
               duration: const Duration(seconds: 5),
             )).closed.then((_) {
-              insertBloc.add(EndInsertModal());
+              insertCubit.endModal();
             });
         }
       },
-      child: BlocBuilder<HomeBloc, HomeState>(builder: (context, homeState) {
-        return BlocBuilder<InsertBloc, InsertState>(builder: (context, state) {
-          final insertBloc = context.read<InsertBloc>();
+      child: BlocBuilder<HomeCubit, HomeState>(builder: (context, homeState) {
+        return BlocBuilder<InsertCubit, InsertState>(builder: (context, state) {
+          final insertCubit = context.read<InsertCubit>();
 
           Future<void> pickDate() async {
             final picked = await showDatePicker(
@@ -90,7 +90,7 @@ class _InsertViewState extends State<InsertView> {
               lastDate: DateTime(2100),
             );
             if (picked != null) {
-              insertBloc.add(UpdateDate(picked));
+              insertCubit.updateDate(picked);
             }
           }
 
@@ -128,9 +128,9 @@ class _InsertViewState extends State<InsertView> {
                               color: tagView.color))
                           .toList(),
                       onAddTag: (name) =>
-                          context.read<InsertBloc>().add(AddTag(name)),
+                          context.read<InsertCubit>().addTag(name),
                       onRemoveTag: (tag) =>
-                          context.read<InsertBloc>().add(RemoveTag(tag.name)),
+                          context.read<InsertCubit>().removeTag(tag.name),
                       // The date tag is always there and cannot be removed
                       leading: Tag(
                         id: -1,
@@ -147,17 +147,16 @@ class _InsertViewState extends State<InsertView> {
                       minLines: 3,
                       validator: (_) => null,
                       onChange: (text) => context
-                          .read<InsertBloc>()
-                          .add(UpdateDescription(text)),
+                          .read<InsertCubit>()
+                          .updateDescription(text),
                     ),
                     const SizedBox(height: 20),
                     state.status == InsertStatus.submitting
                         ? const Center(child: CircularProgressIndicator())
                         : Button(
                             text: localization.insert_submit,
-                            onPressed: () => context.read<InsertBloc>().add(
-                                SubmitEvent(homeState.categories,
-                                    homeState.allTagsMap)),
+                            onPressed: () => context.read<InsertCubit>().submitEvent(homeState.categories,
+                                    homeState.allTagsMap),
                           ),
                   ],
                 ),

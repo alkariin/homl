@@ -7,7 +7,7 @@ import 'package:homl/components/input.dart';
 import 'package:homl/data/repositories/users.repository.dart';
 import 'package:homl/helpers/language.dart';
 import 'package:homl/helpers/validations.dart';
-import 'package:homl/pages/register/bloc/register_bloc.dart';
+import 'package:homl/pages/register/bloc/register_cubit.dart';
 
 class RegisterPage extends StatelessWidget {
   const RegisterPage({super.key});
@@ -23,7 +23,7 @@ class RegisterPage extends StatelessWidget {
 
     return BlocProvider(
       create: (BuildContext context) =>
-          RegisterBloc(context.read<UsersRepository>(), stringToLanguage(lang)),
+          RegisterCubit(context.read<UsersRepository>(), stringToLanguage(lang)),
       child: const RegisterView(),
     );
   }
@@ -43,7 +43,7 @@ class _RegisterViewState extends State<RegisterView> {
   Widget build(BuildContext context) {
     final localization = AppLocalizations.of(context)!;
 
-    return BlocConsumer<RegisterBloc, RegisterState>(
+    return BlocConsumer<RegisterCubit, RegisterState>(
         listener: (context, state) {
           final localization = AppLocalizations.of(context)!;
           if (state.isRegisterIncorrect) {
@@ -70,10 +70,10 @@ class _RegisterViewState extends State<RegisterView> {
                       Input(
                           labelText: localization.login_usernameLabel,
                           onChange: (username) => context
-                              .read<RegisterBloc>()
-                              .add(RegisterUsernameChanged(username)),
+                              .read<RegisterCubit>()
+                              .usernameChanged(username),
                           initialValue:
-                              context.read<RegisterBloc>().state.username,
+                              context.read<RegisterCubit>().state.username,
                           validator: (username) {
                             if (isEmailValid(username)) return null;
                             return localization.login_invalidEmail;
@@ -83,10 +83,10 @@ class _RegisterViewState extends State<RegisterView> {
                         inputType: InputType.password,
                         labelText: localization.login_passwordLabel,
                         onChange: (password) => context
-                            .read<RegisterBloc>()
-                            .add(RegisterPasswordChanged(password)),
+                            .read<RegisterCubit>()
+                            .passwordChanged(password),
                         initialValue:
-                            context.read<RegisterBloc>().state.password,
+                            context.read<RegisterCubit>().state.password,
                         validator: (password) {
                           if (isPasswordValid(password)) return null;
                           return localization.login_invalidPassword;
@@ -100,8 +100,8 @@ class _RegisterViewState extends State<RegisterView> {
                               onPressed: () {
                                 if (_formKey.currentState!.validate()) {
                                   context
-                                      .read<RegisterBloc>()
-                                      .add(RegisterSubmitted());
+                                      .read<RegisterCubit>()
+                                      .submit();
                                 }
                               },
                             )

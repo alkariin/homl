@@ -5,22 +5,22 @@ import 'package:homl/components/pin_dialog.dart';
 
 import 'package:homl/data/repositories/users.repository.dart';
 import 'package:homl/helpers/app_message.dart';
-import 'package:homl/pages/home/bloc/home_bloc.dart';
-import 'package:homl/pages/account/bloc/account_bloc.dart';
+import 'package:homl/pages/home/bloc/home_cubit.dart';
+import 'package:homl/pages/account/bloc/account_cubit.dart';
 import 'package:homl/pages/account/view/password_dialog.dart';
 
 class AccountPage extends StatelessWidget {
-  /// The HomeBloc is passed through the route on purpose: this page lives in
+  /// The HomeCubit is passed through the route on purpose: this page lives in
   /// its own navigator route, outside the provider scope of the home page, so
   /// re-providing the existing bloc instance is the standard way to keep
   /// listening to the shared home state (events/categories modals).
-  final HomeBloc homeBloc;
+  final HomeCubit homeCubit;
 
-  const AccountPage({super.key, required this.homeBloc});
+  const AccountPage({super.key, required this.homeCubit});
 
-  static Route<void> route(HomeBloc homeBloc) {
+  static Route<void> route(HomeCubit homeCubit) {
     return MaterialPageRoute<void>(
-        builder: (_) => AccountPage(homeBloc: homeBloc));
+        builder: (_) => AccountPage(homeCubit: homeCubit));
   }
 
   @override
@@ -29,18 +29,18 @@ class AccountPage extends StatelessWidget {
       providers: [
         BlocProvider(
             create: (BuildContext context) =>
-                AccountBloc(context.read<UsersRepository>())),
-        BlocProvider.value(value: homeBloc),
+                AccountCubit(context.read<UsersRepository>())),
+        BlocProvider.value(value: homeCubit),
       ],
-      child: AccountView(homeBloc),
+      child: AccountView(homeCubit),
     );
   }
 }
 
 class AccountView extends StatelessWidget {
-  final HomeBloc homeBloc;
+  final HomeCubit homeCubit;
 
-  const AccountView(this.homeBloc, {super.key});
+  const AccountView(this.homeCubit, {super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -48,13 +48,13 @@ class AccountView extends StatelessWidget {
 
     Future<bool> onPinChanged(String pin) {
       Navigator.pop(context);
-      context.read<AccountBloc>().add(SubmitPin(pin));
+      context.read<AccountCubit>().submitPin(pin);
       return Future.value(true);
     }
 
     return MultiBlocListener(
         listeners: [
-          BlocListener<AccountBloc, AccountState>(
+          BlocListener<AccountCubit, AccountState>(
             listener: (context, state) {
               if (state.isFormSubmitted && state.responseError == null) {
                 ScaffoldMessenger.of(context)
@@ -67,9 +67,9 @@ class AccountView extends StatelessWidget {
               }
             },
           ),
-          BlocListener<AccountBloc, AccountState>(
+          BlocListener<AccountCubit, AccountState>(
             listener: (context, state) {
-              final accountBloc = context.read<AccountBloc>();
+              final accountCubit = context.read<AccountCubit>();
               if (state.modal != null) {
                 ScaffoldMessenger.of(context)
                   ..hideCurrentSnackBar()
@@ -80,13 +80,13 @@ class AccountView extends StatelessWidget {
                     duration: const Duration(seconds: 5),
                   )).closed.then(
                     (_) {
-                      accountBloc.add(EndAccountModal());
+                      accountCubit.endModal();
                     },
                   );
               }
             },
           ),
-          BlocListener<HomeBloc, HomeState>(listener: (context, state) {
+          BlocListener<HomeCubit, HomeState>(listener: (context, state) {
             if (state.modal != null) {
               ScaffoldMessenger.of(context)
                 ..hideCurrentSnackBar()
@@ -97,7 +97,7 @@ class AccountView extends StatelessWidget {
                   duration: const Duration(seconds: 5),
                 )).closed.then(
                   (_) {
-                    homeBloc.add(EndModal());
+                    homeCubit.endModal();
                   },
                 );
             }
@@ -113,7 +113,7 @@ class AccountView extends StatelessWidget {
                 },
               ),
             ),
-            body: BlocBuilder<AccountBloc, AccountState>(
+            body: BlocBuilder<AccountCubit, AccountState>(
                 builder: (context, state) {
               return Column(
                 children: [
@@ -121,8 +121,8 @@ class AccountView extends StatelessWidget {
                     child: Text(localization.account_updatePassword),
                     onPressed: () {
                       context
-                          .read<AccountBloc>()
-                          .add(ResetPasswordDialogState());
+                          .read<AccountCubit>()
+                          .resetPasswordDialogState();
                       Navigator.push(context, PasswordDialog.route(context));
                     },
                   ),
@@ -131,8 +131,8 @@ class AccountView extends StatelessWidget {
                     value: state.user?.isFingerprintEnabled ?? false,
                     onChanged: (bool value) {
                       context
-                          .read<AccountBloc>()
-                          .add(UpdateIsFingerprintEnabled(value));
+                          .read<AccountCubit>()
+                          .updateIsFingerprintEnabled(value);
                     },
                     secondary: const Icon(Icons.lightbulb_outline),
                   ),
@@ -141,11 +141,11 @@ class AccountView extends StatelessWidget {
                     value: state.user?.isPinEnabled ?? false,
                     onChanged: (bool value) {
                       if (value) {
-                        context.read<AccountBloc>().add(ResetPinViewState());
+                        context.read<AccountCubit>().resetPinViewState();
                         Navigator.push(
                             context, PinDialog.route(context, onPinChanged));
                       } else {
-                        context.read<AccountBloc>().add(const SubmitPin(null));
+                        context.read<AccountCubit>().submitPin(null);
                       }
                     },
                     secondary: const Icon(Icons.lightbulb_outline),

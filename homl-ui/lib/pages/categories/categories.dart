@@ -4,7 +4,7 @@ import 'package:homl/l10n/app_localizations.dart';
 
 import 'package:homl/components/bubbles_background.dart';
 import 'package:homl/pages/categories/view/category_management.dart';
-import 'package:homl/pages/home/bloc/home_bloc.dart';
+import 'package:homl/pages/home/bloc/home_cubit.dart';
 
 /// Categories tab: the management list inline. Tapping a tag inserts it as a
 /// search filter (the parent switches to the Search tab).
@@ -16,7 +16,7 @@ class CategoriesPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var localization = AppLocalizations.of(context)!;
-    final homeBloc = context.read<HomeBloc>();
+    final homeCubit = context.read<HomeCubit>();
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -26,7 +26,7 @@ class CategoriesPage extends StatelessWidget {
         onPressed: () => categoryDialog(
           context,
           title: localization.categories_newCategory,
-          onSubmit: (name, color) => homeBloc.add(CreateCategory(name, color)),
+          onSubmit: (name, color) => homeCubit.createCategory(name, color),
         ),
       ),
       body: BubblesBackground(
