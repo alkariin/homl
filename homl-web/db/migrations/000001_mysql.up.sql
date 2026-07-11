@@ -7,16 +7,21 @@ CREATE TABLE IF NOT EXISTS `Categories` (
   `category` varchar(255) NOT NULL,
   `color` varchar(255) NOT NULL,
   `isLocked` tinyint(1) NOT NULL,
+  `kind` ENUM('date','person','other','custom') NOT NULL DEFAULT 'custom',
   `idUser` int unsigned NOT NULL,
   PRIMARY KEY (`id`),
   KEY `categories_fk` (`idUser`),
+  KEY `categories_kind` (`idUser`, `kind`),
   CONSTRAINT `categories_fk` FOREIGN KEY (`idUser`) REFERENCES `Users` (`id`) ON DELETE CASCADE
 );
 CREATE TABLE IF NOT EXISTS `Events` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `description` text NULL,
   `date` date NOT NULL,
-  PRIMARY KEY (`id`)
+  `idUser` int unsigned NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `events_fk_user` (`idUser`),
+  CONSTRAINT `events_fk_user` FOREIGN KEY (`idUser`) REFERENCES `Users` (`id`) ON DELETE CASCADE
 );
 CREATE TABLE IF NOT EXISTS `EventsTags` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
