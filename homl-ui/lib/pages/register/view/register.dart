@@ -41,18 +41,20 @@ class _RegisterViewState extends State<RegisterView> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocListener<RegisterBloc, RegisterState>(
+    final localization = AppLocalizations.of(context)!;
+
+    return BlocConsumer<RegisterBloc, RegisterState>(
         listener: (context, state) {
+          final localization = AppLocalizations.of(context)!;
           if (state.isRegisterIncorrect) {
             ScaffoldMessenger.of(context)
               ..hideCurrentSnackBar()
               ..showSnackBar(
-                const SnackBar(content: Text('Authentication Failure')),
+                SnackBar(content: Text(localization.register_failure)),
               );
           }
         },
-        bloc: BlocProvider.of<RegisterBloc>(context),
-        child: Scaffold(
+        builder: (context, state) => Scaffold(
             appBar: AppBar(
               title: const Text('HOML'),
             ),
@@ -66,7 +68,7 @@ class _RegisterViewState extends State<RegisterView> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Input(
-                          labelText: 'username',
+                          labelText: localization.login_usernameLabel,
                           onChange: (username) => context
                               .read<RegisterBloc>()
                               .add(RegisterUsernameChanged(username)),
@@ -74,12 +76,12 @@ class _RegisterViewState extends State<RegisterView> {
                               context.read<RegisterBloc>().state.username,
                           validator: (username) {
                             if (isEmailValid(username)) return null;
-                            return "The email is not valid";
+                            return localization.login_invalidEmail;
                           }),
                       const Padding(padding: EdgeInsets.all(12)),
                       Input(
                         inputType: InputType.password,
-                        labelText: 'password',
+                        labelText: localization.login_passwordLabel,
                         onChange: (password) => context
                             .read<RegisterBloc>()
                             .add(RegisterPasswordChanged(password)),
@@ -87,20 +89,22 @@ class _RegisterViewState extends State<RegisterView> {
                             context.read<RegisterBloc>().state.password,
                         validator: (password) {
                           if (isPasswordValid(password)) return null;
-                          return "Must contain at least one number, one uppercase and lowercase letter, one special character, and at least 8 or more characters";
+                          return localization.login_invalidPassword;
                         },
                       ),
                       const Padding(padding: EdgeInsets.all(12)),
-                      Button(
-                        text: 'Register',
-                        onPressed: () {
-                          if (_formKey.currentState!.validate()) {
-                            context
-                                .read<RegisterBloc>()
-                                .add(RegisterSubmitted());
-                          }
-                        },
-                      )
+                      state.status == RegisterStatus.submitting
+                          ? const Center(child: CircularProgressIndicator())
+                          : Button(
+                              text: localization.register_submit,
+                              onPressed: () {
+                                if (_formKey.currentState!.validate()) {
+                                  context
+                                      .read<RegisterBloc>()
+                                      .add(RegisterSubmitted());
+                                }
+                              },
+                            )
                     ],
                   ),
                 ),

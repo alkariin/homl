@@ -1,9 +1,24 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:homl/data/models/event.dart';
 import 'package:homl/data/repositories/api.dart';
 
+/// Exception thrown when an events request fails
+class EventsRequestFailure implements Exception {}
+
+/// Exception thrown when the events payload is empty
+class EventsNotFoundFailure implements Exception {}
+
 class EventsRepository {
   final apiInstance = Api();
+
+  final StreamController<void> _changesController =
+      StreamController<void>.broadcast();
+
+  /// Fires whenever this repository changed the events on the backend, so
+  /// interested blocs can refresh without being coupled to each other.
+  Stream<void> get changes => _changesController.stream;
 
   /// When [tags] is provided, only the events containing ALL the given tags
   /// (or one of their synonyms) are returned. The filter is sent as query
@@ -18,10 +33,10 @@ class EventsRepository {
       );
 
       if (response.data == null) {
-        throw Exception();
+        throw EventsNotFoundFailure();
       }
     } on DioException catch (_) {
-      throw Exception();
+      throw EventsRequestFailure();
     }
 
     return response.data!
@@ -42,7 +57,13 @@ class EventsRepository {
         'tagsId': tagsId,
       });
     } on DioException catch (_) {
-      throw Exception();
+      throw EventsRequestFailure();
     }
+
+    _changesController.add(null);
+  }
+
+  void dispose() {
+    _changesController.close();
   }
 }

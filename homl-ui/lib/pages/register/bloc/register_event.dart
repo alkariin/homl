@@ -28,6 +28,10 @@ class RegisterPasswordChanged extends RegisterEvent {
 
   @override
   List<Object> get props => [password];
+
+  /// Never log the password (events are logged by the bloc observer).
+  @override
+  String toString() => 'RegisterPasswordChanged([REDACTED])';
 }
 
 // ----

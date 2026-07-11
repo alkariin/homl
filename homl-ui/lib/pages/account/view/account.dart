@@ -4,11 +4,16 @@ import 'package:homl/l10n/app_localizations.dart';
 import 'package:homl/components/pin_dialog.dart';
 
 import 'package:homl/data/repositories/users.repository.dart';
+import 'package:homl/helpers/app_message.dart';
 import 'package:homl/pages/home/bloc/home_bloc.dart';
 import 'package:homl/pages/account/bloc/account_bloc.dart';
 import 'package:homl/pages/account/view/password_dialog.dart';
 
 class AccountPage extends StatelessWidget {
+  /// The HomeBloc is passed through the route on purpose: this page lives in
+  /// its own navigator route, outside the provider scope of the home page, so
+  /// re-providing the existing bloc instance is the standard way to keep
+  /// listening to the shared home state (events/categories modals).
   final HomeBloc homeBloc;
 
   const AccountPage({super.key, required this.homeBloc});
@@ -20,12 +25,11 @@ class AccountPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var localization = AppLocalizations.of(context)!;
     return MultiBlocProvider(
       providers: [
         BlocProvider(
             create: (BuildContext context) =>
-                AccountBloc(localization, context.read<UsersRepository>())),
+                AccountBloc(context.read<UsersRepository>())),
         BlocProvider.value(value: homeBloc),
       ],
       child: AccountView(homeBloc),
@@ -52,12 +56,32 @@ class AccountView extends StatelessWidget {
         listeners: [
           BlocListener<AccountBloc, AccountState>(
             listener: (context, state) {
-              if (state.isFormSubmitted && state.responseError == "") {
+              if (state.isFormSubmitted && state.responseError == null) {
                 ScaffoldMessenger.of(context)
                   ..hideCurrentSnackBar()
                   ..showSnackBar(
-                    const SnackBar(
-                        content: Text('Your password has been updated')),
+                    SnackBar(
+                        content:
+                            Text(localization.account_passwordUpdated)),
+                  );
+              }
+            },
+          ),
+          BlocListener<AccountBloc, AccountState>(
+            listener: (context, state) {
+              final accountBloc = context.read<AccountBloc>();
+              if (state.modal != null) {
+                ScaffoldMessenger.of(context)
+                  ..hideCurrentSnackBar()
+                  ..showSnackBar(SnackBar(
+                    content: Text(state.modal!.localize(localization)),
+                    action: SnackBarAction(
+                        label: localization.global_close, onPressed: () {}),
+                    duration: const Duration(seconds: 5),
+                  )).closed.then(
+                    (_) {
+                      accountBloc.add(EndAccountModal());
+                    },
                   );
               }
             },
@@ -67,8 +91,9 @@ class AccountView extends StatelessWidget {
               ScaffoldMessenger.of(context)
                 ..hideCurrentSnackBar()
                 ..showSnackBar(SnackBar(
-                  content: Text(state.modal!),
-                  action: SnackBarAction(label: 'close', onPressed: () {}),
+                  content: Text(state.modal!.localize(localization)),
+                  action: SnackBarAction(
+                      label: localization.global_close, onPressed: () {}),
                   duration: const Duration(seconds: 5),
                 )).closed.then(
                   (_) {
@@ -127,8 +152,8 @@ class AccountView extends StatelessWidget {
                   ),
                   ElevatedButton(
                     child: Text(localization.account_logout),
-                    onPressed: () {
-                      context.read<UsersRepository>().logout();
+                    onPressed: () async {
+                      await context.read<UsersRepository>().logout();
                     },
                   ),
                 ],
