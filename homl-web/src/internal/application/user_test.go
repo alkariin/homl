@@ -207,19 +207,36 @@ func isSixDigits(s string) bool {
 }
 
 func TestResetPassword(t *testing.T) {
-	t.Run("Stores and mails a 6-digit code for a known email", func(t *testing.T) {
+	t.Run("Stores and mails a 6-digit code in the user's language", func(t *testing.T) {
 		mockRepo := new(mocks.MockUsersRepo)
 		mockMailer := new(mocks.MockMailer)
 		svc := application.NewUsersService(&application.UserConfig{UsersRepository: mockRepo, Tokens: testTokens, Mailer: mockMailer})
 
 		mockRepo.On("FindIdByUsername", "demo@homl.local").Return(uint64(1), nil)
 		mockRepo.On("StoreResetCode", uint64(1), mock.MatchedBy(isSixDigits), mock.AnythingOfType("time.Duration")).Return(nil)
-		mockMailer.On("SendPasswordResetCode", "demo@homl.local", mock.MatchedBy(isSixDigits)).Return(nil)
+		mockRepo.On("FindSettingsByIdUser", uint64(1)).Return(&user.Settings{Language: "fr"}, nil)
+		mockMailer.On("SendPasswordResetCode", "demo@homl.local", mock.MatchedBy(isSixDigits), user.Language("fr")).Return(nil)
 
 		err := svc.ResetPassword(context.Background(), &user.User{Username: "demo@homl.local"})
 
 		assert.NoError(t, err)
 		mockRepo.AssertExpectations(t)
+		mockMailer.AssertExpectations(t)
+	})
+
+	t.Run("Falls back to English when the settings cannot be loaded", func(t *testing.T) {
+		mockRepo := new(mocks.MockUsersRepo)
+		mockMailer := new(mocks.MockMailer)
+		svc := application.NewUsersService(&application.UserConfig{UsersRepository: mockRepo, Tokens: testTokens, Mailer: mockMailer})
+
+		mockRepo.On("FindIdByUsername", "demo@homl.local").Return(uint64(1), nil)
+		mockRepo.On("StoreResetCode", uint64(1), mock.AnythingOfType("string"), mock.AnythingOfType("time.Duration")).Return(nil)
+		mockRepo.On("FindSettingsByIdUser", uint64(1)).Return(nil, assert.AnError)
+		mockMailer.On("SendPasswordResetCode", "demo@homl.local", mock.AnythingOfType("string"), user.Language("en")).Return(nil)
+
+		err := svc.ResetPassword(context.Background(), &user.User{Username: "demo@homl.local"})
+
+		assert.NoError(t, err)
 		mockMailer.AssertExpectations(t)
 	})
 

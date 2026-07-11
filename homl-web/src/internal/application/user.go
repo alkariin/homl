@@ -251,7 +251,14 @@ func (u *usersService) ResetPassword(ctx context.Context, usr *user.User) error 
 		return nil
 	}
 
-	if err := u.Mailer.SendPasswordResetCode(usr.Username, code); err != nil {
+	// Send the email in the user's stored language, falling back to English
+	// when the settings cannot be loaded.
+	language := user.Language("en")
+	if settings, err := u.UsersRepository.FindSettingsByIdUser(ctx, idUser); err == nil {
+		language = settings.Language
+	}
+
+	if err := u.Mailer.SendPasswordResetCode(usr.Username, code, language); err != nil {
 		// Do not leak the failure to the caller (would reveal the address exists).
 		log.Printf("reset password: could not send email: %v", err)
 	}
