@@ -19,7 +19,7 @@ class HomeState extends Equatable {
   final List<Event> events;
   final List<Category> categories;
   final Map<String, TagView> allTagsMap;
-  final String? modal;
+  final AppMessage? modal;
 
   const HomeState(
       {required this.username,
@@ -43,7 +43,7 @@ class HomeState extends Equatable {
       List<Category>? categories,
       Settings? settings,
       Map<String, TagView>? allTagsMap,
-      String? modal,
+      AppMessage? modal,
       bool clearModal = false}) {
     return HomeState(
       username: username ?? this.username,

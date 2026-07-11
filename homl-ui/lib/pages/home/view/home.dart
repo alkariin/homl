@@ -8,6 +8,7 @@ import 'package:homl/data/repositories/events.repository.dart';
 import 'package:homl/components/logo.dart';
 import 'package:homl/data/repositories/settings.repository.dart';
 import 'package:homl/data/repositories/tags.repository.dart';
+import 'package:homl/helpers/app_message.dart';
 import 'package:homl/helpers/colors.dart';
 import 'package:homl/pages/settings/view/settings.dart';
 import 'package:homl/pages/categories/categories.dart';
@@ -17,23 +18,34 @@ import 'package:homl/pages/list/bloc/list_bloc.dart';
 import 'package:homl/pages/list/list.dart';
 import 'package:homl/pages/account/view/account.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   final String username;
 
-  HomePage({super.key, required this.username});
+  const HomePage({super.key, required this.username});
 
   static Route<void> route(String username) {
     return MaterialPageRoute<void>(
         builder: (_) => HomePage(username: username));
   }
 
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  // Created once for the lifetime of the page, not on every build.
   final EventsRepository _eventsRepository = EventsRepository();
   final CategoriesRepository _categoriesRepository = CategoriesRepository();
   final TagsRepository _tagsRepository = TagsRepository();
 
   @override
+  void dispose() {
+    _eventsRepository.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    var localization = AppLocalizations.of(context)!;
     return MultiRepositoryProvider(
         providers: [
           RepositoryProvider<EventsRepository>.value(value: _eventsRepository),
@@ -45,19 +57,17 @@ class HomePage extends StatelessWidget {
             providers: [
               BlocProvider(
                   create: (BuildContext context) => HomeBloc(
-                      localization,
                       context.read<SettingsRepository>(),
                       _eventsRepository,
                       _categoriesRepository,
                       _tagsRepository,
-                      username)),
+                      widget.username)),
               BlocProvider(
                   create: (BuildContext context) =>
-                      ListBloc(localization, _eventsRepository)),
+                      ListBloc(_eventsRepository)),
             ],
             child: BlocBuilder<HomeBloc, HomeState>(builder: (context, state) {
-              return HomeView(
-                  context.read<HomeBloc>().state.settings.defaultScreen);
+              return HomeView(state.settings.defaultScreen);
             })));
   }
 }
@@ -76,11 +86,30 @@ class _HomeViewState extends State<HomeView>
   late int _currentIndex;
   final PageController _pageController = PageController();
 
+  /// True once the user changed the tab himself: the async-loaded
+  /// defaultScreen setting must not override an explicit navigation.
+  bool _userNavigated = false;
+
   @override
   void initState() {
     super.initState();
     // defaultScreen setting: false opens on Search, true on Add.
     _currentIndex = widget.defaultView ? 2 : 1;
+  }
+
+  @override
+  void didUpdateWidget(covariant HomeView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // The settings arrive asynchronously: apply the new default tab as long
+    // as the user has not navigated on his own yet.
+    if (widget.defaultView != oldWidget.defaultView && !_userNavigated) {
+      setState(() {
+        _currentIndex = widget.defaultView ? 2 : 1;
+      });
+      if (_pageController.hasClients) {
+        _pageController.jumpToPage(_currentIndex);
+      }
+    }
   }
 
   @override
@@ -94,6 +123,7 @@ class _HomeViewState extends State<HomeView>
   void _searchByTag(BuildContext context, TagView tag) {
     context.read<ListBloc>().add(AddFilterTag(tag.tagName));
     setState(() {
+      _userNavigated = true;
       _currentIndex = 1;
       _pageController.animateToPage(1,
           duration: const Duration(milliseconds: 500), curve: Curves.ease);
@@ -131,7 +161,7 @@ class _HomeViewState extends State<HomeView>
                 const Spacer(),
                 IconButton(
                     iconSize: 18,
-                    icon: const FaIcon(FontAwesomeIcons.arrowRightFromBracket),
+                    icon: const FaIcon(FontAwesomeIcons.xmark),
                     onPressed: () {
                       Navigator.pop(context);
                     }),
@@ -164,8 +194,9 @@ class _HomeViewState extends State<HomeView>
           ScaffoldMessenger.of(context)
             ..hideCurrentSnackBar()
             ..showSnackBar(SnackBar(
-              content: Text(state.modal!),
-              action: SnackBarAction(label: 'close', onPressed: () {}),
+              content: Text(state.modal!.localize(localization)),
+              action: SnackBarAction(
+                  label: localization.global_close, onPressed: () {}),
               duration: const Duration(seconds: 5),
             )).closed.then((_) {
               homeBloc.add(EndModal());
@@ -197,6 +228,8 @@ class _HomeViewState extends State<HomeView>
           ],
           onPageChanged: (index) {
             setState(() {
+              // A change we did not trigger ourselves is a user swipe.
+              if (index != _currentIndex) _userNavigated = true;
               _currentIndex = index;
             });
           },
@@ -217,6 +250,7 @@ class _HomeViewState extends State<HomeView>
             iconSize: 22,
             onTap: (index) {
               setState(() {
+                _userNavigated = true;
                 _currentIndex = index;
                 _pageController.animateToPage(index,
                     duration: const Duration(milliseconds: 500),

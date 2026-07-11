@@ -5,7 +5,7 @@ class ListState extends Equatable {
   final List<String> filters;
   final List<Event> events;
   final bool loading;
-  final String? modal;
+  final AppMessage? modal;
 
   const ListState(
       {required this.filters,
@@ -19,7 +19,7 @@ class ListState extends Equatable {
       {List<String>? filters,
       List<Event>? events,
       bool? loading,
-      String? modal,
+      AppMessage? modal,
       bool clearModal = false}) {
     return ListState(
       filters: filters ?? this.filters,

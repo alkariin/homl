@@ -2,7 +2,7 @@ part of 'settings_bloc.dart';
 
 class SettingsState extends Equatable {
   final Settings? settings;
-  final String? errorModal;
+  final AppMessage? errorModal;
   final bool isFormSubmitted;
 
   const SettingsState(
@@ -11,14 +11,17 @@ class SettingsState extends Equatable {
   const SettingsState.initial() : this(isFormSubmitted: false);
 
   SettingsState copyWith(
-      {Settings? settings, String? errorModal, bool? isFormSubmitted}) {
+      {Settings? settings,
+      AppMessage? errorModal,
+      bool? isFormSubmitted,
+      bool clearErrorModal = false}) {
     return SettingsState(
       settings: settings ?? this.settings,
-      errorModal: errorModal ?? this.errorModal,
+      errorModal: clearErrorModal ? null : (errorModal ?? this.errorModal),
       isFormSubmitted: isFormSubmitted ?? this.isFormSubmitted,
     );
   }
 
   @override
-  List<Object?> get props => [settings, errorModal];
+  List<Object?> get props => [settings, errorModal, isFormSubmitted];
 }

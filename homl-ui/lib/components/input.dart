@@ -71,7 +71,7 @@ class _NormalInput extends StatefulWidget {
 }
 
 class _NormalInputState extends State<_NormalInput> {
-  FocusNode focusNode = FocusNode();
+  final FocusNode focusNode = FocusNode();
   final formKey = GlobalKey<FormFieldState>();
 
   /// Here to put the initial value and to get the text value afterward
@@ -82,10 +82,24 @@ class _NormalInputState extends State<_NormalInput> {
     super.initState();
     _controller =
         widget.controller ?? TextEditingController(text: widget.initialValue);
+    // Registered once: adding the listener in build would stack a new
+    // callback on every rebuild.
+    focusNode.addListener(_onFocusChanged);
+  }
+
+  void _onFocusChanged() {
+    if (focusNode.hasFocus) return;
+    widget.onBlur?.call(_controller.text);
+    if (_controller.text.isEmpty) {
+      formKey.currentState?.reset();
+    } else if (formKey.currentState?.validate() ?? false) {
+      formKey.currentState?.save();
+    }
   }
 
   @override
   void dispose() {
+    focusNode.dispose();
     if (widget.controller == null) {
       _controller.dispose();
     }
@@ -94,16 +108,6 @@ class _NormalInputState extends State<_NormalInput> {
 
   @override
   Widget build(BuildContext context) {
-    focusNode.addListener(() {
-      if (focusNode.hasFocus) return;
-      widget.onBlur?.call(_controller.text);
-      if (_controller.text.isEmpty) {
-        formKey.currentState?.reset();
-      } else if (formKey.currentState?.validate() ?? false) {
-        formKey.currentState?.save();
-      }
-    });
-
     return TextFormField(
         key: formKey,
         onChanged: widget.onChange,
@@ -154,7 +158,7 @@ class _PasswordInput extends StatefulWidget {
 
 class _PasswordInputState extends State<_PasswordInput> {
   late bool _toggleEye;
-  FocusNode focusNode = FocusNode();
+  final FocusNode focusNode = FocusNode();
   final formKey = GlobalKey<FormFieldState>();
 
   /// Here to put the initial value and to get the text value afterward
@@ -166,10 +170,24 @@ class _PasswordInputState extends State<_PasswordInput> {
     _toggleEye = true;
     _controller =
         widget.controller ?? TextEditingController(text: widget.initialValue);
+    // Registered once: adding the listener in build would stack a new
+    // callback on every rebuild.
+    focusNode.addListener(_onFocusChanged);
+  }
+
+  void _onFocusChanged() {
+    if (focusNode.hasFocus) return;
+    widget.onBlur?.call(_controller.text);
+    if (_controller.text.isEmpty) {
+      formKey.currentState?.reset();
+    } else if (formKey.currentState?.validate() ?? false) {
+      formKey.currentState?.save();
+    }
   }
 
   @override
   void dispose() {
+    focusNode.dispose();
     if (widget.controller == null) {
       _controller.dispose();
     }
@@ -178,16 +196,6 @@ class _PasswordInputState extends State<_PasswordInput> {
 
   @override
   Widget build(BuildContext context) {
-    focusNode.addListener(() {
-      if (focusNode.hasFocus) return;
-      widget.onBlur?.call(_controller.text);
-      if (_controller.text.isEmpty) {
-        formKey.currentState?.reset();
-      } else if (formKey.currentState?.validate() ?? false) {
-        formKey.currentState?.save();
-      }
-    });
-
     return TextFormField(
         key: formKey,
         onChanged: widget.onChange,

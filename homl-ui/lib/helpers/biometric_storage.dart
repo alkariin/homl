@@ -37,7 +37,10 @@ Future<String?> _readBioProtectedEntry() async {
   return data;
 }
 
-void removeStorageFile() async {
+Future<void> removeStorageFile() async {
+  // Actually delete the stored keypair, not just the cached handle.
+  _storageFile ??= await _getStorageFile();
+  await _storageFile?.delete();
   _storageFile = null;
 }
 

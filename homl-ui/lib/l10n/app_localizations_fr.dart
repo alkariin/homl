@@ -47,6 +47,35 @@ class AppLocalizationsFr extends AppLocalizations {
   String get account_enterPin => 'Entrer le code PIN';
 
   @override
+  String get account_pinEnabled => 'Le code PIN a ete active';
+
+  @override
+  String get account_pinDisabled => 'Le code PIN a ete desactive';
+
+  @override
+  String get account_pinIncorrect => 'Le code PIN est incorrect';
+
+  @override
+  String get account_returnToLogin => 'Retour a la connexion';
+
+  @override
+  String get account_passwordUpdated => 'Votre mot de passe a ete mis a jour';
+
+  @override
+  String get account_passwordIncorrect => 'Le mot de passe est incorrect';
+
+  @override
+  String get account_passwordUpdateError =>
+      'Une erreur est survenue pendant la mise a jour, reessayez plus tard';
+
+  @override
+  String get account_currentPasswordError => 'Entrez votre mot de passe actuel';
+
+  @override
+  String get account_passwordsNotIdentical =>
+      'Les mots de passe ne sont pas identiques';
+
+  @override
   String get login_usernameLabel => 'identifiant';
 
   @override
@@ -67,6 +96,12 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get login_invalidPassword =>
       'Doit contenir au moins un chiffre, une majuscule et une minuscule, un caractere special, et au moins 8 caracteres';
+
+  @override
+  String get register_submit => 'Creer un compte';
+
+  @override
+  String get register_failure => 'L\'inscription a echoue';
 
   @override
   String get settings => 'Parametres';
@@ -91,6 +126,12 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get global_delete => 'Supprimer';
+
+  @override
+  String get global_close => 'Fermer';
+
+  @override
+  String get global_update => 'Mettre a jour';
 
   @override
   String get nav_categories => 'Categories';

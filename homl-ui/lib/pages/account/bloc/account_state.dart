@@ -2,28 +2,30 @@ part of 'account_bloc.dart';
 
 class AccountState extends Equatable {
   final User? user;
-  final String? modal;
-  final String responseError;
+  final AppMessage? modal;
+  final AppMessage? responseError;
   final bool isFormSubmitted;
 
   const AccountState(
       {this.user,
       this.modal,
-      required this.responseError,
+      this.responseError,
       required this.isFormSubmitted});
 
-  const AccountState.initial()
-      : this(responseError: "", isFormSubmitted: false);
+  const AccountState.initial() : this(isFormSubmitted: false);
 
   AccountState copyWith(
       {User? user,
-      String? modal,
-      String? responseError,
-      bool? isFormSubmitted}) {
+      AppMessage? modal,
+      AppMessage? responseError,
+      bool? isFormSubmitted,
+      bool clearModal = false,
+      bool clearResponseError = false}) {
     return AccountState(
       user: user ?? this.user,
-      modal: modal ?? this.modal,
-      responseError: responseError ?? this.responseError,
+      modal: clearModal ? null : (modal ?? this.modal),
+      responseError:
+          clearResponseError ? null : (responseError ?? this.responseError),
       isFormSubmitted: isFormSubmitted ?? this.isFormSubmitted,
     );
   }

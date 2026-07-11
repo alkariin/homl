@@ -14,6 +14,9 @@ class UpdateLocale extends AppEvent {
   const UpdateLocale(this.locale);
 
   final Language locale;
+
+  @override
+  List<Object> get props => [locale];
 }
 
 // ----
@@ -21,5 +24,12 @@ class UpdateLocale extends AppEvent {
 class ErrorModal extends AppEvent {
   const ErrorModal(this.error);
 
-  final String error;
+  final AppMessage error;
+
+  @override
+  List<Object> get props => [error];
 }
+
+// ----
+
+class EndErrorModal extends AppEvent {}

@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:homl/l10n/app_localizations.dart';
 
 import 'package:homl/components/pin_dialog.dart';
+import 'package:homl/helpers/app_message.dart';
 import 'package:homl/helpers/language.dart';
 import 'package:homl/helpers/theme.dart';
 import 'package:homl/pages/app/bloc/app_bloc.dart';
@@ -39,6 +40,7 @@ class _AppState extends State<App> {
   @override
   void dispose() {
     _apiInstance.dispose();
+    _settingsRepository.dispose();
     super.dispose();
   }
 
@@ -97,29 +99,47 @@ class _AppViewState extends State<AppView> {
         supportedLocales: AppLocalizations.supportedLocales,
         locale: Locale(state.locale.text),
         builder: (context, child) {
-          return BlocListener<AuthenticationBloc, AuthenticationState>(
-            listener: (context, state) {
-              switch (state.status) {
-                case AuthenticationStatus.authenticated:
-                  // get settings here if you want to remove it from authentication_bloc
-                  _navigator.pushAndRemoveUntil<void>(
-                      HomePage.route(context.read<LoginBloc>().state.username),
-                      (route) => false);
-                  break;
-                case AuthenticationStatus.unauthenticated:
-                  _navigator.pushAndRemoveUntil<void>(
-                      LoginPage.route(), (route) => false);
-                  break;
-                case AuthenticationStatus.pinCheck:
-                  _navigator.push(PinDialog.route(context, onPinChanged,
-                      returnToLogin: onReturnToLogin));
-                  break;
-                case AuthenticationStatus.unknown:
-                  break;
-              }
-            },
-            child: child,
-          );
+          return MultiBlocListener(listeners: [
+            BlocListener<AppBloc, AppState>(
+              listener: (context, state) {
+                if (state.errorModal != null) {
+                  final localization = AppLocalizations.of(context)!;
+                  final appBloc = context.read<AppBloc>();
+                  ScaffoldMessenger.of(context)
+                    ..hideCurrentSnackBar()
+                    ..showSnackBar(SnackBar(
+                      content: Text(state.errorModal!.localize(localization)),
+                      duration: const Duration(seconds: 5),
+                    )).closed.then((_) {
+                      appBloc.add(EndErrorModal());
+                    });
+                }
+              },
+            ),
+            BlocListener<AuthenticationBloc, AuthenticationState>(
+              listener: (context, state) {
+                switch (state.status) {
+                  case AuthenticationStatus.authenticated:
+                    // get settings here if you want to remove it from authentication_bloc
+                    _navigator.pushAndRemoveUntil<void>(
+                        HomePage.route(
+                            context.read<LoginBloc>().state.username),
+                        (route) => false);
+                    break;
+                  case AuthenticationStatus.unauthenticated:
+                    _navigator.pushAndRemoveUntil<void>(
+                        LoginPage.route(), (route) => false);
+                    break;
+                  case AuthenticationStatus.pinCheck:
+                    _navigator.push(PinDialog.route(context, onPinChanged,
+                        returnToLogin: onReturnToLogin));
+                    break;
+                  case AuthenticationStatus.unknown:
+                    break;
+                }
+              },
+            ),
+          ], child: child ?? const SizedBox.shrink());
         },
         onGenerateRoute: (_) => SplashPage.route(),
       );
