@@ -21,13 +21,7 @@ class Settings {
 
   Map<String, dynamic> toJson() => _$SettingsToJson(this);
 
-  Settings copyWith(
-      {Language? language,
-      bool? defaultScreen,
-      bool? isFingerprintEnabled,
-      bool? isPinEnabled,
-      String? pin,
-      String? pkey}) {
+  Settings copyWith({Language? language, bool? defaultScreen}) {
     return Settings(
       language: language ?? this.language,
       defaultScreen: defaultScreen ?? this.defaultScreen,

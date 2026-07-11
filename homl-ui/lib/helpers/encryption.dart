@@ -19,6 +19,6 @@ Future<Signature> signData(String strToSign, String? keyPair) async {
   final jwk = Jwk.fromJson(jsonDecode(keyPair));
   final algorithm = Ed25519();
   final signature =
-      await algorithm.sign(strToSign.codeUnits, keyPair: jwk.toKeyPair());
+      await algorithm.sign(utf8.encode(strToSign), keyPair: jwk.toKeyPair());
   return signature;
 }

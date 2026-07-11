@@ -172,6 +172,60 @@ abstract class AppLocalizations {
   /// **'Enter the PIN code'**
   String get account_enterPin;
 
+  /// No description provided for @account_pinEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'PIN has been successfully enabled'**
+  String get account_pinEnabled;
+
+  /// No description provided for @account_pinDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'PIN has been successfully disabled'**
+  String get account_pinDisabled;
+
+  /// No description provided for @account_pinIncorrect.
+  ///
+  /// In en, this message translates to:
+  /// **'Pin code is not correct'**
+  String get account_pinIncorrect;
+
+  /// No description provided for @account_returnToLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Return to login'**
+  String get account_returnToLogin;
+
+  /// No description provided for @account_passwordUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Your password has been updated'**
+  String get account_passwordUpdated;
+
+  /// No description provided for @account_passwordIncorrect.
+  ///
+  /// In en, this message translates to:
+  /// **'The password is not correct'**
+  String get account_passwordIncorrect;
+
+  /// No description provided for @account_passwordUpdateError.
+  ///
+  /// In en, this message translates to:
+  /// **'An error appeared during the update, try again later'**
+  String get account_passwordUpdateError;
+
+  /// No description provided for @account_currentPasswordError.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your current password'**
+  String get account_currentPasswordError;
+
+  /// No description provided for @account_passwordsNotIdentical.
+  ///
+  /// In en, this message translates to:
+  /// **'Passwords aren\'t identical'**
+  String get account_passwordsNotIdentical;
+
   /// No description provided for @login_usernameLabel.
   ///
   /// In en, this message translates to:
@@ -213,6 +267,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Must contain at least one number, one uppercase and lowercase letter, one special character, and at least 8 or more characters'**
   String get login_invalidPassword;
+
+  /// No description provided for @register_submit.
+  ///
+  /// In en, this message translates to:
+  /// **'Register'**
+  String get register_submit;
+
+  /// No description provided for @register_failure.
+  ///
+  /// In en, this message translates to:
+  /// **'Registration failed'**
+  String get register_failure;
 
   /// No description provided for @settings.
   ///
@@ -261,6 +327,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Delete'**
   String get global_delete;
+
+  /// No description provided for @global_close.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get global_close;
+
+  /// No description provided for @global_update.
+  ///
+  /// In en, this message translates to:
+  /// **'Update'**
+  String get global_update;
 
   /// No description provided for @nav_categories.
   ///
