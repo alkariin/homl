@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"crypto/subtle"
 	"errors"
 	"strconv"
 	"strings"
@@ -20,8 +21,21 @@ import (
 // mysqlDuplicateEntry is MySQL error 1062: duplicate entry for a unique key.
 const mysqlDuplicateEntry = 1062
 
-// resetTokenKeyPrefix namespaces single-use password-reset tokens in Redis.
-const resetTokenKeyPrefix = "reset:"
+// Key prefixes namespacing the password-reset code entries in Redis. Keys are
+// per user, so requesting a new code replaces the previous one.
+const (
+	resetCodeKeyPrefix     = "pwdreset:code:"
+	resetAttemptsKeyPrefix = "pwdreset:attempts:"
+	resetCooldownKeyPrefix = "pwdreset:cooldown:"
+)
+
+// resetCodeMaxAttempts bounds how many wrong guesses a single reset code
+// survives before being invalidated.
+const resetCodeMaxAttempts = 5
+
+// resetCodeCooldown is the minimum delay between two reset-code emails for
+// the same user.
+const resetCodeCooldown = time.Minute
 
 // Session keys are namespaced so they can never collide with other Redis
 // usages (rate limiting, reset tokens). Each half of a session stores the
@@ -193,7 +207,7 @@ func (r *UsersRepository) CheckPin(ctx context.Context, idUser uint64, pin strin
 	// Hard lockout: once locked, even a correct pin is refused until the user
 	// re-authenticates with their password (which resets the counter on Login).
 	if pinTryCounter != nil && *pinTryCounter >= user.MaxPinTries {
-		return apperror.NewAuthorization("Pin is locked") // this string is used in FE
+		return apperror.NewPinLocked()
 	}
 
 	if storedPin == nil {
@@ -211,15 +225,20 @@ func (r *UsersRepository) CheckPin(ctx context.Context, idUser uint64, pin strin
 			return apperror.NewInternal()
 		}
 
-		// Re-read the counter to tell the FE whether the pin just got locked.
+		// Re-read the counter to tell the FE whether the pin just got locked
+		// and how many attempts are left otherwise.
 		var counter *uint
 		if err2 := r.DB.QueryRowContext(ctx, `SELECT pinTryCounter FROM Users WHERE id = ?`, idUser).Scan(&counter); err2 != nil {
 			return err2
 		}
 		if counter != nil && *counter >= user.MaxPinTries {
-			return apperror.NewAuthorization("Pin is locked") // this string is used in FE
+			return apperror.NewPinLocked()
 		}
-		return apperror.NewAuthorization("Pin code not correct")
+		remaining := uint(user.MaxPinTries)
+		if counter != nil {
+			remaining = user.MaxPinTries - *counter
+		}
+		return apperror.NewPinIncorrect(remaining)
 	}
 
 	// Correct pin: reset the counter. Tolerate a no-op update (counter already 0)
@@ -367,25 +386,51 @@ func (u *UsersRepository) FetchAuth(ctx context.Context, authD *user.AccessDetai
 	return userID, nil
 }
 
-func (u *UsersRepository) StoreResetToken(ctx context.Context, userId uint64, token string, ttl time.Duration) error {
-	return u.Redis.Set(ctx, resetTokenKeyPrefix+token, strconv.FormatUint(userId, 10), ttl).Err()
+func (u *UsersRepository) StoreResetCode(ctx context.Context, userId uint64, code string, ttl time.Duration) error {
+	id := strconv.FormatUint(userId, 10)
+
+	set, err := u.Redis.SetNX(ctx, resetCooldownKeyPrefix+id, 1, resetCodeCooldown).Result()
+	if err != nil {
+		return err
+	}
+	if !set {
+		return user.ErrResetCooldown
+	}
+
+	if err := u.Redis.Set(ctx, resetCodeKeyPrefix+id, code, ttl).Err(); err != nil {
+		return err
+	}
+	// A fresh code resets the guess budget.
+	return u.Redis.Set(ctx, resetAttemptsKeyPrefix+id, 0, ttl).Err()
 }
 
-func (u *UsersRepository) ConsumeResetToken(ctx context.Context, token string) (uint64, error) {
-	key := resetTokenKeyPrefix + token
+func (u *UsersRepository) ConsumeResetCode(ctx context.Context, userId uint64, code string) error {
+	id := strconv.FormatUint(userId, 10)
+	codeKey := resetCodeKeyPrefix + id
+	attemptsKey := resetAttemptsKeyPrefix + id
 
-	// GET then DEL in a single transaction so a token can be redeemed at most
-	// once, even under concurrent requests.
-	getCmd := u.Redis.TxPipeline()
-	val := getCmd.Get(ctx, key)
-	getCmd.Del(ctx, key)
-	if _, err := getCmd.Exec(ctx); err != nil {
-		return 0, apperror.NewAuthorization("Not authorized")
-	}
-
-	userID, err := strconv.ParseUint(val.Val(), 10, 64)
+	// Count the guess before comparing so a flood of wrong codes burns the
+	// budget even under concurrent requests.
+	attempts, err := u.Redis.Incr(ctx, attemptsKey).Result()
 	if err != nil {
-		return 0, apperror.NewAuthorization("Not authorized")
+		return apperror.NewResetCodeInvalid()
 	}
-	return userID, nil
+	if attempts > resetCodeMaxAttempts {
+		u.Redis.Del(ctx, codeKey, attemptsKey)
+		return apperror.NewResetCodeInvalid()
+	}
+
+	stored, err := u.Redis.Get(ctx, codeKey).Result()
+	if err != nil {
+		return apperror.NewResetCodeInvalid()
+	}
+	if subtle.ConstantTimeCompare([]byte(stored), []byte(code)) != 1 {
+		return apperror.NewResetCodeInvalid()
+	}
+
+	// Correct code: consume it so it can never be redeemed twice.
+	if err := u.Redis.Del(ctx, codeKey, attemptsKey).Err(); err != nil {
+		return apperror.NewResetCodeInvalid()
+	}
+	return nil
 }
