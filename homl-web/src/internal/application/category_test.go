@@ -20,7 +20,7 @@ func TestCreateCategory(t *testing.T) {
 		// The service should title-case "noces" -> "Noces", encrypt it,
 		// force IsLocked to false and keep the IdUser untouched.
 		mockRepo.On("Create", mock.MatchedBy(func(c *category.Category) bool {
-			dec, err := testCrypto.Decrypt(c.Category)
+			dec, err := testCrypto.Decrypt(c.Category, 42)
 			return err == nil && dec == "Noces" && c.Color == "red" && !c.IsLocked && c.IdUser == 42
 		})).Return(nil)
 
@@ -48,14 +48,14 @@ func TestUpdateCategory(t *testing.T) {
 		mockRepo := new(mocks.MockCategoriesRepo)
 		svc := application.NewCategoriesService(&application.CSConfig{CategoriesRepository: mockRepo, Crypto: testCrypto})
 
-		oldEncrypted, _ := testCrypto.Encrypt("Dates")
-		mockRepo.On("FindById", uint(1)).Return(&category.Category{
+		oldEncrypted, _ := testCrypto.Encrypt("Dates", 9)
+		mockRepo.On("FindByIdForUser", uint(1), uint64(9)).Return(&category.Category{
 			Id:       1,
 			Category: oldEncrypted,
 			IsLocked: true,
 		}, nil)
 
-		err := svc.UpdateCategory(context.Background(), &category.Category{Id: 1, Category: "Renamed", Color: "#ffffff"})
+		err := svc.UpdateCategory(context.Background(), &category.Category{Id: 1, Category: "Renamed", Color: "#ffffff", IdUser: 9})
 
 		assert.Error(t, err)
 		// Update must never be reached.
@@ -67,18 +67,18 @@ func TestUpdateCategory(t *testing.T) {
 		mockRepo := new(mocks.MockCategoriesRepo)
 		svc := application.NewCategoriesService(&application.CSConfig{CategoriesRepository: mockRepo, Crypto: testCrypto})
 
-		stored, _ := testCrypto.Encrypt("Holidays")
-		mockRepo.On("FindById", uint(2)).Return(&category.Category{
+		stored, _ := testCrypto.Encrypt("Holidays", 9)
+		mockRepo.On("FindByIdForUser", uint(2), uint64(9)).Return(&category.Category{
 			Id:       2,
 			Category: stored,
 			IsLocked: false,
 		}, nil)
 		mockRepo.On("Update", mock.MatchedBy(func(c *category.Category) bool {
-			dec, err := testCrypto.Decrypt(c.Category)
+			dec, err := testCrypto.Decrypt(c.Category, 9)
 			return err == nil && dec == "Trips" && c.Color == "#000000"
 		})).Return(nil)
 
-		err := svc.UpdateCategory(context.Background(), &category.Category{Id: 2, Category: "Trips", Color: "#000000"})
+		err := svc.UpdateCategory(context.Background(), &category.Category{Id: 2, Category: "Trips", Color: "#000000", IdUser: 9})
 
 		assert.NoError(t, err)
 		mockRepo.AssertExpectations(t)
@@ -90,8 +90,8 @@ func TestGetCategories(t *testing.T) {
 		mockRepo := new(mocks.MockCategoriesRepo)
 		svc := application.NewCategoriesService(&application.CSConfig{CategoriesRepository: mockRepo, Crypto: testCrypto})
 
-		encA, _ := testCrypto.Encrypt("Dates")
-		encB, _ := testCrypto.Encrypt("Persons")
+		encA, _ := testCrypto.Encrypt("Dates", 7)
+		encB, _ := testCrypto.Encrypt("Persons", 7)
 
 		categories := map[uint]category.Category{
 			2: {Id: 2, Category: encB, Color: "#60ccff", IsLocked: true},

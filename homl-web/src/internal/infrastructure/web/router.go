@@ -1,11 +1,26 @@
 package web
 
 import (
+	"net/http"
 	"time"
 
 	"github.com/alkariin/homl/homl-web/internal/apperror"
 	"github.com/gin-gonic/gin"
 )
+
+// maxRequestBodyBytes caps request bodies API-wide. The payloads of this API
+// are small JSON documents; 1 MiB leaves plenty of headroom.
+const maxRequestBodyBytes = 1 << 20
+
+// MaxBodySize rejects request bodies larger than n bytes. The handlers'
+// ShouldBindJSON surfaces the *http.MaxBytesError, which the responder maps
+// to a 413.
+func MaxBodySize(n int64) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, n)
+		c.Next()
+	}
+}
 
 // Server groups the per-feature HTTP handlers wired into the router, plus the
 // authenticator backing the auth middleware and the rate limiter guarding the
@@ -13,6 +28,7 @@ import (
 type Server struct {
 	Auth        Authenticator
 	RateLimiter RateLimiter
+	Health      *HealthHandler
 	User        *UserHandler
 	Category    *CategoryHandler
 	Tag         *TagHandler
@@ -27,9 +43,24 @@ func SetupRouter(s *Server, baseUrl string, timeoutDuration time.Duration, isDev
 	}
 
 	router := gin.Default()
+	// Do not trust X-Forwarded-For from arbitrary peers: without this, gin
+	// resolves ClientIP() from any spoofed header and the per-IP rate limits
+	// on the auth endpoints can be bypassed. Set an explicit proxy CIDR here
+	// if the service is ever deployed behind a reverse proxy.
+	if err := router.SetTrustedProxies(nil); err != nil {
+		panic(err)
+	}
 	router.Use(CorsMiddleware(corsOrigin))
+	router.Use(SecurityHeaders())
+
+	// Liveness/readiness probe: outside the API group, unauthenticated, not
+	// rate limited (orchestrators poll it).
+	if s.Health != nil {
+		router.GET("/healthz", s.Health.Healthz)
+	}
 
 	g := router.Group(baseUrl)
+	g.Use(MaxBodySize(maxRequestBodyBytes))
 	g.Use(Timeout(timeoutDuration, apperror.NewServiceUnavailable()))
 
 	authRequired := TokenAuthMiddleware(s.Auth)

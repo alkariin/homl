@@ -2,15 +2,18 @@
     "CATEGORIES": [
         {
             "Name": "Dates",
-            "Color": "#ffff60"
+            "Color": "#ffff60",
+            "Kind": "date"
         },
         {
             "Name": "Persons",
-            "Color": "#60ccff"
+            "Color": "#60ccff",
+            "Kind": "person"
         },
         {
             "Name": "Others",
-            "Color": "#999999"
+            "Color": "#999999",
+            "Kind": "other"
         }
     ],
     "BLACKLIST_TAGS": ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]

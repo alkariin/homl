@@ -57,7 +57,7 @@ func (r *PersonsRepository) FindPersonsWithTagsAndCategories(ctx context.Context
 			return nil, nil, err
 		}
 
-		decNickname, err := r.Crypto.Decrypt(nickname.Nickname)
+		decNickname, err := r.Crypto.Decrypt(nickname.Nickname, idUser)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -72,7 +72,7 @@ func (r *PersonsRepository) FindPersonsWithTagsAndCategories(ctx context.Context
 	return persons, nicknames, nil
 }
 
-func (r *PersonsRepository) CreatePersonWithTags(ctx context.Context, encFirstname string, encLastname string, encMainTagName string, idCategoryPerson uint, nicknames []string) error {
+func (r *PersonsRepository) CreatePersonWithTags(ctx context.Context, encFirstname string, encLastname string, encMainTagName string, idCategoryPerson uint, nicknames []string, idUser uint64) error {
 	// Insert person
 	tx, err := r.DB.BeginTxx(ctx, nil)
 	if err != nil {
@@ -103,7 +103,7 @@ func (r *PersonsRepository) CreatePersonWithTags(ctx context.Context, encFirstna
 
 	// create nickname tags as synonyms of the main tag
 	for _, nickname := range nicknames {
-		encNickname, err := r.Crypto.Encrypt(nickname)
+		encNickname, err := r.Crypto.Encrypt(nickname, idUser)
 		if err != nil {
 			return err
 		}
@@ -210,7 +210,7 @@ func (r *PersonsRepository) UpdatePersonWithTags(
 	}
 
 	insertNickname := func(nickname string) error {
-		encNickname, err := r.Crypto.Encrypt(nickname)
+		encNickname, err := r.Crypto.Encrypt(nickname, idUser)
 		if err != nil {
 			return err
 		}
@@ -239,7 +239,7 @@ func (r *PersonsRepository) UpdatePersonWithTags(
 
 			// Update of the nickname
 			if n1.Id == n2.Id {
-				encNickname, err := r.Crypto.Encrypt(n2.Nickname)
+				encNickname, err := r.Crypto.Encrypt(n2.Nickname, idUser)
 				if err != nil {
 					return err
 				}

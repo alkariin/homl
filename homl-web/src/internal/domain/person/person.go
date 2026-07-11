@@ -24,7 +24,7 @@ type GetPersonsResponse struct {
 type Repository interface {
 	FindById(ctx context.Context, idPerson uint) (*Person, error)
 	FindPersonsWithTagsAndCategories(ctx context.Context, idUser uint64) (map[uint]Person, map[uint][]Nickname, error)
-	CreatePersonWithTags(ctx context.Context, encFirstname string, encLastname string, encMainTagName string, idCategoryPerson uint, nicknames []string) error
+	CreatePersonWithTags(ctx context.Context, encFirstname string, encLastname string, encMainTagName string, idCategoryPerson uint, nicknames []string, idUser uint64) error
 	CheckPersonIdsWithTagsAndCategories(ctx context.Context, idUser uint64, idPerson uint) error
 	UpdatePersonWithTags(
 		ctx context.Context,

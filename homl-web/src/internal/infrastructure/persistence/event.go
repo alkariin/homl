@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"database/sql"
+	"strconv"
 
 	"github.com/alkariin/homl/homl-web/internal/apperror"
 	"github.com/alkariin/homl/homl-web/internal/application"
@@ -96,7 +97,7 @@ func (e *EventsRepository) FindEventsWithTags(ctx context.Context, encTags []str
 		}
 		event.Description = nullStringToString(description)
 
-		decTag, err := e.Crypto.Decrypt(tag.Tag)
+		decTag, err := e.Crypto.Decrypt(tag.Tag, idUser)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -119,19 +120,19 @@ func (e *EventsRepository) CreateEventWithTags(ctx context.Context, tags []categ
 	}
 	defer tx.Rollback() // no-op once Commit succeeds
 
-	otherTagsId, err := CreateAllTags(ctx, tx, e.Crypto, tags)
+	otherTagsId, err := CreateAllTags(ctx, tx, e.Crypto, tags, idUser)
 	if err != nil {
 		return err
 	}
 	tagsId = append(tagsId, otherTagsId...)
 
 	// it works even if the description has been omitted
-	encDescription, err := e.Crypto.Encrypt(event.Description)
+	encDescription, err := e.Crypto.Encrypt(event.Description, idUser)
 	if err != nil {
 		return err
 	}
 
-	res, err := tx.ExecContext(ctx, "INSERT INTO Events (description, date) VALUES (?, ?);", encDescription, event.Date)
+	res, err := tx.ExecContext(ctx, "INSERT INTO Events (description, date, idUser) VALUES (?, ?, ?);", encDescription, event.Date, idUser)
 	if err != nil {
 		return err
 	}
@@ -158,18 +159,30 @@ func (e *EventsRepository) UpdateEventWithTags(ctx context.Context, tags []categ
 	}
 	defer tx.Rollback() // no-op once Commit succeeds
 
-	otherTagsId, err := CreateAllTags(ctx, tx, e.Crypto, tags)
+	// Verify ownership before touching anything. The UPDATE below is scoped
+	// too, but its affected-rows count cannot distinguish "not mine" from a
+	// no-op update (MySQL reports changed rows, not matched rows).
+	var owned uint
+	err = tx.GetContext(ctx, &owned, "SELECT id FROM Events WHERE id = ? AND idUser = ?", event.Id, idUser)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return apperror.NewNotFound("event", strconv.FormatUint(uint64(event.Id), 10))
+		}
+		return err
+	}
+
+	otherTagsId, err := CreateAllTags(ctx, tx, e.Crypto, tags, idUser)
 	if err != nil {
 		return err
 	}
 	tagsId = append(tagsId, otherTagsId...)
 
-	encDescription, err := e.Crypto.Encrypt(event.Description)
+	encDescription, err := e.Crypto.Encrypt(event.Description, idUser)
 	if err != nil {
 		return err
 	}
 
-	_, err = tx.ExecContext(ctx, "UPDATE Events SET description = ?, date = ? WHERE id = ?", encDescription, event.Date, event.Id)
+	_, err = tx.ExecContext(ctx, "UPDATE Events SET description = ?, date = ? WHERE id = ? AND idUser = ?", encDescription, event.Date, event.Id, idUser)
 	if err != nil {
 		return err
 	}
@@ -190,15 +203,20 @@ func (e *EventsRepository) UpdateEventWithTags(ctx context.Context, tags []categ
 	return tx.Commit()
 }
 
-func (e *EventsRepository) Delete(ctx context.Context, id uint) error {
-	res, err := e.DB.ExecContext(ctx, "DELETE FROM Events WHERE id = ?", id)
+func (e *EventsRepository) Delete(ctx context.Context, id uint, idUser uint64) error {
+	res, err := e.DB.ExecContext(ctx, "DELETE FROM Events WHERE id = ? AND idUser = ?", id, idUser)
 	if err != nil {
 		return err
 	}
 
 	rowsAffected, err := res.RowsAffected()
-	if rowsAffected == 0 || err != nil {
-		return apperror.NewInternal()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		// Unknown id or an event belonging to someone else: same answer, so
+		// the endpoint cannot be used to probe other users' event ids.
+		return apperror.NewNotFound("event", strconv.FormatUint(uint64(id), 10))
 	}
 
 	return nil

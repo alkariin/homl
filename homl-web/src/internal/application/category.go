@@ -3,7 +3,6 @@ package application
 import (
 	"context"
 	"sort"
-	"strings"
 
 	"github.com/alkariin/homl/homl-web/internal/apperror"
 	"github.com/alkariin/homl/homl-web/internal/domain/category"
@@ -49,7 +48,7 @@ func (c *categoriesService) GetCategories(ctx context.Context, idUser uint64) ([
 	var responses = make([]category.GetCategoryResponse, 0)
 	for _, k := range keys {
 		cat := categories[uint(k)]
-		decCategory, err := c.Crypto.Decrypt(cat.Category)
+		decCategory, err := c.Crypto.Decrypt(cat.Category, idUser)
 		if err != nil {
 			return nil, err
 		}
@@ -59,6 +58,7 @@ func (c *categoriesService) GetCategories(ctx context.Context, idUser uint64) ([
 			Category: decCategory,
 			Color:    cat.Color,
 			IsLocked: cat.IsLocked,
+			Kind:     cat.Kind,
 			Tags:     tags[cat.Id],
 		}
 		responses = append(responses, response)
@@ -67,8 +67,8 @@ func (c *categoriesService) GetCategories(ctx context.Context, idUser uint64) ([
 }
 
 func (c *categoriesService) CreateCategory(ctx context.Context, newCategory *category.Category) error {
-	uCategory := strings.Title(newCategory.Category)
-	encCategory, err := c.Crypto.Encrypt(uCategory)
+	uCategory := titleCase(newCategory.Category)
+	encCategory, err := c.Crypto.Encrypt(uCategory, newCategory.IdUser)
 	if err != nil {
 		return err
 	}
@@ -90,12 +90,13 @@ func (c *categoriesService) CreateCategory(ctx context.Context, newCategory *cat
 }
 
 func (c *categoriesService) UpdateCategory(ctx context.Context, newCategory *category.Category) error {
-	encCategory, err := c.Crypto.Encrypt(newCategory.Category)
+	encCategory, err := c.Crypto.Encrypt(newCategory.Category, newCategory.IdUser)
 	if err != nil {
 		return err
 	}
 
-	storedCategory, err := c.CategoriesRepository.FindById(ctx, newCategory.Id)
+	// Scoped load: doubles as the ownership check for the update below.
+	storedCategory, err := c.CategoriesRepository.FindByIdForUser(ctx, newCategory.Id, newCategory.IdUser)
 	if err != nil {
 		return err
 	}
@@ -109,6 +110,7 @@ func (c *categoriesService) UpdateCategory(ctx context.Context, newCategory *cat
 		Id:       newCategory.Id,
 		Category: encCategory,
 		Color:    newCategory.Color,
+		IdUser:   newCategory.IdUser,
 	}
 
 	err = c.CategoriesRepository.Update(ctx, cat)

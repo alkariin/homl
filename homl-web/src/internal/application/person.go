@@ -3,7 +3,6 @@ package application
 import (
 	"context"
 	"sort"
-	"strings"
 
 	"github.com/alkariin/homl/homl-web/internal/domain/category"
 	"github.com/alkariin/homl/homl-web/internal/domain/person"
@@ -52,12 +51,12 @@ func (s *personsService) GetPersons(ctx context.Context, idUser uint64) ([]perso
 	var responses = make([]person.GetPersonsResponse, 0)
 	for _, k := range keys {
 		p := persons[uint(k)]
-		decFirstname, err := s.Crypto.Decrypt(p.Firstname)
+		decFirstname, err := s.Crypto.Decrypt(p.Firstname, idUser)
 		if err != nil {
 			return nil, err
 		}
 
-		decLastname, err := s.Crypto.Decrypt(p.Lastname)
+		decLastname, err := s.Crypto.Decrypt(p.Lastname, idUser)
 		if err != nil {
 			return nil, err
 		}
@@ -74,40 +73,36 @@ func (s *personsService) GetPersons(ctx context.Context, idUser uint64) ([]perso
 }
 
 func (s *personsService) CreatePerson(ctx context.Context, person *person.Person, nicknames []string, idUser uint64) error {
-	firstname := strings.Title(person.Firstname)
-	lastname := strings.Title(person.Lastname)
-	encFirstname, err := s.Crypto.Encrypt(firstname)
+	firstname := titleCase(person.Firstname)
+	lastname := titleCase(person.Lastname)
+	encFirstname, err := s.Crypto.Encrypt(firstname, idUser)
 	if err != nil {
 		return err
 	}
-	encLastname, err := s.Crypto.Encrypt(lastname)
+	encLastname, err := s.Crypto.Encrypt(lastname, idUser)
 	if err != nil {
 		return err
 	}
 
 	mainTagName := firstname + lastname
-	encMainTagName, err := s.Crypto.Encrypt(mainTagName)
+	encMainTagName, err := s.Crypto.Encrypt(mainTagName, idUser)
 	if err != nil {
 		return err
 	}
 
-	// Get idCategoryPerson
-	idCategoryDate, err := s.CategoriesRepository.FindLastIdByIdUser(ctx, idUser)
+	idCategoryPerson, err := s.CategoriesRepository.FindIdByKind(ctx, idUser, category.KindPerson)
 	if err != nil {
 		return err
 	}
-	idCategoryPerson := idCategoryDate + 1
 
-	return s.PersonsRepository.CreatePersonWithTags(ctx, encFirstname, encLastname, encMainTagName, idCategoryPerson, nicknames)
+	return s.PersonsRepository.CreatePersonWithTags(ctx, encFirstname, encLastname, encMainTagName, idCategoryPerson, nicknames, idUser)
 }
 
 func (s *personsService) UpdatePerson(ctx context.Context, person *person.Person, nicknames []person.Nickname, idUser uint64) error {
-	// Get idCategoryPerson
-	idCategoryDate, err := s.CategoriesRepository.FindLastIdByIdUser(ctx, idUser)
+	idCategoryPerson, err := s.CategoriesRepository.FindIdByKind(ctx, idUser, category.KindPerson)
 	if err != nil {
 		return err
 	}
-	idCategoryPerson := idCategoryDate + 1
 
 	// Verify if the given id is a person of the user
 	err = s.PersonsRepository.CheckPersonIdsWithTagsAndCategories(ctx, idUser, person.Id)
@@ -127,19 +122,19 @@ func (s *personsService) UpdatePerson(ctx context.Context, person *person.Person
 		return err
 	}
 
-	firstname := strings.Title(person.Firstname)
-	lastname := strings.Title(person.Lastname)
-	encFirstname, err := s.Crypto.Encrypt(firstname)
+	firstname := titleCase(person.Firstname)
+	lastname := titleCase(person.Lastname)
+	encFirstname, err := s.Crypto.Encrypt(firstname, idUser)
 	if err != nil {
 		return err
 	}
-	encLastname, err := s.Crypto.Encrypt(lastname)
+	encLastname, err := s.Crypto.Encrypt(lastname, idUser)
 	if err != nil {
 		return err
 	}
 
 	mainTagName := firstname + lastname
-	encMainTagName, err := s.Crypto.Encrypt(mainTagName)
+	encMainTagName, err := s.Crypto.Encrypt(mainTagName, idUser)
 	if err != nil {
 		return err
 	}

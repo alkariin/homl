@@ -51,8 +51,8 @@ func (m *MockPersonsRepo) FindPersonsWithTagsAndCategories(ctx context.Context, 
 	return r0, r1, r2
 }
 
-func (m *MockPersonsRepo) CreatePersonWithTags(ctx context.Context, encFirstname string, encLastname string, encMainTagName string, idCategoryPerson uint, nicknames []string) error {
-	ret := m.Called(encFirstname, encLastname, encMainTagName, idCategoryPerson, nicknames)
+func (m *MockPersonsRepo) CreatePersonWithTags(ctx context.Context, encFirstname string, encLastname string, encMainTagName string, idCategoryPerson uint, nicknames []string, idUser uint64) error {
+	ret := m.Called(encFirstname, encLastname, encMainTagName, idCategoryPerson, nicknames, idUser)
 
 	var r0 error
 	if ret.Get(0) != nil {

@@ -28,17 +28,8 @@ const (
 // which is helpful in returning a consistent
 // error type/message from API endpoints
 type Error struct {
-	Type     Type   `json:"type"`
-	Message  string `json:"message"`
-	IsCustom bool   `json:"-"`
-}
-
-func IsError(e error) *Error {
-	err, isError := e.(*Error)
-	if !isError {
-		return nil
-	}
-	return err
+	Type    Type   `json:"type"`
+	Message string `json:"message"`
 }
 
 // Error satisfies standard error interface
@@ -123,7 +114,7 @@ func NewConflict(name string, value string) *Error {
 func NewInternal() *Error {
 	return &Error{
 		Type:    Internal,
-		Message: fmt.Sprintf("Internal server error."),
+		Message: "Internal server error.",
 	}
 }
 
@@ -147,15 +138,7 @@ func NewPayloadTooLarge(maxBodySize int64, contentLength int64) *Error {
 func NewServiceUnavailable() *Error {
 	return &Error{
 		Type:    ServiceUnavailable,
-		Message: fmt.Sprintf("Service unavailable or timed out"),
-	}
-}
-
-// NewUnsupportedMediaType to create an error for 415
-func NewUnsupportedMediaType(reason string) *Error {
-	return &Error{
-		Type:    UnsupportedMediaType,
-		Message: reason,
+		Message: "Service unavailable or timed out",
 	}
 }
 
@@ -163,24 +146,22 @@ func NewUnsupportedMediaType(reason string) *Error {
 func NewStatusUnprocessableEntity() *Error {
 	return &Error{
 		Type:    StatusUnprocessableEntity,
-		Message: fmt.Sprintf("Unprocessable entity"),
+		Message: "Unprocessable entity",
 	}
 }
 
 // StatusForbidden to create an error for 403
 func NewStatusForbidden() *Error {
 	return &Error{
-		Type:     StatusForbidden,
-		Message:  fmt.Sprintf("Forbidden"),
-		IsCustom: true,
+		Type:    StatusForbidden,
+		Message: "Forbidden",
 	}
 }
 
 // NewTooManyRequests to create an error for 429
 func NewTooManyRequests() *Error {
 	return &Error{
-		Type:     TooManyRequests,
-		Message:  "Too many requests",
-		IsCustom: true,
+		Type:    TooManyRequests,
+		Message: "Too many requests",
 	}
 }

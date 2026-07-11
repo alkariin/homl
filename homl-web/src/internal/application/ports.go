@@ -2,11 +2,12 @@ package application
 
 import "github.com/alkariin/homl/homl-web/internal/domain/user"
 
-// Encryptor is the application-side port for at-rest field encryption.
-// Implemented by infrastructure/crypto.
+// Encryptor is the application-side port for at-rest field encryption. Keys
+// are derived per user, so identical plaintexts of different users never
+// share a ciphertext. Implemented by infrastructure/crypto.
 type Encryptor interface {
-	Encrypt(text string) (string, error)
-	Decrypt(text string) (string, error)
+	Encrypt(text string, idUser uint64) (string, error)
+	Decrypt(text string, idUser uint64) (string, error)
 }
 
 // TokenIssuer is the application-side port for minting and verifying auth
