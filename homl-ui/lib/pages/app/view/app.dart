@@ -7,12 +7,12 @@ import 'package:homl/components/pin_dialog.dart';
 import 'package:homl/helpers/app_message.dart';
 import 'package:homl/helpers/language.dart';
 import 'package:homl/helpers/theme.dart';
-import 'package:homl/pages/app/bloc/app_bloc.dart';
+import 'package:homl/pages/app/bloc/app_cubit.dart';
 import 'package:homl/pages/home/view/home.dart';
-import 'package:homl/pages/login/bloc/login_bloc.dart';
+import 'package:homl/pages/login/bloc/login_cubit.dart';
 import 'package:homl/pages/login/view/login.dart';
 import 'package:homl/pages/splash/view/splash_page.dart';
-import 'package:homl/services/authentication/bloc/authentication_bloc.dart';
+import 'package:homl/services/authentication/bloc/authentication_cubit.dart';
 import 'package:homl/data/repositories/api.dart';
 import 'package:homl/data/repositories/settings.repository.dart';
 import 'package:homl/data/repositories/users.repository.dart';
@@ -57,10 +57,10 @@ class _AppState extends State<App> {
       ],
       child: MultiBlocProvider(
         providers: [
-          BlocProvider(create: (_) => AuthenticationBloc(_settingsRepository)),
-          BlocProvider(create: (_) => LoginBloc(_usersRepository)),
+          BlocProvider(create: (_) => AuthenticationCubit(_settingsRepository)),
+          BlocProvider(create: (_) => LoginCubit(_usersRepository)),
           BlocProvider(
-              create: (_) => AppBloc(defaultLanguage, _settingsRepository)),
+              create: (_) => AppCubit(defaultLanguage, _settingsRepository)),
         ],
         child: AppView(_apiInstance),
       ),
@@ -91,7 +91,7 @@ class _AppViewState extends State<AppView> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<AppBloc, AppState>(builder: (context, state) {
+    return BlocBuilder<AppCubit, AppState>(builder: (context, state) {
       return MaterialApp(
         navigatorKey: _navigatorKey,
         theme: homlTheme(),
@@ -100,30 +100,30 @@ class _AppViewState extends State<AppView> {
         locale: Locale(state.locale.text),
         builder: (context, child) {
           return MultiBlocListener(listeners: [
-            BlocListener<AppBloc, AppState>(
+            BlocListener<AppCubit, AppState>(
               listener: (context, state) {
                 if (state.errorModal != null) {
                   final localization = AppLocalizations.of(context)!;
-                  final appBloc = context.read<AppBloc>();
+                  final appCubit = context.read<AppCubit>();
                   ScaffoldMessenger.of(context)
                     ..hideCurrentSnackBar()
                     ..showSnackBar(SnackBar(
                       content: Text(state.errorModal!.localize(localization)),
                       duration: const Duration(seconds: 5),
                     )).closed.then((_) {
-                      appBloc.add(EndErrorModal());
+                      appCubit.endErrorModal();
                     });
                 }
               },
             ),
-            BlocListener<AuthenticationBloc, AuthenticationState>(
+            BlocListener<AuthenticationCubit, AuthenticationState>(
               listener: (context, state) {
                 switch (state.status) {
                   case AuthenticationStatus.authenticated:
                     // get settings here if you want to remove it from authentication_bloc
                     _navigator.pushAndRemoveUntil<void>(
                         HomePage.route(
-                            context.read<LoginBloc>().state.username),
+                            context.read<LoginCubit>().state.username),
                         (route) => false);
                     break;
                   case AuthenticationStatus.unauthenticated:

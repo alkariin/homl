@@ -5,7 +5,7 @@ import 'package:homl/components/button.dart';
 import 'package:homl/components/input.dart';
 import 'package:homl/helpers/validations.dart';
 import 'package:homl/l10n/app_localizations.dart';
-import 'package:homl/pages/login/bloc/login_bloc.dart';
+import 'package:homl/pages/login/bloc/login_cubit.dart';
 import 'package:homl/pages/register/view/register.dart';
 
 class LoginPage extends StatelessWidget {
@@ -17,7 +17,7 @@ class LoginPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // The LoginBloc is provided at the app level (see app.dart) so that the
+    // The LoginCubit is provided at the app level (see app.dart) so that the
     // AppView can read the logged-in username after authentication. Creating
     // a page-local bloc here would swallow the events and leave the global
     // one empty.
@@ -39,7 +39,7 @@ class _LoginViewState extends State<LoginView> {
   Widget build(BuildContext context) {
     final localization = AppLocalizations.of(context)!;
 
-    return BlocConsumer<LoginBloc, LoginState>(
+    return BlocConsumer<LoginCubit, LoginState>(
         listener: (context, state) {
           if (state.isLoginIncorrect) {
             ScaffoldMessenger.of(context)
@@ -65,9 +65,9 @@ class _LoginViewState extends State<LoginView> {
                   Input(
                       labelText: localization.login_usernameLabel,
                       onChange: (username) => context
-                          .read<LoginBloc>()
-                          .add(LoginUsernameChanged(username)),
-                      initialValue: context.read<LoginBloc>().state.username,
+                          .read<LoginCubit>()
+                          .usernameChanged(username),
+                      initialValue: context.read<LoginCubit>().state.username,
                       validator: (username) {
                         if (isEmailValid(username)) return null;
                         return localization.login_invalidEmail;
@@ -77,9 +77,9 @@ class _LoginViewState extends State<LoginView> {
                     inputType: InputType.password,
                     labelText: localization.login_passwordLabel,
                     onChange: (password) => context
-                        .read<LoginBloc>()
-                        .add(LoginPasswordChanged(password)),
-                    initialValue: context.read<LoginBloc>().state.password,
+                        .read<LoginCubit>()
+                        .passwordChanged(password),
+                    initialValue: context.read<LoginCubit>().state.password,
                     validator: (password) {
                       if (isPasswordValid(password)) return null;
                       return localization.login_invalidPassword;
@@ -92,7 +92,7 @@ class _LoginViewState extends State<LoginView> {
                           text: localization.login_submit,
                           onPressed: () {
                             if (_formKey.currentState!.validate()) {
-                              context.read<LoginBloc>().add(LoginSubmitted());
+                              context.read<LoginCubit>().submit();
                             }
                           },
                         ),

@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:homl/l10n/app_localizations.dart';
 
 import 'package:homl/helpers/language.dart';
-import 'package:homl/pages/settings/bloc/settings_bloc.dart';
+import 'package:homl/pages/settings/bloc/settings_cubit.dart';
 
 class LanguageDialog {
   static Route<String> route(BuildContext context) {
@@ -13,7 +13,7 @@ class LanguageDialog {
     return DialogRoute<String>(
       context: context,
       builder: (_) => BlocProvider.value(
-        value: context.read<SettingsBloc>(),
+        value: context.read<SettingsCubit>(),
         child: SimpleDialog(
           title: Text(localizations.settings_selectLanguage),
           children: [
@@ -49,7 +49,7 @@ class _DialogItem extends StatelessWidget {
   Widget build(BuildContext context) {
     void onTap(String value) {
       Language language = longStringToLanguage(value);
-      context.read<SettingsBloc>().add(UpdateLanguage(language));
+      context.read<SettingsCubit>().updateLanguage(language);
       Navigator.of(context).pop();
     }
 

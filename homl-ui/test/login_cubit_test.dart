@@ -1,7 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:homl/data/repositories/api.dart';
 import 'package:homl/data/repositories/users.repository.dart';
-import 'package:homl/pages/login/bloc/login_bloc.dart';
+import 'package:homl/pages/login/bloc/login_cubit.dart';
 
 class _StubUsersRepository extends UsersRepository {
   Object? error;
@@ -15,24 +17,24 @@ class _StubUsersRepository extends UsersRepository {
 
 void main() {
   late _StubUsersRepository repository;
-  late LoginBloc bloc;
+  late LoginCubit cubit;
 
   setUp(() {
     repository = _StubUsersRepository();
-    bloc = LoginBloc(repository);
-    bloc.add(const LoginUsernameChanged('user@example.com'));
-    bloc.add(const LoginPasswordChanged('Password1!'));
+    cubit = LoginCubit(repository);
+    cubit.usernameChanged('user@example.com');
+    cubit.passwordChanged('Password1!');
   });
 
-  tearDown(() => bloc.close());
+  tearDown(() => cubit.close());
 
   test('sets isLoginIncorrect when credentials are rejected', () async {
     repository.error = UserRequestFailure();
 
-    bloc.add(LoginSubmitted());
+    unawaited(cubit.submit());
 
     await expectLater(
-      bloc.stream,
+      cubit.stream,
       emitsThrough(predicate<LoginState>((s) => s.isLoginIncorrect)),
     );
   });
@@ -40,33 +42,35 @@ void main() {
   test('sets isLoginIncorrect again on a second failed attempt', () async {
     repository.error = UserRequestFailure();
 
-    bloc.add(LoginSubmitted());
+    unawaited(cubit.submit());
     await expectLater(
-      bloc.stream,
+      cubit.stream,
       emitsThrough(predicate<LoginState>((s) => s.isLoginIncorrect)),
     );
 
     // The flag is reset on submit, then raised again, so the listener
-    // fires for every failed attempt — not just the first one.
-    bloc.add(LoginSubmitted());
-    await expectLater(
-      bloc.stream,
+    // fires for every failed attempt — not just the first one. Subscribe
+    // before submitting so the synchronous "submitting" state is observed.
+    final expectation = expectLater(
+      cubit.stream,
       emitsInOrder([
         predicate<LoginState>((s) => !s.isLoginIncorrect),
         predicate<LoginState>((s) => s.isLoginIncorrect),
       ]),
     );
+    unawaited(cubit.submit());
+    await expectation;
   });
 
   test('does not set isLoginIncorrect on success', () async {
-    bloc.add(LoginSubmitted());
+    unawaited(cubit.submit());
 
     await expectLater(
-      bloc.stream,
+      cubit.stream,
       emitsThrough(predicate<LoginState>(
         (s) => s.username.isNotEmpty && !s.isLoginIncorrect,
       )),
     );
-    expect(bloc.state.isLoginIncorrect, isFalse);
+    expect(cubit.state.isLoginIncorrect, isFalse);
   });
 }

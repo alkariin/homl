@@ -7,7 +7,7 @@ import 'package:homl/components/tag.dart' as components;
 import 'package:homl/data/models/category.dart';
 import 'package:homl/data/models/tag.dart';
 import 'package:homl/helpers/colors.dart';
-import 'package:homl/pages/home/bloc/home_bloc.dart';
+import 'package:homl/pages/home/bloc/home_cubit.dart';
 
 /// Categories list shown in the Categories tab: every category with its tags
 /// and synonyms, with full CRUD management. [onTagSelected] receives the
@@ -19,7 +19,7 @@ class CategoryManagementBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<HomeBloc, HomeState>(builder: (context, state) {
+    return BlocBuilder<HomeCubit, HomeState>(builder: (context, state) {
       return ListView(
         padding: const EdgeInsets.only(top: 10, bottom: 80),
         children: state.categories
@@ -40,7 +40,7 @@ class _CategoryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var localization = AppLocalizations.of(context)!;
-    final homeBloc = context.read<HomeBloc>();
+    final homeCubit = context.read<HomeCubit>();
     final mainTags =
         category.tags.where((tag) => tag.idParentTag == null).toList();
 
@@ -53,9 +53,9 @@ class _CategoryTile extends StatelessWidget {
       canManageTags = category.kind != CategoryKind.date &&
           category.kind != CategoryKind.person;
     } else {
-      final idDates = homeBloc.state.categories.isEmpty
+      final idDates = homeCubit.state.categories.isEmpty
           ? -1
-          : homeBloc.state.categories.first.id;
+          : homeCubit.state.categories.first.id;
       canManageTags = category.id != idDates && category.id != idDates + 1;
     }
 
@@ -93,8 +93,8 @@ class _CategoryTile extends StatelessWidget {
                       title: localization.categories_editCategory,
                       initialName: category.category,
                       initialColor: category.color,
-                      onSubmit: (name, color) => homeBloc
-                          .add(UpdateCategory(category.id, name, color)),
+                      onSubmit: (name, color) => homeCubit
+                          .updateCategory(category.id, name, color),
                     ),
                   ),
                   IconButton(
@@ -122,7 +122,7 @@ class _CategoryTile extends StatelessWidget {
                 context,
                 title: localization.categories_newTag,
                 label: localization.categories_categoryName,
-                onSubmit: (name) => homeBloc.add(CreateTag(name, category.id)),
+                onSubmit: (name) => homeCubit.createTag(name, category.id),
               ),
             ),
         ],
@@ -147,7 +147,7 @@ class _TagRow extends StatelessWidget {
 
   /// Hands the tapped tag to the page callback (search filter insertion).
   void _selectTag(BuildContext context, Tag tag) {
-    final tagView = context.read<HomeBloc>().state.allTagsMap[tag.tag];
+    final tagView = context.read<HomeCubit>().state.allTagsMap[tag.tag];
     if (tagView != null) {
       onTagSelected(tagView);
     }
@@ -156,7 +156,7 @@ class _TagRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var localization = AppLocalizations.of(context)!;
-    final homeBloc = context.read<HomeBloc>();
+    final homeCubit = context.read<HomeCubit>();
 
     return ListTile(
       dense: true,
@@ -193,21 +193,21 @@ class _TagRow extends StatelessWidget {
                       title: localization.categories_renameTag,
                       label: localization.categories_categoryName,
                       initialValue: mainTag.tag,
-                      onSubmit: (name) => homeBloc
-                          .add(UpdateTag(mainTag.id, name, category.id)),
+                      onSubmit: (name) => homeCubit
+                          .updateTag(mainTag.id, name, category.id),
                     );
                     break;
                   case 'delete':
-                    homeBloc.add(DeleteTag(mainTag.id));
+                    homeCubit.deleteTag(mainTag.id);
                     break;
                   case 'synonym':
                     _textDialog(
                       context,
                       title: localization.categories_addSynonym,
                       label: localization.categories_synonymName,
-                      onSubmit: (name) => homeBloc.add(CreateTag(
+                      onSubmit: (name) => homeCubit.createTag(
                           name, category.id,
-                          idParentTag: mainTag.id)),
+                          idParentTag: mainTag.id),
                     );
                     break;
                 }
@@ -231,7 +231,7 @@ class _TagRow extends StatelessWidget {
 /// Long press on a synonym chip: detach it from its main tag or delete it.
 void _synonymDialog(BuildContext context, Category category, Tag synonym) {
   var localization = AppLocalizations.of(context)!;
-  final homeBloc = context.read<HomeBloc>();
+  final homeCubit = context.read<HomeCubit>();
 
   showDialog<void>(
     context: context,
@@ -245,14 +245,14 @@ void _synonymDialog(BuildContext context, Category category, Tag synonym) {
         TextButton(
           child: Text(localization.categories_detachSynonym),
           onPressed: () {
-            homeBloc.add(UpdateTag(synonym.id, synonym.tag, category.id));
+            homeCubit.updateTag(synonym.id, synonym.tag, category.id);
             Navigator.pop(dialogContext);
           },
         ),
         TextButton(
           child: Text(localization.global_delete),
           onPressed: () {
-            homeBloc.add(DeleteTag(synonym.id));
+            homeCubit.deleteTag(synonym.id);
             Navigator.pop(dialogContext);
           },
         ),
@@ -263,7 +263,7 @@ void _synonymDialog(BuildContext context, Category category, Tag synonym) {
 
 void _deleteCategoryDialog(BuildContext context, Category category) {
   var localization = AppLocalizations.of(context)!;
-  final homeBloc = context.read<HomeBloc>();
+  final homeCubit = context.read<HomeCubit>();
   bool moveTags = false;
 
   showDialog<void>(
@@ -284,7 +284,7 @@ void _deleteCategoryDialog(BuildContext context, Category category) {
           TextButton(
             child: Text(localization.global_delete),
             onPressed: () {
-              homeBloc.add(DeleteCategory(category.id, moveTags: moveTags));
+              homeCubit.deleteCategory(category.id, moveTags: moveTags);
               Navigator.pop(dialogContext);
             },
           ),
