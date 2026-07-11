@@ -33,11 +33,11 @@ class ListBloc extends Bloc<ListEvent, ListState> {
     }
   }
 
-  _onFetchEvents(FetchEvents event, Emitter<ListState> emit) async {
+  Future<void> _onFetchEvents(FetchEvents event, Emitter<ListState> emit) async {
     await _fetch(emit, state.filters);
   }
 
-  _onAddFilterTag(AddFilterTag event, Emitter<ListState> emit) async {
+  Future<void> _onAddFilterTag(AddFilterTag event, Emitter<ListState> emit) async {
     final name = event.name.trim();
     if (name.isEmpty ||
         state.filters.any((f) => f.toLowerCase() == name.toLowerCase())) {
@@ -47,12 +47,12 @@ class ListBloc extends Bloc<ListEvent, ListState> {
     await _fetch(emit, [...state.filters, name]);
   }
 
-  _onRemoveFilterTag(RemoveFilterTag event, Emitter<ListState> emit) async {
+  Future<void> _onRemoveFilterTag(RemoveFilterTag event, Emitter<ListState> emit) async {
     await _fetch(
         emit, state.filters.where((f) => f != event.name).toList());
   }
 
-  _onEndListModal(EndListModal event, Emitter<ListState> emit) {
+  void _onEndListModal(EndListModal event, Emitter<ListState> emit) {
     emit(state.copyWith(clearModal: true));
   }
 }
