@@ -10,8 +10,12 @@ const Color ink = Color(0xFF000000);
 /// Legacy header color, kept for the pastel category presets below.
 const Color primary = Color(0xfff2e5c2);
 
-/// Parses a backend "#RRGGBB" color string.
-Color colorFromHex(String hex) => Color(int.parse(hex.replaceAll("#", "0xff")));
+/// Parses a backend "#RRGGBB" color string, falling back to the default
+/// pastel when the value is malformed.
+Color colorFromHex(String hex) {
+  final value = int.tryParse(hex.replaceAll("#", "0xff"));
+  return value == null ? primary : Color(value);
+}
 
 /// Darkens a color so pastel category colors stay readable as thin borders.
 Color darken(Color color, [double amount = .25]) {

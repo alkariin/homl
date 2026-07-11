@@ -27,6 +27,15 @@ class LocalStorageManager {
   static Future<void> remove(LocalStorageKey key) async =>
       await _secureStorage.delete(key: key.name);
 
+  /// Stores a boolean flag. Always use this together with [getBool] so the
+  /// serialized representation stays consistent ("true"/"false").
+  static Future<void> setBool(LocalStorageKey key, bool value) =>
+      setValue(key, value.toString());
+
+  /// Reads a boolean flag written with [setBool]. Missing keys read as false.
+  static Future<bool> getBool(LocalStorageKey key) async =>
+      await getValue(key) == true.toString();
+
   static Future<bool> has(LocalStorageKey key) async =>
       await _secureStorage.containsKey(key: key.name);
 }

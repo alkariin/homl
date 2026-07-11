@@ -37,20 +37,26 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
 
   Future<void> _onSubmitted(
       LoginSubmitted event, Emitter<LoginState> emit) async {
+    if (state.status == LoginStatus.submitting) return;
     if (state.username.isNotEmpty && state.password.isNotEmpty) {
       // Reset the flag so a second failed attempt re-triggers the listener.
-      emit(state.update(isLoginIncorrect: false));
+      emit(state.update(
+          isLoginIncorrect: false, status: LoginStatus.submitting));
       try {
         await _usersRepository.login(state.username, state.password);
+        emit(state.update(status: LoginStatus.editing));
       } on UserRequestFailure catch (err) {
         log('Login request failed', name: 'LoginBloc', error: err);
-        emit(state.update(isLoginIncorrect: true));
+        emit(state.update(
+            isLoginIncorrect: true, status: LoginStatus.editing));
       } on UserNotFoundFailure catch (err) {
         log('Login failed: user not found', name: 'LoginBloc', error: err);
-        emit(state.update(isLoginIncorrect: true));
+        emit(state.update(
+            isLoginIncorrect: true, status: LoginStatus.editing));
       } catch (err) {
         log('Unexpected login error', name: 'LoginBloc', error: err);
-        emit(state.update(isLoginIncorrect: true));
+        emit(state.update(
+            isLoginIncorrect: true, status: LoginStatus.editing));
       }
     }
   }

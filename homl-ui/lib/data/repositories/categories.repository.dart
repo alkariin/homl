@@ -2,6 +2,12 @@ import 'package:dio/dio.dart';
 import 'package:homl/data/models/category.dart';
 import 'package:homl/data/repositories/api.dart';
 
+/// Exception thrown when a categories request fails
+class CategoriesRequestFailure implements Exception {}
+
+/// Exception thrown when the categories payload is empty
+class CategoriesNotFoundFailure implements Exception {}
+
 class CategoriesRepository {
   final apiInstance = Api();
 
@@ -11,10 +17,10 @@ class CategoriesRepository {
       response = await apiInstance.api.get<List<dynamic>>('/categories');
 
       if (response.data == null) {
-        throw Exception();
+        throw CategoriesNotFoundFailure();
       }
     } on DioException catch (_) {
-      throw Exception();
+      throw CategoriesRequestFailure();
     }
 
     return response.data!
@@ -29,7 +35,7 @@ class CategoriesRepository {
         'color': color,
       });
     } on DioException catch (_) {
-      throw Exception();
+      throw CategoriesRequestFailure();
     }
   }
 
@@ -40,7 +46,7 @@ class CategoriesRepository {
         'color': color,
       });
     } on DioException catch (_) {
-      throw Exception();
+      throw CategoriesRequestFailure();
     }
   }
 
@@ -50,7 +56,7 @@ class CategoriesRepository {
         'moveTags': moveTags,
       });
     } on DioException catch (_) {
-      throw Exception();
+      throw CategoriesRequestFailure();
     }
   }
 }

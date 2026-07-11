@@ -44,13 +44,20 @@ class _CategoryTile extends StatelessWidget {
     final mainTags =
         category.tags.where((tag) => tag.idParentTag == null).toList();
 
-    // Backend convention: the first category is Dates and the next one is
-    // Persons; their tags are managed by the backend. Others (Dates + 2) is
-    // locked as a category but its tags are editable.
-    final idDates = homeBloc.state.categories.isEmpty
-        ? -1
-        : homeBloc.state.categories.first.id;
-    final canManageTags = category.id != idDates && category.id != idDates + 1;
+    // When the backend exposes the category kind, the Dates and Persons tags
+    // are managed by the backend; Others is locked as a category but its tags
+    // are editable. Older backends do not send the kind: fall back to the
+    // legacy convention (first category is Dates, the next one is Persons).
+    final bool canManageTags;
+    if (category.kind != null) {
+      canManageTags = category.kind != CategoryKind.date &&
+          category.kind != CategoryKind.person;
+    } else {
+      final idDates = homeBloc.state.categories.isEmpty
+          ? -1
+          : homeBloc.state.categories.first.id;
+      canManageTags = category.id != idDates && category.id != idDates + 1;
+    }
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
@@ -70,8 +77,7 @@ class _CategoryTile extends StatelessWidget {
         shape: const Border(),
         leading: CircleAvatar(
           radius: 12,
-          backgroundColor:
-              Color(int.parse(category.color.replaceAll("#", "0xff"))),
+          backgroundColor: colorFromHex(category.color),
         ),
         title: Text(category.category),
         trailing: category.isLocked
@@ -323,7 +329,7 @@ void _textDialog(BuildContext context,
         ),
       ],
     ),
-  );
+  ).whenComplete(controller.dispose);
 }
 
 /// Category create/edit dialog: name + preset color picker.
@@ -359,8 +365,7 @@ void categoryDialog(BuildContext context,
                         onTap: () => setState(() => selectedColor = color),
                         child: CircleAvatar(
                           radius: 15,
-                          backgroundColor:
-                              Color(int.parse(color.replaceAll("#", "0xff"))),
+                          backgroundColor: colorFromHex(color),
                           child: selectedColor == color
                               ? const Icon(Icons.check, size: 16)
                               : null,
@@ -388,5 +393,5 @@ void categoryDialog(BuildContext context,
         ],
       ),
     ),
-  );
+  ).whenComplete(controller.dispose);
 }

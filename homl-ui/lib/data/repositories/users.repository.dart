@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 
 import 'package:dio/dio.dart';
 import 'package:homl/data/models/user.dart';
@@ -37,7 +38,7 @@ class UsersRepository {
       throw UserNotFoundFailure();
     }
 
-    LocalStorageManager.setValue(
+    await LocalStorageManager.setValue(
         LocalStorageKey.refreshToken, response.data!['refresh_token']);
     apiInstance.accessToken = response.data!['access_token'];
     apiInstance.updateStatus(AuthenticationStatus.authenticated);
@@ -57,7 +58,7 @@ class UsersRepository {
       throw UserNotFoundFailure();
     }
 
-    LocalStorageManager.setValue(
+    await LocalStorageManager.setValue(
         LocalStorageKey.refreshToken, response.data!['refresh_token']);
     apiInstance.accessToken = response.data!['access_token'];
     apiInstance.updateStatus(AuthenticationStatus.authenticated);
@@ -65,11 +66,14 @@ class UsersRepository {
     return AuthenticationStatus.authenticated;
   }
 
-  void logout() async {
+  Future<void> logout() async {
     try {
       await apiInstance.api.post('/logout'); // doesn't work without await
+    } catch (err) {
+      // Offline or server error: still clear the local session below.
+      log('Logout request failed', name: 'UsersRepository', error: err);
     } finally {
-      LocalStorageManager.remove(LocalStorageKey.refreshToken);
+      await LocalStorageManager.remove(LocalStorageKey.refreshToken);
       apiInstance.accessToken = null;
       apiInstance.updateStatus(AuthenticationStatus.unauthenticated);
     }
@@ -91,16 +95,16 @@ class UsersRepository {
       throw UserOtherFailure();
     }
 
-    LocalStorageManager.setValue(
+    await LocalStorageManager.setValue(
         LocalStorageKey.refreshToken, response.data['refresh_token']);
     apiInstance.accessToken = response.data['access_token'];
   }
 
   Future<User> secureAuth(User user) async {
-    late Response<User> response;
+    late Response<Map<String, dynamic>> response;
     try {
-      response =
-          await apiInstance.api.put<User>('/secureAuth', data: user.toJson());
+      response = await apiInstance.api
+          .put<Map<String, dynamic>>('/secureAuth', data: user.toJson());
     } on DioException catch (err) {
       if (err.response?.statusCode == 401) {
         throw UserRequestFailure();
@@ -112,6 +116,6 @@ class UsersRepository {
       throw UserOtherFailure();
     }
 
-    return response.data!;
+    return User.fromJson(response.data!);
   }
 }

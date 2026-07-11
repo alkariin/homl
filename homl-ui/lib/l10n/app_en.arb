@@ -4,7 +4,7 @@
   "account": "Account",
   "account_logout": "Logout",
   "account_updatePassword": "Update password",
-  "account_currentPassword": "Actual password",
+  "account_currentPassword": "Current password",
   "account_enterPassword": "Enter the new password",
   "account_repeatPassword": "Repeat the password",
   "account_fingerprintSwitchText": "Add fingerprint lock",
@@ -12,6 +12,15 @@
   "account_pinSwitchText": "Add PIN code",
   "account_pinSwitchError": "PIN couldn't be configured",
   "account_enterPin": "Enter the PIN code",
+  "account_pinEnabled": "PIN has been successfully enabled",
+  "account_pinDisabled": "PIN has been successfully disabled",
+  "account_pinIncorrect": "The PIN code is not correct",
+  "account_returnToLogin": "Return to login",
+  "account_passwordUpdated": "Your password has been updated",
+  "account_passwordIncorrect": "The password is not correct",
+  "account_passwordUpdateError": "An error appeared during the update, try again later",
+  "account_currentPasswordError": "Enter your current password",
+  "account_passwordsNotIdentical": "Passwords aren't identical",
 
   "login_usernameLabel": "username",
   "login_passwordLabel": "password",
@@ -20,6 +29,9 @@
   "login_incorrectCredentials": "Incorrect email or password",
   "login_invalidEmail": "The email is not valid",
   "login_invalidPassword": "Must contain at least one number, one uppercase and lowercase letter, one special character, and at least 8 or more characters",
+
+  "register_submit": "Register",
+  "register_failure": "Registration failed",
 
   "settings": "Settings",
   "settings_language": "Language",
@@ -30,6 +42,8 @@
   "global_cancel": "Cancel",
   "global_save": "Save",
   "global_delete": "Delete",
+  "global_close": "Close",
+  "global_update": "Update",
 
   "nav_categories": "Categories",
   "nav_search": "Search",

@@ -28,7 +28,10 @@ class UpdateSettings extends SettingsEvent {
 class ErrorModal extends SettingsEvent {
   const ErrorModal(this.error);
 
-  final String error;
+  final AppMessage error;
+
+  @override
+  List<Object> get props => [error];
 }
 
 class EndModal extends SettingsEvent {}
