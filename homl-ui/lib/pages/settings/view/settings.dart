@@ -6,7 +6,7 @@ import 'package:homl/helpers/app_message.dart';
 import 'package:homl/pages/settings/view/home_tab_dialog.dart';
 import 'package:homl/pages/settings/view/language_dialog.dart';
 
-import 'package:homl/pages/settings/bloc/settings_bloc.dart';
+import 'package:homl/pages/settings/bloc/settings_cubit.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -21,7 +21,7 @@ class SettingsPage extends StatelessWidget {
       providers: [
         BlocProvider(
             create: (BuildContext context) =>
-                SettingsBloc(context.read<SettingsRepository>())),
+                SettingsCubit(context.read<SettingsRepository>())),
       ],
       child: const SettingsView(),
     );
@@ -37,9 +37,9 @@ class SettingsView extends StatelessWidget {
 
     return MultiBlocListener(
         listeners: [
-          BlocListener<SettingsBloc, SettingsState>(listener: (context, state) {
+          BlocListener<SettingsCubit, SettingsState>(listener: (context, state) {
             if (state.errorModal != null) {
-              final settingsBloc = context.read<SettingsBloc>();
+              final settingsCubit = context.read<SettingsCubit>();
               ScaffoldMessenger.of(context)
                 ..hideCurrentSnackBar()
                 ..showSnackBar(SnackBar(
@@ -49,7 +49,7 @@ class SettingsView extends StatelessWidget {
                   duration: const Duration(seconds: 5),
                 )).closed.then(
                   (_) {
-                    settingsBloc.add(EndModal());
+                    settingsCubit.endModal();
                   },
                 );
             }
@@ -65,7 +65,7 @@ class SettingsView extends StatelessWidget {
                 },
               ),
             ),
-            body: BlocBuilder<SettingsBloc, SettingsState>(
+            body: BlocBuilder<SettingsCubit, SettingsState>(
                 builder: (context, state) {
               return Column(
                 children: [

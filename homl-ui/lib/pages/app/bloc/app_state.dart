@@ -1,4 +1,4 @@
-part of 'app_bloc.dart';
+part of 'app_cubit.dart';
 
 class AppState extends Equatable {
   final Language locale; // only language used when unlogged

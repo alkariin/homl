@@ -6,8 +6,8 @@ import 'package:homl/components/bubbles_background.dart';
 import 'package:homl/components/event_card.dart';
 import 'package:homl/components/tag_input.dart';
 import 'package:homl/helpers/app_message.dart';
-import 'package:homl/pages/home/bloc/home_bloc.dart';
-import 'package:homl/pages/list/bloc/list_bloc.dart';
+import 'package:homl/pages/home/bloc/home_cubit.dart';
+import 'package:homl/pages/list/bloc/list_cubit.dart';
 
 class ListPage extends StatelessWidget {
   const ListPage({super.key});
@@ -20,9 +20,9 @@ class ListPage extends StatelessWidget {
   Widget build(BuildContext context) {
     var localization = AppLocalizations.of(context)!;
 
-    return BlocListener<ListBloc, ListState>(
+    return BlocListener<ListCubit, ListState>(
       listener: (context, state) {
-        final listBloc = context.read<ListBloc>();
+        final listCubit = context.read<ListCubit>();
         if (state.modal != null) {
           ScaffoldMessenger.of(context)
             ..hideCurrentSnackBar()
@@ -32,12 +32,12 @@ class ListPage extends StatelessWidget {
                   label: localization.global_close, onPressed: () {}),
               duration: const Duration(seconds: 5),
             )).closed.then((_) {
-              listBloc.add(EndListModal());
+              listCubit.endModal();
             });
         }
       },
-      child: BlocBuilder<HomeBloc, HomeState>(builder: (context, homeState) {
-        return BlocBuilder<ListBloc, ListState>(builder: (context, listState) {
+      child: BlocBuilder<HomeCubit, HomeState>(builder: (context, homeState) {
+        return BlocBuilder<ListCubit, ListState>(builder: (context, listState) {
           return BubblesBackground(
             child: Column(children: [
               Padding(
@@ -58,9 +58,9 @@ class ListPage extends StatelessWidget {
                           color: tagView.color))
                       .toList(),
                   onAddTag: (name) =>
-                      context.read<ListBloc>().add(AddFilterTag(name)),
+                      context.read<ListCubit>().addFilterTag(name),
                   onRemoveTag: (tag) =>
-                      context.read<ListBloc>().add(RemoveFilterTag(tag.name)),
+                      context.read<ListCubit>().removeFilterTag(tag.name),
                 ),
               ),
               Expanded(

@@ -12,9 +12,9 @@ import 'package:homl/helpers/app_message.dart';
 import 'package:homl/helpers/colors.dart';
 import 'package:homl/pages/settings/view/settings.dart';
 import 'package:homl/pages/categories/categories.dart';
-import 'package:homl/pages/home/bloc/home_bloc.dart';
+import 'package:homl/pages/home/bloc/home_cubit.dart';
 import 'package:homl/pages/insert/insert.dart';
-import 'package:homl/pages/list/bloc/list_bloc.dart';
+import 'package:homl/pages/list/bloc/list_cubit.dart';
 import 'package:homl/pages/list/list.dart';
 import 'package:homl/pages/account/view/account.dart';
 
@@ -56,7 +56,7 @@ class _HomePageState extends State<HomePage> {
         child: MultiBlocProvider(
             providers: [
               BlocProvider(
-                  create: (BuildContext context) => HomeBloc(
+                  create: (BuildContext context) => HomeCubit(
                       context.read<SettingsRepository>(),
                       _eventsRepository,
                       _categoriesRepository,
@@ -64,9 +64,9 @@ class _HomePageState extends State<HomePage> {
                       widget.username)),
               BlocProvider(
                   create: (BuildContext context) =>
-                      ListBloc(_eventsRepository)),
+                      ListCubit(_eventsRepository)),
             ],
-            child: BlocBuilder<HomeBloc, HomeState>(builder: (context, state) {
+            child: BlocBuilder<HomeCubit, HomeState>(builder: (context, state) {
               return HomeView(state.settings.defaultScreen);
             })));
   }
@@ -121,7 +121,7 @@ class _HomeViewState extends State<HomeView>
   /// From the Categories tab: adds the tapped tag as a search filter and
   /// jumps to the Search tab.
   void _searchByTag(BuildContext context, TagView tag) {
-    context.read<ListBloc>().add(AddFilterTag(tag.tagName));
+    context.read<ListCubit>().addFilterTag(tag.tagName);
     setState(() {
       _userNavigated = true;
       _currentIndex = 1;
@@ -174,7 +174,7 @@ class _HomeViewState extends State<HomeView>
           icon: const FaIcon(FontAwesomeIcons.user),
           onTap: () {
             Navigator.of(context)
-                .push(AccountPage.route(context.read<HomeBloc>()));
+                .push(AccountPage.route(context.read<HomeCubit>()));
           },
         ),
         _DrawerListTile(
@@ -187,9 +187,9 @@ class _HomeViewState extends State<HomeView>
       ],
     );
 
-    return BlocListener<HomeBloc, HomeState>(
+    return BlocListener<HomeCubit, HomeState>(
       listener: (context, state) {
-        final homeBloc = context.read<HomeBloc>();
+        final homeCubit = context.read<HomeCubit>();
         if (state.modal != null) {
           ScaffoldMessenger.of(context)
             ..hideCurrentSnackBar()
@@ -199,7 +199,7 @@ class _HomeViewState extends State<HomeView>
                   label: localization.global_close, onPressed: () {}),
               duration: const Duration(seconds: 5),
             )).closed.then((_) {
-              homeBloc.add(EndModal());
+              homeCubit.endModal();
             });
         }
       },

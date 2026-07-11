@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:developer';
 
 import 'package:biometric_storage/biometric_storage.dart';
@@ -12,33 +11,23 @@ import 'package:homl/helpers/biometric_storage.dart';
 import 'package:homl/helpers/encryption.dart' as encryption;
 import 'package:homl/helpers/local_storage_manager.dart';
 
-part 'account_event.dart';
 part 'account_state.dart';
 
-class AccountBloc extends Bloc<AccountEvent, AccountState> {
+class AccountCubit extends Cubit<AccountState> {
   final UsersRepository usersRepository;
 
-  AccountBloc(this.usersRepository) : super(const AccountState.initial()) {
-    on<InitValues>(_onInitValues);
-    on<Submit>(_onSubmit);
-    on<ResetPasswordDialogState>(_onResetPasswordDialogState);
-    on<UpdateIsFingerprintEnabled>(_onUpdateIsFingerprintEnabled);
-    on<SubmitPin>(_onSubmitPin);
-    on<ResetPinViewState>(_onResetPinViewState);
-    on<EndAccountModal>(_onEndModal);
-
-    add(InitValues());
+  AccountCubit(this.usersRepository) : super(const AccountState.initial()) {
+    init();
   }
 
-  Future<void> _onInitValues(
-      InitValues event, Emitter<AccountState> emit) async {
+  Future<void> init() async {
     final isFingerprintEnabled = await LocalStorageManager.getBool(
         LocalStorageKey.isFingerprintEnabled);
     final pinKeypair =
         await LocalStorageManager.getValue(LocalStorageKey.pinKeypair);
     log(
       'Init account toggles: isFingerprintEnabled=$isFingerprintEnabled, isPinEnabled=${pinKeypair != null}',
-      name: 'AccountBloc',
+      name: 'AccountCubit',
     );
     emit(state.copyWith(
         user: User(
@@ -46,18 +35,16 @@ class AccountBloc extends Bloc<AccountEvent, AccountState> {
             isPinEnabled: pinKeypair != null)));
   }
 
-  void _onResetPasswordDialogState(
-      ResetPasswordDialogState event, Emitter<AccountState> emit) {
+  void resetPasswordDialogState() {
     emit(state.copyWith(
       clearResponseError: true,
       isFormSubmitted: false,
     ));
   }
 
-  Future<void> _onSubmit(Submit event, Emitter<AccountState> emit) async {
+  Future<void> submit(String oldPassword, String newPassword) async {
     try {
-      await usersRepository.updatePassword(
-          event.oldPassword, event.newPassword);
+      await usersRepository.updatePassword(oldPassword, newPassword);
       emit(state.copyWith(
         clearResponseError: true,
         isFormSubmitted: true,
@@ -75,9 +62,8 @@ class AccountBloc extends Bloc<AccountEvent, AccountState> {
     }
   }
 
-  Future<void> _onUpdateIsFingerprintEnabled(
-      UpdateIsFingerprintEnabled event, Emitter<AccountState> emit) async {
-    if (event.isFingerprintEnabled) {
+  Future<void> updateIsFingerprintEnabled(bool isFingerprintEnabled) async {
+    if (isFingerprintEnabled) {
       try {
         final publicKey = await generateKeyPair();
         // We store it in local storage as well because during the next login process, we should know if it's activated and at this moment the user is not logged in, so no api request
@@ -114,9 +100,8 @@ class AccountBloc extends Bloc<AccountEvent, AccountState> {
     }
   }
 
-  Future<void> _onSubmitPin(
-      SubmitPin event, Emitter<AccountState> emit) async {
-    if (event.pin != null) {
+  Future<void> submitPin(String? pin) async {
+    if (pin != null) {
       try {
         var (publicKey, keyPairJson) = await encryption.generateKeyPair();
         // Allow us to know at the start of the app if the user has enabled the PIN, as well as retrieve the keypair
@@ -127,7 +112,7 @@ class AccountBloc extends Bloc<AccountEvent, AccountState> {
         final User newUser = state.user!.copyWith(
             isFingerprintEnabled: false,
             isPinEnabled: true,
-            pin: event.pin,
+            pin: pin,
             pkey: publicKey);
 
         final res = await usersRepository.secureAuth(newUser);
@@ -148,15 +133,14 @@ class AccountBloc extends Bloc<AccountEvent, AccountState> {
     }
   }
 
-  void _onResetPinViewState(
-      ResetPinViewState event, Emitter<AccountState> emit) {
+  void resetPinViewState() {
     emit(state.copyWith(
       clearModal: true,
       isFormSubmitted: false,
     ));
   }
 
-  void _onEndModal(EndAccountModal event, Emitter<AccountState> emit) {
+  void endModal() {
     emit(state.copyWith(clearModal: true));
   }
 }

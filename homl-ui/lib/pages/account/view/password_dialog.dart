@@ -6,7 +6,7 @@ import 'package:homl/components/input.dart';
 
 import 'package:homl/helpers/app_message.dart';
 import 'package:homl/helpers/validations.dart';
-import 'package:homl/pages/account/bloc/account_bloc.dart';
+import 'package:homl/pages/account/bloc/account_cubit.dart';
 
 class PasswordDialog extends StatelessWidget {
   final BuildContext accountContext;
@@ -22,7 +22,7 @@ class PasswordDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider.value(
-        value: accountContext.read<AccountBloc>(),
+        value: accountContext.read<AccountCubit>(),
         child: const PasswordDialogView());
   }
 }
@@ -70,7 +70,7 @@ class _PasswordDialogViewState extends State<PasswordDialogView> {
   Widget build(BuildContext context) {
     var localization = AppLocalizations.of(context)!;
 
-    return BlocListener<AccountBloc, AccountState>(
+    return BlocListener<AccountCubit, AccountState>(
       listener: (context, state) {
         if (state.isFormSubmitted && state.responseError == null) {
           Navigator.pop(context);
@@ -128,7 +128,7 @@ class _PasswordDialogViewState extends State<PasswordDialogView> {
                     },
                     controller: _confirmController,
                   ),
-                  BlocBuilder<AccountBloc, AccountState>(
+                  BlocBuilder<AccountCubit, AccountState>(
                       builder: (context, state) {
                     return Visibility(
                       visible: state.responseError != null,
@@ -144,8 +144,7 @@ class _PasswordDialogViewState extends State<PasswordDialogView> {
                     text: localization.global_update,
                     onPressed: () {
                       if (_formKey.currentState!.validate()) {
-                        context.read<AccountBloc>().add(
-                            Submit(_oldController.text, _newController.text));
+                        context.read<AccountCubit>().submit(_oldController.text, _newController.text);
                       }
                     },
                   ),

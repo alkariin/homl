@@ -1,28 +1,20 @@
-import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:homl/data/models/category.dart';
 import 'package:homl/data/repositories/events.repository.dart';
 import 'package:homl/data/repositories/tags.repository.dart';
 import 'package:homl/helpers/app_message.dart';
-import 'package:homl/pages/home/bloc/home_bloc.dart' show TagView;
+import 'package:homl/pages/home/bloc/home_cubit.dart' show TagView;
 
-part 'insert_event.dart';
 part 'insert_state.dart';
 
-class InsertBloc extends Bloc<InsertEvent, InsertState> {
+class InsertCubit extends Cubit<InsertState> {
   final EventsRepository eventsRepository;
   final TagsRepository tagsRepository;
 
-  InsertBloc(this.eventsRepository, this.tagsRepository)
-      : super(InsertState.initial()) {
-    on<AddTag>(_onAddTag);
-    on<RemoveTag>(_onRemoveTag);
-    on<UpdateDate>(_onUpdateDate);
-    on<UpdateDescription>(_onUpdateDescription);
-    on<SubmitEvent>(_onSubmitEvent);
-    on<EndInsertModal>(_onEndInsertModal);
-  }
+  InsertCubit(this.eventsRepository, this.tagsRepository)
+      : super(InsertState.initial());
 
   /// Category used to create the tags typed freely in the input. When the
   /// backend exposes a category kind, the "other" category is used directly;
@@ -53,31 +45,31 @@ class InsertBloc extends Bloc<InsertEvent, InsertState> {
     return null;
   }
 
-  void _onAddTag(AddTag event, Emitter<InsertState> emit) {
-    final name = event.name.trim();
-    if (name.isEmpty ||
-        state.tagNames.any((t) => t.toLowerCase() == name.toLowerCase())) {
+  void addTag(String name) {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty ||
+        state.tagNames.any((t) => t.toLowerCase() == trimmed.toLowerCase())) {
       return;
     }
 
-    emit(state.copyWith(tagNames: [...state.tagNames, name]));
+    emit(state.copyWith(tagNames: [...state.tagNames, trimmed]));
   }
 
-  void _onRemoveTag(RemoveTag event, Emitter<InsertState> emit) {
+  void removeTag(String name) {
     emit(state.copyWith(
-        tagNames: state.tagNames.where((t) => t != event.name).toList()));
+        tagNames: state.tagNames.where((t) => t != name).toList()));
   }
 
-  void _onUpdateDate(UpdateDate event, Emitter<InsertState> emit) {
-    emit(state.copyWith(date: event.date));
+  void updateDate(DateTime date) {
+    emit(state.copyWith(date: date));
   }
 
-  void _onUpdateDescription(UpdateDescription event, Emitter<InsertState> emit) {
-    emit(state.copyWith(description: event.text));
+  void updateDescription(String text) {
+    emit(state.copyWith(description: text));
   }
 
-  Future<void> _onSubmitEvent(
-      SubmitEvent event, Emitter<InsertState> emit) async {
+  Future<void> submitEvent(
+      List<Category> categories, Map<String, TagView> knownTags) async {
     if (state.status == InsertStatus.submitting) return;
     if (state.tagNames.isEmpty) {
       emit(state.copyWith(modal: AppMessage.insertNoTags));
@@ -90,13 +82,13 @@ class InsertBloc extends Bloc<InsertEvent, InsertState> {
       // Resolve the tag ids, creating the tags that do not exist yet
       final tagsId = <int>[];
       for (var name in state.tagNames) {
-        final existing = _findExistingTag(event.knownTags.values, name);
+        final existing = _findExistingTag(knownTags.values, name);
         if (existing != null) {
           tagsId.add(existing.id);
           continue;
         }
 
-        final idCategory = _defaultCategoryId(event.categories);
+        final idCategory = _defaultCategoryId(categories);
         if (idCategory == null) {
           throw EventsRequestFailure();
         }
@@ -104,7 +96,7 @@ class InsertBloc extends Bloc<InsertEvent, InsertState> {
       }
 
       // The repository notifies its change stream, which refreshes the
-      // shared events/tags in the HomeBloc without coupling the blocs.
+      // shared events/tags in the HomeCubit without coupling the cubits.
       await eventsRepository.createEvent(
           description: state.description,
           date: state.date,
@@ -114,12 +106,11 @@ class InsertBloc extends Bloc<InsertEvent, InsertState> {
       emit(InsertState.initial().copyWith(status: InsertStatus.success));
     } catch (_) {
       emit(state.copyWith(
-          status: InsertStatus.editing,
-          modal: AppMessage.unexpectedError));
+          status: InsertStatus.editing, modal: AppMessage.unexpectedError));
     }
   }
 
-  void _onEndInsertModal(EndInsertModal event, Emitter<InsertState> emit) {
+  void endModal() {
     emit(state.copyWith(clearModal: true, status: InsertStatus.editing));
   }
 }

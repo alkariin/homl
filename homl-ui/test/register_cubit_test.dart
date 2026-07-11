@@ -5,7 +5,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:homl/data/repositories/api.dart';
 import 'package:homl/data/repositories/users.repository.dart';
 import 'package:homl/helpers/language.dart';
-import 'package:homl/pages/register/bloc/register_bloc.dart';
+import 'package:homl/pages/register/bloc/register_cubit.dart';
 
 class MockUsersRepository extends Mock implements UsersRepository {}
 
@@ -20,16 +20,16 @@ void main() {
     repository = MockUsersRepository();
   });
 
-  blocTest<RegisterBloc, RegisterState>(
+  blocTest<RegisterCubit, RegisterState>(
     'sets isRegisterIncorrect when the registration is rejected',
     build: () {
       when(() => repository.register(any(), any(), any()))
           .thenThrow(UserRequestFailure());
-      return RegisterBloc(repository, Language.en);
+      return RegisterCubit(repository, Language.en);
     },
     seed: () =>
         const RegisterState(username: 'user@example.com', password: 'Pass1!aa'),
-    act: (bloc) => bloc.add(RegisterSubmitted()),
+    act: (cubit) => cubit.submit(),
     expect: () => [
       predicate<RegisterState>((s) =>
           s.status == RegisterStatus.submitting && !s.isRegisterIncorrect),
@@ -38,53 +38,53 @@ void main() {
     ],
   );
 
-  blocTest<RegisterBloc, RegisterState>(
+  blocTest<RegisterCubit, RegisterState>(
     'sets isRegisterIncorrect on an unexpected error too',
     build: () {
       when(() => repository.register(any(), any(), any()))
           .thenThrow(Exception('boom'));
-      return RegisterBloc(repository, Language.en);
+      return RegisterCubit(repository, Language.en);
     },
     seed: () =>
         const RegisterState(username: 'user@example.com', password: 'Pass1!aa'),
-    act: (bloc) => bloc.add(RegisterSubmitted()),
+    act: (cubit) => cubit.submit(),
     expect: () => [
       predicate<RegisterState>((s) => !s.isRegisterIncorrect),
       predicate<RegisterState>((s) => s.isRegisterIncorrect),
     ],
   );
 
-  blocTest<RegisterBloc, RegisterState>(
+  blocTest<RegisterCubit, RegisterState>(
     'resets the flag on a new submit so the listener re-triggers',
     build: () {
       when(() => repository.register(any(), any(), any()))
           .thenThrow(UserRequestFailure());
-      return RegisterBloc(repository, Language.en);
+      return RegisterCubit(repository, Language.en);
     },
     seed: () => const RegisterState(
         username: 'user@example.com',
         password: 'Pass1!aa',
         isRegisterIncorrect: true),
-    act: (bloc) => bloc.add(RegisterSubmitted()),
+    act: (cubit) => cubit.submit(),
     expect: () => [
       predicate<RegisterState>((s) => !s.isRegisterIncorrect),
       predicate<RegisterState>((s) => s.isRegisterIncorrect),
     ],
   );
 
-  blocTest<RegisterBloc, RegisterState>(
+  blocTest<RegisterCubit, RegisterState>(
     'does not set isRegisterIncorrect on success',
     build: () {
       when(() => repository.register(any(), any(), any()))
           .thenAnswer((_) async => AuthenticationStatus.authenticated);
-      return RegisterBloc(repository, Language.en);
+      return RegisterCubit(repository, Language.en);
     },
     seed: () =>
         const RegisterState(username: 'user@example.com', password: 'Pass1!aa'),
-    act: (bloc) => bloc.add(RegisterSubmitted()),
-    verify: (bloc) {
-      expect(bloc.state.isRegisterIncorrect, isFalse);
-      expect(bloc.state.status, RegisterStatus.editing);
+    act: (cubit) => cubit.submit(),
+    verify: (cubit) {
+      expect(cubit.state.isRegisterIncorrect, isFalse);
+      expect(cubit.state.status, RegisterStatus.editing);
     },
   );
 }
