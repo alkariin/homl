@@ -20,5 +20,5 @@ type TokenIssuer interface {
 // Mailer is the application-side port for outgoing transactional emails.
 // Implemented by infrastructure/mail.
 type Mailer interface {
-	SendPasswordResetCode(to string, code string) error
+	SendPasswordResetCode(to string, code string, language user.Language) error
 }
