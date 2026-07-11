@@ -24,12 +24,22 @@ const (
 	TooManyRequests           Type = "TOO_MANY_REQUESTS"           // rate limited - 429
 )
 
+// Machine-readable error codes clients can rely on instead of matching
+// message strings.
+const (
+	CodePinIncorrect     = "PIN_INCORRECT"
+	CodePinLocked        = "PIN_LOCKED"
+	CodeResetCodeInvalid = "RESET_CODE_INVALID"
+)
+
 // Error holds a custom error for the application
 // which is helpful in returning a consistent
 // error type/message from API endpoints
 type Error struct {
-	Type    Type   `json:"type"`
-	Message string `json:"message"`
+	Type              Type   `json:"type"`
+	Message           string `json:"message"`
+	Code              string `json:"code,omitempty"`
+	AttemptsRemaining *uint  `json:"attemptsRemaining,omitempty"`
 }
 
 // Error satisfies standard error interface
@@ -91,6 +101,37 @@ func NewAuthorization(reason string) *Error {
 	return &Error{
 		Type:    Authorization,
 		Message: reason,
+	}
+}
+
+// NewPinIncorrect to create a 401 for a wrong pin, carrying how many
+// attempts are left before the lockout
+func NewPinIncorrect(attemptsRemaining uint) *Error {
+	return &Error{
+		Type:              Authorization,
+		Message:           "Pin code not correct",
+		Code:              CodePinIncorrect,
+		AttemptsRemaining: &attemptsRemaining,
+	}
+}
+
+// NewPinLocked to create a 401 once the pin lockout is reached. The message
+// string is kept verbatim because shipped clients match on it.
+func NewPinLocked() *Error {
+	return &Error{
+		Type:    Authorization,
+		Message: "Pin is locked",
+		Code:    CodePinLocked,
+	}
+}
+
+// NewResetCodeInvalid to create a 401 for an unknown, expired or exhausted
+// password-reset code
+func NewResetCodeInvalid() *Error {
+	return &Error{
+		Type:    Authorization,
+		Message: "Invalid or expired code",
+		Code:    CodeResetCodeInvalid,
 	}
 }
 

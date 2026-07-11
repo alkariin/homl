@@ -9,41 +9,42 @@ class AppLocalizationsDe extends AppLocalizations {
   AppLocalizationsDe([String locale = 'de']) : super(locale);
 
   @override
-  String get global_unexpectedError => 'Unexpected error';
+  String get global_unexpectedError => 'Unerwarteter Fehler';
 
   @override
-  String get account => 'Account';
+  String get account => 'Konto';
 
   @override
-  String get account_logout => 'Logout';
+  String get account_logout => 'Abmelden';
 
   @override
-  String get account_updatePassword => 'Update password';
+  String get account_updatePassword => 'Passwort aktualisieren';
 
   @override
-  String get account_currentPassword => 'Actual password';
+  String get account_currentPassword => 'Aktuelles Passwort';
 
   @override
-  String get account_enterPassword => 'Enter the new password';
+  String get account_enterPassword => 'Neues Passwort eingeben';
 
   @override
-  String get account_repeatPassword => 'Repeat the password';
+  String get account_repeatPassword => 'Passwort wiederholen';
 
   @override
-  String get account_fingerprintSwitchText => 'Add fingerprint lock';
+  String get account_fingerprintSwitchText => 'Fingerabdrucksperre hinzufügen';
 
   @override
   String get account_fingerprintSwitchError =>
-      'Can\'t use biometric auth on this device.';
+      'Biometrische Authentifizierung ist auf diesem Gerät nicht verfügbar.';
 
   @override
-  String get account_pinSwitchText => 'Add PIN code';
+  String get account_pinSwitchText => 'PIN-Code hinzufügen';
 
   @override
-  String get account_pinSwitchError => 'PIN couldn\'t be configured';
+  String get account_pinSwitchError =>
+      'Der PIN-Code konnte nicht eingerichtet werden';
 
   @override
-  String get account_enterPin => 'Enter the PIN code';
+  String get account_enterPin => 'PIN-Code eingeben';
 
   @override
   String get account_pinEnabled => 'PIN wurde erfolgreich aktiviert';
@@ -91,11 +92,72 @@ class AppLocalizationsDe extends AppLocalizations {
   String get login_incorrectCredentials => 'E-Mail oder Passwort falsch';
 
   @override
-  String get login_invalidEmail => 'Die E-Mail-Adresse ist ungultig';
+  String get login_invalidEmail => 'Die E-Mail-Adresse ist ungültig';
 
   @override
   String get login_invalidPassword =>
-      'Muss mindestens eine Zahl, einen Gross- und einen Kleinbuchstaben, ein Sonderzeichen und mindestens 8 Zeichen enthalten';
+      'Muss mindestens eine Zahl, einen Groß- und einen Kleinbuchstaben, ein Sonderzeichen und mindestens 8 Zeichen enthalten';
+
+  @override
+  String get login_forgotPassword => 'Passwort vergessen?';
+
+  @override
+  String get login_pinLocked =>
+      'Ihre PIN wurde nach zu vielen Versuchen gesperrt. Bitte melden Sie sich mit Ihrem Passwort an.';
+
+  @override
+  String get forgot_title => 'Passwort zurücksetzen';
+
+  @override
+  String get forgot_emailInstructions =>
+      'Geben Sie Ihre E-Mail-Adresse ein und wir senden Ihnen einen 6-stelligen Code.';
+
+  @override
+  String get forgot_sendCode => 'Code senden';
+
+  @override
+  String get forgot_codeInstructions =>
+      'Geben Sie den per E-Mail erhaltenen 6-stelligen Code ein und wählen Sie ein neues Passwort.';
+
+  @override
+  String get forgot_newPasswordLabel => 'Neues Passwort';
+
+  @override
+  String get forgot_confirmPasswordLabel => 'Passwort bestätigen';
+
+  @override
+  String get forgot_submit => 'Passwort zurücksetzen';
+
+  @override
+  String get forgot_resendCode => 'Code erneut senden';
+
+  @override
+  String get forgot_invalidCode => 'Der Code ist ungültig oder abgelaufen';
+
+  @override
+  String account_pinAttemptsRemaining(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Versuche übrig',
+      one: '1 Versuch übrig',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get biometric_failedTitle =>
+      'Fingerabdruck-Authentifizierung fehlgeschlagen';
+
+  @override
+  String get biometric_failedMessage =>
+      'Wir konnten Ihren Fingerabdruck nicht überprüfen.';
+
+  @override
+  String get biometric_retry => 'Erneut versuchen';
+
+  @override
+  String get biometric_usePassword => 'Mein Passwort verwenden';
 
   @override
   String get register_submit => 'Registrieren';
@@ -104,13 +166,13 @@ class AppLocalizationsDe extends AppLocalizations {
   String get register_failure => 'Registrierung fehlgeschlagen';
 
   @override
-  String get settings => 'Settings';
+  String get settings => 'Einstellungen';
 
   @override
-  String get settings_language => 'Language';
+  String get settings_language => 'Sprache';
 
   @override
-  String get settings_selectLanguage => 'Select language';
+  String get settings_selectLanguage => 'Sprache auswählen';
 
   @override
   String get settings_homeTab => 'Startbildschirm';

@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:homl/data/repositories/api.dart';
 import 'package:homl/l10n/app_localizations.dart';
 import 'package:pinput/pinput.dart';
 
 class PinDialog extends StatelessWidget {
-  final Future<bool> Function(String) onChanged;
+  final Future<PinAuthResult> Function(String) onChanged;
   final VoidCallback? returnToLogin;
 
   const PinDialog({super.key, required this.onChanged, this.returnToLogin});
 
   static Route<String> route(
-      BuildContext context, Future<bool> Function(String) onChanged,
+      BuildContext context, Future<PinAuthResult> Function(String) onChanged,
       {VoidCallback? returnToLogin}) {
     return DialogRoute<String>(
         context: context,
@@ -27,7 +28,7 @@ class PinDialog extends StatelessWidget {
 // -----
 
 class PinDialogView extends StatefulWidget {
-  final Future<bool> Function(String) onChanged;
+  final Future<PinAuthResult> Function(String) onChanged;
   final VoidCallback? returnToLogin;
 
   const PinDialogView(this.onChanged, this.returnToLogin, {super.key});
@@ -44,6 +45,7 @@ class _PinDialogViewState extends State<PinDialogView> {
   late final GlobalKey<FormState> formKey;
 
   bool showError = false;
+  int? attemptsRemaining;
 
   @override
   void initState() {
@@ -98,18 +100,24 @@ class _PinDialogViewState extends State<PinDialogView> {
                     separatorBuilder: (index) => const SizedBox(width: 8),
                     hapticFeedbackType: HapticFeedbackType.lightImpact,
                     onCompleted: (value) async {
-                      final isValid =
+                      final result =
                           await widget.onChanged(pinController.text);
                       if (!mounted) return;
-                      if (!isValid) {
+                      // On lockout the auth status stream drives the
+                      // navigation away from this dialog: do nothing here.
+                      if (!result.success && !result.locked) {
                         pinController.text = "";
                         setState(() {
                           showError = true;
+                          attemptsRemaining = result.attemptsRemaining;
                         });
                       }
                     },
                     forceErrorState: showError,
-                    errorText: localization.account_pinIncorrect,
+                    errorText: attemptsRemaining != null
+                        ? localization
+                            .account_pinAttemptsRemaining(attemptsRemaining!)
+                        : localization.account_pinIncorrect,
                     cursor: Column(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [

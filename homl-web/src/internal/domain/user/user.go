@@ -4,8 +4,13 @@ package user
 
 import (
 	"context"
+	"errors"
 	"time"
 )
+
+// ErrResetCooldown is returned by StoreResetCode when a reset code was
+// requested again before the per-user cooldown elapsed.
+var ErrResetCooldown = errors.New("reset code requested too recently")
 
 // PasswordBcryptCost is the bcrypt work factor for account passwords. 12 is a
 // sane floor for 2026; the pin uses its own (lower) cost since it is a
@@ -96,12 +101,13 @@ type Repository interface {
 	RefreshSessionExists(ctx context.Context, refreshUuid string) (bool, error)
 	UpdatePinAndFingerprint(ctx context.Context, user *User, removePkey bool, removePin bool) error
 
-	// StoreResetToken persists a single-use password-reset token bound to a
-	// user id, expiring after ttl.
-	StoreResetToken(ctx context.Context, userId uint64, token string, ttl time.Duration) error
-	// ConsumeResetToken atomically resolves and invalidates a reset token,
-	// returning the bound user id. It errors if the token is unknown or expired.
-	ConsumeResetToken(ctx context.Context, token string) (uint64, error)
+	// StoreResetCode persists a single-use password-reset code for a user,
+	// expiring after ttl. It enforces a per-user send cooldown and returns
+	// ErrResetCooldown when a code was requested too recently.
+	StoreResetCode(ctx context.Context, userId uint64, code string, ttl time.Duration) error
+	// ConsumeResetCode verifies and invalidates the code. Wrong guesses count
+	// against a small attempt budget; exceeding it invalidates the code.
+	ConsumeResetCode(ctx context.Context, userId uint64, code string) error
 
 	FindSettingsByIdUser(ctx context.Context, idUser uint64) (*Settings, error)
 	UpdateSettings(ctx context.Context, s *Settings, idUser uint64) error
