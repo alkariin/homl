@@ -127,7 +127,7 @@ abstract class AppLocalizations {
   /// No description provided for @account_currentPassword.
   ///
   /// In en, this message translates to:
-  /// **'Actual password'**
+  /// **'Current password'**
   String get account_currentPassword;
 
   /// No description provided for @account_enterPassword.
@@ -187,7 +187,7 @@ abstract class AppLocalizations {
   /// No description provided for @account_pinIncorrect.
   ///
   /// In en, this message translates to:
-  /// **'Pin code is not correct'**
+  /// **'The PIN code is not correct'**
   String get account_pinIncorrect;
 
   /// No description provided for @account_returnToLogin.
@@ -267,6 +267,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Must contain at least one number, one uppercase and lowercase letter, one special character, and at least 8 or more characters'**
   String get login_invalidPassword;
+
+  /// No description provided for @login_forgotPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Forgot password?'**
+  String get login_forgotPassword;
+
+  /// No description provided for @login_pinLocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Your PIN has been locked after too many attempts. Please log in with your password.'**
+  String get login_pinLocked;
+
+  /// No description provided for @forgot_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset password'**
+  String get forgot_title;
+
+  /// No description provided for @forgot_emailInstructions.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your email address and we will send you a 6-digit code.'**
+  String get forgot_emailInstructions;
+
+  /// No description provided for @forgot_sendCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Send code'**
+  String get forgot_sendCode;
+
+  /// No description provided for @forgot_codeInstructions.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the 6-digit code sent to your email and choose a new password.'**
+  String get forgot_codeInstructions;
+
+  /// No description provided for @forgot_newPasswordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'New password'**
+  String get forgot_newPasswordLabel;
+
+  /// No description provided for @forgot_confirmPasswordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm password'**
+  String get forgot_confirmPasswordLabel;
+
+  /// No description provided for @forgot_submit.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset password'**
+  String get forgot_submit;
+
+  /// No description provided for @forgot_resendCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend code'**
+  String get forgot_resendCode;
+
+  /// No description provided for @forgot_invalidCode.
+  ///
+  /// In en, this message translates to:
+  /// **'The code is invalid or has expired'**
+  String get forgot_invalidCode;
+
+  /// No description provided for @account_pinAttemptsRemaining.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 attempt remaining} other{{count} attempts remaining}}'**
+  String account_pinAttemptsRemaining(int count);
+
+  /// No description provided for @biometric_failedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Fingerprint authentication failed'**
+  String get biometric_failedTitle;
+
+  /// No description provided for @biometric_failedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'We could not verify your fingerprint.'**
+  String get biometric_failedMessage;
+
+  /// No description provided for @biometric_retry.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get biometric_retry;
+
+  /// No description provided for @biometric_usePassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Use my password'**
+  String get biometric_usePassword;
 
   /// No description provided for @register_submit.
   ///

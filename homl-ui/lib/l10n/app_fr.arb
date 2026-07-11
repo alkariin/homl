@@ -30,6 +30,33 @@
   "login_invalidEmail": "L'email n'est pas valide",
   "login_invalidPassword": "Doit contenir au moins un chiffre, une majuscule et une minuscule, un caractère spécial, et au moins 8 caractères",
 
+  "login_forgotPassword": "Mot de passe oublié ?",
+  "login_pinLocked": "Votre PIN a été bloqué après trop de tentatives. Veuillez vous connecter avec votre mot de passe.",
+
+  "forgot_title": "Réinitialiser le mot de passe",
+  "forgot_emailInstructions": "Entrez votre adresse email et nous vous enverrons un code à 6 chiffres.",
+  "forgot_sendCode": "Envoyer le code",
+  "forgot_codeInstructions": "Entrez le code à 6 chiffres reçu par email et choisissez un nouveau mot de passe.",
+  "forgot_newPasswordLabel": "Nouveau mot de passe",
+  "forgot_confirmPasswordLabel": "Confirmer le mot de passe",
+  "forgot_submit": "Réinitialiser le mot de passe",
+  "forgot_resendCode": "Renvoyer le code",
+  "forgot_invalidCode": "Le code est invalide ou a expiré",
+
+  "account_pinAttemptsRemaining": "{count, plural, =1{1 tentative restante} other{{count} tentatives restantes}}",
+  "@account_pinAttemptsRemaining": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+
+  "biometric_failedTitle": "Échec de l'authentification par empreinte",
+  "biometric_failedMessage": "Nous n'avons pas pu vérifier votre empreinte digitale.",
+  "biometric_retry": "Réessayer",
+  "biometric_usePassword": "Utiliser mon mot de passe",
+
   "register_submit": "Créer un compte",
   "register_failure": "L'inscription a échoué",
 

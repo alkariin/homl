@@ -17,6 +17,9 @@ class UserNotFoundFailure implements Exception {}
 
 class UserOtherFailure implements Exception {}
 
+/// Exception thrown when the password-reset code is wrong or expired
+class ResetCodeInvalidFailure implements Exception {}
+
 class UsersRepository {
   late final apiInstance = Api();
 
@@ -77,6 +80,43 @@ class UsersRepository {
       apiInstance.accessToken = null;
       apiInstance.updateStatus(AuthenticationStatus.unauthenticated);
     }
+  }
+
+  /// Requests a password-reset code by email. The server always answers 204,
+  /// whether or not the account exists, so success reveals nothing.
+  Future<void> requestPasswordReset(String email) async {
+    try {
+      await apiInstance.api.post('/resetPassword', data: {'username': email});
+    } on DioException {
+      throw UserOtherFailure();
+    }
+  }
+
+  /// Exchanges the emailed 6-digit code for a new password and a session.
+  Future<void> confirmPasswordReset(
+      String email, String code, String newPassword) async {
+    late Response<dynamic> response;
+    try {
+      response = await apiInstance.api.post('/confirmResetPassword', data: {
+        'username': email,
+        'code': code,
+        'password': newPassword,
+      });
+    } on DioException catch (err) {
+      if (err.response?.data?['error']?['code'] == 'RESET_CODE_INVALID') {
+        throw ResetCodeInvalidFailure();
+      }
+      throw UserOtherFailure();
+    }
+
+    if (response.data == null || !response.data!.containsKey('refresh_token')) {
+      throw UserOtherFailure();
+    }
+
+    await LocalStorageManager.setValue(
+        LocalStorageKey.refreshToken, response.data!['refresh_token']);
+    apiInstance.accessToken = response.data!['access_token'];
+    apiInstance.updateStatus(AuthenticationStatus.authenticated);
   }
 
   Future<void> updatePassword(String oldPassword, String newPassword) async {

@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:homl/l10n/app_localizations.dart';
 import 'package:homl/components/pin_dialog.dart';
+import 'package:homl/data/repositories/api.dart';
 
 import 'package:homl/data/repositories/users.repository.dart';
 import 'package:homl/helpers/app_message.dart';
@@ -46,10 +47,10 @@ class AccountView extends StatelessWidget {
   Widget build(BuildContext context) {
     var localization = AppLocalizations.of(context)!;
 
-    Future<bool> onPinChanged(String pin) {
+    Future<PinAuthResult> onPinChanged(String pin) {
       Navigator.pop(context);
       context.read<AccountCubit>().submitPin(pin);
-      return Future.value(true);
+      return Future.value(const PinAuthResult(success: true));
     }
 
     return MultiBlocListener(
