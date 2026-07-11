@@ -274,8 +274,8 @@ func (m *MockUsersRepo) UpdateSettings(ctx context.Context, s *user.Settings, id
 	return r0
 }
 
-func (m *MockUsersRepo) StoreResetToken(ctx context.Context, userId uint64, token string, ttl time.Duration) error {
-	ret := m.Called(userId, token, ttl)
+func (m *MockUsersRepo) StoreResetCode(ctx context.Context, userId uint64, code string, ttl time.Duration) error {
+	ret := m.Called(userId, code, ttl)
 
 	var r0 error
 	if ret.Get(0) != nil {
@@ -285,13 +285,13 @@ func (m *MockUsersRepo) StoreResetToken(ctx context.Context, userId uint64, toke
 	return r0
 }
 
-func (m *MockUsersRepo) ConsumeResetToken(ctx context.Context, token string) (uint64, error) {
-	ret := m.Called(token)
+func (m *MockUsersRepo) ConsumeResetCode(ctx context.Context, userId uint64, code string) error {
+	ret := m.Called(userId, code)
 
-	var r1 error
-	if ret.Get(1) != nil {
-		r1 = ret.Get(1).(error)
+	var r0 error
+	if ret.Get(0) != nil {
+		r0 = ret.Get(0).(error)
 	}
 
-	return ret.Get(0).(uint64), r1
+	return r0
 }

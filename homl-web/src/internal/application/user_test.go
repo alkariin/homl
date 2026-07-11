@@ -193,31 +193,62 @@ func TestLogout(t *testing.T) {
 	})
 }
 
+// isSixDigits matches the emailed reset code format.
+func isSixDigits(s string) bool {
+	if len(s) != 6 {
+		return false
+	}
+	for _, c := range s {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return true
+}
+
 func TestResetPassword(t *testing.T) {
-	t.Run("Stores a single-use token for a known email", func(t *testing.T) {
+	t.Run("Stores and mails a 6-digit code for a known email", func(t *testing.T) {
 		mockRepo := new(mocks.MockUsersRepo)
-		// SMTP left unconfigured, so no email is actually sent.
-		svc := application.NewUsersService(&application.UserConfig{UsersRepository: mockRepo, Tokens: testTokens})
+		mockMailer := new(mocks.MockMailer)
+		svc := application.NewUsersService(&application.UserConfig{UsersRepository: mockRepo, Tokens: testTokens, Mailer: mockMailer})
 
 		mockRepo.On("FindIdByUsername", "demo@homl.local").Return(uint64(1), nil)
-		mockRepo.On("StoreResetToken", uint64(1), mock.AnythingOfType("string"), mock.AnythingOfType("time.Duration")).Return(nil)
+		mockRepo.On("StoreResetCode", uint64(1), mock.MatchedBy(isSixDigits), mock.AnythingOfType("time.Duration")).Return(nil)
+		mockMailer.On("SendPasswordResetCode", "demo@homl.local", mock.MatchedBy(isSixDigits)).Return(nil)
 
 		err := svc.ResetPassword(context.Background(), &user.User{Username: "demo@homl.local"})
 
 		assert.NoError(t, err)
 		mockRepo.AssertExpectations(t)
+		mockMailer.AssertExpectations(t)
 	})
 
 	t.Run("Stays silent on an unknown email (no enumeration)", func(t *testing.T) {
 		mockRepo := new(mocks.MockUsersRepo)
-		svc := application.NewUsersService(&application.UserConfig{UsersRepository: mockRepo, Tokens: testTokens})
+		mockMailer := new(mocks.MockMailer)
+		svc := application.NewUsersService(&application.UserConfig{UsersRepository: mockRepo, Tokens: testTokens, Mailer: mockMailer})
 
 		mockRepo.On("FindIdByUsername", "ghost@homl.local").Return(uint64(0), assert.AnError)
 
 		err := svc.ResetPassword(context.Background(), &user.User{Username: "ghost@homl.local"})
 
 		assert.NoError(t, err)
-		mockRepo.AssertNotCalled(t, "StoreResetToken")
+		mockRepo.AssertNotCalled(t, "StoreResetCode")
+		mockMailer.AssertNotCalled(t, "SendPasswordResetCode")
+	})
+
+	t.Run("Stays silent and skips the email during the send cooldown", func(t *testing.T) {
+		mockRepo := new(mocks.MockUsersRepo)
+		mockMailer := new(mocks.MockMailer)
+		svc := application.NewUsersService(&application.UserConfig{UsersRepository: mockRepo, Tokens: testTokens, Mailer: mockMailer})
+
+		mockRepo.On("FindIdByUsername", "demo@homl.local").Return(uint64(1), nil)
+		mockRepo.On("StoreResetCode", uint64(1), mock.AnythingOfType("string"), mock.AnythingOfType("time.Duration")).Return(user.ErrResetCooldown)
+
+		err := svc.ResetPassword(context.Background(), &user.User{Username: "demo@homl.local"})
+
+		assert.NoError(t, err)
+		mockMailer.AssertNotCalled(t, "SendPasswordResetCode")
 	})
 
 	t.Run("Rejects a malformed email", func(t *testing.T) {
@@ -232,33 +263,48 @@ func TestResetPassword(t *testing.T) {
 }
 
 func TestConfirmResetPassword(t *testing.T) {
-	t.Run("Consumes the token and sets the new password", func(t *testing.T) {
+	t.Run("Consumes the code and sets the new password", func(t *testing.T) {
 		mockRepo := new(mocks.MockUsersRepo)
 		svc := application.NewUsersService(&application.UserConfig{UsersRepository: mockRepo, Tokens: testTokens})
 
-		mockRepo.On("ConsumeResetToken", "reset-token").Return(uint64(1), nil)
+		mockRepo.On("FindIdByUsername", "demo@homl.local").Return(uint64(1), nil)
+		mockRepo.On("ConsumeResetCode", uint64(1), "123456").Return(nil)
 		mockRepo.On("UpdatePassword", uint64(1), mock.AnythingOfType("string")).Return(nil)
 		mockRepo.On("RevokeAllSessions", uint64(1)).Return(nil)
 		mockRepo.On("CreateAuth", uint64(1), mock.AnythingOfType("*user.TokenDetails")).Return(nil)
 
-		tokens, err := svc.ConfirmResetPassword(context.Background(), "NewPass123!", "reset-token")
+		tokens, err := svc.ConfirmResetPassword(context.Background(), "demo@homl.local", "123456", "NewPass123!")
 
 		assert.NoError(t, err)
 		assert.NotEmpty(t, tokens["access_token"])
 		mockRepo.AssertExpectations(t)
 	})
 
-	t.Run("Rejects an unknown or expired token", func(t *testing.T) {
+	t.Run("Rejects a wrong or expired code", func(t *testing.T) {
 		mockRepo := new(mocks.MockUsersRepo)
 		svc := application.NewUsersService(&application.UserConfig{UsersRepository: mockRepo, Tokens: testTokens})
 
-		mockRepo.On("ConsumeResetToken", "bad-token").Return(uint64(0), assert.AnError)
+		mockRepo.On("FindIdByUsername", "demo@homl.local").Return(uint64(1), nil)
+		mockRepo.On("ConsumeResetCode", uint64(1), "000000").Return(assert.AnError)
 
-		tokens, err := svc.ConfirmResetPassword(context.Background(), "NewPass123!", "bad-token")
+		tokens, err := svc.ConfirmResetPassword(context.Background(), "demo@homl.local", "000000", "NewPass123!")
 
 		assert.Error(t, err)
 		assert.Nil(t, tokens)
 		mockRepo.AssertNotCalled(t, "UpdatePassword")
+	})
+
+	t.Run("Rejects an unknown email with the same error", func(t *testing.T) {
+		mockRepo := new(mocks.MockUsersRepo)
+		svc := application.NewUsersService(&application.UserConfig{UsersRepository: mockRepo, Tokens: testTokens})
+
+		mockRepo.On("FindIdByUsername", "ghost@homl.local").Return(uint64(0), assert.AnError)
+
+		tokens, err := svc.ConfirmResetPassword(context.Background(), "ghost@homl.local", "123456", "NewPass123!")
+
+		assert.Error(t, err)
+		assert.Nil(t, tokens)
+		mockRepo.AssertNotCalled(t, "ConsumeResetCode")
 	})
 }
 

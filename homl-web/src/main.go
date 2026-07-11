@@ -16,6 +16,7 @@ import (
 	"github.com/alkariin/homl/homl-web/internal/infrastructure/config"
 	"github.com/alkariin/homl/homl-web/internal/infrastructure/crypto"
 	"github.com/alkariin/homl/homl-web/internal/infrastructure/db"
+	"github.com/alkariin/homl/homl-web/internal/infrastructure/mail"
 	"github.com/alkariin/homl/homl-web/internal/infrastructure/persistence"
 	"github.com/alkariin/homl/homl-web/internal/infrastructure/ratelimit"
 	"github.com/alkariin/homl/homl-web/internal/infrastructure/web"
@@ -57,16 +58,21 @@ func inject(cfg *config.Config, d *db.DataSources) *gin.Engine {
 		CategoriesRepository: categoriesRepository,
 		Crypto:               aes,
 	})
+	// In DEV or without SMTP configured, reset codes are logged instead of emailed.
+	var mailer application.Mailer = &mail.SMTPMailer{
+		Host:     cfg.SmtpHost,
+		Port:     cfg.SmtpPort,
+		From:     cfg.SmtpFrom,
+		Password: cfg.SmtpPassword,
+	}
+	if cfg.IsDev() || cfg.SmtpHost == "" {
+		mailer = &mail.LogMailer{}
+	}
+
 	usersService := application.NewUsersService(&application.UserConfig{
 		UsersRepository: usersRepository,
 		Tokens:          jwt,
-		Host:            cfg.Host,
-		SMTP: application.SMTPConfig{
-			Host:     cfg.SmtpHost,
-			Port:     cfg.SmtpPort,
-			From:     cfg.SmtpFrom,
-			Password: cfg.SmtpPassword,
-		},
+		Mailer:          mailer,
 	})
 
 	// request-level authentication: parse the token, resolve the session

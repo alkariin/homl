@@ -5,9 +5,11 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/base64"
+	"errors"
+	"fmt"
 	"log"
+	"math/big"
 	"net/mail"
-	"net/smtp"
 	"time"
 
 	"github.com/alkariin/homl/homl-web/internal/apperror"
@@ -19,16 +21,8 @@ import (
 // bcrypt default; the low-entropy nature of a pin makes a strong factor worth it.
 const bcryptCost = 10
 
-// resetTokenTTL bounds the lifetime of a single-use password-reset token.
-const resetTokenTTL = 15 * time.Minute
-
-// SMTPConfig holds the credentials used to send password-reset emails.
-type SMTPConfig struct {
-	Host     string
-	Port     string
-	From     string
-	Password string
-}
+// resetCodeTTL bounds the lifetime of a single-use password-reset code.
+const resetCodeTTL = 15 * time.Minute
 
 // UsersService is the use-case port of the User aggregate (auth included).
 type UsersService interface {
@@ -37,7 +31,7 @@ type UsersService interface {
 	Logout(ctx context.Context, accessDetails *user.AccessDetails) error
 	Refresh(ctx context.Context, refreshInput *user.RefreshInput) (map[string]string, error)
 	ResetPassword(ctx context.Context, u *user.User) error
-	ConfirmResetPassword(ctx context.Context, newPassword string, resetToken string) (map[string]string, error)
+	ConfirmResetPassword(ctx context.Context, email string, code string, newPassword string) (map[string]string, error)
 	UpdatePassword(ctx context.Context, oldPassword string, newPassword string, idUser uint64) (map[string]string, error)
 	Challenge(ctx context.Context, refreshToken string) (*string, error)
 	SecureAuth(ctx context.Context, u *user.User) (*user.UserResponse, error)
@@ -46,23 +40,20 @@ type UsersService interface {
 type usersService struct {
 	UsersRepository user.Repository
 	Tokens          TokenIssuer
-	Host            string // public host used in password-reset links
-	SMTP            SMTPConfig
+	Mailer          Mailer
 }
 
 type UserConfig struct {
 	UsersRepository user.Repository
 	Tokens          TokenIssuer
-	Host            string
-	SMTP            SMTPConfig
+	Mailer          Mailer
 }
 
 func NewUsersService(c *UserConfig) UsersService {
 	return &usersService{
 		UsersRepository: c.UsersRepository,
 		Tokens:          c.Tokens,
-		Host:            c.Host,
-		SMTP:            c.SMTP,
+		Mailer:          c.Mailer,
 	}
 }
 
@@ -244,20 +235,23 @@ func (u *usersService) ResetPassword(ctx context.Context, usr *user.User) error 
 		return nil
 	}
 
-	// Issue a dedicated single-use reset token (not an access token) with a
-	// short TTL, stored server-side so it can be revoked on first use.
-	token, err := generateResetToken()
+	// Issue a short-lived single-use 6-digit code, stored server-side so it
+	// can be revoked on first use and guess-limited.
+	code, err := generateResetCode()
 	if err != nil {
-		log.Printf("reset password: could not generate token: %v", err)
+		log.Printf("reset password: could not generate code: %v", err)
 		return nil
 	}
-	if err := u.UsersRepository.StoreResetToken(ctx, idUser, token, resetTokenTTL); err != nil {
-		log.Printf("reset password: could not store token: %v", err)
+	if err := u.UsersRepository.StoreResetCode(ctx, idUser, code, resetCodeTTL); err != nil {
+		if errors.Is(err, user.ErrResetCooldown) {
+			log.Printf("reset password: code for %s requested too recently", usr.Username)
+		} else {
+			log.Printf("reset password: could not store code: %v", err)
+		}
 		return nil
 	}
 
-	link := u.Host + "/reset?token=" + token
-	if err := u.sendResetEmail(usr.Username, link); err != nil {
+	if err := u.Mailer.SendPasswordResetCode(usr.Username, code); err != nil {
 		// Do not leak the failure to the caller (would reveal the address exists).
 		log.Printf("reset password: could not send email: %v", err)
 	}
@@ -265,33 +259,25 @@ func (u *usersService) ResetPassword(ctx context.Context, usr *user.User) error 
 	return nil
 }
 
-// generateResetToken returns a 256-bit URL-safe random token.
-func generateResetToken() (string, error) {
-	bytes := make([]byte, 32)
-	if _, err := rand.Read(bytes); err != nil {
+// generateResetCode returns a uniformly random 6-digit code.
+func generateResetCode() (string, error) {
+	n, err := rand.Int(rand.Reader, big.NewInt(1_000_000))
+	if err != nil {
 		return "", err
 	}
-	return base64.RawURLEncoding.EncodeToString(bytes), nil
+	return fmt.Sprintf("%06d", n), nil
 }
 
-func (u *usersService) sendResetEmail(to string, link string) error {
-	if u.SMTP.Host == "" {
-		// SMTP not configured (e.g. local dev): skip sending.
-		log.Printf("reset password: SMTP not configured, reset link for %s not sent", to)
-		return nil
-	}
-	message := []byte("Click here to reset your password: " + link)
-	auth := smtp.PlainAuth("", u.SMTP.From, u.SMTP.Password, u.SMTP.Host)
-	return smtp.SendMail(u.SMTP.Host+":"+u.SMTP.Port, auth, u.SMTP.From, []string{to}, message)
-}
-
-// ConfirmResetPassword sets a new password for the user bound to resetToken. The
-// token is consumed (revoked) on use, so it works at most once and never grants
-// access to any other endpoint.
-func (u *usersService) ConfirmResetPassword(ctx context.Context, newPassword string, resetToken string) (map[string]string, error) {
-	idUser, err := u.UsersRepository.ConsumeResetToken(ctx, resetToken)
+// ConfirmResetPassword sets a new password for the user owning the emailed
+// reset code. The code is consumed on use, so it works at most once. Every
+// failure maps to the same error so the endpoint cannot enumerate accounts.
+func (u *usersService) ConfirmResetPassword(ctx context.Context, email string, code string, newPassword string) (map[string]string, error) {
+	idUser, err := u.UsersRepository.FindIdByUsername(ctx, email)
 	if err != nil {
-		return nil, apperror.NewAuthorization("Not authorized")
+		return nil, apperror.NewResetCodeInvalid()
+	}
+	if err := u.UsersRepository.ConsumeResetCode(ctx, idUser, code); err != nil {
+		return nil, apperror.NewResetCodeInvalid()
 	}
 	return u.generateAndUpdatePassword(ctx, newPassword, idUser)
 }

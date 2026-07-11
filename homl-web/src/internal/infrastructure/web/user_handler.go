@@ -167,33 +167,34 @@ func (h *UserHandler) ResetPassword(c *gin.Context) {
 
 /** input:
  * {
+ *   username: string,
+ *   code: string, // 6-digit code received by email
  *   password: string
  * }
  */
 func (h *UserHandler) ConfirmResetPassword(c *gin.Context) {
-	var user user.User
-	err := c.ShouldBindJSON(&user)
+	type ConfirmResetInput struct {
+		Username string `json:"username"`
+		Code     string `json:"code"`
+		Password string `json:"password"`
+	}
+
+	var body ConfirmResetInput
+	err := c.ShouldBindJSON(&body)
 	if err != nil {
 		SendGinMyCustomError(c, err, apperror.NewStatusUnprocessableEntity())
 		return
 	}
 
-	v1 := GinInputParams{Field: user.Password, Validation: passwordValidation}
-	if CheckGinInput(v1) {
+	v1 := GinInputParams{Field: body.Username, Validation: usernameValidation}
+	v2 := GinInputParams{Field: body.Code, Validation: "required,len=6,numeric"}
+	v3 := GinInputParams{Field: body.Password, Validation: passwordValidation}
+	if CheckGinInput(v1, v2, v3) {
 		SendGinError(c, apperror.NewStatusUnprocessableEntity())
 		return
 	}
 
-	// The reset token is a dedicated single-use credential carried in the
-	// Authorization header (never an access token). The service resolves and
-	// revokes it, so the account being reset is bound to the token, not the body.
-	resetToken := bearerToken(c.Request)
-	if resetToken == "" {
-		SendGinError(c, apperror.NewAuthorization("Not authorized"))
-		return
-	}
-
-	tokens, err := h.UsersService.ConfirmResetPassword(c.Request.Context(), user.Password, resetToken)
+	tokens, err := h.UsersService.ConfirmResetPassword(c.Request.Context(), body.Username, body.Code, body.Password)
 	if err != nil {
 		SendGinError(c, err)
 		return

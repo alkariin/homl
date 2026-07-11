@@ -3,22 +3,10 @@ package web
 import (
 	"context"
 	"net/http"
-	"strings"
 
 	"github.com/alkariin/homl/homl-web/internal/apperror"
 	"github.com/alkariin/homl/homl-web/internal/domain/user"
 )
-
-// bearerToken returns the raw token from an "Authorization: Bearer <token>"
-// header, or "" when absent/malformed. Used for opaque tokens (e.g. password
-// reset) that are not parsed as JWTs.
-func bearerToken(r *http.Request) string {
-	parts := strings.SplitN(r.Header.Get("Authorization"), " ", 2)
-	if len(parts) == 2 && strings.EqualFold(parts[0], "Bearer") {
-		return strings.TrimSpace(parts[1])
-	}
-	return ""
-}
 
 // TokenParser reads access tokens off incoming requests and extracts their
 // metadata. Implemented by infrastructure/auth.JWT.
