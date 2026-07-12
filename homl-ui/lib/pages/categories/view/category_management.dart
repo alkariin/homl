@@ -23,6 +23,11 @@ class CategoryManagementBody extends StatelessWidget {
       return ListView(
         padding: const EdgeInsets.only(top: 10, bottom: 80),
         children: state.categories
+            // The Others category is a grey bucket the backend guarantees:
+            // only show it once tags have landed in it (free tags from the
+            // insert page, or tags moved on a category deletion).
+            .where((category) =>
+                category.kind != CategoryKind.other || category.tags.isNotEmpty)
             .map((category) =>
                 _CategoryTile(category: category, onTagSelected: onTagSelected))
             .toList(),
@@ -44,14 +49,16 @@ class _CategoryTile extends StatelessWidget {
     final mainTags =
         category.tags.where((tag) => tag.idParentTag == null).toList();
 
-    // When the backend exposes the category kind, the Dates and Persons tags
-    // are managed by the backend; Others is locked as a category but its tags
-    // are editable. Older backends do not send the kind: fall back to the
-    // legacy convention (first category is Dates, the next one is Persons).
+    // When the backend exposes the category kind, the Dates tags are managed
+    // by the backend and the Others tags are read-only here (they land in the
+    // grey bucket through the insert page or a category deletion); Persons is
+    // an ordinary suggestion category, fully editable. Older backends do not
+    // send the kind: fall back to the legacy convention (first category is
+    // Dates, the next one is Persons) and its legacy rules.
     final bool canManageTags;
     if (category.kind != null) {
       canManageTags = category.kind != CategoryKind.date &&
-          category.kind != CategoryKind.person;
+          category.kind != CategoryKind.other;
     } else {
       final idDates = homeCubit.state.categories.isEmpty
           ? -1
