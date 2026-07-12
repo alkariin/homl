@@ -5,6 +5,7 @@ import 'package:homl/l10n/app_localizations.dart';
 import 'package:homl/components/bubbles_background.dart';
 import 'package:homl/components/event_card.dart';
 import 'package:homl/components/tag_input.dart';
+import 'package:homl/data/models/category.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
 import 'package:homl/pages/list/bloc/list_cubit.dart';
 
@@ -22,6 +23,13 @@ class ListPage extends StatelessWidget {
     // The filtering is local (see ListCubit): network errors surface through
     // the HomeCubit listener, so this page has no error modal of its own.
     return BlocBuilder<HomeCubit, HomeState>(builder: (context, homeState) {
+      // Tags of the Others category keep the default input styling while
+      // suggested: only "real" categories tint the field and the logo.
+      final otherCategoryIds = homeState.categories
+          .where((category) => category.kind == CategoryKind.other)
+          .map((category) => category.id)
+          .toSet();
+
       return BlocBuilder<ListCubit, ListState>(builder: (context, listState) {
         return BubblesBackground(
           child: Column(children: [
@@ -40,7 +48,11 @@ class ListPage extends StatelessWidget {
                       .map((tagView) => TagChipData(
                           id: tagView.id,
                           name: tagView.tagName,
-                          color: tagView.color))
+                          color: tagView.color,
+                          highlightColor:
+                              otherCategoryIds.contains(tagView.idCategory)
+                                  ? null
+                                  : tagView.color))
                       .toList(),
                   onAddTag: (name) =>
                       context.read<ListCubit>().addFilterTag(name),
