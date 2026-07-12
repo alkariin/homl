@@ -12,7 +12,8 @@ import (
 type TagsService interface {
 	CreateTag(ctx context.Context, idUser uint64, t *category.Tag) (uint, error)
 	UpdateTag(ctx context.Context, idUser uint64, t *category.Tag) error
-	DeleteTag(ctx context.Context, idTag uint, idUser uint64) error
+	DeleteTag(ctx context.Context, idTag uint, idUser uint64, deleteEvents bool) error
+	GetTagUsage(ctx context.Context, idTag uint, idUser uint64) (*category.TagUsage, error)
 }
 
 type tagsService struct {
@@ -144,8 +145,10 @@ func (t *tagsService) UpdateTag(ctx context.Context, idUser uint64, tag *categor
 	return t.CategoriesRepository.UpdateTag(ctx, encTag, tag.IdCategory, tag.Id, tag.IdParentTag)
 }
 
-// DeleteTag implements TagsService.
-func (t *tagsService) DeleteTag(ctx context.Context, idTag uint, idUser uint64) error {
+// DeleteTag implements TagsService. deleteEvents only matters for main tags:
+// it deletes the events whose only non-date tags belong to the deleted
+// synonym group instead of preserving them date-only.
+func (t *tagsService) DeleteTag(ctx context.Context, idTag uint, idUser uint64, deleteEvents bool) error {
 	storedTag, err := t.CategoriesRepository.FindTagForUser(ctx, idTag, idUser)
 	if err != nil {
 		return apperror.NewBadRequest("The given tag is not valid")
@@ -156,7 +159,18 @@ func (t *tagsService) DeleteTag(ctx context.Context, idTag uint, idUser uint64) 
 		return err
 	}
 
-	return t.CategoriesRepository.DeleteTag(ctx, idTag, idUser)
+	return t.CategoriesRepository.DeleteTag(ctx, idTag, idUser, deleteEvents)
+}
+
+// GetTagUsage implements TagsService: event counts for the tag's synonym
+// group, used by the client to build its delete confirmation dialogs.
+func (t *tagsService) GetTagUsage(ctx context.Context, idTag uint, idUser uint64) (*category.TagUsage, error) {
+	// Scoped load: doubles as the ownership check.
+	if _, err := t.CategoriesRepository.FindTagForUser(ctx, idTag, idUser); err != nil {
+		return nil, apperror.NewBadRequest("The given tag is not valid")
+	}
+
+	return t.CategoriesRepository.GetTagUsage(ctx, idTag, idUser)
 }
 
 // rejectDateCategoryTag forbids the operation when the tag's current category

@@ -265,11 +265,29 @@ func TestUpdateCategoryEndpoint(t *testing.T) {
 func TestDeleteCategoryEndpoint(t *testing.T) {
 	router, sm := newTestServer()
 
-	sm.categories.On("DeleteCategory", uint(5), testUserID, false).Return(nil)
+	sm.categories.On("DeleteCategory", uint(5), testUserID, false, true).Return(nil)
 
-	rec := doRequest(router, http.MethodDelete, "/categories/5", `{"moveTags":false}`, authHeader())
+	rec := doRequest(router, http.MethodDelete, "/categories/5",
+		`{"moveTags":false,"deleteEvents":true}`, authHeader())
 
 	assert.Equal(t, http.StatusNoContent, rec.Code)
+	sm.categories.AssertExpectations(t)
+}
+
+func TestCategoryUsageEndpoint(t *testing.T) {
+	router, sm := newTestServer()
+
+	sm.categories.On("GetCategoryUsage", uint(5), testUserID).
+		Return(&category.CategoryUsage{Tags: 3, Events: 8, ExclusiveEvents: 2}, nil)
+
+	rec := doRequest(router, http.MethodGet, "/categories/5/usage", "", authHeader())
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	var out category.CategoryUsage
+	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &out))
+	assert.Equal(t, 3, out.Tags)
+	assert.Equal(t, 8, out.Events)
+	assert.Equal(t, 2, out.ExclusiveEvents)
 	sm.categories.AssertExpectations(t)
 }
 

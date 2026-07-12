@@ -28,7 +28,13 @@ func (c *CategoriesRepository) CreateTag(ctx context.Context, tagNameEncrypt str
 }
 
 func (c *CategoriesRepository) UpdateTag(ctx context.Context, tagNameEncrypt string, idCategory uint, idTag uint, idParentTag *uint) error {
-	res, err := c.DB.ExecContext(ctx, "UPDATE Tags SET tag = ?, idCategory = ?, idParentTag = ? WHERE id = ?", tagNameEncrypt, idCategory, idParentTag, idTag)
+	tx, err := c.DB.BeginTxx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback() // no-op once Commit succeeds
+
+	res, err := tx.ExecContext(ctx, "UPDATE Tags SET tag = ?, idCategory = ?, idParentTag = ? WHERE id = ?", tagNameEncrypt, idCategory, idParentTag, idTag)
 
 	if err != nil {
 		return err
@@ -39,14 +45,25 @@ func (c *CategoriesRepository) UpdateTag(ctx context.Context, tagNameEncrypt str
 		return apperror.NewInternal()
 	}
 
-	return nil
+	// A synonym must live in the same category as its main tag: when a main
+	// tag moves (idParentTag nil), its synonyms follow. No-op otherwise.
+	if idParentTag == nil {
+		_, err = tx.ExecContext(ctx, "UPDATE Tags SET idCategory = ? WHERE idParentTag = ?", idCategory, idTag)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
 
 // DeleteTag removes a tag while keeping its synonym group and the events
 // tagged with it consistent:
 //   - deleting a synonym repoints its EventsTags rows to the parent tag;
-//   - deleting a main tag promotes its oldest synonym as the new main tag.
-func (c *CategoriesRepository) DeleteTag(ctx context.Context, idTag uint, idUser uint64) error {
+//   - deleting a main tag deletes its whole synonym group; deleteEvents
+//     decides whether the events left without any non-date tag are deleted
+//     too or preserved with their date tags only.
+func (c *CategoriesRepository) DeleteTag(ctx context.Context, idTag uint, idUser uint64, deleteEvents bool) error {
 	tx, err := c.DB.BeginTxx(ctx, nil)
 	if err != nil {
 		return err
@@ -89,27 +106,24 @@ func (c *CategoriesRepository) DeleteTag(ctx context.Context, idTag uint, idUser
 		if err != nil {
 			return err
 		}
-	} else {
-		// Main tag: promote the oldest synonym, if any, before deleting.
-		var newMainId uint
-		err = tx.GetContext(ctx, &newMainId, "SELECT COALESCE(MIN(id), 0) FROM Tags WHERE idParentTag = ?", idTag)
+	} else if deleteEvents {
+		// Main tag: delete the events whose only non-date tags belong to the
+		// group before the cascade removes their EventsTags rows. The derived
+		// table keeps MySQL from selecting the target table of the DELETE.
+		_, err = tx.ExecContext(ctx, `
+			DELETE FROM Events
+			WHERE idUser = ?
+			AND id IN (
+				SELECT id FROM (`+exclusiveTagGroupEventsQuery+`) AS doomed
+			)
+		`, idUser, idTag, idTag)
 		if err != nil {
 			return err
 		}
-
-		if newMainId != 0 {
-			_, err = tx.ExecContext(ctx, "UPDATE Tags SET idParentTag = NULL WHERE id = ?", newMainId)
-			if err != nil {
-				return err
-			}
-
-			_, err = tx.ExecContext(ctx, "UPDATE Tags SET idParentTag = ? WHERE idParentTag = ?", newMainId, idTag)
-			if err != nil {
-				return err
-			}
-		}
 	}
 
+	// Deleting a main tag cascades to its synonym rows (Tags.idParentTag FK)
+	// and to the EventsTags rows of the whole group.
 	res, err := tx.ExecContext(ctx, "DELETE FROM Tags WHERE id = ?", idTag)
 	if err != nil {
 		return err
@@ -121,6 +135,54 @@ func (c *CategoriesRepository) DeleteTag(ctx context.Context, idTag uint, idUser
 	}
 
 	return tx.Commit()
+}
+
+// exclusiveTagGroupEventsQuery selects the events linked to a tag's synonym
+// group (root = COALESCE(idParentTag, id)) that have no other non-date tag
+// outside the group. Args: idTag (group root), idTag again.
+const exclusiveTagGroupEventsQuery = `
+	SELECT e.id FROM Events e
+	WHERE EXISTS (
+		SELECT 1 FROM EventsTags et
+		INNER JOIN Tags t ON t.id = et.idTag
+		WHERE et.idEvent = e.id
+		AND COALESCE(t.idParentTag, t.id) = ?
+	)
+	AND NOT EXISTS (
+		SELECT 1 FROM EventsTags et2
+		INNER JOIN Tags t2 ON t2.id = et2.idTag
+		INNER JOIN Categories c2 ON c2.id = t2.idCategory
+		WHERE et2.idEvent = e.id
+		AND COALESCE(t2.idParentTag, t2.id) <> ?
+		AND c2.kind <> 'date'
+	)`
+
+// GetTagUsage counts the events referencing the tag's synonym group and, out
+// of those, the ones that have no other non-date tag (the events a group
+// deletion would leave date-only).
+func (c *CategoriesRepository) GetTagUsage(ctx context.Context, idTag uint, idUser uint64) (*category.TagUsage, error) {
+	var usage category.TagUsage
+
+	err := c.DB.GetContext(ctx, &usage.Events, `
+		SELECT COUNT(DISTINCT et.idEvent)
+		FROM EventsTags et
+		INNER JOIN Tags t ON t.id = et.idTag
+		WHERE et.idUser = ?
+		AND COALESCE(t.idParentTag, t.id) = ?
+	`, idUser, idTag)
+	if err != nil {
+		return nil, err
+	}
+
+	err = c.DB.GetContext(ctx, &usage.ExclusiveEvents, `
+		SELECT COUNT(*) FROM (`+exclusiveTagGroupEventsQuery+`
+		AND e.idUser = ?) AS exclusive
+	`, idTag, idTag, idUser)
+	if err != nil {
+		return nil, err
+	}
+
+	return &usage, nil
 }
 
 // CheckTagsBelongToUser verifies that every id in tagsId is a tag living in

@@ -85,10 +85,12 @@ func SetupRouter(s *Server, baseUrl string, timeoutDuration time.Duration, isDev
 	g.POST("/categories", authRequired, s.Category.CreateCategory)
 	g.PATCH("/categories/:id", authRequired, s.Category.UpdateCategory)
 	g.DELETE("/categories/:id", authRequired, s.Category.DeleteCategory)
+	g.GET("/categories/:id/usage", authRequired, s.Category.GetCategoryUsage)
 
 	g.POST("/tags", authRequired, s.Tag.CreateTag)
 	g.PATCH("/tags/:id", authRequired, s.Tag.UpdateTag)
 	g.DELETE("/tags/:id", authRequired, s.Tag.DeleteTag)
+	g.GET("/tags/:id/usage", authRequired, s.Tag.GetTagUsage)
 
 
 	g.GET("/events", authRequired, s.Event.GetEvents)
