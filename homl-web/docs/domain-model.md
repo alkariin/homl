@@ -66,6 +66,7 @@ classDiagram
         +string Tag
         +uint IdCategory
         +uint IdPerson
+        +*uint IdParentTag
     }
 
     %% PersonAggregate
@@ -74,11 +75,6 @@ classDiagram
         +string Firstname
         +string Lastname
         +string IdCategory
-    }
-    class Nickname {
-        <<projection>>
-        +uint Id
-        +string Nickname
     }
 
     %% EventAggregate
@@ -101,7 +97,8 @@ classDiagram
     User "1" o-- "0..*" Category : owns
     Category "1" *-- "0..*" Tag : owns lifecycle
     Person "0..*" --> "1" Category : belongs to
-    Tag "0..*" --> "0..1" Person : main tag / nickname
+    Tag "0..*" --> "0..1" Person : main tag
+    Tag "0..*" --> "0..1" Tag : synonym (IdParentTag)
     Event "0..*" -- "0..*" Tag : EventsTags join table
     DefaultCategory ..> Category : seeded at registration
 ```
@@ -132,15 +129,19 @@ classDiagram
   (the seeded date and other categories — the seeded person category is a
   plain unlocked suggestion). See
   [default-categories.md](default-categories.md) for the full rules.
-- A tag may optionally point to a `Person` (`IdPerson`): this is how a
-  person's main tag and nicknames are represented.
+- A tag may optionally point to a `Person` (`IdPerson`): this marks the
+  person's main tag, the only tag carrying a person link.
+- A tag may reference another tag of the same category as its parent
+  (`IdParentTag`): synonyms, one level deep, available in every category
+  except the date one (see [tag-synonyms.md](tag-synonyms.md)).
 
 ### Person (`domain/person`)
 
 - A person belongs to exactly one category and is identified in tagging
   through a main tag carrying their name.
-- `Nickname` is a read-side projection: nicknames are persisted as `Tags`
-  attached to the person, not as a dedicated table.
+- Alternative names are plain tag synonyms of the main tag, managed through
+  the tag endpoints — the former "nickname" notion is gone
+  (see [tag-synonyms.md](tag-synonyms.md)).
 
 ### Event (`domain/event`)
 
@@ -164,8 +165,8 @@ crossing the port.
 | Port | Responsibilities |
 | --- | --- |
 | `user.Repository` | Registration (user + default categories, transactional), lookup, password/pin/fingerprint updates, Redis auth tokens, single-use password-reset tokens, settings read/write |
-| `category.Repository` | Category CRUD (with optional tag move on delete), tag CRUD, tag lookups (by name, main tag of a person) |
-| `person.Repository` | Person CRUD with tags and nicknames, ownership checks per user |
+| `category.Repository` | Category CRUD (with optional tag move on delete), tag CRUD (synonyms included), tag lookups (by name, main tag of a person) |
+| `person.Repository` | Person CRUD with its main tag, ownership checks per user |
 | `event.Repository` | Event CRUD with tags, per-user listing |
 
 ## DTOs
