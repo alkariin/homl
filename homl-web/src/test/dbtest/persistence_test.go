@@ -27,7 +27,6 @@ import (
 
 	"github.com/alkariin/homl/homl-web/internal/domain/category"
 	"github.com/alkariin/homl/homl-web/internal/domain/event"
-	"github.com/alkariin/homl/homl-web/internal/domain/person"
 	"github.com/alkariin/homl/homl-web/internal/domain/user"
 	"github.com/alkariin/homl/homl-web/internal/infrastructure/crypto"
 	"github.com/alkariin/homl/homl-web/internal/infrastructure/persistence"
@@ -46,7 +45,6 @@ type repos struct {
 	users  user.Repository
 	cats   category.Repository
 	events event.Repository
-	person person.Repository
 }
 
 func setup(t *testing.T) *repos {
@@ -62,7 +60,6 @@ func setup(t *testing.T) *repos {
 		users:  persistence.NewUsersRepository(db, nil, aes),
 		cats:   persistence.NewCategoriesRepository(db, aes),
 		events: persistence.NewEventsRepository(db, aes),
-		person: persistence.NewPersonsRepository(db),
 	}
 }
 
@@ -176,7 +173,7 @@ func TestCrossTenantCategoryIsolation(t *testing.T) {
 	})
 }
 
-func TestCrossTenantPersonIsolation(t *testing.T) {
+func TestCrossTenantTagIsolation(t *testing.T) {
 	r := setup(t)
 	ctx := context.Background()
 
@@ -185,27 +182,19 @@ func TestCrossTenantPersonIsolation(t *testing.T) {
 
 	alicePersonCat, err := r.cats.FindIdByKind(ctx, alice, category.KindPerson)
 	require.NoError(t, err)
-	require.NoError(t, r.person.CreatePersonWithMainTag(ctx,
-		r.enc(t, "Jane", alice), r.enc(t, "Doe", alice), r.enc(t, "JaneDoe", alice),
-		alicePersonCat))
-
-	persons, err := r.person.FindAllByUser(ctx, alice)
+	aliceTag, err := r.cats.CreateTag(ctx, r.enc(t, "JaneDoe", alice), alicePersonCat, nil)
 	require.NoError(t, err)
-	require.Len(t, persons, 1)
-	personID := persons[0].Id
 
-	t.Run("mallory cannot delete alice's person", func(t *testing.T) {
-		err := r.person.DeletePerson(ctx, personID, mallory)
+	t.Run("mallory cannot delete alice's tag", func(t *testing.T) {
+		err := r.cats.DeleteTag(ctx, aliceTag, mallory)
 		assert.Error(t, err)
 
-		got, err := r.person.FindAllByUser(ctx, alice)
-		require.NoError(t, err)
-		assert.Len(t, got, 1, "alice's person must survive")
+		_, err = r.cats.FindTagForUser(ctx, aliceTag, alice)
+		assert.NoError(t, err, "alice's tag must survive")
 	})
 
-	t.Run("mallory cannot see alice's person", func(t *testing.T) {
-		got, err := r.person.FindAllByUser(ctx, mallory)
-		require.NoError(t, err)
-		assert.Empty(t, got)
+	t.Run("mallory cannot load alice's tag", func(t *testing.T) {
+		_, err := r.cats.FindTagForUser(ctx, aliceTag, mallory)
+		assert.Error(t, err)
 	})
 }

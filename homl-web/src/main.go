@@ -33,7 +33,6 @@ func inject(cfg *config.Config, d *db.DataSources) *gin.Engine {
 	// repositories
 	categoriesRepository := persistence.NewCategoriesRepository(d.DB, aes)
 	eventsRepository := persistence.NewEventsRepository(d.DB, aes)
-	personsRepository := persistence.NewPersonsRepository(d.DB)
 	usersRepository := persistence.NewUsersRepository(d.DB, d.RedisClient, aes)
 
 	// services
@@ -43,11 +42,6 @@ func inject(cfg *config.Config, d *db.DataSources) *gin.Engine {
 	})
 	eventsService := application.NewEventsService(&application.ESConfig{
 		EventsRepository:     eventsRepository,
-		CategoriesRepository: categoriesRepository,
-		Crypto:               aes,
-	})
-	personService := application.NewPersonsService(&application.PSConfig{
-		PersonsRepository:    personsRepository,
 		CategoriesRepository: categoriesRepository,
 		Crypto:               aes,
 	})
@@ -91,7 +85,6 @@ func inject(cfg *config.Config, d *db.DataSources) *gin.Engine {
 		User:        &web.UserHandler{UsersService: usersService, Tokens: jwt},
 		Category:    &web.CategoryHandler{CategoriesService: categoriesService},
 		Tag:         &web.TagHandler{TagsService: tagsService},
-		Person:      &web.PersonHandler{PersonsService: personService},
 		Event:       &web.EventHandler{EventsService: eventsService},
 		Settings:    &web.SettingsHandler{SettingsService: settingsService},
 	}

@@ -7,7 +7,6 @@ type Tag struct {
 	Id         uint   `json:"id" db:"id"`
 	Tag        string `json:"tag" db:"tag"`
 	IdCategory uint   `json:"idCategory" db:"idCategory"`
-	IdPerson   uint   `json:"idPerson" db:"idPerson"`
 	// IdParentTag links a synonym to its main tag (nil = main tag).
 	// Depth is limited to one level: a synonym can never be a parent.
 	IdParentTag *uint `json:"idParentTag" db:"idParentTag"`
