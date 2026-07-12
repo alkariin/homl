@@ -19,11 +19,11 @@ flowchart TB
     end
 
     subgraph app ["application"]
-        SVC["services (use cases)<br/>users, categories, tags,<br/>persons, events, settings"]
+        SVC["services (use cases)<br/>users, categories, tags,<br/>events, settings"]
     end
 
     subgraph dom ["domain"]
-        MODEL["aggregates + Repository ports<br/>user, category, person, event,<br/>masterdata"]
+        MODEL["aggregates + Repository ports<br/>user, category, event,<br/>masterdata"]
     end
 
     subgraph infra_out ["infrastructure (outbound)"]
@@ -58,7 +58,7 @@ way around. `config` is read once in `main` — no other package calls
 
 | Port (interface) | Defined in | Adapter |
 | --- | --- | --- |
-| `user.Repository`, `category.Repository`, `person.Repository`, `event.Repository` | `domain/*` | `infrastructure/persistence` (MySQL; the users repository also owns the Redis auth store) |
+| `user.Repository`, `category.Repository`, `event.Repository` | `domain/*` | `infrastructure/persistence` (MySQL; the users repository also owns the Redis auth store) |
 | `application.TokenIssuer` (mint/verify token pairs) | `application` | `infrastructure/auth.JWT` |
 | `application.Encryptor` (at-rest field encryption) | `application` | `infrastructure/crypto.AES` |
 | `application.*Service` (use-case ports) | `application` | consumed by `web` handlers |
@@ -87,7 +87,7 @@ Two cross-cutting rules the layers enforce:
 - **Tenancy** — handlers never trust ids from the body; the authenticated
   user id comes from the middleware context and every repository query is
   scoped by it.
-- **Encryption at rest** — person names, nicknames, tag names and event
+- **Encryption at rest** — category names, tag names and event
   descriptions are encrypted before they cross a persistence port
   (`enc*` parameters). The scheme is deterministic authenticated encryption
   (AES-GCM with an HMAC-derived synthetic nonce): deterministic so encrypted
@@ -98,7 +98,7 @@ Two cross-cutting rules the layers enforce:
 
 | Store | Holds |
 | --- | --- |
-| MySQL | `Users` (credentials, pin, pkey, challenge, settings columns), `Categories`, `Tags`, `Persons`, `Events`, `EventsTags` |
+| MySQL | `Users` (credentials, pin, pkey, challenge, settings columns), `Categories`, `Tags`, `Events`, `EventsTags` |
 | Redis | Access/refresh sessions (`uuid → user_id`, TTL = token expiry), single-use password-reset tokens (15 min TTL), rate-limit counters |
 
 Schema migrations live in `db/migrations` (golang-migrate format).
@@ -141,7 +141,7 @@ homl-web/
         ├── apperror/        # typed application errors → HTTP statuses
         ├── application/     # use-case services (one per aggregate)
         ├── domain/          # aggregates, value objects, Repository ports
-        │   ├── category/  event/  masterdata/  person/  user/
+        │   ├── category/  event/  masterdata/  user/
         └── infrastructure/
             ├── auth/        # JWT adapter (TokenIssuer, TokenParser)
             ├── config/      # env → Config, fail-fast validation

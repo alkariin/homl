@@ -32,10 +32,10 @@ reference for how each of them behaves in the backend and in the app.
 - Seeded unlocked: the user may rename it, recolor it, delete it, and manage
   its tags exactly like a custom category. It only exists to suggest a common
   way of organizing tags.
-- The `person` kind is kept on the seeded row so the legacy `/persons`
-  endpoints can find it while it exists (a person's main tag and nicknames
-  are stored there). Those endpoints are not used by the app; once the user
-  deletes the category they stop working for that user.
+- The `person` kind on the seeded row is purely informative — it marks "the
+  Persons category suggested at registration", nothing in the backend keys
+  behavior on it. A "person" is just an ordinary tag, with synonyms as
+  alternative names (see [tag-synonyms.md](tag-synonyms.md)).
 - Migration `000003_unlock_person_category` unlocks the row for accounts
   created before this rule.
 
@@ -56,5 +56,5 @@ reference for how each of them behaves in the backend and in the app.
 ## Custom categories
 
 Everything the user creates is `kind = custom`, unlocked: full CRUD on the
-category and its tags (synonyms included), subject only to the tag-name
-blacklist.
+category and its tags (synonyms included, see
+[tag-synonyms.md](tag-synonyms.md)), subject only to the tag-name blacklist.

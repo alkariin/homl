@@ -10,7 +10,6 @@ import (
 
 	"github.com/alkariin/homl/homl-web/internal/domain/category"
 	"github.com/alkariin/homl/homl-web/internal/domain/event"
-	"github.com/alkariin/homl/homl-web/internal/domain/person"
 	"github.com/alkariin/homl/homl-web/internal/domain/user"
 	"github.com/stretchr/testify/mock"
 )
@@ -173,33 +172,6 @@ func (m *MockTagsService) UpdateTag(ctx context.Context, idUser uint64, tag *cat
 
 func (m *MockTagsService) DeleteTag(ctx context.Context, idTag uint, idUser uint64) error {
 	return errAt(m.Called(idTag, idUser), 0)
-}
-
-/* ----------------------------- PersonsService ---------------------------- */
-
-type MockPersonsService struct {
-	mock.Mock
-}
-
-func (m *MockPersonsService) GetPersons(ctx context.Context, idUser uint64) ([]person.GetPersonsResponse, error) {
-	ret := m.Called(idUser)
-	var r0 []person.GetPersonsResponse
-	if ret.Get(0) != nil {
-		r0 = ret.Get(0).([]person.GetPersonsResponse)
-	}
-	return r0, errAt(ret, 1)
-}
-
-func (m *MockPersonsService) CreatePerson(ctx context.Context, person *person.Person, nicknames []string, idUser uint64) error {
-	return errAt(m.Called(person, nicknames, idUser), 0)
-}
-
-func (m *MockPersonsService) UpdatePerson(ctx context.Context, person *person.Person, nicknames []person.Nickname, idUser uint64) error {
-	return errAt(m.Called(person, nicknames, idUser), 0)
-}
-
-func (m *MockPersonsService) DeletePerson(ctx context.Context, idPerson uint, idUser uint64) error {
-	return errAt(m.Called(idPerson, idUser), 0)
 }
 
 /* ---------------------------- SettingsService ---------------------------- */

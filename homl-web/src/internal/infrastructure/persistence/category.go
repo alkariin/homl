@@ -46,7 +46,7 @@ func (c *CategoriesRepository) FindIdByKind(ctx context.Context, idUser uint64, 
 	return id, nil
 }
 
-// Returns all categories with all tags, but without the tags of the category persons
+// Returns all categories of the user with all their tags.
 func (c *CategoriesRepository) GetAllCategoriesWithTags(ctx context.Context, idUser uint64) (map[uint]category.Category, map[uint][]category.TagDTO, error) {
 	type SQLTag struct {
 		Id          sql.NullInt64  `json:"id"`

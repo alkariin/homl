@@ -108,14 +108,9 @@ func (t *tagsService) CreateTag(ctx context.Context, idUser uint64, tag *categor
 
 // UpdateTag implements TagsService.
 func (t *tagsService) UpdateTag(ctx context.Context, idUser uint64, tag *category.Tag) error {
-	// Check that the tag exists and belongs to the user, and that it is not a
-	// person tag (nicknames are only managed through the person endpoints)
+	// Check that the tag exists and belongs to the user
 	storedTag, err := t.CategoriesRepository.FindTagForUser(ctx, tag.Id, idUser)
 	if err != nil {
-		return apperror.NewBadRequest("The given tag is not valid")
-	}
-
-	if storedTag.IdPerson != 0 {
 		return apperror.NewBadRequest("The given tag is not valid")
 	}
 
