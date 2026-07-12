@@ -53,13 +53,20 @@ func (c *categoriesService) GetCategories(ctx context.Context, idUser uint64) ([
 			return nil, err
 		}
 
+		// A category without tags must serialize as [], not null: a missing
+		// map key yields a nil slice, which encoding/json renders as null.
+		catTags := tags[cat.Id]
+		if catTags == nil {
+			catTags = []category.TagDTO{}
+		}
+
 		response := category.GetCategoryResponse{
 			Id:       cat.Id,
 			Category: decCategory,
 			Color:    cat.Color,
 			IsLocked: cat.IsLocked,
 			Kind:     cat.Kind,
-			Tags:     tags[cat.Id],
+			Tags:     catTags,
 		}
 		responses = append(responses, response)
 	}
