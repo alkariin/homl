@@ -204,9 +204,6 @@ class _TagRow extends StatelessWidget {
                           .updateTag(mainTag.id, name, category.id),
                     );
                     break;
-                  case 'delete':
-                    homeCubit.deleteTag(mainTag.id);
-                    break;
                   case 'synonym':
                     _textDialog(
                       context,
@@ -216,6 +213,12 @@ class _TagRow extends StatelessWidget {
                           name, category.id,
                           idParentTag: mainTag.id),
                     );
+                    break;
+                  case 'move':
+                    _moveTagDialog(context, category, mainTag);
+                    break;
+                  case 'delete':
+                    _deleteTagDialog(context, mainTag, synonyms);
                     break;
                 }
               },
@@ -227,6 +230,9 @@ class _TagRow extends StatelessWidget {
                     value: 'synonym',
                     child: Text(localization.categories_addSynonym)),
                 PopupMenuItem(
+                    value: 'move',
+                    child: Text(localization.categories_moveTag)),
+                PopupMenuItem(
                     value: 'delete',
                     child: Text(localization.categories_deleteTag)),
               ],
@@ -235,26 +241,70 @@ class _TagRow extends StatelessWidget {
   }
 }
 
-/// Long press on a synonym chip: detach it from its main tag or delete it.
+/// Long press on a synonym chip: rename it, detach it from its main tag, or
+/// delete it (after a confirmation: its events migrate to the main tag).
 void _synonymDialog(BuildContext context, Category category, Tag synonym) {
+  var localization = AppLocalizations.of(context)!;
+  final homeCubit = context.read<HomeCubit>();
+  final mainTags =
+      category.tags.where((tag) => tag.id == synonym.idParentTag).toList();
+  final mainTagName = mainTags.isEmpty ? '' : mainTags.first.tag;
+
+  showDialog<void>(
+    context: context,
+    builder: (dialogContext) => SimpleDialog(
+      title: Text(synonym.tag),
+      children: [
+        SimpleDialogOption(
+          child: Text(localization.categories_renameSynonym),
+          onPressed: () {
+            Navigator.pop(dialogContext);
+            _textDialog(
+              context,
+              title: localization.categories_renameSynonym,
+              label: localization.categories_synonymName,
+              initialValue: synonym.tag,
+              onSubmit: (name) => homeCubit.updateTag(
+                  synonym.id, name, category.id,
+                  idParentTag: synonym.idParentTag),
+            );
+          },
+        ),
+        SimpleDialogOption(
+          child: Text(localization.categories_detachSynonym),
+          onPressed: () {
+            homeCubit.updateTag(synonym.id, synonym.tag, category.id);
+            Navigator.pop(dialogContext);
+          },
+        ),
+        SimpleDialogOption(
+          child: Text(localization.global_delete),
+          onPressed: () {
+            Navigator.pop(dialogContext);
+            _deleteSynonymDialog(context, synonym, mainTagName);
+          },
+        ),
+      ],
+    ),
+  );
+}
+
+/// Confirms a synonym deletion: its events are repointed to the main tag.
+void _deleteSynonymDialog(
+    BuildContext context, Tag synonym, String mainTagName) {
   var localization = AppLocalizations.of(context)!;
   final homeCubit = context.read<HomeCubit>();
 
   showDialog<void>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      title: Text(synonym.tag),
+      title: Text(localization.categories_deleteSynonymTitle),
+      content: Text(
+          localization.categories_deleteSynonymInfo(synonym.tag, mainTagName)),
       actions: [
         TextButton(
           child: Text(localization.global_cancel),
           onPressed: () => Navigator.pop(dialogContext),
-        ),
-        TextButton(
-          child: Text(localization.categories_detachSynonym),
-          onPressed: () {
-            homeCubit.updateTag(synonym.id, synonym.tag, category.id);
-            Navigator.pop(dialogContext);
-          },
         ),
         TextButton(
           child: Text(localization.global_delete),
@@ -268,20 +318,100 @@ void _synonymDialog(BuildContext context, Category category, Tag synonym) {
   );
 }
 
-void _deleteCategoryDialog(BuildContext context, Category category) {
+/// Picks the destination category for a main tag; its synonyms move with it
+/// (backend rule: a synonym lives in its main tag's category).
+void _moveTagDialog(BuildContext context, Category category, Tag mainTag) {
   var localization = AppLocalizations.of(context)!;
   final homeCubit = context.read<HomeCubit>();
-  bool moveTags = false;
+  // Any category except Dates (backend-managed), Others (read-only grey
+  // bucket) and the current one.
+  final targets = homeCubit.state.categories
+      .where((target) =>
+          target.id != category.id &&
+          target.kind != CategoryKind.date &&
+          target.kind != CategoryKind.other)
+      .toList();
 
   showDialog<void>(
     context: context,
+    builder: (dialogContext) => SimpleDialog(
+      title: Text(localization.categories_moveTagTitle(mainTag.tag)),
+      children: targets
+          .map((target) => SimpleDialogOption(
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 8,
+                      backgroundColor: colorFromHex(target.color),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(target.category),
+                  ],
+                ),
+                onPressed: () {
+                  homeCubit.moveTag(mainTag, target.id);
+                  Navigator.pop(dialogContext);
+                },
+              ))
+          .toList(),
+    ),
+  );
+}
+
+/// Confirms a main tag deletion: shows how many events use the synonym group
+/// and, for the ones that would be left without any other tag, lets the user
+/// delete them or keep them with their date only.
+Future<void> _deleteTagDialog(
+    BuildContext context, Tag mainTag, List<Tag> synonyms) async {
+  var localization = AppLocalizations.of(context)!;
+  final homeCubit = context.read<HomeCubit>();
+
+  final usage = await homeCubit.fetchTagUsage(mainTag.id);
+  if (usage == null || !context.mounted) {
+    return;
+  }
+
+  bool deleteEvents = false;
+  await showDialog<void>(
+    context: context,
     builder: (dialogContext) => StatefulBuilder(
       builder: (dialogContext, setState) => AlertDialog(
-        title: Text(localization.categories_deleteCategory),
-        content: CheckboxListTile(
-          title: Text(localization.categories_deleteMoveTags),
-          value: moveTags,
-          onChanged: (value) => setState(() => moveTags = value ?? false),
+        title: Text(localization.categories_deleteTagTitle(mainTag.tag)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(localization.categories_deleteTagEvents(usage.events)),
+            if (synonyms.isNotEmpty)
+              Text(localization.categories_deleteTagSynonyms(synonyms.length)),
+            if (usage.exclusiveEvents > 0) ...[
+              const SizedBox(height: 10),
+              Text(localization
+                  .categories_deleteTagExclusiveEvents(usage.exclusiveEvents)),
+              RadioGroup<bool>(
+                groupValue: deleteEvents,
+                onChanged: (value) =>
+                    setState(() => deleteEvents = value ?? false),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    RadioListTile<bool>(
+                      value: false,
+                      dense: true,
+                      title:
+                          Text(localization.categories_deleteTagKeepEvents),
+                    ),
+                    RadioListTile<bool>(
+                      value: true,
+                      dense: true,
+                      title:
+                          Text(localization.categories_deleteTagDeleteEvents),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
         ),
         actions: [
           TextButton(
@@ -291,7 +421,91 @@ void _deleteCategoryDialog(BuildContext context, Category category) {
           TextButton(
             child: Text(localization.global_delete),
             onPressed: () {
-              homeCubit.deleteCategory(category.id, moveTags: moveTags);
+              homeCubit.deleteTag(mainTag.id, deleteEvents: deleteEvents);
+              Navigator.pop(dialogContext);
+            },
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+enum _CategoryDeleteChoice { moveTags, deleteTags, deleteAll }
+
+/// Confirms a category deletion: move its tags to the Others category
+/// (default), delete them while keeping the events, or delete them together
+/// with the events that only use tags from this category.
+Future<void> _deleteCategoryDialog(
+    BuildContext context, Category category) async {
+  var localization = AppLocalizations.of(context)!;
+  final homeCubit = context.read<HomeCubit>();
+
+  final usage = await homeCubit.fetchCategoryUsage(category.id);
+  if (usage == null || !context.mounted) {
+    return;
+  }
+
+  var choice = _CategoryDeleteChoice.moveTags;
+  await showDialog<void>(
+    context: context,
+    builder: (dialogContext) => StatefulBuilder(
+      builder: (dialogContext, setState) => AlertDialog(
+        title: Text(localization.categories_deleteCategory),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(localization.categories_deleteCategoryTags(usage.tags)),
+            if (usage.tags > 0) ...[
+              Text(localization.categories_deleteCategoryEvents(usage.events)),
+              RadioGroup<_CategoryDeleteChoice>(
+                groupValue: choice,
+                onChanged: (value) => setState(
+                    () => choice = value ?? _CategoryDeleteChoice.moveTags),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    RadioListTile<_CategoryDeleteChoice>(
+                      value: _CategoryDeleteChoice.moveTags,
+                      dense: true,
+                      title: Text(localization.categories_deleteMoveTags),
+                    ),
+                    RadioListTile<_CategoryDeleteChoice>(
+                      value: _CategoryDeleteChoice.deleteTags,
+                      dense: true,
+                      title: Text(
+                          localization.categories_deleteCategoryDeleteTags),
+                    ),
+                    if (usage.exclusiveEvents > 0)
+                      RadioListTile<_CategoryDeleteChoice>(
+                        value: _CategoryDeleteChoice.deleteAll,
+                        dense: true,
+                        title: Text(
+                            localization.categories_deleteCategoryDeleteAll),
+                        subtitle: Text(localization
+                            .categories_deleteCategoryDeleteAllDetail(
+                                usage.exclusiveEvents)),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            child: Text(localization.global_cancel),
+            onPressed: () => Navigator.pop(dialogContext),
+          ),
+          TextButton(
+            child: Text(localization.global_delete),
+            onPressed: () {
+              homeCubit.deleteCategory(
+                category.id,
+                moveTags: choice == _CategoryDeleteChoice.moveTags,
+                deleteEvents: choice == _CategoryDeleteChoice.deleteAll,
+              );
               Navigator.pop(dialogContext);
             },
           ),
@@ -307,36 +521,75 @@ void _textDialog(BuildContext context,
     required String label,
     String? initialValue,
     required void Function(String value) onSubmit}) {
-  var localization = AppLocalizations.of(context)!;
-  final controller = TextEditingController(text: initialValue);
-
   showDialog<void>(
     context: context,
-    builder: (dialogContext) => AlertDialog(
-      title: Text(title),
+    builder: (_) => _TextDialog(
+      title: title,
+      label: label,
+      initialValue: initialValue,
+      onSubmit: onSubmit,
+    ),
+  );
+}
+
+class _TextDialog extends StatefulWidget {
+  final String title;
+  final String label;
+  final String? initialValue;
+  final void Function(String value) onSubmit;
+
+  const _TextDialog(
+      {required this.title,
+      required this.label,
+      this.initialValue,
+      required this.onSubmit});
+
+  @override
+  State<_TextDialog> createState() => _TextDialogState();
+}
+
+class _TextDialogState extends State<_TextDialog> {
+  // Owned by the dialog state: State.dispose only runs once the route is
+  // fully gone. Disposing from showDialog's future is too early — it
+  // completes on pop, while the TextField is still animating out.
+  late final TextEditingController _controller =
+      TextEditingController(text: widget.initialValue);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    var localization = AppLocalizations.of(context)!;
+
+    return AlertDialog(
+      title: Text(widget.title),
       content: TextField(
-        controller: controller,
+        controller: _controller,
         autofocus: true,
-        decoration: InputDecoration(labelText: label),
+        decoration: InputDecoration(labelText: widget.label),
       ),
       actions: [
         TextButton(
           child: Text(localization.global_cancel),
-          onPressed: () => Navigator.pop(dialogContext),
+          onPressed: () => Navigator.pop(context),
         ),
         TextButton(
           child: Text(localization.global_save),
           onPressed: () {
-            final value = controller.text.trim();
+            final value = _controller.text.trim();
             if (value.isNotEmpty) {
-              onSubmit(value);
+              widget.onSubmit(value);
             }
-            Navigator.pop(dialogContext);
+            Navigator.pop(context);
           },
         ),
       ],
-    ),
-  ).whenComplete(controller.dispose);
+    );
+  }
 }
 
 /// Category create/edit dialog: name + preset color picker.
@@ -345,60 +598,97 @@ void categoryDialog(BuildContext context,
     String? initialName,
     String? initialColor,
     required void Function(String name, String color) onSubmit}) {
-  var localization = AppLocalizations.of(context)!;
-  final controller = TextEditingController(text: initialName);
-  String selectedColor = initialColor ?? categoryColors.first;
-
   showDialog<void>(
     context: context,
-    builder: (dialogContext) => StatefulBuilder(
-      builder: (dialogContext, setState) => AlertDialog(
-        title: Text(title),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: controller,
-              autofocus: true,
-              decoration: InputDecoration(
-                  labelText: localization.categories_categoryName),
-            ),
-            const SizedBox(height: 20),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: categoryColors
-                  .map((color) => GestureDetector(
-                        onTap: () => setState(() => selectedColor = color),
-                        child: CircleAvatar(
-                          radius: 15,
-                          backgroundColor: colorFromHex(color),
-                          child: selectedColor == color
-                              ? const Icon(Icons.check, size: 16)
-                              : null,
-                        ),
-                      ))
-                  .toList(),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            child: Text(localization.global_cancel),
-            onPressed: () => Navigator.pop(dialogContext),
+    builder: (_) => _CategoryDialog(
+      title: title,
+      initialName: initialName,
+      initialColor: initialColor,
+      onSubmit: onSubmit,
+    ),
+  );
+}
+
+class _CategoryDialog extends StatefulWidget {
+  final String title;
+  final String? initialName;
+  final String? initialColor;
+  final void Function(String name, String color) onSubmit;
+
+  const _CategoryDialog(
+      {required this.title,
+      this.initialName,
+      this.initialColor,
+      required this.onSubmit});
+
+  @override
+  State<_CategoryDialog> createState() => _CategoryDialogState();
+}
+
+class _CategoryDialogState extends State<_CategoryDialog> {
+  // Owned by the dialog state: State.dispose only runs once the route is
+  // fully gone. Disposing from showDialog's future is too early — it
+  // completes on pop, while the TextField is still animating out.
+  late final TextEditingController _controller =
+      TextEditingController(text: widget.initialName);
+  late String _selectedColor = widget.initialColor ?? categoryColors.first;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    var localization = AppLocalizations.of(context)!;
+
+    return AlertDialog(
+      title: Text(widget.title),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _controller,
+            autofocus: true,
+            decoration:
+                InputDecoration(labelText: localization.categories_categoryName),
           ),
-          TextButton(
-            child: Text(localization.global_save),
-            onPressed: () {
-              final name = controller.text.trim();
-              if (name.isNotEmpty) {
-                onSubmit(name, selectedColor);
-              }
-              Navigator.pop(dialogContext);
-            },
+          const SizedBox(height: 20),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: categoryColors
+                .map((color) => GestureDetector(
+                      onTap: () => setState(() => _selectedColor = color),
+                      child: CircleAvatar(
+                        radius: 15,
+                        backgroundColor: colorFromHex(color),
+                        child: _selectedColor == color
+                            ? const Icon(Icons.check, size: 16)
+                            : null,
+                      ),
+                    ))
+                .toList(),
           ),
         ],
       ),
-    ),
-  ).whenComplete(controller.dispose);
+      actions: [
+        TextButton(
+          child: Text(localization.global_cancel),
+          onPressed: () => Navigator.pop(context),
+        ),
+        TextButton(
+          child: Text(localization.global_save),
+          onPressed: () {
+            final name = _controller.text.trim();
+            if (name.isNotEmpty) {
+              widget.onSubmit(name, _selectedColor);
+            }
+            Navigator.pop(context);
+          },
+        ),
+      ],
+    );
+  }
 }

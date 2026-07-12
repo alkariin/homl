@@ -93,6 +93,28 @@ flutter analyze
 flutter test
 ```
 
+## Categories tab: tag & category management
+
+`lib/pages/categories/view/category_management.dart` gives full CRUD on
+categories, tags and synonyms (rules per category kind in
+`homl-web/docs/default-categories.md`). Destructive actions confirm with the
+counts served by `GET /tags/:id/usage` / `GET /categories/:id/usage`:
+
+- a main tag can be renamed, given synonyms, **moved to another category**
+  (its synonyms follow) or deleted — the delete dialog says how many events
+  use the tag and lets the user delete the events that only carry this tag or
+  keep them with their date only (`deleteEvents` on `DELETE /tags/:id`);
+- a synonym (long press on its chip) can be renamed, detached or deleted —
+  deletion confirms that its events are repointed to the main tag;
+- deleting a category offers to move its tags to the Others category
+  (default), delete them while keeping the events, or delete them together
+  with the events that only use tags from this category.
+
+The dialogs owning a `TextEditingController` are `StatefulWidget`s so the
+controller is disposed with the route: disposing it from `showDialog`'s
+future crashes, the future completes on pop while the dialog is still
+animating out.
+
 ## Offline cache & local search
 
 The Search tab does **not** query the backend per filter change: it filters

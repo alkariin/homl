@@ -567,6 +567,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Synonym'**
   String get categories_synonymName;
+
+  /// No description provided for @categories_renameSynonym.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename synonym'**
+  String get categories_renameSynonym;
+
+  /// No description provided for @categories_deleteSynonymTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete synonym?'**
+  String get categories_deleteSynonymTitle;
+
+  /// No description provided for @categories_deleteSynonymInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Events tagged \"{synonym}\" will be moved to \"{tag}\".'**
+  String categories_deleteSynonymInfo(String synonym, String tag);
+
+  /// No description provided for @categories_moveTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Move to another category'**
+  String get categories_moveTag;
+
+  /// No description provided for @categories_moveTagTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Move \"{tag}\" to'**
+  String categories_moveTagTitle(String tag);
+
+  /// No description provided for @categories_deleteTagTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete \"{tag}\"?'**
+  String categories_deleteTagTitle(String tag);
+
+  /// No description provided for @categories_deleteTagEvents.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No event uses this tag.} =1{1 event uses this tag.} other{{count} events use this tag.}}'**
+  String categories_deleteTagEvents(int count);
+
+  /// No description provided for @categories_deleteTagSynonyms.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Its synonym will be deleted too.} other{Its {count} synonyms will be deleted too.}}'**
+  String categories_deleteTagSynonyms(int count);
+
+  /// No description provided for @categories_deleteTagExclusiveEvents.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 event has no other tag:} other{{count} events have no other tag:}}'**
+  String categories_deleteTagExclusiveEvents(int count);
+
+  /// No description provided for @categories_deleteTagKeepEvents.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep these events (date only)'**
+  String get categories_deleteTagKeepEvents;
+
+  /// No description provided for @categories_deleteTagDeleteEvents.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete these events'**
+  String get categories_deleteTagDeleteEvents;
+
+  /// No description provided for @categories_deleteCategoryTags.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{This category has no tags.} =1{This category has 1 tag.} other{This category has {count} tags.}}'**
+  String categories_deleteCategoryTags(int count);
+
+  /// No description provided for @categories_deleteCategoryEvents.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No event uses them.} =1{1 event uses them.} other{{count} events use them.}}'**
+  String categories_deleteCategoryEvents(int count);
+
+  /// No description provided for @categories_deleteCategoryDeleteTags.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete the tags, keep the events'**
+  String get categories_deleteCategoryDeleteTags;
+
+  /// No description provided for @categories_deleteCategoryDeleteAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete the tags and their events'**
+  String get categories_deleteCategoryDeleteAll;
+
+  /// No description provided for @categories_deleteCategoryDeleteAllDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 event only uses tags from this category and will be deleted.} other{{count} events only use tags from this category and will be deleted.}}'**
+  String categories_deleteCategoryDeleteAllDetail(int count);
 }
 
 class _AppLocalizationsDelegate
