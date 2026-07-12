@@ -8,11 +8,16 @@ import 'package:homl/helpers/colors.dart';
 /// [colorProgress] drives the gold reveal: at 0 the whole hash is black, at 1
 /// it shows the normal two-tone artwork. The reveal sweeps from the base of
 /// the gold strokes (bottom-left) to their tip (top-right).
+///
+/// [tint] recolors the whole hash and the circle border (search bar: the
+/// category color of the top suggestion). Null keeps the normal artwork.
 class HomlLogo extends StatelessWidget {
   final double size;
   final double colorProgress;
+  final Color? tint;
 
-  const HomlLogo({this.size = 51, this.colorProgress = 1.0, super.key});
+  const HomlLogo(
+      {this.size = 51, this.colorProgress = 1.0, this.tint, super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +28,8 @@ class HomlLogo extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         shape: BoxShape.circle,
-        border: Border.all(color: yellow, width: 0.5),
+        border: Border.all(
+            color: tint ?? yellow, width: tint == null ? 0.5 : 1.2),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.25),
@@ -67,10 +73,20 @@ class HomlLogo extends StatelessWidget {
   }
 
   Widget _hash() {
-    return Image.asset(
+    final image = Image.asset(
       'assets/images/logo.png',
       fit: BoxFit.contain,
       filterQuality: FilterQuality.medium,
+    );
+
+    if (tint == null) {
+      return image;
+    }
+
+    // srcIn keeps the hash silhouette and paints it in a solid [tint].
+    return ColorFiltered(
+      colorFilter: ColorFilter.mode(tint!, BlendMode.srcIn),
+      child: image,
     );
   }
 }

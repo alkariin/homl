@@ -107,6 +107,14 @@ offline. The matching replicates the backend one (`FindEventsWithTags`):
   `homl-web/docs/tag-synonyms.md`);
 - multiple filters use AND semantics.
 
+While typing, the field autocompletes on the existing tags (prefix matches
+first, then substring matches). The input border and the "#" logo take the
+category color of the top suggestion — except for tags of the Others
+category, which keep the default styling (`lib/components/tag_input.dart`,
+`highlightColor` on `TagChipData`). The logo PNG is tinted with a solid
+`ColorFilter`; an SVG would only be needed to recolor its two tones
+independently.
+
 `EventsRepository.getEvents()` and `CategoriesRepository.getCategories()`
 cache each successful payload in `flutter_secure_storage` (encrypted at
 rest). On startup `HomeCubit.init()` serves the cached snapshot first, then
