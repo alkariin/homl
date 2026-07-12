@@ -12,20 +12,13 @@ import (
 
 var firstnameValidation = "required"
 var lastnameValidation = "required"
-var nicknamesValidation = "required"
 
 /**
  * response:
  *  {
  *	  id: uint,
  *	  firstname: string,
- *    lastname: string,
- *    nicknames: [
- *	    {
- *        id: uint,
- *        nickname: string
- *      }
- *    ]
+ *    lastname: string
  *  }
  */
 func (h *PersonHandler) GetPersons(c *gin.Context) {
@@ -47,17 +40,11 @@ func (h *PersonHandler) GetPersons(c *gin.Context) {
 /** input:
  * {
  *   firstname: string,
- *   lastname: string,
- *   nicknames?: string[]
+ *   lastname: string
  * }
  */
 func (h *PersonHandler) CreatePerson(c *gin.Context) {
-	type bodyRequest struct {
-		person.Person
-		Nicknames []string `json:"nicknames"`
-	}
-
-	var body *bodyRequest
+	var body *person.Person
 	err := c.ShouldBindJSON(&body)
 	if err != nil {
 		SendGinMyCustomError(c, err, apperror.NewStatusUnprocessableEntity())
@@ -77,7 +64,7 @@ func (h *PersonHandler) CreatePerson(c *gin.Context) {
 		return
 	}
 
-	err = h.PersonsService.CreatePerson(c.Request.Context(), &body.Person, body.Nicknames, idUser)
+	err = h.PersonsService.CreatePerson(c.Request.Context(), body, idUser)
 	if err != nil {
 		SendGinError(c, err)
 		return
@@ -86,35 +73,21 @@ func (h *PersonHandler) CreatePerson(c *gin.Context) {
 	c.Writer.WriteHeader(http.StatusCreated)
 }
 
-/**
- * If the nickname exist the id should be provided.
- *
- * input:
+/** input:
  * id: uint
  * {
  *   firstname: string,
- *   lastname: string,
- *   nicknames?: [
- *	   {
- *       id?: uint,
- *       nickname: string
- *     }
- *   ]
+ *   lastname: string
  * }
  */
 func (h *PersonHandler) UpdatePerson(c *gin.Context) {
-	type bodyRequest struct {
-		person.Person
-		Nicknames []person.Nickname `json:"nicknames"`
-	}
-
 	idParam, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
 		SendGinMyCustomError(c, err, apperror.NewStatusUnprocessableEntity())
 		return
 	}
 
-	var body *bodyRequest
+	var body *person.Person
 	err = c.ShouldBindJSON(&body)
 	if err != nil {
 		SendGinMyCustomError(c, err, apperror.NewStatusUnprocessableEntity())
@@ -135,7 +108,7 @@ func (h *PersonHandler) UpdatePerson(c *gin.Context) {
 		return
 	}
 
-	err = h.PersonsService.UpdatePerson(c.Request.Context(), &body.Person, body.Nicknames, idUser)
+	err = h.PersonsService.UpdatePerson(c.Request.Context(), body, idUser)
 	if err != nil {
 		SendGinError(c, err)
 		return

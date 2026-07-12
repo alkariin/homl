@@ -190,12 +190,12 @@ func (m *MockPersonsService) GetPersons(ctx context.Context, idUser uint64) ([]p
 	return r0, errAt(ret, 1)
 }
 
-func (m *MockPersonsService) CreatePerson(ctx context.Context, person *person.Person, nicknames []string, idUser uint64) error {
-	return errAt(m.Called(person, nicknames, idUser), 0)
+func (m *MockPersonsService) CreatePerson(ctx context.Context, person *person.Person, idUser uint64) error {
+	return errAt(m.Called(person, idUser), 0)
 }
 
-func (m *MockPersonsService) UpdatePerson(ctx context.Context, person *person.Person, nicknames []person.Nickname, idUser uint64) error {
-	return errAt(m.Called(person, nicknames, idUser), 0)
+func (m *MockPersonsService) UpdatePerson(ctx context.Context, person *person.Person, idUser uint64) error {
+	return errAt(m.Called(person, idUser), 0)
 }
 
 func (m *MockPersonsService) DeletePerson(ctx context.Context, idPerson uint, idUser uint64) error {

@@ -53,8 +53,8 @@ func (c *CategoriesRepository) DeleteTag(ctx context.Context, idTag uint, idUser
 	}
 	defer tx.Rollback() // no-op once Commit succeeds
 
-	// Load the tag, scoped to the user and excluding person tags (nicknames
-	// are only managed through the person endpoints).
+	// Load the tag, scoped to the user and excluding person main tags (they
+	// mirror the person's name and are managed through the person endpoints).
 	var idParentTag *uint
 	err = tx.GetContext(ctx, &idParentTag, `
 		SELECT t.idParentTag FROM Tags t

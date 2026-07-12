@@ -62,7 +62,7 @@ func setup(t *testing.T) *repos {
 		users:  persistence.NewUsersRepository(db, nil, aes),
 		cats:   persistence.NewCategoriesRepository(db, aes),
 		events: persistence.NewEventsRepository(db, aes),
-		person: persistence.NewPersonsRepository(db, aes),
+		person: persistence.NewPersonsRepository(db),
 	}
 }
 
@@ -185,29 +185,26 @@ func TestCrossTenantPersonIsolation(t *testing.T) {
 
 	alicePersonCat, err := r.cats.FindIdByKind(ctx, alice, category.KindPerson)
 	require.NoError(t, err)
-	require.NoError(t, r.person.CreatePersonWithTags(ctx,
+	require.NoError(t, r.person.CreatePersonWithMainTag(ctx,
 		r.enc(t, "Jane", alice), r.enc(t, "Doe", alice), r.enc(t, "JaneDoe", alice),
-		alicePersonCat, nil, alice))
+		alicePersonCat))
 
-	persons, _, err := r.person.FindPersonsWithTagsAndCategories(ctx, alice)
+	persons, err := r.person.FindAllByUser(ctx, alice)
 	require.NoError(t, err)
 	require.Len(t, persons, 1)
-	var personID uint
-	for id := range persons {
-		personID = id
-	}
+	personID := persons[0].Id
 
 	t.Run("mallory cannot delete alice's person", func(t *testing.T) {
 		err := r.person.DeletePerson(ctx, personID, mallory)
 		assert.Error(t, err)
 
-		got, _, err := r.person.FindPersonsWithTagsAndCategories(ctx, alice)
+		got, err := r.person.FindAllByUser(ctx, alice)
 		require.NoError(t, err)
 		assert.Len(t, got, 1, "alice's person must survive")
 	})
 
 	t.Run("mallory cannot see alice's person", func(t *testing.T) {
-		got, _, err := r.person.FindPersonsWithTagsAndCategories(ctx, mallory)
+		got, err := r.person.FindAllByUser(ctx, mallory)
 		require.NoError(t, err)
 		assert.Empty(t, got)
 	})

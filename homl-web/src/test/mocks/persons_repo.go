@@ -30,29 +30,24 @@ func (m *MockPersonsRepo) FindById(ctx context.Context, idPerson uint) (*person.
 	return r0, r1
 }
 
-func (m *MockPersonsRepo) FindPersonsWithTagsAndCategories(ctx context.Context, idUser uint64) (map[uint]person.Person, map[uint][]person.Nickname, error) {
+func (m *MockPersonsRepo) FindAllByUser(ctx context.Context, idUser uint64) ([]person.Person, error) {
 	ret := m.Called(idUser)
 
-	var r0 map[uint]person.Person
+	var r0 []person.Person
 	if ret.Get(0) != nil {
-		r0 = ret.Get(0).(map[uint]person.Person)
+		r0 = ret.Get(0).([]person.Person)
 	}
 
-	var r1 map[uint][]person.Nickname
+	var r1 error
 	if ret.Get(1) != nil {
-		r1 = ret.Get(1).(map[uint][]person.Nickname)
+		r1 = ret.Get(1).(error)
 	}
 
-	var r2 error
-	if ret.Get(2) != nil {
-		r2 = ret.Get(2).(error)
-	}
-
-	return r0, r1, r2
+	return r0, r1
 }
 
-func (m *MockPersonsRepo) CreatePersonWithTags(ctx context.Context, encFirstname string, encLastname string, encMainTagName string, idCategoryPerson uint, nicknames []string, idUser uint64) error {
-	ret := m.Called(encFirstname, encLastname, encMainTagName, idCategoryPerson, nicknames, idUser)
+func (m *MockPersonsRepo) CreatePersonWithMainTag(ctx context.Context, encFirstname string, encLastname string, encMainTagName string, idCategoryPerson uint) error {
+	ret := m.Called(encFirstname, encLastname, encMainTagName, idCategoryPerson)
 
 	var r0 error
 	if ret.Get(0) != nil {
@@ -73,18 +68,15 @@ func (m *MockPersonsRepo) CheckPersonIdsWithTagsAndCategories(ctx context.Contex
 	return r0
 }
 
-func (m *MockPersonsRepo) UpdatePersonWithTags(
+func (m *MockPersonsRepo) UpdatePersonWithMainTag(
 	ctx context.Context,
 	storedPerson *person.Person,
 	encFirstname string,
 	encLastname string,
 	encMainTagName string,
 	mainPersonTagId uint,
-	idCategoryPerson uint,
-	idUser uint64,
-	bodyNicknames []person.Nickname,
 ) error {
-	ret := m.Called(storedPerson, encFirstname, encLastname, encMainTagName, mainPersonTagId, idCategoryPerson, idUser, bodyNicknames)
+	ret := m.Called(storedPerson, encFirstname, encLastname, encMainTagName, mainPersonTagId)
 
 	var r0 error
 	if ret.Get(0) != nil {
