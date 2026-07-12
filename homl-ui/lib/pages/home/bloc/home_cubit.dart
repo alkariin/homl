@@ -69,6 +69,21 @@ class HomeCubit extends Cubit<HomeState> {
   }
 
   Future<void> init() async {
+    // Serve the cached snapshot first: the UI is usable immediately (and
+    // offline); the network refresh below overwrites it when it lands.
+    if (!state.initialized) {
+      final cachedEvents = await eventsRepository.getCachedEvents();
+      final cachedCategories = await categoriesRepository.getCachedCategories();
+
+      if (cachedEvents != null && cachedCategories != null) {
+        emit(state.copyWith(
+            events: cachedEvents,
+            categories: cachedCategories,
+            allTagsMap: _buildTagsMap(cachedCategories),
+            initialized: true));
+      }
+    }
+
     try {
       final events = await eventsRepository.getEvents();
       final categories = await categoriesRepository.getCategories();
@@ -76,9 +91,13 @@ class HomeCubit extends Cubit<HomeState> {
       emit(state.copyWith(
           events: events,
           categories: categories,
-          allTagsMap: _buildTagsMap(categories)));
+          allTagsMap: _buildTagsMap(categories),
+          initialized: true));
     } catch (_) {
-      emit(state.copyWith(modal: AppMessage.unexpectedError));
+      // Offline with a cached snapshot on screen: stale data is fine.
+      if (!state.initialized) {
+        emit(state.copyWith(modal: AppMessage.unexpectedError));
+      }
     }
   }
 

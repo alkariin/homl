@@ -188,7 +188,9 @@ category (one level deep, any category except dates — see
 
 All endpoints require auth. Date tags are added by the backend from `date`;
 `tagsId` may be empty. `GET /events` accepts an optional `tags` query filter,
-repeated once per tag name (`?tags=2024&tags=July`).
+repeated once per tag name (`?tags=2024&tags=July`). The Flutter app no
+longer uses this filter — its Search tab filters the cached full list locally
+(see homl-ui/README.md) — but the parameter stays supported for API clients.
 
 | Method | Path | Body / query | Response |
 | --- | --- | --- | --- |
