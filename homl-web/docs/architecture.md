@@ -87,7 +87,7 @@ Two cross-cutting rules the layers enforce:
 - **Tenancy** — handlers never trust ids from the body; the authenticated
   user id comes from the middleware context and every repository query is
   scoped by it.
-- **Encryption at rest** — person names, nicknames, tag names and event
+- **Encryption at rest** — person names, tag names and event
   descriptions are encrypted before they cross a persistence port
   (`enc*` parameters). The scheme is deterministic authenticated encryption
   (AES-GCM with an HMAC-derived synthetic nonce): deterministic so encrypted

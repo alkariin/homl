@@ -174,30 +174,35 @@ rejected, and the date category is off-limits: it cannot be the target of a
 create/update, and its tags cannot be updated or deleted (they are managed by
 the backend from the event dates).
 
+`idParentTag` turns the tag into a synonym of another tag of the same
+category (one level deep, any category except dates — see
+[tag-synonyms.md](tag-synonyms.md)).
+
 | Method | Path | Body | Response |
 | --- | --- | --- | --- |
-| POST | `/tags` | `{tag, idCategory}` | `201` |
-| PATCH | `/tags/:id` | `{tag, idCategory}` | `204` |
+| POST | `/tags` | `{tag, idCategory, idParentTag?}` | `201` |
+| PATCH | `/tags/:id` | `{tag, idCategory, idParentTag?}` | `204` |
 | DELETE | `/tags/:id` | — | `204` |
 
 ## Persons
 
-All endpoints require auth. Nicknames are stored as tags attached to the
-person; when updating, an existing nickname must carry its `id`.
+All endpoints require auth. A person is represented in tagging by a single
+main tag mirroring its name; alternative names are plain tag synonyms of that
+main tag, managed through the tag endpoints (the former `nicknames` fields
+are gone).
 
 | Method | Path | Body | Response |
 | --- | --- | --- | --- |
 | GET | `/persons` | — | `200` list below |
-| POST | `/persons` | `{firstname, lastname, nicknames?: string[]}` | `201` |
-| PATCH | `/persons/:id` | `{firstname, lastname, nicknames?: [{id?, nickname}]}` | `204` |
+| POST | `/persons` | `{firstname, lastname}` | `201` |
+| PATCH | `/persons/:id` | `{firstname, lastname}` | `204` |
 | DELETE | `/persons/:id` | — | `204` |
 
 `GET /persons` returns:
 
 ```json
 [
-  { "id": 1, "firstname": "Ada", "lastname": "Lovelace",
-    "nicknames": [ { "id": 7, "nickname": "Ada L." } ] }
+  { "id": 1, "firstname": "Ada", "lastname": "Lovelace" }
 ]
 ```
 
