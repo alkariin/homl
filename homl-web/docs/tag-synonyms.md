@@ -6,11 +6,15 @@ equivalent to using its main tag: when a synonym is deleted, its event links
 are repointed to the parent.
 
 Synonyms started as person "nicknames", limited to the persons category.
-That notion is gone: synonyms are a generic tag feature that applies to
-**any category except Dates** (date tags are backend-managed, see
-[default-categories.md](default-categories.md)). Migration
-`000004_nicknames_to_synonyms` detached the legacy nickname tags from their
-person so they behave like ordinary synonyms.
+That notion is gone — and with it the whole person aggregate: a "person" is
+now an ordinary tag (e.g. "JaneDoe") in whatever category the user likes,
+with synonyms as alternative names. Synonyms are a generic tag feature that
+applies to **any category except Dates** (date tags are backend-managed, see
+[default-categories.md](default-categories.md)). Migrations
+`000004_nicknames_to_synonyms` and `000005_drop_persons` converted the
+legacy nickname tags into ordinary synonyms and dropped the `Persons` table
+and the `Tags.idPerson` link (former person main tags become plain editable
+tags).
 
 ## Rules
 
@@ -34,14 +38,3 @@ Handled in `persistence/tag.go` (`DeleteTag`):
   before the delete.
 - Deleting a category cascades to its tags; with `moveTags: true` the tags
   (synonym links included) move to the Others category instead.
-
-## Persons
-
-A person is represented in tagging by a single **main tag**
-("FirstnameLastname", `Tags.idPerson` set). It is the only tag carrying a
-person link:
-
-- it mirrors the person's name and is renamed by `PATCH /persons/:id`;
-- it cannot be renamed, moved or deleted through the tag endpoints;
-- alternative names ("nicknames") are **plain synonyms** of the main tag,
-  created and managed through the tag endpoints like any other synonym.

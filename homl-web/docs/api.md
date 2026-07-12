@@ -184,28 +184,6 @@ category (one level deep, any category except dates — see
 | PATCH | `/tags/:id` | `{tag, idCategory, idParentTag?}` | `204` |
 | DELETE | `/tags/:id` | — | `204` |
 
-## Persons
-
-All endpoints require auth. A person is represented in tagging by a single
-main tag mirroring its name; alternative names are plain tag synonyms of that
-main tag, managed through the tag endpoints (the former `nicknames` fields
-are gone).
-
-| Method | Path | Body | Response |
-| --- | --- | --- | --- |
-| GET | `/persons` | — | `200` list below |
-| POST | `/persons` | `{firstname, lastname}` | `201` |
-| PATCH | `/persons/:id` | `{firstname, lastname}` | `204` |
-| DELETE | `/persons/:id` | — | `204` |
-
-`GET /persons` returns:
-
-```json
-[
-  { "id": 1, "firstname": "Ada", "lastname": "Lovelace" }
-]
-```
-
 ## Events
 
 All endpoints require auth. Date tags are added by the backend from `date`;
