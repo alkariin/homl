@@ -9,7 +9,14 @@ part 'login_state.dart';
 class LoginCubit extends Cubit<LoginState> {
   final UsersRepository _usersRepository;
 
-  LoginCubit(this._usersRepository) : super(const LoginState());
+  // Dev-only prefill, injected with --dart-define (see run-local.sh). Both
+  // default to the empty string in regular builds, keeping the fields blank.
+  static const _devUsername = String.fromEnvironment('DEV_USERNAME');
+  static const _devPassword = String.fromEnvironment('DEV_PASSWORD');
+
+  LoginCubit(this._usersRepository)
+      : super(const LoginState(
+            username: _devUsername, password: _devPassword));
 
   void usernameChanged(String username) {
     emit(state.update(username: username));
