@@ -35,14 +35,14 @@ func NewTagsService(c *TSConfig) TagsService {
 // validateTag runs the checks shared by CreateTag and UpdateTag and returns
 // the tag name ready to be encrypted.
 func (t *tagsService) validateTag(ctx context.Context, idUser uint64, tag *category.Tag) (string, error) {
-	// The target category must belong to the user and must not be the persons
-	// category (person tags are only managed through the person endpoints).
+	// The target category must belong to the user and must not be the date
+	// category: its month/year tags are managed by the backend only.
 	targetCategory, err := t.CategoriesRepository.FindByIdForUser(ctx, tag.IdCategory, idUser)
 	if err != nil {
 		return "", apperror.NewBadRequest("The given idCategory is not valid")
 	}
 
-	if targetCategory.Kind == category.KindPerson {
+	if targetCategory.Kind == category.KindDate {
 		return "", apperror.NewBadRequest("The given idCategory is not valid")
 	}
 
@@ -119,6 +119,12 @@ func (t *tagsService) UpdateTag(ctx context.Context, idUser uint64, tag *categor
 		return apperror.NewBadRequest("The given tag is not valid")
 	}
 
+	// A tag living in the date category is backend-managed (event month/year
+	// tags): it cannot be renamed or moved out.
+	if err := t.rejectDateCategoryTag(ctx, idUser, storedTag.IdCategory); err != nil {
+		return err
+	}
+
 	// A tag that has synonyms cannot become a synonym itself (depth is one)
 	if tag.IdParentTag != nil {
 		hasSynonyms, err := t.CategoriesRepository.HasSynonyms(ctx, tag.Id)
@@ -145,5 +151,30 @@ func (t *tagsService) UpdateTag(ctx context.Context, idUser uint64, tag *categor
 
 // DeleteTag implements TagsService.
 func (t *tagsService) DeleteTag(ctx context.Context, idTag uint, idUser uint64) error {
+	storedTag, err := t.CategoriesRepository.FindTagForUser(ctx, idTag, idUser)
+	if err != nil {
+		return apperror.NewBadRequest("The given tag is not valid")
+	}
+
+	// Date tags are backend-managed (event month/year tags): read-only.
+	if err := t.rejectDateCategoryTag(ctx, idUser, storedTag.IdCategory); err != nil {
+		return err
+	}
+
 	return t.CategoriesRepository.DeleteTag(ctx, idTag, idUser)
+}
+
+// rejectDateCategoryTag forbids the operation when the tag's current category
+// is the user's date category, whose tags only the backend may touch.
+func (t *tagsService) rejectDateCategoryTag(ctx context.Context, idUser uint64, idCategory uint) error {
+	storedCategory, err := t.CategoriesRepository.FindByIdForUser(ctx, idCategory, idUser)
+	if err != nil {
+		return err
+	}
+
+	if storedCategory.Kind == category.KindDate {
+		return apperror.NewStatusForbidden()
+	}
+
+	return nil
 }
