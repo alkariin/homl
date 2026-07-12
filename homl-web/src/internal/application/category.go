@@ -97,20 +97,21 @@ func (c *categoriesService) CreateCategory(ctx context.Context, newCategory *cat
 }
 
 func (c *categoriesService) UpdateCategory(ctx context.Context, newCategory *category.Category) error {
-	encCategory, err := c.Crypto.Encrypt(newCategory.Category, newCategory.IdUser)
-	if err != nil {
-		return err
-	}
-
 	// Scoped load: doubles as the ownership check for the update below.
 	storedCategory, err := c.CategoriesRepository.FindByIdForUser(ctx, newCategory.Id, newCategory.IdUser)
 	if err != nil {
 		return err
 	}
 
-	// Do not update the name of the category
-	if storedCategory.Category != encCategory && storedCategory.IsLocked {
+	// Locked categories (date, other) are read-only: neither their name nor
+	// their color may change (Others must stay grey).
+	if storedCategory.IsLocked {
 		return apperror.NewStatusForbidden()
+	}
+
+	encCategory, err := c.Crypto.Encrypt(newCategory.Category, newCategory.IdUser)
+	if err != nil {
+		return err
 	}
 
 	cat := &category.Category{

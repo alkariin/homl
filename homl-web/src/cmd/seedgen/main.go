@@ -43,7 +43,11 @@ func main() {
 		if err != nil {
 			log.Fatalf("could not encrypt %q: %v", cat.Name, err)
 		}
+		locked := 0
+		if cat.Locked {
+			locked = 1
+		}
 		fmt.Println()
-		fmt.Printf("INSERT IGNORE INTO Categories (id, category, color, isLocked, kind, idUser)\nVALUES (%d, \"%s\", \"%s\", 1, '%s', %d); -- %s\n", i+1, enc, cat.Color, cat.Kind, demoUserID, cat.Name)
+		fmt.Printf("INSERT IGNORE INTO Categories (id, category, color, isLocked, kind, idUser)\nVALUES (%d, \"%s\", \"%s\", %d, '%s', %d); -- %s\n", i+1, enc, cat.Color, locked, cat.Kind, demoUserID, cat.Name)
 	}
 }
