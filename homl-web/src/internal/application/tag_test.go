@@ -162,9 +162,9 @@ func TestUpdateTag(t *testing.T) {
 
 		idTag := uint(7)
 
-		// The tag exists, belongs to the user and is not a person tag.
+		// The tag exists and belongs to the user.
 		catRepo.On("FindTagForUser", idTag, uint64(1)).
-			Return(&category.Tag{Id: idTag, IdCategory: 2, IdPerson: 0}, nil)
+			Return(&category.Tag{Id: idTag, IdCategory: 2}, nil)
 		catRepo.On("HasSynonyms", idTag).Return(false, nil)
 		catRepo.On("FindByIdForUser", uint(2), uint64(1)).
 			Return(&category.Category{Id: 2, Kind: category.KindCustom}, nil)
@@ -183,7 +183,7 @@ func TestUpdateTag(t *testing.T) {
 		idParent := uint(10)
 
 		catRepo.On("FindTagForUser", idTag, uint64(1)).
-			Return(&category.Tag{Id: idTag, IdCategory: 2, IdPerson: 0}, nil)
+			Return(&category.Tag{Id: idTag, IdCategory: 2}, nil)
 		catRepo.On("FindByIdForUser", uint(2), uint64(1)).
 			Return(&category.Category{Id: 2, Kind: category.KindCustom}, nil)
 		// The tag already has synonyms of its own: depth would exceed one level.
@@ -203,27 +203,11 @@ func TestUpdateTag(t *testing.T) {
 
 		// The tag lives in the date category: backend-managed, read-only.
 		catRepo.On("FindTagForUser", idTag, uint64(1)).
-			Return(&category.Tag{Id: idTag, IdCategory: 1, IdPerson: 0}, nil)
+			Return(&category.Tag{Id: idTag, IdCategory: 1}, nil)
 		catRepo.On("FindByIdForUser", uint(1), uint64(1)).
 			Return(&category.Category{Id: 1, Kind: category.KindDate}, nil)
 
 		err := svc.UpdateTag(ctx, 1, &category.Tag{Id: idTag, Tag: "renamed", IdCategory: 2})
-
-		assert.Error(t, err)
-		catRepo.AssertNotCalled(t, "UpdateTag", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
-	})
-
-	t.Run("Rejects updating a person tag", func(t *testing.T) {
-		catRepo := new(mocks.MockCategoriesRepo)
-		svc := application.NewTagsService(&application.TSConfig{CategoriesRepository: catRepo, Crypto: testCrypto})
-
-		idTag := uint(7)
-
-		// Person tags are only managed through the person endpoints.
-		catRepo.On("FindTagForUser", idTag, uint64(1)).
-			Return(&category.Tag{Id: idTag, IdCategory: 4, IdPerson: 9}, nil)
-
-		err := svc.UpdateTag(ctx, 1, &category.Tag{Id: idTag, Tag: "cinema", IdCategory: 2})
 
 		assert.Error(t, err)
 		catRepo.AssertNotCalled(t, "UpdateTag", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
@@ -236,7 +220,7 @@ func TestUpdateTag(t *testing.T) {
 		idTag := uint(7)
 
 		catRepo.On("FindTagForUser", idTag, uint64(1)).
-			Return(&category.Tag{Id: idTag, IdCategory: 2, IdPerson: 0}, nil)
+			Return(&category.Tag{Id: idTag, IdCategory: 2}, nil)
 		catRepo.On("FindByIdForUser", uint(2), uint64(1)).
 			Return(&category.Category{Id: 2, Kind: category.KindCustom}, nil)
 		catRepo.On("UpdateTag", mock.MatchedBy(func(enc string) bool {

@@ -42,8 +42,8 @@ func (c *CategoriesRepository) UpdateTag(ctx context.Context, tagNameEncrypt str
 	return nil
 }
 
-// DeleteTag removes a non-person tag while keeping its synonym group and the
-// events tagged with it consistent:
+// DeleteTag removes a tag while keeping its synonym group and the events
+// tagged with it consistent:
 //   - deleting a synonym repoints its EventsTags rows to the parent tag;
 //   - deleting a main tag promotes its oldest synonym as the new main tag.
 func (c *CategoriesRepository) DeleteTag(ctx context.Context, idTag uint, idUser uint64) error {
@@ -53,8 +53,7 @@ func (c *CategoriesRepository) DeleteTag(ctx context.Context, idTag uint, idUser
 	}
 	defer tx.Rollback() // no-op once Commit succeeds
 
-	// Load the tag, scoped to the user and excluding person tags (nicknames
-	// are only managed through the person endpoints).
+	// Load the tag, scoped to the user.
 	var idParentTag *uint
 	err = tx.GetContext(ctx, &idParentTag, `
 		SELECT t.idParentTag FROM Tags t
@@ -62,7 +61,6 @@ func (c *CategoriesRepository) DeleteTag(ctx context.Context, idTag uint, idUser
 		ON t.idCategory = Categories.id
 		WHERE t.id = ?
 		AND idUser = ?
-		AND idPerson IS NULL
 	`, idTag, idUser)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -169,21 +167,16 @@ func (c *CategoriesRepository) CheckTagsBelongToUser(ctx context.Context, tagsId
 // FindTagForUser loads a tag and checks it belongs to the given user.
 func (c *CategoriesRepository) FindTagForUser(ctx context.Context, idTag uint, idUser uint64) (*category.Tag, error) {
 	var tag category.Tag
-	var idPerson *uint
 	err := c.DB.QueryRowxContext(ctx, `
-		SELECT t.id, t.tag, t.idCategory, t.idPerson, t.idParentTag
+		SELECT t.id, t.tag, t.idCategory, t.idParentTag
 		FROM Tags t
 		INNER JOIN Categories
 		ON t.idCategory = Categories.id
 		WHERE t.id = ?
 		AND idUser = ?
-	`, idTag, idUser).Scan(&tag.Id, &tag.Tag, &tag.IdCategory, &idPerson, &tag.IdParentTag)
+	`, idTag, idUser).Scan(&tag.Id, &tag.Tag, &tag.IdCategory, &tag.IdParentTag)
 	if err != nil {
 		return nil, err
-	}
-
-	if idPerson != nil {
-		tag.IdPerson = *idPerson
 	}
 
 	return &tag, nil
@@ -203,15 +196,6 @@ func (c *CategoriesRepository) FindTagIdByTagAndIdCategory(ctx context.Context, 
 	}
 
 	return idTag, nil
-}
-
-func (c *CategoriesRepository) FindMainTagIdOfPerson(ctx context.Context, idPerson uint) (uint, error) {
-	var mainPersonTagId uint
-	err := c.DB.GetContext(ctx, &mainPersonTagId, "SELECT id FROM Tags WHERE idPerson = ? AND idParentTag IS NULL", idPerson)
-	if err != nil {
-		return 0, err
-	}
-	return mainPersonTagId, nil
 }
 
 // CreateAllTags inserts the tags that do not exist yet and returns every tag id.
