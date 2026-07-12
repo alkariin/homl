@@ -145,7 +145,8 @@ inconsistent combination.
 ## Categories
 
 All endpoints require auth. A category groups tags; locked categories
-(`isLocked`) are system-managed.
+(`isLocked`) are read-only — `PATCH` and `DELETE` return `403` (see
+[default-categories.md](default-categories.md) for the per-kind rules).
 
 | Method | Path | Body | Response |
 | --- | --- | --- | --- |
@@ -158,8 +159,8 @@ All endpoints require auth. A category groups tags; locked categories
 
 ```json
 [
-  { "id": 1, "category": "Dates", "color": "#fff", "isLocked": true,
-    "tags": [ { "id": 3, "tag": "2024" } ] }
+  { "id": 1, "category": "Dates", "color": "#ffff60", "isLocked": true,
+    "kind": "date", "tags": [ { "id": 3, "tag": "2024" } ] }
 ]
 ```
 
@@ -169,7 +170,9 @@ deleting them with the category.
 ## Tags
 
 All endpoints require auth. Tag names on the masterdata blacklist are
-rejected.
+rejected, and the date category is off-limits: it cannot be the target of a
+create/update, and its tags cannot be updated or deleted (they are managed by
+the backend from the event dates).
 
 | Method | Path | Body | Response |
 | --- | --- | --- | --- |
