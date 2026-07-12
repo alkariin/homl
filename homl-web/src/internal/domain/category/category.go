@@ -4,9 +4,10 @@ package category
 
 import "context"
 
-// Kind identifies the role of a category. Every user owns exactly one date,
-// person and other category (created at registration, locked); everything
-// they create afterwards is custom.
+// Kind identifies the role of a category. Every user gets a date, person and
+// other category at registration; date and other are locked, person is a
+// plain unlocked suggestion (see docs/default-categories.md). Everything the
+// user creates afterwards is custom.
 type Kind string
 
 const (
@@ -58,7 +59,6 @@ type Repository interface {
 	// owned by another user.
 	CheckTagsBelongToUser(ctx context.Context, tagsId []uint, idUser uint64) error
 	FindTagIdByTagAndIdCategory(ctx context.Context, encTag string, idCategory uint) (uint, error)
-	FindMainTagIdOfPerson(ctx context.Context, idPerson uint) (uint, error)
 	FindTagForUser(ctx context.Context, idTag uint, idUser uint64) (*Tag, error)
 	HasSynonyms(ctx context.Context, idTag uint) (bool, error)
 }

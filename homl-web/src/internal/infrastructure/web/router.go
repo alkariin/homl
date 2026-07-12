@@ -32,7 +32,6 @@ type Server struct {
 	User        *UserHandler
 	Category    *CategoryHandler
 	Tag         *TagHandler
-	Person      *PersonHandler
 	Event       *EventHandler
 	Settings    *SettingsHandler
 }
@@ -91,10 +90,6 @@ func SetupRouter(s *Server, baseUrl string, timeoutDuration time.Duration, isDev
 	g.PATCH("/tags/:id", authRequired, s.Tag.UpdateTag)
 	g.DELETE("/tags/:id", authRequired, s.Tag.DeleteTag)
 
-	g.GET("/persons", authRequired, s.Person.GetPersons)
-	g.POST("/persons", authRequired, s.Person.CreatePerson)
-	g.PATCH("/persons/:id", authRequired, s.Person.UpdatePerson)
-	g.DELETE("/persons/:id", authRequired, s.Person.DeletePerson)
 
 	g.GET("/events", authRequired, s.Event.GetEvents)
 	g.POST("/events", authRequired, s.Event.CreateEvent)
