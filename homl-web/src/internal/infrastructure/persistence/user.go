@@ -117,7 +117,7 @@ func (u *UsersRepository) Registration(ctx context.Context, user *user.User, lan
 			return err
 		}
 
-		_, err = tx.ExecContext(ctx, "INSERT INTO Categories (category, color, isLocked, kind, idUser) VALUES (?, ?, ?, ?, ?)", encCategory, categories[i].Color, 1, categories[i].Kind, user.ID)
+		_, err = tx.ExecContext(ctx, "INSERT INTO Categories (category, color, isLocked, kind, idUser) VALUES (?, ?, ?, ?, ?)", encCategory, categories[i].Color, categories[i].Locked, categories[i].Kind, user.ID)
 		if err != nil {
 			return err
 		}

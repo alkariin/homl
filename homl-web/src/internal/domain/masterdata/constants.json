@@ -3,17 +3,20 @@
         {
             "Name": "Dates",
             "Color": "#ffff60",
-            "Kind": "date"
+            "Kind": "date",
+            "Locked": true
         },
         {
             "Name": "Persons",
             "Color": "#60ccff",
-            "Kind": "person"
+            "Kind": "person",
+            "Locked": false
         },
         {
             "Name": "Others",
             "Color": "#999999",
-            "Kind": "other"
+            "Kind": "other",
+            "Locked": true
         }
     ],
     "BLACKLIST_TAGS": ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]

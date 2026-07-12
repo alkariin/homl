@@ -13,10 +13,13 @@ import (
 var constantsJSON []byte
 
 // Category is a default category seeded for every new user at registration.
+// Locked categories (date, other) are read-only for the user; unlocked ones
+// (person) are mere suggestions the user may rename or delete.
 type Category struct {
-	Name  string
-	Color string
-	Kind  string
+	Name   string
+	Color  string
+	Kind   string
+	Locked bool
 }
 
 type constants struct {
