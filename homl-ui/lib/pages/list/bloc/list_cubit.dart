@@ -1,51 +1,58 @@
+import 'dart:async';
+
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:homl/data/models/event.dart';
-import 'package:homl/data/repositories/events.repository.dart';
-import 'package:homl/helpers/app_message.dart';
+import 'package:homl/helpers/event_search.dart';
+import 'package:homl/pages/home/bloc/home_cubit.dart';
 
 part 'list_state.dart';
 
+/// Filters the events held by [HomeCubit] locally: the full list is already
+/// in memory (and cached offline), so the search is instant and needs no
+/// network round-trip.
 class ListCubit extends Cubit<ListState> {
-  final EventsRepository eventsRepository;
+  final HomeCubit homeCubit;
+  late final StreamSubscription<HomeState> _homeSubscription;
 
-  ListCubit(this.eventsRepository) : super(ListState.initial()) {
-    fetchEvents();
+  ListCubit(this.homeCubit) : super(ListState.initial()) {
+    // Follow the shared events/categories: an insert or a lost/recovered
+    // connection re-applies the current filters automatically.
+    _homeSubscription = homeCubit.stream.listen((_) {
+      _applyFilters(state.filters);
+    });
+
+    _applyFilters(state.filters);
   }
 
-  Future<void> _fetch(List<String> filters) async {
-    emit(state.copyWith(filters: filters, loading: true));
-    try {
-      final events = await eventsRepository.getEvents(tags: filters);
-      emit(state.copyWith(events: events, loading: false));
-    } catch (_) {
-      emit(state.copyWith(loading: false, modal: AppMessage.unexpectedError));
-    }
+  void _applyFilters(List<String> filters) {
+    final home = homeCubit.state;
+    emit(state.copyWith(
+      filters: filters,
+      events: filterEventsByTags(home.events, home.categories, filters),
+      loading: !home.initialized,
+    ));
   }
 
-  Future<void> fetchEvents() async {
-    await _fetch(state.filters);
-  }
-
-  Future<void> addFilterTag(String name) async {
-    final trimmed = name.trim();
-    if (trimmed.isEmpty ||
-        state.filters.any((f) => f.toLowerCase() == trimmed.toLowerCase())) {
+  void addFilterTag(String name) {
+    // Normalized like the backend stores tags, so matching is
+    // case-insensitive and the chip shows the canonical casing.
+    final normalized = normalizeTagName(name.trim());
+    if (normalized.isEmpty || state.filters.contains(normalized)) {
       return;
     }
 
-    await _fetch([...state.filters, trimmed]);
+    _applyFilters([...state.filters, normalized]);
   }
 
-  Future<void> removeFilterTag(String name) async {
-    // Normalized the same way as the addition, so a tag added
-    // case-insensitively can always be removed.
-    final trimmed = name.trim().toLowerCase();
-    await _fetch(
-        state.filters.where((f) => f.toLowerCase() != trimmed).toList());
+  void removeFilterTag(String name) {
+    final normalized = normalizeTagName(name.trim());
+    _applyFilters(state.filters.where((f) => f != normalized).toList());
   }
 
-  void endModal() {
-    emit(state.copyWith(clearModal: true));
+  @override
+  Future<void> close() {
+    _homeSubscription.cancel();
+    return super.close();
   }
 }

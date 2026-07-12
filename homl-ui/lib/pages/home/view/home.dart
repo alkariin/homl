@@ -64,7 +64,7 @@ class _HomePageState extends State<HomePage> {
                       widget.username)),
               BlocProvider(
                   create: (BuildContext context) =>
-                      ListCubit(_eventsRepository)),
+                      ListCubit(context.read<HomeCubit>())),
             ],
             child: BlocBuilder<HomeCubit, HomeState>(builder: (context, state) {
               return HomeView(state.settings.defaultScreen);

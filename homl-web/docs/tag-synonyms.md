@@ -38,3 +38,11 @@ Handled in `persistence/tag.go` (`DeleteTag`):
   before the delete.
 - Deleting a category cascades to its tags; with `moveTags: true` the tags
   (synonym links included) move to the Others category instead.
+
+## Client-side matching
+
+The Flutter app's Search tab replicates this matching locally (instant and
+offline-capable): `homl-ui/lib/helpers/event_search.dart` resolves each
+filter name through its synonym group (`idParentTag ?? id` as the group
+root) with the same title-case normalization as `application/text.go`. Any
+change to the backend matching rules must be mirrored there.

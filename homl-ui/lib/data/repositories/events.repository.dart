@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:homl/data/models/event.dart';
 import 'package:homl/data/repositories/api.dart';
+import 'package:homl/helpers/local_storage_manager.dart';
 
 /// Exception thrown when an events request fails
 class EventsRequestFailure implements Exception {}
@@ -20,28 +22,53 @@ class EventsRepository {
   /// interested blocs can refresh without being coupled to each other.
   Stream<void> get changes => _changesController.stream;
 
-  /// When [tags] is provided, only the events containing ALL the given tags
-  /// (or one of their synonyms) are returned. The filter is sent as query
-  /// parameters because browsers cannot send a GET body.
-  Future<List<Event>> getEvents({List<String>? tags}) async {
+  /// Returns all the user's events. Each successful payload is cached in the
+  /// secure storage (encrypted at rest) so the app keeps working offline:
+  /// when the request fails, the cached copy is returned instead when one
+  /// exists. Tag filtering happens locally (see helpers/event_search.dart).
+  Future<List<Event>> getEvents() async {
     late Response<List<dynamic>> response;
     try {
-      response = await apiInstance.api.get<List<dynamic>>(
-        '/events',
-        queryParameters:
-            (tags != null && tags.isNotEmpty) ? {'tags': tags} : null,
-      );
+      response = await apiInstance.api.get<List<dynamic>>('/events');
 
       if (response.data == null) {
         throw EventsNotFoundFailure();
       }
     } on DioException catch (_) {
+      final cached = await getCachedEvents();
+      if (cached != null) {
+        return cached;
+      }
       throw EventsRequestFailure();
     }
 
-    return response.data!
+    final events = response.data!
         .map((e) => Event.fromJson(e as Map<String, dynamic>))
         .toList();
+
+    await LocalStorageManager.setValue(
+        LocalStorageKey.eventsCache, jsonEncode(response.data));
+
+    return events;
+  }
+
+  /// Returns the last events payload fetched from the backend, or null when
+  /// nothing usable was cached yet.
+  Future<List<Event>?> getCachedEvents() async {
+    final raw = await LocalStorageManager.getValue(LocalStorageKey.eventsCache);
+    if (raw == null) {
+      return null;
+    }
+
+    try {
+      return (jsonDecode(raw) as List<dynamic>)
+          .map((e) => Event.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      // A cache that no longer parses (model change) is just dropped.
+      await LocalStorageManager.remove(LocalStorageKey.eventsCache);
+      return null;
+    }
   }
 
   Future<void> createEvent({

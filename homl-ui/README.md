@@ -92,3 +92,28 @@ flutter run -d "$(adb devices | awk '/\tdevice$/{print $1; exit}')" \
 flutter analyze
 flutter test
 ```
+
+## Offline cache & local search
+
+The Search tab does **not** query the backend per filter change: it filters
+the shared in-memory events list locally, so the search is instant and works
+offline. The matching replicates the backend one (`FindEventsWithTags`):
+
+- filter names are normalized to the backend's canonical title case
+  (`lib/helpers/event_search.dart` mirrors `application/text.go`), so any
+  typed casing matches;
+- each name matches through its whole synonym group
+  (`idParentTag ?? id` as the group root, see
+  `homl-web/docs/tag-synonyms.md`);
+- multiple filters use AND semantics.
+
+`EventsRepository.getEvents()` and `CategoriesRepository.getCategories()`
+cache each successful payload in `flutter_secure_storage` (encrypted at
+rest). On startup `HomeCubit.init()` serves the cached snapshot first, then
+refreshes it from the network; when the network is unavailable the cached
+copy is served instead. The caches are cleared whenever the local session
+ends (logout, rejected refresh token, PIN lockout) so another account on the
+same device cannot read them.
+
+Writes (creating events/tags) still require the network; offline is
+read-only for now.
