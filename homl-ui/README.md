@@ -18,7 +18,7 @@ For Android emulator, use host loopback mapping:
 flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8080/api
 ```
 
-## 2b) Run on a physical Android device (e.g. Samsung S23)
+## 2b) Run on a physical Android device
 
 ### One-time toolchain setup (user-local, no sudo)
 
