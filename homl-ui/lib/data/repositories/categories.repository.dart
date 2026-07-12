@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:homl/data/models/category.dart';
+import 'package:homl/data/models/usage.dart';
 import 'package:homl/data/repositories/api.dart';
 import 'package:homl/helpers/local_storage_manager.dart';
 
@@ -86,11 +87,30 @@ class CategoriesRepository {
     }
   }
 
-  Future<void> deleteCategory(int id, {bool moveTags = false}) async {
+  /// [moveTags] moves the tags to the Other category; otherwise the tags are
+  /// deleted and [deleteEvents] also deletes the events whose only non-date
+  /// tags lived in this category.
+  Future<void> deleteCategory(int id,
+      {bool moveTags = false, bool deleteEvents = false}) async {
     try {
       await apiInstance.api.delete<void>('/categories/$id', data: {
         'moveTags': moveTags,
+        'deleteEvents': deleteEvents,
       });
+    } on DioException catch (_) {
+      throw CategoriesRequestFailure();
+    }
+  }
+
+  /// Tag/event counts for the category, for the delete dialog.
+  Future<CategoryUsage> getCategoryUsage(int id) async {
+    try {
+      final response = await apiInstance.api
+          .get<Map<String, dynamic>>('/categories/$id/usage');
+      if (response.data == null) {
+        throw CategoriesNotFoundFailure();
+      }
+      return CategoryUsage.fromJson(response.data!);
     } on DioException catch (_) {
       throw CategoriesRequestFailure();
     }

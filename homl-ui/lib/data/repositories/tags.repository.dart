@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:homl/data/models/usage.dart';
 import 'package:homl/data/repositories/api.dart';
 
 /// Exception thrown when a tags request fails
@@ -46,9 +47,28 @@ class TagsRepository {
     }
   }
 
-  Future<void> deleteTag(int id) async {
+  /// Deleting a synonym repoints its events to the main tag. Deleting a main
+  /// tag deletes its whole synonym group; [deleteEvents] also deletes the
+  /// events whose only non-date tags belonged to the group.
+  Future<void> deleteTag(int id, {bool deleteEvents = false}) async {
     try {
-      await apiInstance.api.delete<void>('/tags/$id');
+      await apiInstance.api.delete<void>('/tags/$id', data: {
+        'deleteEvents': deleteEvents,
+      });
+    } on DioException catch (_) {
+      throw TagsRequestFailure();
+    }
+  }
+
+  /// Event counts for the tag's synonym group, for the delete dialog.
+  Future<TagUsage> getTagUsage(int id) async {
+    try {
+      final response =
+          await apiInstance.api.get<Map<String, dynamic>>('/tags/$id/usage');
+      if (response.data == null) {
+        throw TagsNotFoundFailure();
+      }
+      return TagUsage.fromJson(response.data!);
     } on DioException catch (_) {
       throw TagsRequestFailure();
     }

@@ -7,6 +7,8 @@ import 'package:homl/data/models/category.dart';
 import 'package:homl/data/models/event.dart';
 
 import 'package:homl/data/models/settings.dart';
+import 'package:homl/data/models/tag.dart';
+import 'package:homl/data/models/usage.dart';
 import 'package:homl/data/repositories/categories.repository.dart';
 import 'package:homl/data/repositories/events.repository.dart';
 import 'package:homl/data/repositories/settings.repository.dart';
@@ -131,12 +133,52 @@ class HomeCubit extends Cubit<HomeState> {
     }
   }
 
-  Future<void> deleteTag(int id) async {
+  /// [deleteEvents] only matters for main tags: it also deletes the events
+  /// whose only non-date tags belonged to the deleted synonym group.
+  Future<void> deleteTag(int id, {bool deleteEvents = false}) async {
     try {
-      await tagsRepository.deleteTag(id);
+      await tagsRepository.deleteTag(id, deleteEvents: deleteEvents);
+      // The events changed too: deleted, or stripped of the removed tags.
+      await refreshEvents();
       await _refreshCategories();
     } catch (_) {
       emit(state.copyWith(modal: AppMessage.unexpectedError));
+    }
+  }
+
+  /// Moves a main tag (with its synonyms, handled by the backend) to another
+  /// category, keeping its name and synonym links.
+  Future<void> moveTag(Tag tag, int idCategory) async {
+    try {
+      await tagsRepository.updateTag(tag.id, tag.tag, idCategory,
+          idParentTag: tag.idParentTag);
+      // Event payloads embed the tag's category: refresh them too.
+      await refreshEvents();
+      await _refreshCategories();
+    } catch (_) {
+      emit(state.copyWith(modal: AppMessage.unexpectedError));
+    }
+  }
+
+  /// Event counts for the tag's synonym group, or null when the request
+  /// fails (an error modal is emitted instead).
+  Future<TagUsage?> fetchTagUsage(int id) async {
+    try {
+      return await tagsRepository.getTagUsage(id);
+    } catch (_) {
+      emit(state.copyWith(modal: AppMessage.unexpectedError));
+      return null;
+    }
+  }
+
+  /// Tag/event counts for a category, or null when the request fails (an
+  /// error modal is emitted instead).
+  Future<CategoryUsage?> fetchCategoryUsage(int id) async {
+    try {
+      return await categoriesRepository.getCategoryUsage(id);
+    } catch (_) {
+      emit(state.copyWith(modal: AppMessage.unexpectedError));
+      return null;
     }
   }
 
@@ -158,9 +200,16 @@ class HomeCubit extends Cubit<HomeState> {
     }
   }
 
-  Future<void> deleteCategory(int id, {bool moveTags = false}) async {
+  /// [moveTags] moves the tags to the Other category; otherwise the tags are
+  /// deleted and [deleteEvents] also deletes the events whose only non-date
+  /// tags lived in this category.
+  Future<void> deleteCategory(int id,
+      {bool moveTags = false, bool deleteEvents = false}) async {
     try {
-      await categoriesRepository.deleteCategory(id, moveTags: moveTags);
+      await categoriesRepository.deleteCategory(id,
+          moveTags: moveTags, deleteEvents: deleteEvents);
+      // The events changed too: deleted, or stripped of the removed tags.
+      await refreshEvents();
       await _refreshCategories();
     } catch (_) {
       emit(state.copyWith(modal: AppMessage.unexpectedError));
