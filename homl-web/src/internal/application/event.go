@@ -44,6 +44,9 @@ func (e *eventsService) GetEvents(ctx context.Context, idUser uint64, tags []str
 	var encTags []string
 	seen := make(map[string]bool)
 	for _, t := range tags {
+		// Tags are stored title-cased (see validateTag): normalize the search
+		// term the same way or the deterministic ciphertexts never match.
+		t = titleCase(t)
 		if seen[t] {
 			continue
 		}

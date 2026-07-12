@@ -21,21 +21,45 @@ func TestGetEvents(t *testing.T) {
 			Crypto:           testCrypto,
 		})
 
-		// "A" is requested twice: the repository matches events against ALL
-		// requested names, so the duplicate must be dropped.
+		// "A" is requested twice (once lowercase): tags are normalized before
+		// dedup and the repository matches events against ALL requested
+		// names, so the duplicate must be dropped.
 		eventsRepo.On("FindEventsWithTags", mock.MatchedBy(func(encTags []string) bool {
 			if len(encTags) != 2 {
 				return false
 			}
 			dec0, err0 := testCrypto.Decrypt(encTags[0], 1)
 			dec1, err1 := testCrypto.Decrypt(encTags[1], 1)
-			return err0 == nil && err1 == nil && dec0 == "A" && dec1 == "a-different"
+			return err0 == nil && err1 == nil && dec0 == "A" && dec1 == "A-Different"
 		}), uint64(1)).Return(map[uint]event.Event{}, map[uint][]category.Tag{}, nil)
 
-		res, err := svc.GetEvents(context.Background(), 1, []string{"A", "a-different", "A"})
+		res, err := svc.GetEvents(context.Background(), 1, []string{"A", "a-different", "a"})
 
 		assert.NoError(t, err)
 		assert.Empty(t, res)
+		eventsRepo.AssertExpectations(t)
+	})
+
+	t.Run("Normalizes the requested tags to title case before encrypting", func(t *testing.T) {
+		eventsRepo := new(mocks.MockEventsRepo)
+		svc := application.NewEventsService(&application.ESConfig{
+			EventsRepository: eventsRepo,
+			Crypto:           testCrypto,
+		})
+
+		// Stored tags are title-cased on creation: the search terms must get
+		// the exact same normalization whatever casing the user typed.
+		eventsRepo.On("FindEventsWithTags", mock.MatchedBy(func(encTags []string) bool {
+			if len(encTags) != 1 {
+				return false
+			}
+			dec, err := testCrypto.Decrypt(encTags[0], 1)
+			return err == nil && dec == "Movie Night"
+		}), uint64(1)).Return(map[uint]event.Event{}, map[uint][]category.Tag{}, nil)
+
+		_, err := svc.GetEvents(context.Background(), 1, []string{"movie NIGHT"})
+
+		assert.NoError(t, err)
 		eventsRepo.AssertExpectations(t)
 	})
 }
