@@ -25,6 +25,10 @@ class Category {
   final bool isLocked;
   @JsonKey(unknownEnumValue: JsonKey.nullForUndefinedEnumValue)
   final CategoryKind? kind;
+
+  /// Tolerates a missing or null payload field: some backends serialize an
+  /// empty tag list as null.
+  @JsonKey(defaultValue: [])
   final List<Tag> tags;
 
   Category(

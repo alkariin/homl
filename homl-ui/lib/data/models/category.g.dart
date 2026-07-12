@@ -13,9 +13,10 @@ Category _$CategoryFromJson(Map<String, dynamic> json) => Category(
       isLocked: json['isLocked'] as bool,
       kind: $enumDecodeNullable(_$CategoryKindEnumMap, json['kind'],
           unknownValue: JsonKey.nullForUndefinedEnumValue),
-      tags: (json['tags'] as List<dynamic>)
-          .map((e) => Tag.fromJson(e as Map<String, dynamic>))
-          .toList(),
+      tags: (json['tags'] as List<dynamic>?)
+              ?.map((e) => Tag.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
     );
 
 Map<String, dynamic> _$CategoryToJson(Category instance) => <String, dynamic>{
