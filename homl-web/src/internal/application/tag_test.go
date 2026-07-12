@@ -14,19 +14,33 @@ import (
 func TestCreateTag(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("Rejects a tag pointing at the Persons category", func(t *testing.T) {
+	t.Run("Rejects a tag pointing at the Dates category", func(t *testing.T) {
 		catRepo := new(mocks.MockCategoriesRepo)
 		svc := application.NewTagsService(&application.TSConfig{CategoriesRepository: catRepo, Crypto: testCrypto})
 
-		// Category 4 is the user's persons category: tags there are managed
-		// through the person endpoints only.
-		catRepo.On("FindByIdForUser", uint(4), uint64(1)).
-			Return(&category.Category{Id: 4, Kind: category.KindPerson}, nil)
+		// Category 1 is the user's date category: its month/year tags are
+		// managed by the backend only.
+		catRepo.On("FindByIdForUser", uint(1), uint64(1)).
+			Return(&category.Category{Id: 1, Kind: category.KindDate}, nil)
 
-		_, err := svc.CreateTag(ctx, 1, &category.Tag{Tag: "Anything", IdCategory: 4})
+		_, err := svc.CreateTag(ctx, 1, &category.Tag{Tag: "Anything", IdCategory: 1})
 
 		assert.Error(t, err)
 		catRepo.AssertNotCalled(t, "CreateTag", mock.Anything, mock.Anything, mock.Anything)
+	})
+
+	t.Run("Accepts a tag in the persons category (plain suggestion category)", func(t *testing.T) {
+		catRepo := new(mocks.MockCategoriesRepo)
+		svc := application.NewTagsService(&application.TSConfig{CategoriesRepository: catRepo, Crypto: testCrypto})
+
+		catRepo.On("FindByIdForUser", uint(4), uint64(1)).
+			Return(&category.Category{Id: 4, Kind: category.KindPerson}, nil)
+		catRepo.On("CreateTag", mock.Anything, uint(4), (*uint)(nil)).Return(uint(1), nil)
+
+		_, err := svc.CreateTag(ctx, 1, &category.Tag{Tag: "Anything", IdCategory: 4})
+
+		assert.NoError(t, err)
+		catRepo.AssertExpectations(t)
 	})
 
 	t.Run("Rejects a blacklisted tag (month name)", func(t *testing.T) {
@@ -170,10 +184,30 @@ func TestUpdateTag(t *testing.T) {
 
 		catRepo.On("FindTagForUser", idTag, uint64(1)).
 			Return(&category.Tag{Id: idTag, IdCategory: 2, IdPerson: 0}, nil)
+		catRepo.On("FindByIdForUser", uint(2), uint64(1)).
+			Return(&category.Category{Id: 2, Kind: category.KindCustom}, nil)
 		// The tag already has synonyms of its own: depth would exceed one level.
 		catRepo.On("HasSynonyms", idTag).Return(true, nil)
 
 		err := svc.UpdateTag(ctx, 1, &category.Tag{Id: idTag, Tag: "cinema", IdCategory: 2, IdParentTag: &idParent})
+
+		assert.Error(t, err)
+		catRepo.AssertNotCalled(t, "UpdateTag", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	})
+
+	t.Run("Rejects updating a tag living in the Dates category", func(t *testing.T) {
+		catRepo := new(mocks.MockCategoriesRepo)
+		svc := application.NewTagsService(&application.TSConfig{CategoriesRepository: catRepo, Crypto: testCrypto})
+
+		idTag := uint(7)
+
+		// The tag lives in the date category: backend-managed, read-only.
+		catRepo.On("FindTagForUser", idTag, uint64(1)).
+			Return(&category.Tag{Id: idTag, IdCategory: 1, IdPerson: 0}, nil)
+		catRepo.On("FindByIdForUser", uint(1), uint64(1)).
+			Return(&category.Category{Id: 1, Kind: category.KindDate}, nil)
+
+		err := svc.UpdateTag(ctx, 1, &category.Tag{Id: idTag, Tag: "renamed", IdCategory: 2})
 
 		assert.Error(t, err)
 		catRepo.AssertNotCalled(t, "UpdateTag", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
@@ -222,11 +256,30 @@ func TestDeleteTag(t *testing.T) {
 		catRepo := new(mocks.MockCategoriesRepo)
 		svc := application.NewTagsService(&application.TSConfig{CategoriesRepository: catRepo})
 
+		catRepo.On("FindTagForUser", uint(5), uint64(1)).
+			Return(&category.Tag{Id: 5, IdCategory: 2}, nil)
+		catRepo.On("FindByIdForUser", uint(2), uint64(1)).
+			Return(&category.Category{Id: 2, Kind: category.KindCustom}, nil)
 		catRepo.On("DeleteTag", uint(5), uint64(1)).Return(nil)
 
 		err := svc.DeleteTag(context.Background(), 5, 1)
 
 		assert.NoError(t, err)
 		catRepo.AssertExpectations(t)
+	})
+
+	t.Run("Rejects deleting a tag living in the Dates category", func(t *testing.T) {
+		catRepo := new(mocks.MockCategoriesRepo)
+		svc := application.NewTagsService(&application.TSConfig{CategoriesRepository: catRepo})
+
+		catRepo.On("FindTagForUser", uint(5), uint64(1)).
+			Return(&category.Tag{Id: 5, IdCategory: 1}, nil)
+		catRepo.On("FindByIdForUser", uint(1), uint64(1)).
+			Return(&category.Category{Id: 1, Kind: category.KindDate}, nil)
+
+		err := svc.DeleteTag(context.Background(), 5, 1)
+
+		assert.Error(t, err)
+		catRepo.AssertNotCalled(t, "DeleteTag", mock.Anything, mock.Anything)
 	})
 }

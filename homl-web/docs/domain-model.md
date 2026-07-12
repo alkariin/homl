@@ -58,6 +58,7 @@ classDiagram
         +string Category
         +string Color
         +bool IsLocked
+        +Kind Kind
         +uint64 IdUser
     }
     class Tag {
@@ -92,6 +93,8 @@ classDiagram
         <<reference data>>
         +string Name
         +string Color
+        +string Kind
+        +bool Locked
     }
 
     User "1" *-- "1" Settings : stored on Users row
@@ -124,7 +127,11 @@ classDiagram
   category: its lifecycle (move on category delete, blacklist rules) is
   enforced through the category root, and tag persistence operations live on
   the category `Repository`.
-- `IsLocked` marks categories that cannot be modified by the user.
+- `Kind` identifies the role of a category (`date`, `person`, `other`,
+  `custom`); `IsLocked` marks the ones that are fully read-only for the user
+  (the seeded date and other categories — the seeded person category is a
+  plain unlocked suggestion). See
+  [default-categories.md](default-categories.md) for the full rules.
 - A tag may optionally point to a `Person` (`IdPerson`): this is how a
   person's main tag and nicknames are represented.
 

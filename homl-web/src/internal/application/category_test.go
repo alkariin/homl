@@ -63,6 +63,27 @@ func TestUpdateCategory(t *testing.T) {
 		mockRepo.AssertExpectations(t)
 	})
 
+	t.Run("Forbids recoloring a locked category (Others stays grey)", func(t *testing.T) {
+		mockRepo := new(mocks.MockCategoriesRepo)
+		svc := application.NewCategoriesService(&application.CSConfig{CategoriesRepository: mockRepo, Crypto: testCrypto})
+
+		oldEncrypted, _ := testCrypto.Encrypt("Others", 9)
+		mockRepo.On("FindByIdForUser", uint(3), uint64(9)).Return(&category.Category{
+			Id:       3,
+			Category: oldEncrypted,
+			Color:    "#999999",
+			IsLocked: true,
+			Kind:     category.KindOther,
+		}, nil)
+
+		// Same name, new color: locked categories are fully read-only.
+		err := svc.UpdateCategory(context.Background(), &category.Category{Id: 3, Category: "Others", Color: "#ff0000", IdUser: 9})
+
+		assert.Error(t, err)
+		mockRepo.AssertNotCalled(t, "Update", mock.Anything)
+		mockRepo.AssertExpectations(t)
+	})
+
 	t.Run("Updates a non-locked category", func(t *testing.T) {
 		mockRepo := new(mocks.MockCategoriesRepo)
 		svc := application.NewCategoriesService(&application.CSConfig{CategoriesRepository: mockRepo, Crypto: testCrypto})
