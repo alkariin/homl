@@ -10,32 +10,26 @@ type Person struct {
 	IdCategory string `json:"idCategory" db:"idCategory"`
 }
 
-type Nickname struct {
-	Id       uint   `json:"id" db:"id"`
-	Nickname string `json:"nickname" db:"nickname"`
-}
-
 type GetPersonsResponse struct {
-	Person
-	Nicknames []Nickname `json:"nicknames"`
+	Id        uint   `json:"id"`
+	Firstname string `json:"firstname"`
+	Lastname  string `json:"lastname"`
 }
 
-// Repository is the persistence port of the Person aggregate.
+// Repository is the persistence port of the Person aggregate. A person is
+// identified in tagging through a single main tag; alternative names are
+// plain tag synonyms of that main tag, managed through the tag endpoints
+// (they carry no person link).
 type Repository interface {
 	FindById(ctx context.Context, idPerson uint) (*Person, error)
-	FindPersonsWithTagsAndCategories(ctx context.Context, idUser uint64) (map[uint]Person, map[uint][]Nickname, error)
-	CreatePersonWithTags(ctx context.Context, encFirstname string, encLastname string, encMainTagName string, idCategoryPerson uint, nicknames []string, idUser uint64) error
+	// FindAllByUser returns the user's persons sorted by id.
+	FindAllByUser(ctx context.Context, idUser uint64) ([]Person, error)
+	// CreatePersonWithMainTag stores the person and its main tag in one
+	// transaction. The category is resolved (and user-scoped) by the caller.
+	CreatePersonWithMainTag(ctx context.Context, encFirstname string, encLastname string, encMainTagName string, idCategoryPerson uint) error
 	CheckPersonIdsWithTagsAndCategories(ctx context.Context, idUser uint64, idPerson uint) error
-	UpdatePersonWithTags(
-		ctx context.Context,
-		storedPerson *Person,
-		encFirstname string,
-		encLastname string,
-		encMainTagName string,
-		mainPersonTagId uint,
-		idCategoryPerson uint,
-		idUser uint64,
-		bodyNicknames []Nickname,
-	) error
+	// UpdatePersonWithMainTag renames the person and its main tag when the
+	// name changed (the main tag mirrors "Firstname Lastname").
+	UpdatePersonWithMainTag(ctx context.Context, storedPerson *Person, encFirstname string, encLastname string, encMainTagName string, mainPersonTagId uint) error
 	DeletePerson(ctx context.Context, idPerson uint, idUser uint64) error
 }

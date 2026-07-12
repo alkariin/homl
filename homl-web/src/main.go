@@ -33,7 +33,7 @@ func inject(cfg *config.Config, d *db.DataSources) *gin.Engine {
 	// repositories
 	categoriesRepository := persistence.NewCategoriesRepository(d.DB, aes)
 	eventsRepository := persistence.NewEventsRepository(d.DB, aes)
-	personsRepository := persistence.NewPersonsRepository(d.DB, aes)
+	personsRepository := persistence.NewPersonsRepository(d.DB)
 	usersRepository := persistence.NewUsersRepository(d.DB, d.RedisClient, aes)
 
 	// services

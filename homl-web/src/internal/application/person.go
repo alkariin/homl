@@ -2,17 +2,19 @@ package application
 
 import (
 	"context"
-	"sort"
 
 	"github.com/alkariin/homl/homl-web/internal/domain/category"
 	"github.com/alkariin/homl/homl-web/internal/domain/person"
 )
 
-// PersonsService is the use-case port of the Person aggregate.
+// PersonsService is the use-case port of the Person aggregate. A person is
+// represented in tagging by a single main tag ("Firstname Lastname");
+// alternative names are plain tag synonyms of that main tag, managed through
+// the tag endpoints like any other synonym.
 type PersonsService interface {
 	GetPersons(ctx context.Context, idUser uint64) ([]person.GetPersonsResponse, error)
-	CreatePerson(ctx context.Context, p *person.Person, nicknames []string, idUser uint64) error
-	UpdatePerson(ctx context.Context, p *person.Person, nicknames []person.Nickname, idUser uint64) error
+	CreatePerson(ctx context.Context, p *person.Person, idUser uint64) error
+	UpdatePerson(ctx context.Context, p *person.Person, idUser uint64) error
 	DeletePerson(ctx context.Context, idPerson uint, idUser uint64) error
 }
 
@@ -37,20 +39,13 @@ func NewPersonsService(c *PSConfig) PersonsService {
 }
 
 func (s *personsService) GetPersons(ctx context.Context, idUser uint64) ([]person.GetPersonsResponse, error) {
-	persons, nicknames, err := s.PersonsRepository.FindPersonsWithTagsAndCategories(ctx, idUser)
+	persons, err := s.PersonsRepository.FindAllByUser(ctx, idUser)
 	if err != nil {
 		return nil, err
 	}
 
-	keys := make([]int, 0)
-	for k := range persons {
-		keys = append(keys, int(k))
-	}
-	sort.Ints(keys)
-
-	var responses = make([]person.GetPersonsResponse, 0)
-	for _, k := range keys {
-		p := persons[uint(k)]
+	var responses = make([]person.GetPersonsResponse, 0, len(persons))
+	for _, p := range persons {
 		decFirstname, err := s.Crypto.Decrypt(p.Firstname, idUser)
 		if err != nil {
 			return nil, err
@@ -61,18 +56,17 @@ func (s *personsService) GetPersons(ctx context.Context, idUser uint64) ([]perso
 			return nil, err
 		}
 
-		var response person.GetPersonsResponse
-		response.Id = p.Id
-		response.Firstname = decFirstname
-		response.Lastname = decLastname
-		response.Nicknames = nicknames[p.Id]
-		responses = append(responses, response)
+		responses = append(responses, person.GetPersonsResponse{
+			Id:        p.Id,
+			Firstname: decFirstname,
+			Lastname:  decLastname,
+		})
 	}
 
 	return responses, nil
 }
 
-func (s *personsService) CreatePerson(ctx context.Context, person *person.Person, nicknames []string, idUser uint64) error {
+func (s *personsService) CreatePerson(ctx context.Context, person *person.Person, idUser uint64) error {
 	firstname := titleCase(person.Firstname)
 	lastname := titleCase(person.Lastname)
 	encFirstname, err := s.Crypto.Encrypt(firstname, idUser)
@@ -95,28 +89,22 @@ func (s *personsService) CreatePerson(ctx context.Context, person *person.Person
 		return err
 	}
 
-	return s.PersonsRepository.CreatePersonWithTags(ctx, encFirstname, encLastname, encMainTagName, idCategoryPerson, nicknames, idUser)
+	return s.PersonsRepository.CreatePersonWithMainTag(ctx, encFirstname, encLastname, encMainTagName, idCategoryPerson)
 }
 
-func (s *personsService) UpdatePerson(ctx context.Context, person *person.Person, nicknames []person.Nickname, idUser uint64) error {
-	idCategoryPerson, err := s.CategoriesRepository.FindIdByKind(ctx, idUser, category.KindPerson)
-	if err != nil {
-		return err
-	}
-
+func (s *personsService) UpdatePerson(ctx context.Context, person *person.Person, idUser uint64) error {
 	// Verify if the given id is a person of the user
-	err = s.PersonsRepository.CheckPersonIdsWithTagsAndCategories(ctx, idUser, person.Id)
+	err := s.PersonsRepository.CheckPersonIdsWithTagsAndCategories(ctx, idUser, person.Id)
 	if err != nil {
 		return err
 	}
 
-	// Get main tag of the person (used multiple times)
+	// The main tag mirrors the person's name, so it is renamed along.
 	mainPersonTagId, err := s.CategoriesRepository.FindMainTagIdOfPerson(ctx, person.Id)
 	if err != nil {
 		return err
 	}
 
-	// if first/lastname are updated the main tag should be updated as well
 	storedPerson, err := s.PersonsRepository.FindById(ctx, person.Id)
 	if err != nil {
 		return err
@@ -139,7 +127,7 @@ func (s *personsService) UpdatePerson(ctx context.Context, person *person.Person
 		return err
 	}
 
-	return s.PersonsRepository.UpdatePersonWithTags(ctx, storedPerson, encFirstname, encLastname, encMainTagName, mainPersonTagId, idCategoryPerson, idUser, nicknames)
+	return s.PersonsRepository.UpdatePersonWithMainTag(ctx, storedPerson, encFirstname, encLastname, encMainTagName, mainPersonTagId)
 }
 
 func (s *personsService) DeletePerson(ctx context.Context, idPerson uint, idUser uint64) error {
