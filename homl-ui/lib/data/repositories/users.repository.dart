@@ -77,6 +77,7 @@ class UsersRepository {
       log('Logout request failed', name: 'UsersRepository', error: err);
     } finally {
       await LocalStorageManager.remove(LocalStorageKey.refreshToken);
+      await LocalStorageManager.clearDataCaches();
       apiInstance.accessToken = null;
       apiInstance.updateStatus(AuthenticationStatus.unauthenticated);
     }

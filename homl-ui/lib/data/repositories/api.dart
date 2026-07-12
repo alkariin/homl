@@ -101,6 +101,7 @@ class Api {
         accessToken = null;
         // don't remove the pinKeypair so that after the login, the keypair is still here and the next login will happen with the pin again
         await LocalStorageManager.remove(LocalStorageKey.refreshToken);
+        await LocalStorageManager.clearDataCaches();
         _controller.add(AuthenticationStatus.pinLocked);
         return const PinAuthResult(success: false, locked: true);
       } else if (error.response?.statusCode == 401 &&
@@ -114,6 +115,7 @@ class Api {
         // refresh token is wrong so log out user.
         accessToken = null;
         await LocalStorageManager.remove(LocalStorageKey.refreshToken);
+        await LocalStorageManager.clearDataCaches();
         _controller.add(AuthenticationStatus.unauthenticated);
       }
       return const PinAuthResult(success: false);

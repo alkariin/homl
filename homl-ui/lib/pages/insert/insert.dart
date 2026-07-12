@@ -13,7 +13,6 @@ import 'package:homl/data/repositories/tags.repository.dart';
 import 'package:homl/helpers/app_message.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
 import 'package:homl/pages/insert/bloc/insert_cubit.dart';
-import 'package:homl/pages/list/bloc/list_cubit.dart';
 
 class InsertPage extends StatelessWidget {
   const InsertPage({super.key});
@@ -62,8 +61,8 @@ class _InsertViewState extends State<InsertView> {
             ..hideCurrentSnackBar()
             ..showSnackBar(
                 SnackBar(content: Text(localization.insert_eventCreated)));
-          // Keep the search tab in sync with the new event
-          context.read<ListCubit>().fetchEvents();
+          // The search tab follows the shared events through the repository
+          // changes stream, so no explicit refresh is needed here.
           insertCubit.endModal();
         } else if (state.modal != null) {
           ScaffoldMessenger.of(context)

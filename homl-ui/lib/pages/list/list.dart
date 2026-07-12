@@ -5,7 +5,6 @@ import 'package:homl/l10n/app_localizations.dart';
 import 'package:homl/components/bubbles_background.dart';
 import 'package:homl/components/event_card.dart';
 import 'package:homl/components/tag_input.dart';
-import 'package:homl/helpers/app_message.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
 import 'package:homl/pages/list/bloc/list_cubit.dart';
 
@@ -20,26 +19,12 @@ class ListPage extends StatelessWidget {
   Widget build(BuildContext context) {
     var localization = AppLocalizations.of(context)!;
 
-    return BlocListener<ListCubit, ListState>(
-      listener: (context, state) {
-        final listCubit = context.read<ListCubit>();
-        if (state.modal != null) {
-          ScaffoldMessenger.of(context)
-            ..hideCurrentSnackBar()
-            ..showSnackBar(SnackBar(
-              content: Text(state.modal!.localize(localization)),
-              action: SnackBarAction(
-                  label: localization.global_close, onPressed: () {}),
-              duration: const Duration(seconds: 5),
-            )).closed.then((_) {
-              listCubit.endModal();
-            });
-        }
-      },
-      child: BlocBuilder<HomeCubit, HomeState>(builder: (context, homeState) {
-        return BlocBuilder<ListCubit, ListState>(builder: (context, listState) {
-          return BubblesBackground(
-            child: Column(children: [
+    // The filtering is local (see ListCubit): network errors surface through
+    // the HomeCubit listener, so this page has no error modal of its own.
+    return BlocBuilder<HomeCubit, HomeState>(builder: (context, homeState) {
+      return BlocBuilder<ListCubit, ListState>(builder: (context, listState) {
+        return BubblesBackground(
+          child: Column(children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 15, 20, 5),
                 child: TagInput(
@@ -88,10 +73,9 @@ class ListPage extends StatelessWidget {
                             },
                           ),
               ),
-            ]),
-          );
-        });
-      }),
-    );
+          ]),
+        );
+      });
+    });
   }
 }
