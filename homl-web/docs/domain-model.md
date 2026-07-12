@@ -146,7 +146,7 @@ crossing the port.
 | Port | Responsibilities |
 | --- | --- |
 | `user.Repository` | Registration (user + default categories, transactional), lookup, password/pin/fingerprint updates, Redis auth tokens, single-use password-reset tokens, settings read/write |
-| `category.Repository` | Category CRUD (with optional tag move on delete), tag CRUD (synonyms included), tag lookup by name |
+| `category.Repository` | Category CRUD (delete moves the tags to Others or removes them with their exclusive events), tag CRUD (synonyms included, moving a main tag takes its synonyms along), tag lookup by name, usage counts (`TagUsage`, `CategoryUsage`) |
 | `event.Repository` | Event CRUD with tags, per-user listing |
 
 ## DTOs

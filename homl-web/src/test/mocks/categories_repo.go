@@ -100,8 +100,8 @@ func (m *MockCategoriesRepo) Update(ctx context.Context, category *category.Cate
 	return r0
 }
 
-func (m *MockCategoriesRepo) Delete(ctx context.Context, idCategory uint, idUser uint64, moveTags bool) error {
-	ret := m.Called(idCategory, idUser, moveTags)
+func (m *MockCategoriesRepo) Delete(ctx context.Context, idCategory uint, idUser uint64, moveTags bool, deleteEvents bool) error {
+	ret := m.Called(idCategory, idUser, moveTags, deleteEvents)
 
 	var r0 error
 	if ret.Get(0) != nil {
@@ -109,6 +109,22 @@ func (m *MockCategoriesRepo) Delete(ctx context.Context, idCategory uint, idUser
 	}
 
 	return r0
+}
+
+func (m *MockCategoriesRepo) GetCategoryUsage(ctx context.Context, idCategory uint, idUser uint64) (*category.CategoryUsage, error) {
+	ret := m.Called(idCategory, idUser)
+
+	var r0 *category.CategoryUsage
+	if ret.Get(0) != nil {
+		r0 = ret.Get(0).(*category.CategoryUsage)
+	}
+
+	var r1 error
+	if ret.Get(1) != nil {
+		r1 = ret.Get(1).(error)
+	}
+
+	return r0, r1
 }
 
 func (m *MockCategoriesRepo) CreateTag(ctx context.Context, tagNameEncrypt string, idCategory uint, idParentTag *uint) (uint, error) {
@@ -138,8 +154,8 @@ func (m *MockCategoriesRepo) UpdateTag(ctx context.Context, tagNameEncrypt strin
 	return r0
 }
 
-func (m *MockCategoriesRepo) DeleteTag(ctx context.Context, idTag uint, idUser uint64) error {
-	ret := m.Called(idTag, idUser)
+func (m *MockCategoriesRepo) DeleteTag(ctx context.Context, idTag uint, idUser uint64, deleteEvents bool) error {
+	ret := m.Called(idTag, idUser, deleteEvents)
 
 	var r0 error
 	if ret.Get(0) != nil {
@@ -147,6 +163,22 @@ func (m *MockCategoriesRepo) DeleteTag(ctx context.Context, idTag uint, idUser u
 	}
 
 	return r0
+}
+
+func (m *MockCategoriesRepo) GetTagUsage(ctx context.Context, idTag uint, idUser uint64) (*category.TagUsage, error) {
+	ret := m.Called(idTag, idUser)
+
+	var r0 *category.TagUsage
+	if ret.Get(0) != nil {
+		r0 = ret.Get(0).(*category.TagUsage)
+	}
+
+	var r1 error
+	if ret.Get(1) != nil {
+		r1 = ret.Get(1).(error)
+	}
+
+	return r0, r1
 }
 
 func (m *MockCategoriesRepo) FindTagIdByTagAndIdCategory(ctx context.Context, encTag string, idCategory uint) (uint, error) {

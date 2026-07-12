@@ -142,11 +142,44 @@ func TestDeleteCategory(t *testing.T) {
 		mockRepo := new(mocks.MockCategoriesRepo)
 		svc := application.NewCategoriesService(&application.CSConfig{CategoriesRepository: mockRepo, Crypto: testCrypto})
 
-		mockRepo.On("Delete", uint(3), uint64(9), true).Return(nil)
+		mockRepo.On("Delete", uint(3), uint64(9), true, false).Return(nil)
 
-		err := svc.DeleteCategory(context.Background(), 3, 9, true)
+		err := svc.DeleteCategory(context.Background(), 3, 9, true, false)
 
 		assert.NoError(t, err)
 		mockRepo.AssertExpectations(t)
+	})
+}
+
+func TestGetCategoryUsage(t *testing.T) {
+	t.Run("Returns the repository counts for an owned category", func(t *testing.T) {
+		mockRepo := new(mocks.MockCategoriesRepo)
+		svc := application.NewCategoriesService(&application.CSConfig{CategoriesRepository: mockRepo, Crypto: testCrypto})
+
+		mockRepo.On("FindByIdForUser", uint(3), uint64(9)).
+			Return(&category.Category{Id: 3, Kind: category.KindCustom}, nil)
+		mockRepo.On("GetCategoryUsage", uint(3), uint64(9)).
+			Return(&category.CategoryUsage{Tags: 4, Events: 10, ExclusiveEvents: 2}, nil)
+
+		usage, err := svc.GetCategoryUsage(context.Background(), 3, 9)
+
+		assert.NoError(t, err)
+		assert.Equal(t, 4, usage.Tags)
+		assert.Equal(t, 10, usage.Events)
+		assert.Equal(t, 2, usage.ExclusiveEvents)
+		mockRepo.AssertExpectations(t)
+	})
+
+	t.Run("Rejects a category not owned by the user", func(t *testing.T) {
+		mockRepo := new(mocks.MockCategoriesRepo)
+		svc := application.NewCategoriesService(&application.CSConfig{CategoriesRepository: mockRepo, Crypto: testCrypto})
+
+		mockRepo.On("FindByIdForUser", uint(3), uint64(9)).
+			Return(nil, assert.AnError)
+
+		_, err := svc.GetCategoryUsage(context.Background(), 3, 9)
+
+		assert.Error(t, err)
+		mockRepo.AssertNotCalled(t, "GetCategoryUsage", mock.Anything, mock.Anything)
 	})
 }

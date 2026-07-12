@@ -153,7 +153,8 @@ All endpoints require auth. A category groups tags; locked categories
 | GET | `/categories` | — | `200` list below |
 | POST | `/categories` | `{category, color}` | `201` |
 | PATCH | `/categories/:id` | `{category, color}` | `204` |
-| DELETE | `/categories/:id` | `{moveTags}` | `204` |
+| DELETE | `/categories/:id` | `{moveTags, deleteEvents?}` | `204` |
+| GET | `/categories/:id/usage` | — | `200` usage below |
 
 `color` must be a hex color. `GET /categories` returns:
 
@@ -164,8 +165,22 @@ All endpoints require auth. A category groups tags; locked categories
 ]
 ```
 
-`DELETE` with `"moveTags": true` moves the category's tags instead of
-deleting them with the category.
+`DELETE` with `"moveTags": true` moves the category's tags (synonym links
+intact) to the user's Other category instead of deleting them. With
+`"moveTags": false` the tags are deleted, and `"deleteEvents": true` also
+deletes the events whose only non-date tags lived in this category; without
+it those events are preserved with their date tags only.
+
+`GET /categories/:id/usage` returns the counts the client shows in its delete
+confirmation dialog:
+
+```json
+{ "tags": 4, "events": 10, "exclusiveEvents": 2 }
+```
+
+`tags` counts the category's tags (synonyms included), `events` the events
+referencing them, and `exclusiveEvents` the events that have no other
+non-date tag — the ones a plain deletion would leave date-only.
 
 ## Tags
 
@@ -182,7 +197,26 @@ category (one level deep, any category except dates — see
 | --- | --- | --- | --- |
 | POST | `/tags` | `{tag, idCategory, idParentTag?}` | `201` |
 | PATCH | `/tags/:id` | `{tag, idCategory, idParentTag?}` | `204` |
-| DELETE | `/tags/:id` | — | `204` |
+| DELETE | `/tags/:id` | `{deleteEvents?}` (optional) | `204` |
+| GET | `/tags/:id/usage` | — | `200` usage below |
+
+Moving a main tag to another category through `PATCH` relocates its synonyms
+with it (a synonym always lives in its main tag's category).
+
+`DELETE` on a synonym repoints its events to the main tag. `DELETE` on a main
+tag deletes its whole synonym group; `"deleteEvents": true` also deletes the
+events whose only non-date tags belonged to the group, otherwise they are
+preserved with their date tags only (the body may be omitted entirely).
+
+`GET /tags/:id/usage` returns the counts the client shows in its delete
+confirmation dialog:
+
+```json
+{ "events": 7, "exclusiveEvents": 3 }
+```
+
+`events` counts the events tagged with the tag's synonym group,
+`exclusiveEvents` the ones that have no other non-date tag.
 
 ## Events
 

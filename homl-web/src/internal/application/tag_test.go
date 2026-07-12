@@ -244,9 +244,9 @@ func TestDeleteTag(t *testing.T) {
 			Return(&category.Tag{Id: 5, IdCategory: 2}, nil)
 		catRepo.On("FindByIdForUser", uint(2), uint64(1)).
 			Return(&category.Category{Id: 2, Kind: category.KindCustom}, nil)
-		catRepo.On("DeleteTag", uint(5), uint64(1)).Return(nil)
+		catRepo.On("DeleteTag", uint(5), uint64(1), true).Return(nil)
 
-		err := svc.DeleteTag(context.Background(), 5, 1)
+		err := svc.DeleteTag(context.Background(), 5, 1, true)
 
 		assert.NoError(t, err)
 		catRepo.AssertExpectations(t)
@@ -261,9 +261,41 @@ func TestDeleteTag(t *testing.T) {
 		catRepo.On("FindByIdForUser", uint(1), uint64(1)).
 			Return(&category.Category{Id: 1, Kind: category.KindDate}, nil)
 
-		err := svc.DeleteTag(context.Background(), 5, 1)
+		err := svc.DeleteTag(context.Background(), 5, 1, false)
 
 		assert.Error(t, err)
-		catRepo.AssertNotCalled(t, "DeleteTag", mock.Anything, mock.Anything)
+		catRepo.AssertNotCalled(t, "DeleteTag", mock.Anything, mock.Anything, mock.Anything)
+	})
+}
+
+func TestGetTagUsage(t *testing.T) {
+	t.Run("Returns the repository counts for an owned tag", func(t *testing.T) {
+		catRepo := new(mocks.MockCategoriesRepo)
+		svc := application.NewTagsService(&application.TSConfig{CategoriesRepository: catRepo})
+
+		catRepo.On("FindTagForUser", uint(5), uint64(1)).
+			Return(&category.Tag{Id: 5, IdCategory: 2}, nil)
+		catRepo.On("GetTagUsage", uint(5), uint64(1)).
+			Return(&category.TagUsage{Events: 7, ExclusiveEvents: 3}, nil)
+
+		usage, err := svc.GetTagUsage(context.Background(), 5, 1)
+
+		assert.NoError(t, err)
+		assert.Equal(t, 7, usage.Events)
+		assert.Equal(t, 3, usage.ExclusiveEvents)
+		catRepo.AssertExpectations(t)
+	})
+
+	t.Run("Rejects a tag not owned by the user", func(t *testing.T) {
+		catRepo := new(mocks.MockCategoriesRepo)
+		svc := application.NewTagsService(&application.TSConfig{CategoriesRepository: catRepo})
+
+		catRepo.On("FindTagForUser", uint(5), uint64(1)).
+			Return(nil, assert.AnError)
+
+		_, err := svc.GetTagUsage(context.Background(), 5, 1)
+
+		assert.Error(t, err)
+		catRepo.AssertNotCalled(t, "GetTagUsage", mock.Anything, mock.Anything)
 	})
 }
