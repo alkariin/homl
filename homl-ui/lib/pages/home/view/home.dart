@@ -84,7 +84,7 @@ class HomeView extends StatefulWidget {
 class _HomeViewState extends State<HomeView>
     with SingleTickerProviderStateMixin {
   late int _currentIndex;
-  final PageController _pageController = PageController();
+  late final PageController _pageController;
 
   /// True once the user changed the tab himself: the async-loaded
   /// defaultScreen setting must not override an explicit navigation.
@@ -95,6 +95,9 @@ class _HomeViewState extends State<HomeView>
     super.initState();
     // defaultScreen setting: false opens on Search, true on Add.
     _currentIndex = widget.defaultView ? 2 : 1;
+    // The controller must start on the same page as the selected tab,
+    // otherwise the PageView shows page 0 while the nav bar says otherwise.
+    _pageController = PageController(initialPage: _currentIndex);
   }
 
   @override
