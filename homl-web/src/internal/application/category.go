@@ -34,7 +34,6 @@ func NewCategoriesService(c *CSConfig) CategoriesService {
 }
 
 func (c *categoriesService) GetCategories(ctx context.Context, idUser uint64) ([]category.GetCategoryResponse, error) {
-	// Returns all categories with all tags, but without the tags of the category persons
 	categories, tags, err := c.CategoriesRepository.GetAllCategoriesWithTags(ctx, idUser)
 	if err != nil {
 		return nil, err

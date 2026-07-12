@@ -57,7 +57,6 @@ type serverMocks struct {
 	categories *mocks.MockCategoriesService
 	events     *mocks.MockEventsService
 	tags       *mocks.MockTagsService
-	persons    *mocks.MockPersonsService
 	settings   *mocks.MockSettingsService
 }
 
@@ -67,7 +66,6 @@ func newTestServer() (*gin.Engine, *serverMocks) {
 		categories: new(mocks.MockCategoriesService),
 		events:     new(mocks.MockEventsService),
 		tags:       new(mocks.MockTagsService),
-		persons:    new(mocks.MockPersonsService),
 		settings:   new(mocks.MockSettingsService),
 	}
 	authenticator := &TokenAuthenticator{Tokens: testJWT, Sessions: fakeSessions{}}
@@ -77,7 +75,6 @@ func newTestServer() (*gin.Engine, *serverMocks) {
 		User:        &UserHandler{UsersService: sm.users, Tokens: testJWT},
 		Category:    &CategoryHandler{CategoriesService: sm.categories},
 		Tag:         &TagHandler{TagsService: sm.tags},
-		Person:      &PersonHandler{PersonsService: sm.persons},
 		Event:       &EventHandler{EventsService: sm.events},
 		Settings:    &SettingsHandler{SettingsService: sm.settings},
 	}

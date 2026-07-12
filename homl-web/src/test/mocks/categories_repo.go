@@ -165,22 +165,6 @@ func (m *MockCategoriesRepo) FindTagIdByTagAndIdCategory(ctx context.Context, en
 	return r0, r1
 }
 
-func (m *MockCategoriesRepo) FindMainTagIdOfPerson(ctx context.Context, idPerson uint) (uint, error) {
-	ret := m.Called(idPerson)
-
-	var r0 uint
-	if ret.Get(0) != nil {
-		r0 = ret.Get(0).(uint)
-	}
-
-	var r1 error
-	if ret.Get(1) != nil {
-		r1 = ret.Get(1).(error)
-	}
-
-	return r0, r1
-}
-
 func (m *MockCategoriesRepo) FindTagForUser(ctx context.Context, idTag uint, idUser uint64) (*category.Tag, error) {
 	ret := m.Called(idTag, idUser)
 
