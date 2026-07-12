@@ -36,6 +36,21 @@ class LoginView extends StatefulWidget {
 class _LoginViewState extends State<LoginView> {
   final _formKey = GlobalKey<FormState>();
 
+  // Dev-only: submit the prefilled credentials as soon as the login screen
+  // shows up (see run-local.sh). False in regular builds.
+  static const _devAutologin = bool.fromEnvironment('DEV_AUTOLOGIN');
+
+  @override
+  void initState() {
+    super.initState();
+    if (_devAutologin) {
+      final cubit = context.read<LoginCubit>();
+      if (cubit.state.username.isNotEmpty && cubit.state.password.isNotEmpty) {
+        cubit.submit();
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final localization = AppLocalizations.of(context)!;
