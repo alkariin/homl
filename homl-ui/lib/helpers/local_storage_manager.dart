@@ -4,7 +4,9 @@ enum LocalStorageKey {
   refreshToken,
   isFingerprintEnabled,
   fingerprintStorage,
-  pinKeypair
+  pinKeypair,
+  eventsCache,
+  categoriesCache
 }
 
 class LocalStorageManager {
@@ -38,4 +40,11 @@ class LocalStorageManager {
 
   static Future<bool> has(LocalStorageKey key) async =>
       await _secureStorage.containsKey(key: key.name);
+
+  /// Removes the offline data caches. Called whenever the local session ends
+  /// so the next account on this device cannot read the previous user's data.
+  static Future<void> clearDataCaches() async {
+    await remove(LocalStorageKey.eventsCache);
+    await remove(LocalStorageKey.categoriesCache);
+  }
 }
