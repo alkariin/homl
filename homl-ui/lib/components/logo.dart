@@ -1,18 +1,38 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import 'package:homl/helpers/colors.dart';
 
+/// Repaints the gold strokes of the logo artwork (drawn in [yellow], which is
+/// the palette's #D3A934) in another color, leaving the black strokes alone.
+class _GoldTintMapper extends ColorMapper {
+  final Color tint;
+
+  const _GoldTintMapper(this.tint);
+
+  @override
+  Color substitute(
+          String? id, String elementName, String attributeName, Color color) =>
+      color == yellow ? tint : color;
+}
+
 /// The homl "#" logo: the two-tone hash from the design export
-/// (assets/images/logo.png) inside a white circle.
+/// (assets/images/logo.svg) inside a white circle.
 ///
 /// [colorProgress] drives the gold reveal: at 0 the whole hash is black, at 1
 /// it shows the normal two-tone artwork. The reveal sweeps from the base of
 /// the gold strokes (bottom-left) to their tip (top-right).
+///
+/// [tint] recolors the gold strokes only — the black ones stay black — and
+/// the circle border (search bar: the category color of the top suggestion).
+/// Null keeps the normal artwork.
 class HomlLogo extends StatelessWidget {
   final double size;
   final double colorProgress;
+  final Color? tint;
 
-  const HomlLogo({this.size = 51, this.colorProgress = 1.0, super.key});
+  const HomlLogo(
+      {this.size = 51, this.colorProgress = 1.0, this.tint, super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +43,8 @@ class HomlLogo extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         shape: BoxShape.circle,
-        border: Border.all(color: yellow, width: 0.5),
+        border: Border.all(
+            color: tint ?? yellow, width: tint == null ? 0.5 : 1.2),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.25),
@@ -67,10 +88,10 @@ class HomlLogo extends StatelessWidget {
   }
 
   Widget _hash() {
-    return Image.asset(
-      'assets/images/logo.png',
+    return SvgPicture.asset(
+      'assets/images/logo.svg',
       fit: BoxFit.contain,
-      filterQuality: FilterQuality.medium,
+      colorMapper: tint == null ? null : _GoldTintMapper(tint!),
     );
   }
 }

@@ -12,7 +12,12 @@ class TagChipData {
   final String name;
   final String? color;
 
-  const TagChipData({required this.id, required this.name, this.color});
+  /// Category color tinting the input border and logo while this tag is the
+  /// top suggestion; null keeps the default styling (e.g. Others tags).
+  final String? highlightColor;
+
+  const TagChipData(
+      {required this.id, required this.name, this.color, this.highlightColor});
 }
 
 /// Shared tag input: a text field with autocomplete on the existing tags.
@@ -83,10 +88,28 @@ class _TagInputState extends State<TagInput> {
     final query = value.text.trim().toLowerCase();
     if (query.isEmpty) return const Iterable<TagChipData>.empty();
 
-    return widget.suggestions.where((suggestion) =>
+    final candidates = widget.suggestions.where((suggestion) =>
         suggestion.name.toLowerCase().contains(query) &&
         !widget.tags.any(
             (tag) => tag.name.toLowerCase() == suggestion.name.toLowerCase()));
+
+    // Tags starting with the query come first, so the top suggestion (which
+    // also drives the highlight color below) is the most natural completion.
+    return [
+      ...candidates.where((s) => s.name.toLowerCase().startsWith(query)),
+      ...candidates.where((s) => !s.name.toLowerCase().startsWith(query)),
+    ];
+  }
+
+  /// Color highlighting the field and the logo while the user types: the
+  /// category color of the top suggestion, darkened so the pastel presets
+  /// stay visible, or null when there is no suggestion or the suggestion
+  /// carries no highlight color (Others tags).
+  Color? _highlightFor(TextEditingValue value) {
+    final suggestions = _filterSuggestions(value);
+    final highlightColor =
+        suggestions.isEmpty ? null : suggestions.first.highlightColor;
+    return highlightColor == null ? null : darken(colorFromHex(highlightColor));
   }
 
   @override
@@ -120,7 +143,11 @@ class _TagInputState extends State<TagInput> {
         Row(
           children: [
             if (widget.showLogo) ...[
-              const HomlLogo(),
+              ValueListenableBuilder<TextEditingValue>(
+                valueListenable: _controller,
+                builder: (context, value, _) =>
+                    HomlLogo(tint: _highlightFor(value)),
+              ),
               const SizedBox(width: 12),
             ],
             Expanded(
@@ -132,26 +159,47 @@ class _TagInputState extends State<TagInput> {
                 onSelected: (option) => _submit(option.name),
                 fieldViewBuilder:
                     (context, controller, focusNode, onFieldSubmitted) {
-                  return TextFormField(
-                    controller: controller,
-                    focusNode: focusNode,
-                    textInputAction: TextInputAction.done,
-                    decoration: InputDecoration(
-                      labelText: widget.labelText,
-                      suffixIcon: ValueListenableBuilder<TextEditingValue>(
-                        valueListenable: controller,
-                        builder: (context, value, _) => value.text.isEmpty
-                            ? const SizedBox.shrink()
-                            : IconButton(
-                                icon: const FaIcon(
-                                    FontAwesomeIcons.solidCircleXmark,
-                                    size: 18,
-                                    color: yellow),
-                                onPressed: controller.clear,
-                              ),
-                      ),
-                    ),
-                    onFieldSubmitted: _submit,
+                  return ValueListenableBuilder<TextEditingValue>(
+                    valueListenable: controller,
+                    builder: (context, value, _) {
+                      final highlight = _highlightFor(value);
+                      // A null border falls back to the theme (yellow).
+                      final border = highlight == null
+                          ? null
+                          : OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(5),
+                              borderSide:
+                                  BorderSide(color: highlight, width: 1),
+                            );
+                      final focusedBorder = highlight == null
+                          ? null
+                          : OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(5),
+                              borderSide:
+                                  BorderSide(color: highlight, width: 1.5),
+                            );
+
+                      return TextFormField(
+                        controller: controller,
+                        focusNode: focusNode,
+                        textInputAction: TextInputAction.done,
+                        decoration: InputDecoration(
+                          labelText: widget.labelText,
+                          enabledBorder: border,
+                          focusedBorder: focusedBorder,
+                          suffixIcon: value.text.isEmpty
+                              ? const SizedBox.shrink()
+                              : IconButton(
+                                  icon: const FaIcon(
+                                      FontAwesomeIcons.solidCircleXmark,
+                                      size: 18,
+                                      color: yellow),
+                                  onPressed: controller.clear,
+                                ),
+                        ),
+                        onFieldSubmitted: _submit,
+                      );
+                    },
                   );
                 },
                 optionsViewBuilder: (context, onSelected, options) {
