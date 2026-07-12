@@ -3,8 +3,8 @@
 Curated view of the backend domain layer (`src/internal/domain`). The code is
 the source of truth — regenerate this document whenever an aggregate changes.
 
-The domain is split into four aggregates (`user`, `category`, `person`,
-`event`) plus a static reference-data package (`masterdata`). Each aggregate
+The domain is split into three aggregates (`user`, `category`, `event`)
+plus a static reference-data package (`masterdata`). Each aggregate
 package holds its entities, value objects, DTOs and a `Repository` interface
 that acts as its persistence port (implemented in
 `src/internal/infrastructure/persistence`).
@@ -65,16 +65,7 @@ classDiagram
         +uint Id
         +string Tag
         +uint IdCategory
-        +uint IdPerson
         +*uint IdParentTag
-    }
-
-    %% PersonAggregate
-    class Person {
-        +uint Id
-        +string Firstname
-        +string Lastname
-        +string IdCategory
     }
 
     %% EventAggregate
@@ -96,8 +87,6 @@ classDiagram
     User "1" *-- "1" Settings : stored on Users row
     User "1" o-- "0..*" Category : owns
     Category "1" *-- "0..*" Tag : owns lifecycle
-    Person "0..*" --> "1" Category : belongs to
-    Tag "0..*" --> "0..1" Person : main tag
     Tag "0..*" --> "0..1" Tag : synonym (IdParentTag)
     Event "0..*" -- "0..*" Tag : EventsTags join table
     DefaultCategory ..> Category : seeded at registration
@@ -129,19 +118,11 @@ classDiagram
   (the seeded date and other categories — the seeded person category is a
   plain unlocked suggestion). See
   [default-categories.md](default-categories.md) for the full rules.
-- A tag may optionally point to a `Person` (`IdPerson`): this marks the
-  person's main tag, the only tag carrying a person link.
 - A tag may reference another tag of the same category as its parent
   (`IdParentTag`): synonyms, one level deep, available in every category
-  except the date one (see [tag-synonyms.md](tag-synonyms.md)).
-
-### Person (`domain/person`)
-
-- A person belongs to exactly one category and is identified in tagging
-  through a main tag carrying their name.
-- Alternative names are plain tag synonyms of the main tag, managed through
-  the tag endpoints — the former "nickname" notion is gone
-  (see [tag-synonyms.md](tag-synonyms.md)).
+  except the date one (see [tag-synonyms.md](tag-synonyms.md)). A "person"
+  is not a dedicated aggregate: it is an ordinary tag (plus synonyms for its
+  alternative names) in whatever category the user likes.
 
 ### Event (`domain/event`)
 
@@ -165,8 +146,7 @@ crossing the port.
 | Port | Responsibilities |
 | --- | --- |
 | `user.Repository` | Registration (user + default categories, transactional), lookup, password/pin/fingerprint updates, Redis auth tokens, single-use password-reset tokens, settings read/write |
-| `category.Repository` | Category CRUD (with optional tag move on delete), tag CRUD (synonyms included), tag lookups (by name, main tag of a person) |
-| `person.Repository` | Person CRUD with its main tag, ownership checks per user |
+| `category.Repository` | Category CRUD (with optional tag move on delete), tag CRUD (synonyms included), tag lookup by name |
 | `event.Repository` | Event CRUD with tags, per-user listing |
 
 ## DTOs
@@ -174,4 +154,4 @@ crossing the port.
 Response/input shapes colocated with their aggregate, used by the application
 and web layers: `user.UserResponse`, `user.UserPassword`, `user.RefreshInput`,
 `user.SettingsResponse`, `category.GetCategoryResponse`, `category.TagDTO`,
-`person.GetPersonsResponse`, `event.GetEventsResponse`.
+`event.GetEventsResponse`.
