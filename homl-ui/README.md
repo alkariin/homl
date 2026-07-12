@@ -111,9 +111,10 @@ While typing, the field autocompletes on the existing tags (prefix matches
 first, then substring matches). The input border and the "#" logo take the
 category color of the top suggestion — except for tags of the Others
 category, which keep the default styling (`lib/components/tag_input.dart`,
-`highlightColor` on `TagChipData`). The logo PNG is tinted with a solid
-`ColorFilter`; an SVG would only be needed to recolor its two tones
-independently.
+`highlightColor` on `TagChipData`). The logo is an SVG
+(`assets/images/logo.svg`) rendered with `flutter_svg`: a `ColorMapper`
+repaints only its gold strokes (drawn in the palette's `yellow`), the black
+ones stay black.
 
 `EventsRepository.getEvents()` and `CategoriesRepository.getCategories()`
 cache each successful payload in `flutter_secure_storage` (encrypted at
