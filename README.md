@@ -34,6 +34,9 @@ flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:8080/api
 
 See each sub-project's README for full setup.
 
+App icons and native splash screens are generated from the logo — see
+[`homl-ui/tool/icons/README.md`](homl-ui/tool/icons/README.md) to regenerate them.
+
 ## Tech stack
 
 | Layer | Technology |
