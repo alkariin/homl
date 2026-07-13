@@ -77,6 +77,12 @@
   "nav_add": "Add",
 
   "insert_tagInputLabel": "Add a tag",
+  "insert_newTagCategoryTitle": "New tag \"{tag}\": choose a category",
+  "@insert_newTagCategoryTitle": {
+    "placeholders": {
+      "tag": { "type": "String" }
+    }
+  },
   "insert_descriptionLabel": "Description",
   "insert_submit": "Create event",
   "insert_eventCreated": "Event created",
@@ -96,5 +102,67 @@
   "categories_deleteTag": "Delete tag",
   "categories_addSynonym": "Add a synonym",
   "categories_detachSynonym": "Detach synonym",
-  "categories_synonymName": "Synonym"
+  "categories_synonymName": "Synonym",
+  "categories_renameSynonym": "Rename synonym",
+  "categories_deleteSynonymTitle": "Delete synonym?",
+  "categories_deleteSynonymInfo": "Events tagged \"{synonym}\" will be moved to \"{tag}\".",
+  "@categories_deleteSynonymInfo": {
+    "placeholders": {
+      "synonym": { "type": "String" },
+      "tag": { "type": "String" }
+    }
+  },
+  "categories_moveTag": "Move to another category",
+  "categories_moveTagTitle": "Move \"{tag}\" to",
+  "@categories_moveTagTitle": {
+    "placeholders": {
+      "tag": { "type": "String" }
+    }
+  },
+  "categories_deleteTagTitle": "Delete \"{tag}\"?",
+  "@categories_deleteTagTitle": {
+    "placeholders": {
+      "tag": { "type": "String" }
+    }
+  },
+  "categories_deleteTagEvents": "{count, plural, =0{No event uses this tag.} =1{1 event uses this tag.} other{{count} events use this tag.}}",
+  "@categories_deleteTagEvents": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "categories_deleteTagSynonyms": "{count, plural, =1{Its synonym will be deleted too.} other{Its {count} synonyms will be deleted too.}}",
+  "@categories_deleteTagSynonyms": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "categories_deleteTagExclusiveEvents": "{count, plural, =1{1 event has no other tag:} other{{count} events have no other tag:}}",
+  "@categories_deleteTagExclusiveEvents": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "categories_deleteTagKeepEvents": "Keep these events (date only)",
+  "categories_deleteTagDeleteEvents": "Delete these events",
+  "categories_deleteCategoryTags": "{count, plural, =0{This category has no tags.} =1{This category has 1 tag.} other{This category has {count} tags.}}",
+  "@categories_deleteCategoryTags": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "categories_deleteCategoryEvents": "{count, plural, =0{No event uses them.} =1{1 event uses them.} other{{count} events use them.}}",
+  "@categories_deleteCategoryEvents": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "categories_deleteCategoryDeleteTags": "Delete the tags, keep the events",
+  "categories_deleteCategoryDeleteAll": "Delete the tags and their events",
+  "categories_deleteCategoryDeleteAllDetail": "{count, plural, =1{1 event only uses tags from this category and will be deleted.} other{{count} events only use tags from this category and will be deleted.}}",
+  "@categories_deleteCategoryDeleteAllDetail": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  }
 }

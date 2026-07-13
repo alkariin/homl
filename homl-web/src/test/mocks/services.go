@@ -120,8 +120,17 @@ func (m *MockCategoriesService) UpdateCategory(ctx context.Context, category *ca
 	return errAt(m.Called(category), 0)
 }
 
-func (m *MockCategoriesService) DeleteCategory(ctx context.Context, idCategory uint, idUser uint64, moveTags bool) error {
-	return errAt(m.Called(idCategory, idUser, moveTags), 0)
+func (m *MockCategoriesService) DeleteCategory(ctx context.Context, idCategory uint, idUser uint64, moveTags bool, deleteEvents bool) error {
+	return errAt(m.Called(idCategory, idUser, moveTags, deleteEvents), 0)
+}
+
+func (m *MockCategoriesService) GetCategoryUsage(ctx context.Context, idCategory uint, idUser uint64) (*category.CategoryUsage, error) {
+	ret := m.Called(idCategory, idUser)
+	var r0 *category.CategoryUsage
+	if ret.Get(0) != nil {
+		r0 = ret.Get(0).(*category.CategoryUsage)
+	}
+	return r0, errAt(ret, 1)
 }
 
 /* ----------------------------- EventsService ----------------------------- */
@@ -170,8 +179,17 @@ func (m *MockTagsService) UpdateTag(ctx context.Context, idUser uint64, tag *cat
 	return errAt(m.Called(idUser, tag), 0)
 }
 
-func (m *MockTagsService) DeleteTag(ctx context.Context, idTag uint, idUser uint64) error {
-	return errAt(m.Called(idTag, idUser), 0)
+func (m *MockTagsService) DeleteTag(ctx context.Context, idTag uint, idUser uint64, deleteEvents bool) error {
+	return errAt(m.Called(idTag, idUser, deleteEvents), 0)
+}
+
+func (m *MockTagsService) GetTagUsage(ctx context.Context, idTag uint, idUser uint64) (*category.TagUsage, error) {
+	ret := m.Called(idTag, idUser)
+	var r0 *category.TagUsage
+	if ret.Get(0) != nil {
+		r0 = ret.Get(0).(*category.TagUsage)
+	}
+	return r0, errAt(ret, 1)
 }
 
 /* ---------------------------- SettingsService ---------------------------- */

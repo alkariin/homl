@@ -153,7 +153,7 @@ func TestCrossTenantCategoryIsolation(t *testing.T) {
 		aliceCat, err := r.cats.FindIdByKind(ctx, alice, category.KindCustom)
 		require.NoError(t, err)
 
-		err = r.cats.Delete(ctx, aliceCat, mallory, false)
+		err = r.cats.Delete(ctx, aliceCat, mallory, false, false)
 		assert.Error(t, err)
 
 		_, err = r.cats.FindByIdForUser(ctx, aliceCat, alice)
@@ -186,7 +186,7 @@ func TestCrossTenantTagIsolation(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("mallory cannot delete alice's tag", func(t *testing.T) {
-		err := r.cats.DeleteTag(ctx, aliceTag, mallory)
+		err := r.cats.DeleteTag(ctx, aliceTag, mallory, false)
 		assert.Error(t, err)
 
 		_, err = r.cats.FindTagForUser(ctx, aliceTag, alice)

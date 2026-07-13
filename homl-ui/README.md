@@ -93,6 +93,44 @@ flutter analyze
 flutter test
 ```
 
+## Categories tab: tag & category management
+
+`lib/pages/categories/view/category_management.dart` gives full CRUD on
+categories, tags and synonyms (rules per category kind in
+`homl-web/docs/default-categories.md`; only the Dates tags are read-only —
+the Others tags are manageable so free tags typed on the insert page can be
+sorted into real categories). `CategoryManagementBody` has two modes: the
+management view of the Categories tab (tap or long-press a tag → its actions
+menu), and a read-only picker (`showTagPickerSheet`, opened from the "#" logo
+of the tag inputs) where tapping a tag hands it to the caller. Destructive
+actions confirm with the counts served by `GET /tags/:id/usage` /
+`GET /categories/:id/usage`:
+
+- a main tag can be renamed, given synonyms, **moved to another category**
+  (its synonyms follow) or deleted — the delete dialog says how many events
+  use the tag and lets the user delete the events that only carry this tag or
+  keep them with their date only (`deleteEvents` on `DELETE /tags/:id`);
+- a synonym (tap or long press on its chip) can be renamed, detached or
+  deleted — deletion confirms that its events are repointed to the main tag;
+- deleting a category offers to move its tags to the Others category
+  (default), delete them while keeping the events, or delete them together
+  with the events that only use tags from this category.
+
+The "#" logo next to the tag inputs is a button:
+
+- **Search tab**: opens the tag picker sheet; tapping a tag inserts it as a
+  search filter.
+- **Insert tab**: with an empty field it opens the same picker (tap a tag to
+  add it to the event); with a **new** tag typed it asks which category the
+  tag belongs to, creates it there and chips it on the event (instead of
+  letting it fall into Others on submit); with an existing tag typed it does
+  nothing.
+
+The dialogs owning a `TextEditingController` are `StatefulWidget`s so the
+controller is disposed with the route: disposing it from `showDialog`'s
+future crashes, the future completes on pop while the dialog is still
+animating out.
+
 ## Offline cache & local search
 
 The Search tab does **not** query the backend per filter change: it filters

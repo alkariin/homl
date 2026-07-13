@@ -35,6 +35,24 @@ type GetCategoryResponse struct {
 	Tags     []TagDTO `json:"tags"`
 }
 
+// TagUsage reports how many events reference a tag's synonym group: Events
+// counts every linked event, ExclusiveEvents the ones whose only non-date
+// tags belong to the group (the events that would end up date-only if the
+// group were deleted).
+type TagUsage struct {
+	Events          int `json:"events"`
+	ExclusiveEvents int `json:"exclusiveEvents"`
+}
+
+// CategoryUsage reports how many tags a category holds and how many events
+// reference them; ExclusiveEvents counts the events whose only non-date tags
+// live in this category.
+type CategoryUsage struct {
+	Tags            int `json:"tags"`
+	Events          int `json:"events"`
+	ExclusiveEvents int `json:"exclusiveEvents"`
+}
+
 // Repository is the persistence port of the Category aggregate. Tags belong
 // to the aggregate, so their persistence operations live here as well.
 // Every method is scoped to the owning user: no operation may read or write
@@ -49,11 +67,24 @@ type Repository interface {
 	GetAllCategoriesWithTags(ctx context.Context, idUser uint64) (map[uint]Category, map[uint][]TagDTO, error)
 	Create(ctx context.Context, category *Category) error
 	Update(ctx context.Context, category *Category) error
-	Delete(ctx context.Context, idCategory uint, idUser uint64, moveTags bool) error
+	// Delete removes a category. moveTags moves its tags (synonym links
+	// intact) to the user's Other category; otherwise the tags are deleted
+	// and deleteEvents decides whether the events left without any non-date
+	// tag are deleted too or preserved with their date only.
+	Delete(ctx context.Context, idCategory uint, idUser uint64, moveTags bool, deleteEvents bool) error
+	// GetCategoryUsage counts the tags of a category and the events that
+	// reference them.
+	GetCategoryUsage(ctx context.Context, idCategory uint, idUser uint64) (*CategoryUsage, error)
 
 	CreateTag(ctx context.Context, tagNameEncrypt string, idCategory uint, idParentTag *uint) (uint, error)
 	UpdateTag(ctx context.Context, tagNameEncrypt string, idCategory uint, idTag uint, idParentTag *uint) error
-	DeleteTag(ctx context.Context, idTag uint, idUser uint64) error
+	// DeleteTag removes a tag. Deleting a synonym repoints its events to the
+	// main tag; deleting a main tag deletes its whole synonym group and
+	// deleteEvents decides whether the events left without any non-date tag
+	// are deleted too or preserved with their date only.
+	DeleteTag(ctx context.Context, idTag uint, idUser uint64, deleteEvents bool) error
+	// GetTagUsage counts the events referencing a tag's synonym group.
+	GetTagUsage(ctx context.Context, idTag uint, idUser uint64) (*TagUsage, error)
 	// CheckTagsBelongToUser verifies that every id in tagsId is a tag living
 	// in one of the user's categories; it errors when any id is unknown or
 	// owned by another user.

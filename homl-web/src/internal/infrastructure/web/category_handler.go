@@ -124,7 +124,10 @@ func (h *CategoryHandler) UpdateCategory(c *gin.Context) {
 /** input:
  * id: uint
  * {
- *   moveTags: bool
+ *   moveTags: bool,       // move the tags to the Other category instead of
+ *                         // deleting them (deleteEvents is then ignored)
+ *   deleteEvents?: bool   // also delete the events whose only non-date tags
+ *                         // lived in this category
  * }
  */
 func (h *CategoryHandler) DeleteCategory(c *gin.Context) {
@@ -136,7 +139,8 @@ func (h *CategoryHandler) DeleteCategory(c *gin.Context) {
 	idCategory := uint(idParam)
 
 	type bodyRequest struct {
-		MoveTags bool `json:"moveTags"`
+		MoveTags     bool `json:"moveTags"`
+		DeleteEvents bool `json:"deleteEvents"`
 	}
 
 	var body bodyRequest
@@ -158,13 +162,44 @@ func (h *CategoryHandler) DeleteCategory(c *gin.Context) {
 		return
 	}
 
-	err = h.CategoriesService.DeleteCategory(c.Request.Context(), idCategory, idUser, body.MoveTags)
+	err = h.CategoriesService.DeleteCategory(c.Request.Context(), idCategory, idUser, body.MoveTags, body.DeleteEvents)
 	if err != nil {
 		SendGinError(c, err)
 		return
 	}
 
 	c.Writer.WriteHeader(http.StatusNoContent)
+}
+
+/** input:
+ * id: uint
+ * output:
+ * {
+ *   tags: number,            // tags (synonyms included) in the category
+ *   events: number,          // events tagged with them
+ *   exclusiveEvents: number  // of those, events with no other non-date tag
+ * }
+ */
+func (h *CategoryHandler) GetCategoryUsage(c *gin.Context) {
+	idParam, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		SendGinError(c, apperror.NewStatusUnprocessableEntity())
+		return
+	}
+
+	idUser, err := UserIDFromContext(c)
+	if err != nil {
+		SendGinError(c, err)
+		return
+	}
+
+	usage, err := h.CategoriesService.GetCategoryUsage(c.Request.Context(), uint(idParam), idUser)
+	if err != nil {
+		SendGinError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, usage)
 }
 
 // Handler wires the categories HTTP endpoints to their service.

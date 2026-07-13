@@ -30,14 +30,21 @@ Enforced in `application/tag.go` (`validateTag` / `validateParent`):
 
 ## Lifecycle
 
-Handled in `persistence/tag.go` (`DeleteTag`):
+Handled in `persistence/tag.go` (`DeleteTag`, `UpdateTag`):
 
 - Deleting a **synonym** repoints its `EventsTags` rows to the parent
   (dropping duplicates when the event already carries the parent).
-- Deleting a **main tag** promotes its oldest synonym as the new main tag
-  before the delete.
+- Deleting a **main tag** deletes its whole synonym group (the `idParentTag`
+  FK cascades). `deleteEvents` decides what happens to the events whose only
+  non-date tags belonged to the group: deleted too, or preserved with their
+  date tags only. `GET /tags/:id/usage` gives the client the counts for its
+  confirmation dialog.
+- Moving a **main tag** to another category (`PATCH /tags/:id`) relocates its
+  synonyms with it: a synonym always lives in its main tag's category.
 - Deleting a category cascades to its tags; with `moveTags: true` the tags
-  (synonym links included) move to the Others category instead.
+  (synonym links included) move to the Others category instead, and with
+  `deleteEvents: true` the events left without any non-date tag are deleted
+  (see [api.md](api.md)).
 
 ## Client-side matching
 

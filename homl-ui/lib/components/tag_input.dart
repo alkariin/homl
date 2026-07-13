@@ -44,6 +44,16 @@ class TagInput extends StatefulWidget {
   /// Shows the homl "#" logo on the left of the field (search page).
   final bool showLogo;
 
+  /// Called when the logo is tapped, with the trimmed text currently typed
+  /// in the field (empty when the field is empty). Leaves the logo inert
+  /// when null.
+  final void Function(String pendingText)? onLogoTap;
+
+  /// Text controller of the field. Owned by the parent when provided (so it
+  /// can read or clear the pending text), otherwise the input creates and
+  /// disposes its own.
+  final TextEditingController? controller;
+
   const TagInput(
       {required this.labelText,
       required this.tags,
@@ -53,6 +63,8 @@ class TagInput extends StatefulWidget {
       this.leading,
       this.trailing,
       this.showLogo = false,
+      this.onLogoTap,
+      this.controller,
       super.key});
 
   @override
@@ -60,12 +72,15 @@ class TagInput extends StatefulWidget {
 }
 
 class _TagInputState extends State<TagInput> {
-  final TextEditingController _controller = TextEditingController();
+  late final TextEditingController _controller =
+      widget.controller ?? TextEditingController();
   final FocusNode _focusNode = FocusNode();
 
   @override
   void dispose() {
-    _controller.dispose();
+    if (widget.controller == null) {
+      _controller.dispose();
+    }
     _focusNode.dispose();
     super.dispose();
   }
@@ -145,8 +160,46 @@ class _TagInputState extends State<TagInput> {
             if (widget.showLogo) ...[
               ValueListenableBuilder<TextEditingValue>(
                 valueListenable: _controller,
-                builder: (context, value, _) =>
-                    HomlLogo(tint: _highlightFor(value)),
+                builder: (context, value, _) {
+                  final highlight = _highlightFor(value);
+                  final logo = HomlLogo(tint: highlight);
+                  if (widget.onLogoTap == null) return logo;
+
+                  // Button affordance: circular ripple on the logo plus a
+                  // small chevron badge (tinted like the input border when a
+                  // suggestion highlights it) telling it opens the picker.
+                  return Material(
+                    color: Colors.transparent,
+                    shape: const CircleBorder(),
+                    child: InkWell(
+                      customBorder: const CircleBorder(),
+                      onTap: () =>
+                          widget.onLogoTap!(_controller.text.trim()),
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          logo,
+                          Positioned(
+                            right: -3,
+                            bottom: -3,
+                            child: Container(
+                              width: 20,
+                              height: 20,
+                              decoration: BoxDecoration(
+                                color: highlight ?? yellow,
+                                shape: BoxShape.circle,
+                                border:
+                                    Border.all(color: Colors.white, width: 1.5),
+                              ),
+                              child: const Icon(Icons.expand_more,
+                                  size: 14, color: Colors.white),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
               ),
               const SizedBox(width: 12),
             ],

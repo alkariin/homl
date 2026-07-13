@@ -121,18 +121,6 @@ class _HomeViewState extends State<HomeView>
     super.dispose();
   }
 
-  /// From the Categories tab: adds the tapped tag as a search filter and
-  /// jumps to the Search tab.
-  void _searchByTag(BuildContext context, TagView tag) {
-    context.read<ListCubit>().addFilterTag(tag.tagName);
-    setState(() {
-      _userNavigated = true;
-      _currentIndex = 1;
-      _pageController.animateToPage(1,
-          duration: const Duration(milliseconds: 500), curve: Curves.ease);
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     var localization = AppLocalizations.of(context)!;
@@ -224,10 +212,10 @@ class _HomeViewState extends State<HomeView>
         ),
         body: PageView(
           controller: _pageController,
-          children: [
-            CategoriesPage(onTagSelected: (tag) => _searchByTag(context, tag)),
-            const ListPage(),
-            const InsertPage(),
+          children: const [
+            CategoriesPage(),
+            ListPage(),
+            InsertPage(),
           ],
           onPageChanged: (index) {
             setState(() {

@@ -126,7 +126,11 @@ func (c *CategoriesRepository) Update(ctx context.Context, category *category.Ca
 	return err
 }
 
-func (c *CategoriesRepository) Delete(ctx context.Context, idCategory uint, idUser uint64, moveTags bool) error {
+// Delete removes a category. moveTags relocates its tags (synonym links
+// intact) to the user's Other category; otherwise the tags are cascade-
+// deleted and deleteEvents decides whether the events whose only non-date
+// tags lived in this category are deleted too or preserved date-only.
+func (c *CategoriesRepository) Delete(ctx context.Context, idCategory uint, idUser uint64, moveTags bool, deleteEvents bool) error {
 	tx, err := c.DB.BeginTxx(ctx, nil)
 	if err != nil {
 		return err
@@ -162,6 +166,20 @@ func (c *CategoriesRepository) Delete(ctx context.Context, idCategory uint, idUs
 		if err != nil {
 			return err
 		}
+	} else if deleteEvents {
+		// Delete the events whose only non-date tags live in this category
+		// before the cascade removes their EventsTags rows. The derived table
+		// keeps MySQL from selecting the target table of the DELETE.
+		_, err = tx.ExecContext(ctx, `
+			DELETE FROM Events
+			WHERE idUser = ?
+			AND id IN (
+				SELECT id FROM (`+exclusiveCategoryEventsQuery+`) AS doomed
+			)
+		`, idUser, idCategory, idCategory)
+		if err != nil {
+			return err
+		}
 	}
 
 	res, err := tx.ExecContext(ctx, "DELETE FROM Categories WHERE id = ? AND idUser = ?", idCategory, idUser)
@@ -175,4 +193,57 @@ func (c *CategoriesRepository) Delete(ctx context.Context, idCategory uint, idUs
 	}
 
 	return tx.Commit()
+}
+
+// exclusiveCategoryEventsQuery selects the events linked to a category's tags
+// that have no other non-date tag outside the category. Args: idCategory,
+// idCategory again.
+const exclusiveCategoryEventsQuery = `
+	SELECT e.id FROM Events e
+	WHERE EXISTS (
+		SELECT 1 FROM EventsTags et
+		INNER JOIN Tags t ON t.id = et.idTag
+		WHERE et.idEvent = e.id
+		AND t.idCategory = ?
+	)
+	AND NOT EXISTS (
+		SELECT 1 FROM EventsTags et2
+		INNER JOIN Tags t2 ON t2.id = et2.idTag
+		INNER JOIN Categories c2 ON c2.id = t2.idCategory
+		WHERE et2.idEvent = e.id
+		AND t2.idCategory <> ?
+		AND c2.kind <> 'date'
+	)`
+
+// GetCategoryUsage counts the tags of a category and the events referencing
+// them; ExclusiveEvents counts the events that have no other non-date tag
+// outside the category (the events a plain deletion would leave date-only).
+func (c *CategoriesRepository) GetCategoryUsage(ctx context.Context, idCategory uint, idUser uint64) (*category.CategoryUsage, error) {
+	var usage category.CategoryUsage
+
+	err := c.DB.GetContext(ctx, &usage.Tags, "SELECT COUNT(*) FROM Tags WHERE idCategory = ?", idCategory)
+	if err != nil {
+		return nil, err
+	}
+
+	err = c.DB.GetContext(ctx, &usage.Events, `
+		SELECT COUNT(DISTINCT et.idEvent)
+		FROM EventsTags et
+		INNER JOIN Tags t ON t.id = et.idTag
+		WHERE et.idUser = ?
+		AND t.idCategory = ?
+	`, idUser, idCategory)
+	if err != nil {
+		return nil, err
+	}
+
+	err = c.DB.GetContext(ctx, &usage.ExclusiveEvents, `
+		SELECT COUNT(*) FROM (`+exclusiveCategoryEventsQuery+`
+		AND e.idUser = ?) AS exclusive
+	`, idCategory, idCategory, idUser)
+	if err != nil {
+		return nil, err
+	}
+
+	return &usage, nil
 }

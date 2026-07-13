@@ -207,6 +207,11 @@ class AppLocalizationsFr extends AppLocalizations {
   String get insert_tagInputLabel => 'Ajouter un tag';
 
   @override
+  String insert_newTagCategoryTitle(String tag) {
+    return 'Nouveau tag \"$tag\" : choisir une catégorie';
+  }
+
+  @override
   String get insert_descriptionLabel => 'Description';
 
   @override
@@ -260,4 +265,114 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get categories_synonymName => 'Synonyme';
+
+  @override
+  String get categories_renameSynonym => 'Renommer le synonyme';
+
+  @override
+  String get categories_deleteSynonymTitle => 'Supprimer le synonyme ?';
+
+  @override
+  String categories_deleteSynonymInfo(String synonym, String tag) {
+    return 'Les événements tagués \"$synonym\" seront déplacés vers \"$tag\".';
+  }
+
+  @override
+  String get categories_moveTag => 'Déplacer vers une autre catégorie';
+
+  @override
+  String categories_moveTagTitle(String tag) {
+    return 'Déplacer \"$tag\" vers';
+  }
+
+  @override
+  String categories_deleteTagTitle(String tag) {
+    return 'Supprimer \"$tag\" ?';
+  }
+
+  @override
+  String categories_deleteTagEvents(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count événements utilisent ce tag.',
+      one: '1 événement utilise ce tag.',
+      zero: 'Aucun événement n\'utilise ce tag.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String categories_deleteTagSynonyms(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Ses $count synonymes seront aussi supprimés.',
+      one: 'Son synonyme sera aussi supprimé.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String categories_deleteTagExclusiveEvents(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count événements n\'ont aucun autre tag :',
+      one: '1 événement n\'a aucun autre tag :',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get categories_deleteTagKeepEvents =>
+      'Conserver ces événements (date uniquement)';
+
+  @override
+  String get categories_deleteTagDeleteEvents => 'Supprimer ces événements';
+
+  @override
+  String categories_deleteCategoryTags(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Cette catégorie a $count tags.',
+      one: 'Cette catégorie a 1 tag.',
+      zero: 'Cette catégorie n\'a aucun tag.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String categories_deleteCategoryEvents(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count événements les utilisent.',
+      one: '1 événement les utilise.',
+      zero: 'Aucun événement ne les utilise.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get categories_deleteCategoryDeleteTags =>
+      'Supprimer les tags, conserver les événements';
+
+  @override
+  String get categories_deleteCategoryDeleteAll =>
+      'Supprimer les tags et leurs événements';
+
+  @override
+  String categories_deleteCategoryDeleteAllDetail(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count événements n\'utilisent que des tags de cette catégorie et seront supprimés.',
+      one:
+          '1 événement n\'utilise que des tags de cette catégorie et sera supprimé.',
+    );
+    return '$_temp0';
+  }
 }
