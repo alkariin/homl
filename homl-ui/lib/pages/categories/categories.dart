@@ -6,12 +6,11 @@ import 'package:homl/components/bubbles_background.dart';
 import 'package:homl/pages/categories/view/category_management.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
 
-/// Categories tab: the management list inline. Tapping a tag inserts it as a
-/// search filter (the parent switches to the Search tab).
+/// Categories tab: the management list inline. Tapping a tag opens its
+/// actions menu (inserting a tag as a search filter happens through the "#"
+/// logo of the Search tab instead).
 class CategoriesPage extends StatelessWidget {
-  final void Function(TagView tag) onTagSelected;
-
-  const CategoriesPage({required this.onTagSelected, super.key});
+  const CategoriesPage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -29,8 +28,8 @@ class CategoriesPage extends StatelessWidget {
           onSubmit: (name, color) => homeCubit.createCategory(name, color),
         ),
       ),
-      body: BubblesBackground(
-        child: CategoryManagementBody(onTagSelected: onTagSelected),
+      body: const BubblesBackground(
+        child: CategoryManagementBody(),
       ),
     );
   }

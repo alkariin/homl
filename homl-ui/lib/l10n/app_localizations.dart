@@ -460,6 +460,12 @@ abstract class AppLocalizations {
   /// **'Add a tag'**
   String get insert_tagInputLabel;
 
+  /// No description provided for @insert_newTagCategoryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New tag \"{tag}\": choose a category'**
+  String insert_newTagCategoryTitle(String tag);
+
   /// No description provided for @insert_descriptionLabel.
   ///
   /// In en, this message translates to:

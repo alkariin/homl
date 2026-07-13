@@ -44,6 +44,16 @@ class TagInput extends StatefulWidget {
   /// Shows the homl "#" logo on the left of the field (search page).
   final bool showLogo;
 
+  /// Called when the logo is tapped, with the trimmed text currently typed
+  /// in the field (empty when the field is empty). Leaves the logo inert
+  /// when null.
+  final void Function(String pendingText)? onLogoTap;
+
+  /// Text controller of the field. Owned by the parent when provided (so it
+  /// can read or clear the pending text), otherwise the input creates and
+  /// disposes its own.
+  final TextEditingController? controller;
+
   const TagInput(
       {required this.labelText,
       required this.tags,
@@ -53,6 +63,8 @@ class TagInput extends StatefulWidget {
       this.leading,
       this.trailing,
       this.showLogo = false,
+      this.onLogoTap,
+      this.controller,
       super.key});
 
   @override
@@ -60,12 +72,15 @@ class TagInput extends StatefulWidget {
 }
 
 class _TagInputState extends State<TagInput> {
-  final TextEditingController _controller = TextEditingController();
+  late final TextEditingController _controller =
+      widget.controller ?? TextEditingController();
   final FocusNode _focusNode = FocusNode();
 
   @override
   void dispose() {
-    _controller.dispose();
+    if (widget.controller == null) {
+      _controller.dispose();
+    }
     _focusNode.dispose();
     super.dispose();
   }
@@ -145,8 +160,16 @@ class _TagInputState extends State<TagInput> {
             if (widget.showLogo) ...[
               ValueListenableBuilder<TextEditingValue>(
                 valueListenable: _controller,
-                builder: (context, value, _) =>
-                    HomlLogo(tint: _highlightFor(value)),
+                builder: (context, value, _) {
+                  final logo = HomlLogo(tint: _highlightFor(value));
+                  if (widget.onLogoTap == null) return logo;
+                  return InkWell(
+                    borderRadius: BorderRadius.circular(5),
+                    onTap: () =>
+                        widget.onLogoTap!(_controller.text.trim()),
+                    child: logo,
+                  );
+                },
               ),
               const SizedBox(width: 12),
             ],

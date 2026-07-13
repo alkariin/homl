@@ -203,6 +203,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get insert_tagInputLabel => 'Add a tag';
 
   @override
+  String insert_newTagCategoryTitle(String tag) {
+    return 'New tag \"$tag\": choose a category';
+  }
+
+  @override
   String get insert_descriptionLabel => 'Description';
 
   @override

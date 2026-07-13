@@ -112,13 +112,19 @@ class HomeCubit extends Cubit<HomeState> {
     }
   }
 
-  Future<void> createTag(String text, int idCategory, {int? idParentTag}) async {
+  /// Returns true when the tag was created (false emits an error modal), so
+  /// callers chaining on the creation (e.g. the insert page tagging its
+  /// event with the new tag) know whether to proceed.
+  Future<bool> createTag(String text, int idCategory,
+      {int? idParentTag}) async {
     try {
       await tagsRepository.createTag(text, idCategory,
           idParentTag: idParentTag);
       await _refreshCategories();
+      return true;
     } catch (_) {
       emit(state.copyWith(modal: AppMessage.unexpectedError));
+      return false;
     }
   }
 

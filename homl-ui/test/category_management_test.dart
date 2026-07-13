@@ -85,13 +85,27 @@ void main() {
       supportedLocales: AppLocalizations.supportedLocales,
       home: BlocProvider.value(
         value: cubit,
-        child: Scaffold(body: CategoryManagementBody(onTagSelected: (_) {})),
+        child: const Scaffold(body: CategoryManagementBody()),
       ),
     );
   }
 
-  testWidgets('long press on a main tag opens the management menu',
-      (tester) async {
+  testWidgets('tapping a main tag opens the management menu', (tester) async {
+    await tester.pumpWidget(wrap());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Hobbies'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Football'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Rename tag'), findsOneWidget);
+    expect(find.text('Add a synonym'), findsOneWidget);
+    expect(find.text('Move to another category'), findsOneWidget);
+    expect(find.text('Delete tag'), findsOneWidget);
+  });
+
+  testWidgets('long press on a main tag opens the same menu', (tester) async {
     await tester.pumpWidget(wrap());
     await tester.pumpAndSettle();
 
@@ -101,9 +115,34 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Rename tag'), findsOneWidget);
-    expect(find.text('Add a synonym'), findsOneWidget);
-    expect(find.text('Move to another category'), findsOneWidget);
-    expect(find.text('Delete tag'), findsOneWidget);
+  });
+
+  testWidgets('picker mode selects on tap instead of opening the menu',
+      (tester) async {
+    TagView? selected;
+
+    await tester.pumpWidget(MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: BlocProvider.value(
+        value: cubit,
+        child: Scaffold(
+            body: CategoryManagementBody(
+                onTagSelected: (tag) => selected = tag)),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Hobbies'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Football'));
+    await tester.pumpAndSettle();
+
+    expect(selected?.tagName, 'Football');
+    expect(find.text('Rename tag'), findsNothing);
+    // No management affordances in picker mode.
+    expect(find.text('New tag'), findsNothing);
+    expect(find.byIcon(Icons.add), findsNothing);
   });
 
   testWidgets('tags of the Others category are manageable and movable',

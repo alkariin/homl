@@ -77,6 +77,7 @@
   "nav_add": "Ajouter",
 
   "insert_tagInputLabel": "Ajouter un tag",
+  "insert_newTagCategoryTitle": "Nouveau tag \"{tag}\" : choisir une catégorie",
   "insert_descriptionLabel": "Description",
   "insert_submit": "Créer l'événement",
   "insert_eventCreated": "Événement créé",
