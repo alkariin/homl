@@ -277,6 +277,7 @@ class _TagRow extends StatelessWidget {
           ...synonyms.map((synonym) => components.Tag(
                 id: synonym.id,
                 text: synonym.tag,
+                color: category.color,
                 onTap: isPicker
                     ? () => _selectTag(context, synonym)
                     : !canManage

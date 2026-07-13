@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
+import 'package:homl/components/tag.dart' as components;
 import 'package:homl/data/models/category.dart';
 import 'package:homl/data/models/settings.dart';
 import 'package:homl/data/models/tag.dart';
@@ -103,6 +104,22 @@ void main() {
     expect(find.text('Add a synonym'), findsOneWidget);
     expect(find.text('Move to another category'), findsOneWidget);
     expect(find.text('Delete tag'), findsOneWidget);
+  });
+
+  testWidgets('chips carry the category color, synonyms included',
+      (tester) async {
+    await tester.pumpWidget(wrap());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Hobbies'));
+    await tester.pumpAndSettle();
+
+    final mainChip = tester.widget<components.Tag>(
+        find.widgetWithText(components.Tag, 'Football'));
+    final synonymChip = tester
+        .widget<components.Tag>(find.widgetWithText(components.Tag, 'Foot'));
+    expect(mainChip.color, '#f28b82');
+    expect(synonymChip.color, '#f28b82');
   });
 
   testWidgets('long press on a main tag opens the same menu', (tester) async {
