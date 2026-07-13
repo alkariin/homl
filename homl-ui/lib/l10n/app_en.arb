@@ -90,6 +90,10 @@
 
   "list_filterLabel": "Filter by tag",
   "list_noEvents": "No events found",
+  "list_editEvent": "Edit event",
+  "list_deleteEventTitle": "Delete event?",
+  "list_deleteEventInfo": "This event and its description will be permanently deleted.",
+  "list_eventUpdated": "Event updated",
 
   "categories_newCategory": "New category",
   "categories_editCategory": "Edit category",

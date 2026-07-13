@@ -85,6 +85,10 @@
 
   "list_filterLabel": "Nach Tag filtern",
   "list_noEvents": "Keine Ereignisse gefunden",
+  "list_editEvent": "Ereignis bearbeiten",
+  "list_deleteEventTitle": "Ereignis löschen?",
+  "list_deleteEventInfo": "Dieses Ereignis und seine Beschreibung werden endgültig gelöscht.",
+  "list_eventUpdated": "Ereignis aktualisiert",
 
   "categories_newCategory": "Neue Kategorie",
   "categories_editCategory": "Kategorie bearbeiten",

@@ -85,6 +85,10 @@
 
   "list_filterLabel": "Filtrer par tag",
   "list_noEvents": "Aucun événement trouvé",
+  "list_editEvent": "Modifier l'événement",
+  "list_deleteEventTitle": "Supprimer l'événement ?",
+  "list_deleteEventInfo": "Cet événement et sa description seront définitivement supprimés.",
+  "list_eventUpdated": "Événement mis à jour",
 
   "categories_newCategory": "Nouvelle catégorie",
   "categories_editCategory": "Modifier la catégorie",

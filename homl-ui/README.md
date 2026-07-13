@@ -131,6 +131,26 @@ controller is disposed with the route: disposing it from `showDialog`'s
 future crashes, the future completes on pop while the dialog is still
 animating out.
 
+## Search tab: event detail, edit & delete
+
+Tapping an event card opens a bottom sheet
+(`lib/pages/list/view/event_detail_sheet.dart`) with the full date, all the
+tags and the whole description (scrollable), plus two actions:
+
+- **edit** pushes `EditEventPage` (`lib/pages/insert/insert.dart`), which
+  reuses `InsertView`/`InsertCubit` in edit mode: `InsertState.fromEvent`
+  prefills the form but excludes the month/year date tags — the backend
+  rebuilds them from the date on every update, so sending them back in
+  `tagsId` would duplicate them as regular tags. Saving calls
+  `PATCH /events/:id` (full state: the description is always sent, even
+  empty, which is how it gets erased), pops back and confirms with a
+  snackbar.
+- **delete** asks for confirmation, then calls `DELETE /events/:id`.
+
+Neither action refreshes the list by hand: both repository calls emit on
+`EventsRepository.changes`, which `HomeCubit` already listens to (refetch +
+offline cache rewrite), and `ListCubit` re-filters from `HomeCubit.stream`.
+
 ## Offline cache & local search
 
 The Search tab does **not** query the backend per filter change: it filters

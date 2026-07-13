@@ -90,6 +90,38 @@ class EventsRepository {
     _changesController.add(null);
   }
 
+  /// The backend PATCH is full-state: the description is always sent (an
+  /// empty string clears it) and the month/year date tags are rebuilt from
+  /// [date] server-side, so [tagsId] must only carry the regular tags.
+  Future<void> updateEvent({
+    required int id,
+    String? description,
+    required DateTime date,
+    required List<int> tagsId,
+  }) async {
+    try {
+      await apiInstance.api.patch<void>('/events/$id', data: {
+        'description': description ?? '',
+        'date': date.toUtc().toIso8601String(),
+        'tagsId': tagsId,
+      });
+    } on DioException catch (_) {
+      throw EventsRequestFailure();
+    }
+
+    _changesController.add(null);
+  }
+
+  Future<void> deleteEvent(int id) async {
+    try {
+      await apiInstance.api.delete<void>('/events/$id');
+    } on DioException catch (_) {
+      throw EventsRequestFailure();
+    }
+
+    _changesController.add(null);
+  }
+
   void dispose() {
     _changesController.close();
   }
