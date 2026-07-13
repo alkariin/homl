@@ -49,16 +49,16 @@ class _CategoryTile extends StatelessWidget {
     final mainTags =
         category.tags.where((tag) => tag.idParentTag == null).toList();
 
-    // When the backend exposes the category kind, the Dates tags are managed
-    // by the backend and the Others tags are read-only here (they land in the
-    // grey bucket through the insert page or a category deletion); Persons is
-    // an ordinary suggestion category, fully editable. Older backends do not
-    // send the kind: fall back to the legacy convention (first category is
-    // Dates, the next one is Persons) and its legacy rules.
+    // When the backend exposes the category kind, only the Dates tags are
+    // off-limits (managed by the backend from the event dates). The Others
+    // tags are manageable like any other so the free tags typed on the
+    // insert page can be renamed, given synonyms or moved to a real
+    // category. Older backends do not send the kind: fall back to the legacy
+    // convention (first category is Dates, the next one is Persons) and its
+    // legacy rules.
     final bool canManageTags;
     if (category.kind != null) {
-      canManageTags = category.kind != CategoryKind.date &&
-          category.kind != CategoryKind.other;
+      canManageTags = category.kind != CategoryKind.date;
     } else {
       final idDates = homeCubit.state.categories.isEmpty
           ? -1
@@ -160,10 +160,70 @@ class _TagRow extends StatelessWidget {
     }
   }
 
+  void _onAction(BuildContext context, String action) {
+    var localization = AppLocalizations.of(context)!;
+    final homeCubit = context.read<HomeCubit>();
+
+    switch (action) {
+      case 'rename':
+        _textDialog(
+          context,
+          title: localization.categories_renameTag,
+          label: localization.categories_categoryName,
+          initialValue: mainTag.tag,
+          onSubmit: (name) =>
+              homeCubit.updateTag(mainTag.id, name, category.id),
+        );
+        break;
+      case 'synonym':
+        _textDialog(
+          context,
+          title: localization.categories_addSynonym,
+          label: localization.categories_synonymName,
+          onSubmit: (name) => homeCubit.createTag(name, category.id,
+              idParentTag: mainTag.id),
+        );
+        break;
+      case 'move':
+        _moveTagDialog(context, category, mainTag);
+        break;
+      case 'delete':
+        _deleteTagDialog(context, mainTag, synonyms);
+        break;
+    }
+  }
+
+  /// Long press on the main tag chip: the same actions as the trailing menu,
+  /// as a dialog.
+  void _mainTagDialog(BuildContext context) {
+    var localization = AppLocalizations.of(context)!;
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => SimpleDialog(
+        title: Text(mainTag.tag),
+        children: [
+          for (final (action, label) in [
+            ('rename', localization.categories_renameTag),
+            ('synonym', localization.categories_addSynonym),
+            ('move', localization.categories_moveTag),
+            ('delete', localization.categories_deleteTag),
+          ])
+            SimpleDialogOption(
+              child: Text(label),
+              onPressed: () {
+                Navigator.pop(dialogContext);
+                _onAction(context, action);
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     var localization = AppLocalizations.of(context)!;
-    final homeCubit = context.read<HomeCubit>();
 
     return ListTile(
       dense: true,
@@ -178,6 +238,7 @@ class _TagRow extends StatelessWidget {
             text: mainTag.tag,
             color: category.color,
             onTap: () => _selectTag(context, mainTag),
+            onDeleteTag: !canManage ? null : (_) => _mainTagDialog(context),
           ),
           ...synonyms.map((synonym) => components.Tag(
                 id: synonym.id,
@@ -192,36 +253,7 @@ class _TagRow extends StatelessWidget {
       trailing: !canManage
           ? null
           : PopupMenuButton<String>(
-              onSelected: (action) {
-                switch (action) {
-                  case 'rename':
-                    _textDialog(
-                      context,
-                      title: localization.categories_renameTag,
-                      label: localization.categories_categoryName,
-                      initialValue: mainTag.tag,
-                      onSubmit: (name) => homeCubit
-                          .updateTag(mainTag.id, name, category.id),
-                    );
-                    break;
-                  case 'synonym':
-                    _textDialog(
-                      context,
-                      title: localization.categories_addSynonym,
-                      label: localization.categories_synonymName,
-                      onSubmit: (name) => homeCubit.createTag(
-                          name, category.id,
-                          idParentTag: mainTag.id),
-                    );
-                    break;
-                  case 'move':
-                    _moveTagDialog(context, category, mainTag);
-                    break;
-                  case 'delete':
-                    _deleteTagDialog(context, mainTag, synonyms);
-                    break;
-                }
-              },
+              onSelected: (action) => _onAction(context, action),
               itemBuilder: (context) => [
                 PopupMenuItem(
                     value: 'rename',
@@ -323,13 +355,10 @@ void _deleteSynonymDialog(
 void _moveTagDialog(BuildContext context, Category category, Tag mainTag) {
   var localization = AppLocalizations.of(context)!;
   final homeCubit = context.read<HomeCubit>();
-  // Any category except Dates (backend-managed), Others (read-only grey
-  // bucket) and the current one.
+  // Any category except Dates (backend-managed) and the current one.
   final targets = homeCubit.state.categories
       .where((target) =>
-          target.id != category.id &&
-          target.kind != CategoryKind.date &&
-          target.kind != CategoryKind.other)
+          target.id != category.id && target.kind != CategoryKind.date)
       .toList();
 
   showDialog<void>(
