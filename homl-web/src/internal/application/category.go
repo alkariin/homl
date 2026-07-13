@@ -13,7 +13,8 @@ type CategoriesService interface {
 	GetCategories(ctx context.Context, idUser uint64) ([]category.GetCategoryResponse, error)
 	CreateCategory(ctx context.Context, c *category.Category) error
 	UpdateCategory(ctx context.Context, c *category.Category) error
-	DeleteCategory(ctx context.Context, idCategory uint, idUser uint64, moveTags bool) error
+	DeleteCategory(ctx context.Context, idCategory uint, idUser uint64, moveTags bool, deleteEvents bool) error
+	GetCategoryUsage(ctx context.Context, idCategory uint, idUser uint64) (*category.CategoryUsage, error)
 }
 
 type categoriesService struct {
@@ -128,6 +129,20 @@ func (c *categoriesService) UpdateCategory(ctx context.Context, newCategory *cat
 	return nil
 }
 
-func (c *categoriesService) DeleteCategory(ctx context.Context, idCategory uint, idUser uint64, moveTags bool) error {
-	return c.CategoriesRepository.Delete(ctx, idCategory, idUser, moveTags)
+// DeleteCategory removes a category: moveTags relocates its tags to the Other
+// category, otherwise deleteEvents decides whether the events whose only
+// non-date tags lived here are deleted too or preserved date-only.
+func (c *categoriesService) DeleteCategory(ctx context.Context, idCategory uint, idUser uint64, moveTags bool, deleteEvents bool) error {
+	return c.CategoriesRepository.Delete(ctx, idCategory, idUser, moveTags, deleteEvents)
+}
+
+// GetCategoryUsage implements CategoriesService: tag/event counts used by the
+// client to build its delete confirmation dialog.
+func (c *categoriesService) GetCategoryUsage(ctx context.Context, idCategory uint, idUser uint64) (*category.CategoryUsage, error) {
+	// Scoped load: doubles as the ownership check.
+	if _, err := c.CategoriesRepository.FindByIdForUser(ctx, idCategory, idUser); err != nil {
+		return nil, err
+	}
+
+	return c.CategoriesRepository.GetCategoryUsage(ctx, idCategory, idUser)
 }

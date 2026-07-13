@@ -6,6 +6,7 @@ import 'package:homl/components/bubbles_background.dart';
 import 'package:homl/components/event_card.dart';
 import 'package:homl/components/tag_input.dart';
 import 'package:homl/data/models/category.dart';
+import 'package:homl/pages/categories/view/category_management.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
 import 'package:homl/pages/list/bloc/list_cubit.dart';
 
@@ -58,6 +59,13 @@ class ListPage extends StatelessWidget {
                       context.read<ListCubit>().addFilterTag(name),
                   onRemoveTag: (tag) =>
                       context.read<ListCubit>().removeFilterTag(tag.name),
+                  // The "#" logo browses the categories; a tap on a tag
+                  // inserts it as a search filter.
+                  onLogoTap: (_) => showTagPickerSheet(
+                    context,
+                    onTagSelected: (tag) =>
+                        context.read<ListCubit>().addFilterTag(tag.tagName),
+                  ),
                 ),
               ),
               Expanded(
