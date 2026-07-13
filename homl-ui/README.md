@@ -97,11 +97,14 @@ flutter test
 
 `lib/pages/categories/view/category_management.dart` gives full CRUD on
 categories, tags and synonyms (rules per category kind in
-`homl-web/docs/default-categories.md`). Destructive actions confirm with the
-counts served by `GET /tags/:id/usage` / `GET /categories/:id/usage`:
+`homl-web/docs/default-categories.md`; only the Dates tags are read-only —
+the Others tags are manageable so free tags typed on the insert page can be
+sorted into real categories). Destructive actions confirm with the counts
+served by `GET /tags/:id/usage` / `GET /categories/:id/usage`:
 
 - a main tag can be renamed, given synonyms, **moved to another category**
-  (its synonyms follow) or deleted — the delete dialog says how many events
+  (its synonyms follow) or deleted, either from a **long press on its chip**
+  or from the "⋮" menu of its row — the delete dialog says how many events
   use the tag and lets the user delete the events that only carry this tag or
   keep them with their date only (`deleteEvents` on `DELETE /tags/:id`);
 - a synonym (long press on its chip) can be renamed, detached or deleted —

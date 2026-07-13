@@ -10,7 +10,7 @@ reference for how each of them behaves in the backend and in the app.
 | --- | --- | --- | --- | --- | --- | --- |
 | Dates | `date` | yes | `#ffff60` | no | no | backend-managed, read-only |
 | Persons | `person` | no | `#60ccff` | yes | yes | user-managed, like any custom category |
-| Others | `other` | yes | `#999999` (grey, fixed) | no | no | read-only in the Categories tab; filled indirectly |
+| Others | `other` | yes | `#999999` (grey, fixed) | no | no | user-managed; also filled indirectly |
 
 ## Dates — mandatory, fully read-only
 
@@ -39,13 +39,15 @@ reference for how each of them behaves in the backend and in the app.
 - Migration `000003_unlock_person_category` unlocks the row for accounts
   created before this rule.
 
-## Others — mandatory grey bucket, read-only in the UI
+## Others — mandatory grey bucket
 
 - Always present and locked: not deletable, not renamable, and its color is
   fixed to grey (`#999999`) — the backend forbids any update of a locked
   category.
-- Its tags are read-only in the Categories tab, but the bucket fills up
-  indirectly:
+- Its **tags** are manageable like any other (rename, synonyms, move,
+  delete): this is where the free tags typed on the insert page land, and the
+  Categories tab is where the user sorts them into real categories. The
+  bucket also fills up indirectly:
   - free tags typed on the insert page are created in it
     (`InsertCubit._defaultCategoryId`), so `POST /tags` keeps accepting it as
     a target;
