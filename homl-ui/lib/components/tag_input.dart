@@ -161,13 +161,43 @@ class _TagInputState extends State<TagInput> {
               ValueListenableBuilder<TextEditingValue>(
                 valueListenable: _controller,
                 builder: (context, value, _) {
-                  final logo = HomlLogo(tint: _highlightFor(value));
+                  final highlight = _highlightFor(value);
+                  final logo = HomlLogo(tint: highlight);
                   if (widget.onLogoTap == null) return logo;
-                  return InkWell(
-                    borderRadius: BorderRadius.circular(5),
-                    onTap: () =>
-                        widget.onLogoTap!(_controller.text.trim()),
-                    child: logo,
+
+                  // Button affordance: circular ripple on the logo plus a
+                  // small chevron badge (tinted like the input border when a
+                  // suggestion highlights it) telling it opens the picker.
+                  return Material(
+                    color: Colors.transparent,
+                    shape: const CircleBorder(),
+                    child: InkWell(
+                      customBorder: const CircleBorder(),
+                      onTap: () =>
+                          widget.onLogoTap!(_controller.text.trim()),
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          logo,
+                          Positioned(
+                            right: -3,
+                            bottom: -3,
+                            child: Container(
+                              width: 20,
+                              height: 20,
+                              decoration: BoxDecoration(
+                                color: highlight ?? yellow,
+                                shape: BoxShape.circle,
+                                border:
+                                    Border.all(color: Colors.white, width: 1.5),
+                              ),
+                              child: const Icon(Icons.expand_more,
+                                  size: 14, color: Colors.white),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   );
                 },
               ),
