@@ -112,6 +112,16 @@ class HomeCubit extends Cubit<HomeState> {
     }
   }
 
+  Future<void> deleteEvent(int id) async {
+    try {
+      // The repository change stream triggers init(), which refreshes the
+      // shared events (and rewrites the offline cache).
+      await eventsRepository.deleteEvent(id);
+    } catch (_) {
+      emit(state.copyWith(modal: AppMessage.unexpectedError));
+    }
+  }
+
   /// Returns true when the tag was created (false emits an error modal), so
   /// callers chaining on the creation (e.g. the insert page tagging its
   /// event with the new tag) know whether to proceed.

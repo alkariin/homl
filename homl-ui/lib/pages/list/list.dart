@@ -9,6 +9,7 @@ import 'package:homl/data/models/category.dart';
 import 'package:homl/pages/categories/view/category_management.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
 import 'package:homl/pages/list/bloc/list_cubit.dart';
+import 'package:homl/pages/list/view/event_detail_sheet.dart';
 
 class ListPage extends StatelessWidget {
   const ListPage({super.key});
@@ -89,6 +90,8 @@ class ListPage extends StatelessWidget {
                                 event: event,
                                 tagColorResolver: (tagName) =>
                                     homeState.allTagsMap[tagName]?.color,
+                                onTap: () => showEventDetailSheet(context,
+                                    event: event),
                               );
                             },
                           ),
