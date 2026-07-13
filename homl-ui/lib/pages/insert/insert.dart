@@ -8,6 +8,7 @@ import 'package:homl/components/button.dart';
 import 'package:homl/components/input.dart';
 import 'package:homl/components/tag.dart';
 import 'package:homl/components/tag_input.dart';
+import 'package:homl/data/models/category.dart';
 import 'package:homl/data/repositories/events.repository.dart';
 import 'package:homl/data/repositories/tags.repository.dart';
 import 'package:homl/helpers/app_message.dart';
@@ -122,6 +123,16 @@ class _InsertViewState extends State<InsertView> {
         }
       },
       child: BlocBuilder<HomeCubit, HomeState>(builder: (context, homeState) {
+        // A free tag not created yet lands in the Others category on submit:
+        // its chip already wears that category's grey.
+        String? otherCategoryColor;
+        for (final category in homeState.categories) {
+          if (category.kind == CategoryKind.other) {
+            otherCategoryColor = category.color;
+            break;
+          }
+        }
+
         return BlocBuilder<InsertCubit, InsertState>(builder: (context, state) {
           final insertCubit = context.read<InsertCubit>();
 
@@ -166,7 +177,8 @@ class _InsertViewState extends State<InsertView> {
                           .map((name) => TagChipData(
                               id: homeState.allTagsMap[name]?.id ?? -1,
                               name: name,
-                              color: homeState.allTagsMap[name]?.color))
+                              color: homeState.allTagsMap[name]?.color ??
+                                  otherCategoryColor))
                           .toList(),
                       suggestions: homeState.allTagsMap.values
                           .map((tagView) => TagChipData(

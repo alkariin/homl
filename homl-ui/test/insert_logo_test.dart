@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
 import 'package:homl/components/logo.dart';
+import 'package:homl/components/tag.dart' as components;
 import 'package:homl/components/tag_input.dart';
 import 'package:homl/data/models/category.dart';
 import 'package:homl/data/models/settings.dart';
@@ -39,6 +40,13 @@ final categories = [
       isLocked: false,
       kind: CategoryKind.custom,
       tags: [Tag(id: 2, tag: 'Football', idCategory: 2)]),
+  Category(
+      id: 3,
+      category: 'Others',
+      color: '#999999',
+      isLocked: true,
+      kind: CategoryKind.other,
+      tags: []),
 ];
 
 void main() {
@@ -115,6 +123,22 @@ void main() {
     expect(find.text('Roadtrip'), findsOneWidget);
     expect(
         tester.widget<TextFormField>(tagField()).controller?.text, isEmpty);
+  });
+
+  testWidgets('a pending free tag wears the Others category grey',
+      (tester) async {
+    await tester.pumpWidget(wrap());
+    await tester.pumpAndSettle();
+
+    await tester.enterText(tagField(), 'Freetag');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+
+    // Not created yet: it will land in Others on submit, so its chip
+    // already wears that category's color.
+    final chip = tester.widget<components.Tag>(
+        find.widgetWithText(components.Tag, 'Freetag'));
+    expect(chip.color, '#999999');
   });
 
   testWidgets('logo with an existing tag typed does nothing', (tester) async {
