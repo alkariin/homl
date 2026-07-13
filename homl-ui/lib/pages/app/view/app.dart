@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -87,6 +88,17 @@ class _AppViewState extends State<AppView> {
   /// re-emits biometricCheck while the dialog is still shown.
   bool _biometricDialogShown = false;
 
+  /// Holds navigation away from the splash until its logo reveal (1100ms) has
+  /// played out. Already complete for every later auth transition, so
+  /// awaiting it then is a no-op.
+  late final Future<void> _minSplash;
+
+  @override
+  void initState() {
+    super.initState();
+    _minSplash = Future<void>.delayed(const Duration(milliseconds: 1300));
+  }
+
   Future<PinAuthResult> onPinChanged(String pin) async {
     return widget._apiInstance.sendPinAuth(pin);
   }
@@ -124,28 +136,32 @@ class _AppViewState extends State<AppView> {
               },
             ),
             BlocListener<AuthenticationCubit, AuthenticationState>(
-              listener: (context, state) {
+              listener: (context, state) async {
+                if (state.status == AuthenticationStatus.unknown) return;
+                await _minSplash;
+                if (!context.mounted) return;
                 switch (state.status) {
                   case AuthenticationStatus.authenticated:
                     _biometricDialogShown = false;
                     // get settings here if you want to remove it from authentication_bloc
-                    _navigator.pushAndRemoveUntil<void>(
+                    unawaited(_navigator.pushAndRemoveUntil<void>(
                         HomePage.route(
                             context.read<LoginCubit>().state.username),
-                        (route) => false);
+                        (route) => false));
                     break;
                   case AuthenticationStatus.unauthenticated:
                     _biometricDialogShown = false;
-                    _navigator.pushAndRemoveUntil<void>(
-                        LoginPage.route(), (route) => false);
+                    unawaited(_navigator.pushAndRemoveUntil<void>(
+                        LoginPage.route(), (route) => false));
                     break;
                   case AuthenticationStatus.pinCheck:
-                    _navigator.push(PinDialog.route(context, onPinChanged,
-                        returnToLogin: onReturnToLogin));
+                    unawaited(_navigator.push(PinDialog.route(
+                        context, onPinChanged,
+                        returnToLogin: onReturnToLogin)));
                     break;
                   case AuthenticationStatus.pinLocked:
-                    _navigator.pushAndRemoveUntil<void>(
-                        LoginPage.route(), (route) => false);
+                    unawaited(_navigator.pushAndRemoveUntil<void>(
+                        LoginPage.route(), (route) => false));
                     _scaffoldMessengerKey.currentState
                       ?..hideCurrentSnackBar()
                       ..showSnackBar(SnackBar(
@@ -157,10 +173,10 @@ class _AppViewState extends State<AppView> {
                   case AuthenticationStatus.biometricCheck:
                     if (_biometricDialogShown) break;
                     _biometricDialogShown = true;
-                    _navigator.push(BiometricDialog.route(context,
+                    unawaited(_navigator.push(BiometricDialog.route(context,
                         onRetry: widget._apiInstance.retryBiometricAuth,
                         onUsePassword:
-                            widget._apiInstance.cancelBiometricAuth));
+                            widget._apiInstance.cancelBiometricAuth)));
                     break;
                   case AuthenticationStatus.unknown:
                     break;

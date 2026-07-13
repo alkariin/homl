@@ -26,16 +26,31 @@ class _GoldTintMapper extends ColorMapper {
 /// [tint] recolors the gold strokes only — the black ones stay black — and
 /// the circle border (search bar: the category color of the top suggestion).
 /// Null keeps the normal artwork.
+///
+/// [circled] false drops the white circle, border and shadow and shows the
+/// bare hash (splash screen: the circle reads as a tappable button there).
 class HomlLogo extends StatelessWidget {
   final double size;
   final double colorProgress;
   final Color? tint;
+  final bool circled;
 
   const HomlLogo(
-      {this.size = 51, this.colorProgress = 1.0, this.tint, super.key});
+      {this.size = 51,
+      this.colorProgress = 1.0,
+      this.tint,
+      this.circled = true,
+      super.key});
 
   @override
   Widget build(BuildContext context) {
+    if (!circled) {
+      return SizedBox(
+        width: size,
+        height: size,
+        child: colorProgress >= 1.0 ? _hash() : _revealingHash(),
+      );
+    }
     return Container(
       width: size,
       height: size,
