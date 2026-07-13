@@ -5,12 +5,13 @@ import 'package:homl/components/logo.dart';
 import 'package:homl/pages/splash/splash.dart';
 
 void main() {
-  testWidgets('splash page shows the logo artwork', (tester) async {
+  testWidgets('splash page shows only the bare logo artwork', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: SplashPage()));
 
-    expect(find.byType(HomlLogo), findsOneWidget);
-    expect(find.text('HOML'), findsOneWidget);
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    final logo = tester.widget<HomlLogo>(find.byType(HomlLogo));
+    expect(logo.circled, isFalse);
+    expect(find.text('HOML'), findsNothing);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
 
     final pictures = tester.widgetList<SvgPicture>(find.byType(SvgPicture));
     expect(pictures, isNotEmpty);
@@ -45,5 +46,23 @@ void main() {
     logo = tester.widget(find.byType(HomlLogo));
     expect(logo.colorProgress, 1.0);
     expect(find.byType(SvgPicture), findsOneWidget);
+  });
+
+  testWidgets('logo keeps its circle by default and drops it when uncircled',
+      (tester) async {
+    bool hasCircleDecoration() =>
+        tester.widgetList<Container>(find.byType(Container)).any((container) {
+          final decoration = container.decoration;
+          return decoration is BoxDecoration &&
+              decoration.shape == BoxShape.circle;
+        });
+
+    await tester.pumpWidget(
+        const MaterialApp(home: Scaffold(body: HomlLogo())));
+    expect(hasCircleDecoration(), isTrue);
+
+    await tester.pumpWidget(
+        const MaterialApp(home: Scaffold(body: HomlLogo(circled: false))));
+    expect(hasCircleDecoration(), isFalse);
   });
 }

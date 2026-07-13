@@ -42,26 +42,13 @@ class _SplashPageState extends State<SplashPage>
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AnimatedBuilder(
-              animation: _colorProgress,
-              builder: (context, _) =>
-                  HomlLogo(size: 96, colorProgress: _colorProgress.value),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'HOML',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 40),
-            const SizedBox(
-              width: 24,
-              height: 24,
-              child: CircularProgressIndicator(strokeWidth: 2.5),
-            ),
-          ],
+        child: AnimatedBuilder(
+          animation: _colorProgress,
+          builder: (context, _) => HomlLogo(
+            size: 120,
+            circled: false,
+            colorProgress: _colorProgress.value,
+          ),
         ),
       ),
     );
