@@ -11,6 +11,7 @@ import 'package:homl/components/tag_input.dart';
 import 'package:homl/data/repositories/events.repository.dart';
 import 'package:homl/data/repositories/tags.repository.dart';
 import 'package:homl/helpers/app_message.dart';
+import 'package:homl/pages/categories/view/category_management.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
 import 'package:homl/pages/insert/bloc/insert_cubit.dart';
 
@@ -41,10 +42,53 @@ class InsertView extends StatefulWidget {
 class _InsertViewState extends State<InsertView> {
   final TextEditingController _descriptionController = TextEditingController();
 
+  /// Owned here (handed to [TagInput]) so the logo flow below can read and
+  /// clear the pending tag text.
+  final TextEditingController _tagController = TextEditingController();
+
   @override
   void dispose() {
     _descriptionController.dispose();
+    _tagController.dispose();
     super.dispose();
+  }
+
+  /// "#" logo of the tag input:
+  /// - empty field: browse the categories and tap a tag to add it;
+  /// - a new tag typed: pick the category it belongs to, create it there and
+  ///   add it to the event;
+  /// - an existing tag typed: nothing to do, it already has a category (the
+  ///   autocomplete adds it to the event).
+  void _onLogoTap(BuildContext context, String pending, HomeState homeState) {
+    var localization = AppLocalizations.of(context)!;
+    final insertCubit = context.read<InsertCubit>();
+    final homeCubit = context.read<HomeCubit>();
+
+    if (pending.isEmpty) {
+      showTagPickerSheet(
+        context,
+        onTagSelected: (tag) => insertCubit.addTag(tag.tagName),
+      );
+      return;
+    }
+
+    final exists = homeState.allTagsMap.keys
+        .any((name) => name.toLowerCase() == pending.toLowerCase());
+    if (exists) {
+      return;
+    }
+
+    pickCategoryDialog(
+      context,
+      title: localization.insert_newTagCategoryTitle(pending),
+      onPicked: (category) async {
+        final created = await homeCubit.createTag(pending, category.id);
+        if (created) {
+          insertCubit.addTag(pending);
+          _tagController.clear();
+        }
+      },
+    );
   }
 
   @override
@@ -114,6 +158,10 @@ class _InsertViewState extends State<InsertView> {
                   children: [
                     TagInput(
                       labelText: localization.insert_tagInputLabel,
+                      showLogo: true,
+                      controller: _tagController,
+                      onLogoTap: (pending) =>
+                          _onLogoTap(context, pending, homeState),
                       tags: state.tagNames
                           .map((name) => TagChipData(
                               id: homeState.allTagsMap[name]?.id ?? -1,

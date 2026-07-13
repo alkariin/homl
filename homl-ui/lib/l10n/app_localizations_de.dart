@@ -208,6 +208,11 @@ class AppLocalizationsDe extends AppLocalizations {
   String get insert_tagInputLabel => 'Tag hinzufügen';
 
   @override
+  String insert_newTagCategoryTitle(String tag) {
+    return 'Neuer Tag \"$tag\": Kategorie wählen';
+  }
+
+  @override
   String get insert_descriptionLabel => 'Beschreibung';
 
   @override

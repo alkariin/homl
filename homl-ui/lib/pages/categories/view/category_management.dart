@@ -9,13 +9,18 @@ import 'package:homl/data/models/tag.dart';
 import 'package:homl/helpers/colors.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
 
-/// Categories list shown in the Categories tab: every category with its tags
-/// and synonyms, with full CRUD management. [onTagSelected] receives the
-/// tapped tag so the caller can insert it as a search filter.
+/// Categories list: every category with its tags and synonyms.
+///
+/// Two modes, chosen by [onTagSelected]:
+/// - null (Categories tab): management view — tapping a tag (or long
+///   pressing its chip) opens its actions menu, categories are editable;
+/// - non-null (tag picker opened from the "#" logo): read-only browser —
+///   tapping a tag hands it to the callback (e.g. insert it as a search
+///   filter or as an event tag).
 class CategoryManagementBody extends StatelessWidget {
-  final void Function(TagView tag) onTagSelected;
+  final void Function(TagView tag)? onTagSelected;
 
-  const CategoryManagementBody({required this.onTagSelected, super.key});
+  const CategoryManagementBody({this.onTagSelected, super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -36,9 +41,29 @@ class CategoryManagementBody extends StatelessWidget {
   }
 }
 
+/// Bottom sheet with the categories in picker mode: tapping a tag hands it
+/// to [onTagSelected] and closes the sheet.
+void showTagPickerSheet(BuildContext context,
+    {required void Function(TagView tag) onTagSelected}) {
+  final homeCubit = context.read<HomeCubit>();
+
+  showModalBottomSheet<void>(
+    context: context,
+    builder: (sheetContext) => BlocProvider.value(
+      value: homeCubit,
+      child: CategoryManagementBody(
+        onTagSelected: (tag) {
+          Navigator.pop(sheetContext);
+          onTagSelected(tag);
+        },
+      ),
+    ),
+  );
+}
+
 class _CategoryTile extends StatelessWidget {
   final Category category;
-  final void Function(TagView tag) onTagSelected;
+  final void Function(TagView tag)? onTagSelected;
 
   const _CategoryTile({required this.category, required this.onTagSelected});
 
@@ -46,6 +71,7 @@ class _CategoryTile extends StatelessWidget {
   Widget build(BuildContext context) {
     var localization = AppLocalizations.of(context)!;
     final homeCubit = context.read<HomeCubit>();
+    final isPicker = onTagSelected != null;
     final mainTags =
         category.tags.where((tag) => tag.idParentTag == null).toList();
 
@@ -87,7 +113,7 @@ class _CategoryTile extends StatelessWidget {
           backgroundColor: colorFromHex(category.color),
         ),
         title: Text(category.category),
-        trailing: category.isLocked
+        trailing: isPicker || category.isLocked
             ? const SizedBox.shrink()
             : Row(
                 mainAxisSize: MainAxisSize.min,
@@ -120,7 +146,7 @@ class _CategoryTile extends StatelessWidget {
               synonyms: category.tags
                   .where((tag) => tag.idParentTag == mainTag.id)
                   .toList())),
-          if (canManageTags)
+          if (canManageTags && !isPicker)
             ListTile(
               dense: true,
               leading: const Icon(Icons.add, size: 18),
@@ -143,7 +169,9 @@ class _TagRow extends StatelessWidget {
   final Tag mainTag;
   final List<Tag> synonyms;
   final bool canManage;
-  final void Function(TagView tag) onTagSelected;
+
+  /// Picker mode when non-null: taps select instead of opening the menus.
+  final void Function(TagView tag)? onTagSelected;
 
   const _TagRow(
       {required this.category,
@@ -152,11 +180,11 @@ class _TagRow extends StatelessWidget {
       required this.canManage,
       required this.onTagSelected});
 
-  /// Hands the tapped tag to the page callback (search filter insertion).
+  /// Hands the tapped tag to the picker callback (filter/tag insertion).
   void _selectTag(BuildContext context, Tag tag) {
     final tagView = context.read<HomeCubit>().state.allTagsMap[tag.tag];
     if (tagView != null) {
-      onTagSelected(tagView);
+      onTagSelected!(tagView);
     }
   }
 
@@ -223,7 +251,7 @@ class _TagRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var localization = AppLocalizations.of(context)!;
+    final isPicker = onTagSelected != null;
 
     return ListTile(
       dense: true,
@@ -237,38 +265,29 @@ class _TagRow extends StatelessWidget {
             id: mainTag.id,
             text: mainTag.tag,
             color: category.color,
-            onTap: () => _selectTag(context, mainTag),
-            onDeleteTag: !canManage ? null : (_) => _mainTagDialog(context),
+            onTap: isPicker
+                ? () => _selectTag(context, mainTag)
+                : !canManage
+                    ? null
+                    : () => _mainTagDialog(context),
+            onDeleteTag: isPicker || !canManage
+                ? null
+                : (_) => _mainTagDialog(context),
           ),
           ...synonyms.map((synonym) => components.Tag(
                 id: synonym.id,
                 text: synonym.tag,
-                onTap: () => _selectTag(context, synonym),
-                onDeleteTag: !canManage
+                onTap: isPicker
+                    ? () => _selectTag(context, synonym)
+                    : !canManage
+                        ? null
+                        : () => _synonymDialog(context, category, synonym),
+                onDeleteTag: isPicker || !canManage
                     ? null
                     : (_) => _synonymDialog(context, category, synonym),
               )),
         ],
       ),
-      trailing: !canManage
-          ? null
-          : PopupMenuButton<String>(
-              onSelected: (action) => _onAction(context, action),
-              itemBuilder: (context) => [
-                PopupMenuItem(
-                    value: 'rename',
-                    child: Text(localization.categories_renameTag)),
-                PopupMenuItem(
-                    value: 'synonym',
-                    child: Text(localization.categories_addSynonym)),
-                PopupMenuItem(
-                    value: 'move',
-                    child: Text(localization.categories_moveTag)),
-                PopupMenuItem(
-                    value: 'delete',
-                    child: Text(localization.categories_deleteTag)),
-              ],
-            ),
     );
   }
 }
@@ -350,40 +369,58 @@ void _deleteSynonymDialog(
   );
 }
 
-/// Picks the destination category for a main tag; its synonyms move with it
-/// (backend rule: a synonym lives in its main tag's category).
-void _moveTagDialog(BuildContext context, Category category, Tag mainTag) {
-  var localization = AppLocalizations.of(context)!;
-  final homeCubit = context.read<HomeCubit>();
-  // Any category except Dates (backend-managed) and the current one.
-  final targets = homeCubit.state.categories
-      .where((target) =>
-          target.id != category.id && target.kind != CategoryKind.date)
+/// Category picker dialog: every category except Dates (backend-managed)
+/// and [excludeCategoryId] when given.
+void pickCategoryDialog(BuildContext context,
+    {required String title,
+    int? excludeCategoryId,
+    required void Function(Category category) onPicked}) {
+  final categories = context
+      .read<HomeCubit>()
+      .state
+      .categories
+      .where((category) =>
+          category.kind != CategoryKind.date &&
+          category.id != excludeCategoryId)
       .toList();
 
   showDialog<void>(
     context: context,
     builder: (dialogContext) => SimpleDialog(
-      title: Text(localization.categories_moveTagTitle(mainTag.tag)),
-      children: targets
-          .map((target) => SimpleDialogOption(
+      title: Text(title),
+      children: categories
+          .map((category) => SimpleDialogOption(
                 child: Row(
                   children: [
                     CircleAvatar(
                       radius: 8,
-                      backgroundColor: colorFromHex(target.color),
+                      backgroundColor: colorFromHex(category.color),
                     ),
                     const SizedBox(width: 10),
-                    Text(target.category),
+                    Text(category.category),
                   ],
                 ),
                 onPressed: () {
-                  homeCubit.moveTag(mainTag, target.id);
                   Navigator.pop(dialogContext);
+                  onPicked(category);
                 },
               ))
           .toList(),
     ),
+  );
+}
+
+/// Picks the destination category for a main tag; its synonyms move with it
+/// (backend rule: a synonym lives in its main tag's category).
+void _moveTagDialog(BuildContext context, Category category, Tag mainTag) {
+  var localization = AppLocalizations.of(context)!;
+  final homeCubit = context.read<HomeCubit>();
+
+  pickCategoryDialog(
+    context,
+    title: localization.categories_moveTagTitle(mainTag.tag),
+    excludeCategoryId: category.id,
+    onPicked: (target) => homeCubit.moveTag(mainTag, target.id),
   );
 }
 

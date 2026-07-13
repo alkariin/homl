@@ -77,6 +77,12 @@
   "nav_add": "Add",
 
   "insert_tagInputLabel": "Add a tag",
+  "insert_newTagCategoryTitle": "New tag \"{tag}\": choose a category",
+  "@insert_newTagCategoryTitle": {
+    "placeholders": {
+      "tag": { "type": "String" }
+    }
+  },
   "insert_descriptionLabel": "Description",
   "insert_submit": "Create event",
   "insert_eventCreated": "Event created",
