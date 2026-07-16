@@ -32,7 +32,7 @@ Both tools are configured in `pubspec.yaml` (`flutter_launcher_icons:` and
 | `out/icon-foreground-1024.png` | Android adaptive-icon foreground (transparent) |
 | `out/icon-monochrome-1024.png` | Android 13+ themed icon (all black) |
 | `out/splash-logo-black.png` | Native splash logo, 528 px = 132 dp @4x to match the Flutter splash |
-| `out/splash-logo-black-a12.png` | Android 12+ splash icon (1152 px canvas, fits the 768 px circular mask) |
+| `out/splash-logo-black-a12.png` | Android 12+ splash icon (1152 px canvas; hash sized to 132 dp to match the Flutter splash) |
 
 Sizing notes: the hash's extremities sit near the edge midpoints of its
 viewBox, so what must fit inside the circular safe zones (adaptive icon,

@@ -59,6 +59,8 @@ render('icon-monochrome-1024.png', compose({ canvas: 1024, logoWidth: 690, paths
 // the 132-logical-px logo on the Flutter splash for a seamless hand-off.
 render('splash-logo-black.png', `<svg width="${LOGO_W}" height="${LOGO_H}" viewBox="0 0 ${LOGO_W} ${LOGO_H}" fill="none" xmlns="http://www.w3.org/2000/svg">\n${blackPaths}\n</svg>`, 528);
 
-// Android 12+ splash icon: 1152×1152 with the hash inside the system's
-// 768px-diameter circular mask (circumradius caps width at ~848).
-render('splash-logo-black-a12.png', compose({ canvas: 1152, logoWidth: 848, paths: blackPaths }), 1152);
+// Android 12+ splash icon: 1152×1152 canvas (288dp, 4px/dp), shown inside the
+// system's 768px-diameter circular mask. The hash is sized to match the
+// 132-logical-px logo on the Flutter splash (132dp = 528px here) so the
+// native → in-app hand-off keeps the logo the same size.
+render('splash-logo-black-a12.png', compose({ canvas: 1152, logoWidth: 528, paths: blackPaths }), 1152);

@@ -88,15 +88,20 @@ class _AppViewState extends State<AppView> {
   /// re-emits biometricCheck while the dialog is still shown.
   bool _biometricDialogShown = false;
 
-  /// Holds navigation away from the splash until its logo reveal (1000ms) has
-  /// played out. Already complete for every later auth transition, so
-  /// awaiting it then is a no-op.
-  late final Future<void> _minSplash;
+  /// Holds navigation away from the splash until its logo reveal has played
+  /// out. The reveal starts on the first rendered frame (see SplashPage) and
+  /// runs 1250ms, so the delay counts from that frame, not from app start.
+  /// Already complete for every later auth transition, so awaiting it then is
+  /// a no-op.
+  final Completer<void> _minSplash = Completer<void>();
 
   @override
   void initState() {
     super.initState();
-    _minSplash = Future<void>.delayed(const Duration(milliseconds: 1100));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future<void>.delayed(const Duration(milliseconds: 1350))
+          .then((_) => _minSplash.complete());
+    });
   }
 
   Future<PinAuthResult> onPinChanged(String pin) async {
@@ -138,7 +143,7 @@ class _AppViewState extends State<AppView> {
             BlocListener<AuthenticationCubit, AuthenticationState>(
               listener: (context, state) async {
                 if (state.status == AuthenticationStatus.unknown) return;
-                await _minSplash;
+                await _minSplash.future;
                 if (!context.mounted) return;
                 switch (state.status) {
                   case AuthenticationStatus.authenticated:
