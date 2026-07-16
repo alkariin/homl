@@ -55,12 +55,12 @@ render('icon-foreground-1024.png', compose({ canvas: 1024, logoWidth: 690, paths
 // Android 13+ themed icon: same layout, all strokes black.
 render('icon-monochrome-1024.png', compose({ canvas: 1024, logoWidth: 690, paths: blackPaths }), 1024);
 
-// Native splash: all-black hash on transparent. 632px = 158dp at 4x, matching
-// the 158-logical-px logo on the Flutter splash for a seamless hand-off.
-render('splash-logo-black.png', `<svg width="${LOGO_W}" height="${LOGO_H}" viewBox="0 0 ${LOGO_W} ${LOGO_H}" fill="none" xmlns="http://www.w3.org/2000/svg">\n${blackPaths}\n</svg>`, 632);
+// Native splash: all-black hash on transparent. 696px = 174dp at 4x, matching
+// the 174-logical-px logo on the Flutter splash for a seamless hand-off.
+render('splash-logo-black.png', `<svg width="${LOGO_W}" height="${LOGO_H}" viewBox="0 0 ${LOGO_W} ${LOGO_H}" fill="none" xmlns="http://www.w3.org/2000/svg">\n${blackPaths}\n</svg>`, 696);
 
 // Android 12+ splash icon: 1152×1152 canvas (288dp, 4px/dp), shown inside the
 // system's 768px-diameter circular mask. The hash is sized to match the
-// 158-logical-px logo on the Flutter splash (158dp = 632px here) so the
+// 174-logical-px logo on the Flutter splash (174dp = 696px here) so the
 // native → in-app hand-off keeps the logo the same size.
-render('splash-logo-black-a12.png', compose({ canvas: 1152, logoWidth: 632, paths: blackPaths }), 1152);
+render('splash-logo-black-a12.png', compose({ canvas: 1152, logoWidth: 696, paths: blackPaths }), 1152);
