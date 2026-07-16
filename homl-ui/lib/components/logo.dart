@@ -26,20 +26,41 @@ class _GoldTintMapper extends ColorMapper {
 /// [tint] recolors the gold strokes only — the black ones stay black — and
 /// the circle border (search bar: the category color of the top suggestion).
 /// Null keeps the normal artwork.
+///
+/// [circled] false drops the white circle, border and shadow and shows the
+/// bare hash (splash screen: the circle reads as a tappable button there).
 class HomlLogo extends StatelessWidget {
   final double size;
   final double colorProgress;
   final Color? tint;
+  final bool circled;
+
+  /// Fraction of the diameter used as padding around the inner artwork.
+  /// Smaller values make the "#" larger inside the circle without changing
+  /// the circle's diameter.
+  final double insetFactor;
 
   const HomlLogo(
-      {this.size = 51, this.colorProgress = 1.0, this.tint, super.key});
+      {this.size = 51,
+      this.colorProgress = 1.0,
+      this.tint,
+      this.circled = true,
+      this.insetFactor = 0.2,
+      super.key});
 
   @override
   Widget build(BuildContext context) {
+    if (!circled) {
+      return SizedBox(
+        width: size,
+        height: size,
+        child: colorProgress >= 1.0 ? _hash() : _revealingHash(),
+      );
+    }
     return Container(
       width: size,
       height: size,
-      padding: EdgeInsets.all(size * 0.2),
+      padding: EdgeInsets.all(size * insetFactor),
       decoration: BoxDecoration(
         color: Colors.white,
         shape: BoxShape.circle,
@@ -63,25 +84,33 @@ class HomlLogo extends StatelessWidget {
   Widget _revealingHash() {
     const fade = 0.25;
     final front = colorProgress * (1 + fade);
+    // Both layers use Positioned.fill so they take the same tight box
+    // constraints as the final single [_hash], keeping the artwork the exact
+    // same size throughout the reveal (otherwise the Stack hands its children
+    // loose constraints and the hash renders smaller until the animation ends).
     return Stack(
       alignment: Alignment.center,
       children: [
-        ColorFiltered(
-          colorFilter: const ColorFilter.mode(ink, BlendMode.srcIn),
-          child: _hash(),
+        Positioned.fill(
+          child: ColorFiltered(
+            colorFilter: const ColorFilter.mode(ink, BlendMode.srcIn),
+            child: _hash(),
+          ),
         ),
-        ShaderMask(
-          blendMode: BlendMode.dstIn,
-          shaderCallback: (rect) => LinearGradient(
-            begin: Alignment.bottomLeft,
-            end: Alignment.topRight,
-            colors: [Colors.white, Colors.white.withValues(alpha: 0)],
-            stops: [
-              (front - fade).clamp(0.0, 1.0),
-              front.clamp(0.0, 1.0),
-            ],
-          ).createShader(rect),
-          child: _hash(),
+        Positioned.fill(
+          child: ShaderMask(
+            blendMode: BlendMode.dstIn,
+            shaderCallback: (rect) => LinearGradient(
+              begin: Alignment.bottomLeft,
+              end: Alignment.topRight,
+              colors: [Colors.white, Colors.white.withValues(alpha: 0)],
+              stops: [
+                (front - fade).clamp(0.0, 1.0),
+                front.clamp(0.0, 1.0),
+              ],
+            ).createShader(rect),
+            child: _hash(),
+          ),
         ),
       ],
     );

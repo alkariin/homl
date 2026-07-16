@@ -59,6 +59,36 @@ dev_dependencies:
     sdk: flutter
   mocktail: ^1.0.5
   bloc_test: ^10.0.0
+  flutter_launcher_icons: ^0.14.4
+  flutter_native_splash: ^2.4.6
+
+# Launcher icons are generated from the PNGs in tool/icons/out/ (themselves
+# rendered from assets/images/logo.svg — see tool/icons/README.md).
+# Regenerate with: dart run flutter_launcher_icons
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: tool/icons/out/icon-1024.png
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: tool/icons/out/icon-foreground-1024.png
+  adaptive_icon_monochrome: tool/icons/out/icon-monochrome-1024.png
+  remove_alpha_ios: true
+  web:
+    generate: true
+    image_path: tool/icons/out/icon-1024.png
+    background_color: "#FFFFFF"
+    theme_color: "#D3A934"
+
+# Native splash shown before Flutter starts: the all-black hash on the theme
+# background, handing off seamlessly to the in-app splash animation.
+# Regenerate with: dart run flutter_native_splash:create
+flutter_native_splash:
+  color: "#FBFBFB"
+  image: tool/icons/out/splash-logo-black.png
+  android_12:
+    color: "#FBFBFB"
+    image: tool/icons/out/splash-logo-black-a12.png
+  web: true
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

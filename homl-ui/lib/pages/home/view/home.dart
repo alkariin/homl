@@ -206,7 +206,7 @@ class _HomeViewState extends State<HomeView>
           actions: const [
             Padding(
               padding: EdgeInsets.only(right: 16),
-              child: HomlLogo(size: 34),
+              child: HomlLogo(size: 46, circled: false),
             ),
           ],
         ),
