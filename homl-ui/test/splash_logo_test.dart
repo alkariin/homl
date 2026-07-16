@@ -21,7 +21,7 @@ void main() {
     }
   });
 
-  testWidgets('splash logo fills its gold strokes after a short delay',
+  testWidgets('splash logo fills its gold strokes over one second',
       (tester) async {
     await tester.pumpWidget(const MaterialApp(home: SplashPage()));
 
@@ -30,13 +30,8 @@ void main() {
     expect(logo.colorProgress, 0.0);
     expect(find.byType(SvgPicture), findsNWidgets(2));
 
-    // Still black during the initial hold.
-    await tester.pump(const Duration(milliseconds: 200));
-    logo = tester.widget(find.byType(HomlLogo));
-    expect(logo.colorProgress, 0.0);
-
-    // Mid-animation: partially revealed.
-    await tester.pump(const Duration(milliseconds: 400));
+    // Mid-animation: partially revealed, the reveal starts right away.
+    await tester.pump(const Duration(milliseconds: 500));
     logo = tester.widget(find.byType(HomlLogo));
     expect(logo.colorProgress, greaterThan(0.0));
     expect(logo.colorProgress, lessThan(1.0));

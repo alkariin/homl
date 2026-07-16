@@ -17,13 +17,14 @@ class _SplashPageState extends State<SplashPage>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 1100),
+    duration: const Duration(milliseconds: 1000),
   );
 
-  /// Holds the hash fully black for ~330ms, then fills the gold strokes.
+  /// Fills the gold strokes from their base to their tip over the full second,
+  /// starting right away from the all-black hash the native splash hands off.
   late final Animation<double> _colorProgress = CurvedAnimation(
     parent: _controller,
-    curve: const Interval(0.3, 1.0, curve: Curves.easeOut),
+    curve: Curves.easeInOut,
   );
 
   @override
@@ -45,7 +46,7 @@ class _SplashPageState extends State<SplashPage>
         child: AnimatedBuilder(
           animation: _colorProgress,
           builder: (context, _) => HomlLogo(
-            size: 120,
+            size: 132,
             circled: false,
             colorProgress: _colorProgress.value,
           ),
