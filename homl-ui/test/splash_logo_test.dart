@@ -30,7 +30,12 @@ void main() {
     expect(logo.colorProgress, 0.0);
     expect(find.byType(SvgPicture), findsNWidgets(2));
 
-    // Mid-animation: partially revealed, the reveal starts right away.
+    // Still black during the short hold that covers the native splash fade.
+    await tester.pump(const Duration(milliseconds: 200));
+    logo = tester.widget(find.byType(HomlLogo));
+    expect(logo.colorProgress, 0.0);
+
+    // Mid-animation: partially revealed.
     await tester.pump(const Duration(milliseconds: 500));
     logo = tester.widget(find.byType(HomlLogo));
     expect(logo.colorProgress, greaterThan(0.0));

@@ -17,20 +17,25 @@ class _SplashPageState extends State<SplashPage>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 1000),
+    duration: const Duration(milliseconds: 1250),
   );
 
-  /// Fills the gold strokes from their base to their tip over the full second,
-  /// starting right away from the all-black hash the native splash hands off.
+  /// Holds the hash black for 250ms — the OS splash dismisses over the
+  /// identical black hash — then fills the gold strokes base to tip in 1s.
   late final Animation<double> _colorProgress = CurvedAnimation(
     parent: _controller,
-    curve: Curves.easeInOut,
+    curve: const Interval(0.2, 1.0, curve: Curves.easeInOut),
   );
 
   @override
   void initState() {
     super.initState();
-    _controller.forward();
+    // The controller runs on wall-clock time, so starting it here would let
+    // engine startup (slow on a device in debug) eat the reveal before any
+    // frame is shown. Start it once the splash is actually on screen.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _controller.forward();
+    });
   }
 
   @override
