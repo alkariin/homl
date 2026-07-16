@@ -78,25 +78,33 @@ class HomlLogo extends StatelessWidget {
   Widget _revealingHash() {
     const fade = 0.25;
     final front = colorProgress * (1 + fade);
+    // Both layers use Positioned.fill so they take the same tight box
+    // constraints as the final single [_hash], keeping the artwork the exact
+    // same size throughout the reveal (otherwise the Stack hands its children
+    // loose constraints and the hash renders smaller until the animation ends).
     return Stack(
       alignment: Alignment.center,
       children: [
-        ColorFiltered(
-          colorFilter: const ColorFilter.mode(ink, BlendMode.srcIn),
-          child: _hash(),
+        Positioned.fill(
+          child: ColorFiltered(
+            colorFilter: const ColorFilter.mode(ink, BlendMode.srcIn),
+            child: _hash(),
+          ),
         ),
-        ShaderMask(
-          blendMode: BlendMode.dstIn,
-          shaderCallback: (rect) => LinearGradient(
-            begin: Alignment.bottomLeft,
-            end: Alignment.topRight,
-            colors: [Colors.white, Colors.white.withValues(alpha: 0)],
-            stops: [
-              (front - fade).clamp(0.0, 1.0),
-              front.clamp(0.0, 1.0),
-            ],
-          ).createShader(rect),
-          child: _hash(),
+        Positioned.fill(
+          child: ShaderMask(
+            blendMode: BlendMode.dstIn,
+            shaderCallback: (rect) => LinearGradient(
+              begin: Alignment.bottomLeft,
+              end: Alignment.topRight,
+              colors: [Colors.white, Colors.white.withValues(alpha: 0)],
+              stops: [
+                (front - fade).clamp(0.0, 1.0),
+                front.clamp(0.0, 1.0),
+              ],
+            ).createShader(rect),
+            child: _hash(),
+          ),
         ),
       ],
     );

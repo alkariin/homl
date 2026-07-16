@@ -51,7 +51,7 @@ class _SplashPageState extends State<SplashPage>
         child: AnimatedBuilder(
           animation: _colorProgress,
           builder: (context, _) => HomlLogo(
-            size: 132,
+            size: 158,
             circled: false,
             colorProgress: _colorProgress.value,
           ),
