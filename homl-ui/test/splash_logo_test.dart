@@ -5,12 +5,13 @@ import 'package:homl/components/logo.dart';
 import 'package:homl/pages/splash/splash.dart';
 
 void main() {
-  testWidgets('splash page shows the logo artwork', (tester) async {
+  testWidgets('splash page shows only the bare logo artwork', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: SplashPage()));
 
-    expect(find.byType(HomlLogo), findsOneWidget);
-    expect(find.text('HOML'), findsOneWidget);
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    final logo = tester.widget<HomlLogo>(find.byType(HomlLogo));
+    expect(logo.circled, isFalse);
+    expect(find.text('HOML'), findsNothing);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
 
     final pictures = tester.widgetList<SvgPicture>(find.byType(SvgPicture));
     expect(pictures, isNotEmpty);
@@ -20,7 +21,7 @@ void main() {
     }
   });
 
-  testWidgets('splash logo fills its gold strokes after a short delay',
+  testWidgets('splash logo fills its gold strokes over one second',
       (tester) async {
     await tester.pumpWidget(const MaterialApp(home: SplashPage()));
 
@@ -29,13 +30,13 @@ void main() {
     expect(logo.colorProgress, 0.0);
     expect(find.byType(SvgPicture), findsNWidgets(2));
 
-    // Still black during the initial hold.
+    // Still black during the short hold that covers the native splash fade.
     await tester.pump(const Duration(milliseconds: 200));
     logo = tester.widget(find.byType(HomlLogo));
     expect(logo.colorProgress, 0.0);
 
     // Mid-animation: partially revealed.
-    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump(const Duration(milliseconds: 500));
     logo = tester.widget(find.byType(HomlLogo));
     expect(logo.colorProgress, greaterThan(0.0));
     expect(logo.colorProgress, lessThan(1.0));
@@ -45,5 +46,23 @@ void main() {
     logo = tester.widget(find.byType(HomlLogo));
     expect(logo.colorProgress, 1.0);
     expect(find.byType(SvgPicture), findsOneWidget);
+  });
+
+  testWidgets('logo keeps its circle by default and drops it when uncircled',
+      (tester) async {
+    bool hasCircleDecoration() =>
+        tester.widgetList<Container>(find.byType(Container)).any((container) {
+          final decoration = container.decoration;
+          return decoration is BoxDecoration &&
+              decoration.shape == BoxShape.circle;
+        });
+
+    await tester.pumpWidget(
+        const MaterialApp(home: Scaffold(body: HomlLogo())));
+    expect(hasCircleDecoration(), isTrue);
+
+    await tester.pumpWidget(
+        const MaterialApp(home: Scaffold(body: HomlLogo(circled: false))));
+    expect(hasCircleDecoration(), isFalse);
   });
 }

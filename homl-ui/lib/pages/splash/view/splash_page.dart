@@ -17,19 +17,25 @@ class _SplashPageState extends State<SplashPage>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 1100),
+    duration: const Duration(milliseconds: 1250),
   );
 
-  /// Holds the hash fully black for ~330ms, then fills the gold strokes.
+  /// Holds the hash black for 250ms — the OS splash dismisses over the
+  /// identical black hash — then fills the gold strokes base to tip in 1s.
   late final Animation<double> _colorProgress = CurvedAnimation(
     parent: _controller,
-    curve: const Interval(0.3, 1.0, curve: Curves.easeOut),
+    curve: const Interval(0.2, 1.0, curve: Curves.easeInOut),
   );
 
   @override
   void initState() {
     super.initState();
-    _controller.forward();
+    // The controller runs on wall-clock time, so starting it here would let
+    // engine startup (slow on a device in debug) eat the reveal before any
+    // frame is shown. Start it once the splash is actually on screen.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _controller.forward();
+    });
   }
 
   @override
@@ -42,26 +48,13 @@ class _SplashPageState extends State<SplashPage>
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AnimatedBuilder(
-              animation: _colorProgress,
-              builder: (context, _) =>
-                  HomlLogo(size: 96, colorProgress: _colorProgress.value),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'HOML',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 40),
-            const SizedBox(
-              width: 24,
-              height: 24,
-              child: CircularProgressIndicator(strokeWidth: 2.5),
-            ),
-          ],
+        child: AnimatedBuilder(
+          animation: _colorProgress,
+          builder: (context, _) => HomlLogo(
+            size: 174,
+            circled: false,
+            colorProgress: _colorProgress.value,
+          ),
         ),
       ),
     );
