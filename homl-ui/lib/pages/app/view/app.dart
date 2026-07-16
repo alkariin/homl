@@ -88,7 +88,7 @@ class _AppViewState extends State<AppView> {
   /// re-emits biometricCheck while the dialog is still shown.
   bool _biometricDialogShown = false;
 
-  /// Holds navigation away from the splash until its logo reveal (1100ms) has
+  /// Holds navigation away from the splash until its logo reveal (1000ms) has
   /// played out. Already complete for every later auth transition, so
   /// awaiting it then is a no-op.
   late final Future<void> _minSplash;
@@ -96,7 +96,7 @@ class _AppViewState extends State<AppView> {
   @override
   void initState() {
     super.initState();
-    _minSplash = Future<void>.delayed(const Duration(milliseconds: 1300));
+    _minSplash = Future<void>.delayed(const Duration(milliseconds: 1100));
   }
 
   Future<PinAuthResult> onPinChanged(String pin) async {

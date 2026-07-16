@@ -55,9 +55,9 @@ render('icon-foreground-1024.png', compose({ canvas: 1024, logoWidth: 690, paths
 // Android 13+ themed icon: same layout, all strokes black.
 render('icon-monochrome-1024.png', compose({ canvas: 1024, logoWidth: 690, paths: blackPaths }), 1024);
 
-// Native splash: all-black hash on transparent. 480px = 120dp at 4x, matching
-// the 120-logical-px logo on the Flutter splash for a seamless hand-off.
-render('splash-logo-black.png', `<svg width="${LOGO_W}" height="${LOGO_H}" viewBox="0 0 ${LOGO_W} ${LOGO_H}" fill="none" xmlns="http://www.w3.org/2000/svg">\n${blackPaths}\n</svg>`, 480);
+// Native splash: all-black hash on transparent. 528px = 132dp at 4x, matching
+// the 132-logical-px logo on the Flutter splash for a seamless hand-off.
+render('splash-logo-black.png', `<svg width="${LOGO_W}" height="${LOGO_H}" viewBox="0 0 ${LOGO_W} ${LOGO_H}" fill="none" xmlns="http://www.w3.org/2000/svg">\n${blackPaths}\n</svg>`, 528);
 
 // Android 12+ splash icon: 1152×1152 with the hash inside the system's
 // 768px-diameter circular mask (circumradius caps width at ~848).
