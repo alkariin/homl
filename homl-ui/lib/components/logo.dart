@@ -35,11 +35,17 @@ class HomlLogo extends StatelessWidget {
   final Color? tint;
   final bool circled;
 
+  /// Fraction of the diameter used as padding around the inner artwork.
+  /// Smaller values make the "#" larger inside the circle without changing
+  /// the circle's diameter.
+  final double insetFactor;
+
   const HomlLogo(
       {this.size = 51,
       this.colorProgress = 1.0,
       this.tint,
       this.circled = true,
+      this.insetFactor = 0.2,
       super.key});
 
   @override
@@ -54,7 +60,7 @@ class HomlLogo extends StatelessWidget {
     return Container(
       width: size,
       height: size,
-      padding: EdgeInsets.all(size * 0.2),
+      padding: EdgeInsets.all(size * insetFactor),
       decoration: BoxDecoration(
         color: Colors.white,
         shape: BoxShape.circle,
