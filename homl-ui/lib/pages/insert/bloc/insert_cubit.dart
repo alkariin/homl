@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:homl/data/models/category.dart';
+import 'package:homl/data/models/event.dart';
 import 'package:homl/data/repositories/events.repository.dart';
 import 'package:homl/data/repositories/tags.repository.dart';
 import 'package:homl/helpers/app_message.dart';
@@ -13,8 +14,14 @@ class InsertCubit extends Cubit<InsertState> {
   final EventsRepository eventsRepository;
   final TagsRepository tagsRepository;
 
-  InsertCubit(this.eventsRepository, this.tagsRepository)
-      : super(InsertState.initial());
+  /// [editing] switches the form to edit mode, prefilled from the event;
+  /// [dateCategoryIds] identifies the backend-managed date tags to exclude
+  /// from the prefilled chips (see [InsertState.fromEvent]).
+  InsertCubit(this.eventsRepository, this.tagsRepository,
+      {Event? editing, Set<int> dateCategoryIds = const {}})
+      : super(editing == null
+            ? InsertState.initial()
+            : InsertState.fromEvent(editing, dateCategoryIds));
 
   /// Category used to create the tags typed freely in the input. When the
   /// backend exposes a category kind, the "other" category is used directly;
@@ -97,13 +104,25 @@ class InsertCubit extends Cubit<InsertState> {
 
       // The repository notifies its change stream, which refreshes the
       // shared events/tags in the HomeCubit without coupling the cubits.
-      await eventsRepository.createEvent(
-          description: state.description,
-          date: state.date,
-          tagsId: tagsId);
+      if (state.editingEventId != null) {
+        await eventsRepository.updateEvent(
+            id: state.editingEventId!,
+            description: state.description,
+            date: state.date,
+            tagsId: tagsId);
 
-      // Reset the form
-      emit(InsertState.initial().copyWith(status: InsertStatus.success));
+        // Keep the edited state (editingEventId included) so the view knows
+        // to pop back to the list instead of resetting the form.
+        emit(state.copyWith(status: InsertStatus.success));
+      } else {
+        await eventsRepository.createEvent(
+            description: state.description,
+            date: state.date,
+            tagsId: tagsId);
+
+        // Reset the form
+        emit(InsertState.initial().copyWith(status: InsertStatus.success));
+      }
     } catch (_) {
       emit(state.copyWith(
           status: InsertStatus.editing, modal: AppMessage.unexpectedError));

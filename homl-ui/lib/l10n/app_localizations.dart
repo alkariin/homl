@@ -502,6 +502,30 @@ abstract class AppLocalizations {
   /// **'No events found'**
   String get list_noEvents;
 
+  /// No description provided for @list_editEvent.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit event'**
+  String get list_editEvent;
+
+  /// No description provided for @list_deleteEventTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete event?'**
+  String get list_deleteEventTitle;
+
+  /// No description provided for @list_deleteEventInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'This event and its description will be permanently deleted.'**
+  String get list_deleteEventInfo;
+
+  /// No description provided for @list_eventUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Event updated'**
+  String get list_eventUpdated;
+
   /// No description provided for @categories_newCategory.
   ///
   /// In en, this message translates to:

@@ -12,15 +12,19 @@ class EventCard extends StatelessWidget {
   /// Resolves a tag name to its category color (from HomeState.allTagsMap).
   final String? Function(String tagName) tagColorResolver;
 
+  final VoidCallback? onTap;
+
   const EventCard(
-      {required this.event, required this.tagColorResolver, super.key});
+      {required this.event,
+      required this.tagColorResolver,
+      this.onTap,
+      super.key});
 
   @override
   Widget build(BuildContext context) {
     final locale = Localizations.localeOf(context).toString();
 
     return Container(
-      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(15),
@@ -32,7 +36,25 @@ class EventCard extends StatelessWidget {
           ),
         ],
       ),
-      child: Column(
+      // The Material/InkWell pair gives the tap a ripple over the white
+      // decoration without hiding it.
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(15),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(15),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: _content(locale),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _content(String locale) {
+    return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Center(
@@ -75,7 +97,6 @@ class EventCard extends StatelessWidget {
             ),
           ],
         ],
-      ),
     );
   }
 
