@@ -93,6 +93,52 @@ void main() {
     await cubit.close();
   });
 
+  test('deleteEvent delegates to the repository without an error modal',
+      () async {
+    when(() => eventsRepository.getCachedEvents())
+        .thenAnswer((_) async => cachedEvents);
+    when(() => categoriesRepository.getCachedCategories())
+        .thenAnswer((_) async => cachedCategories);
+    when(() => eventsRepository.getEvents())
+        .thenAnswer((_) async => cachedEvents);
+    when(() => categoriesRepository.getCategories())
+        .thenAnswer((_) async => cachedCategories);
+    when(() => eventsRepository.deleteEvent(1)).thenAnswer((_) async {});
+
+    final cubit = buildCubit();
+    await expectLater(cubit.stream,
+        emitsThrough(predicate<HomeState>((s) => s.initialized)));
+    await cubit.deleteEvent(1);
+
+    // The refresh itself rides on the repository changes stream.
+    verify(() => eventsRepository.deleteEvent(1)).called(1);
+    expect(cubit.state.modal, isNull);
+
+    await cubit.close();
+  });
+
+  test('deleteEvent surfaces an error modal when the request fails', () async {
+    when(() => eventsRepository.getCachedEvents())
+        .thenAnswer((_) async => cachedEvents);
+    when(() => categoriesRepository.getCachedCategories())
+        .thenAnswer((_) async => cachedCategories);
+    when(() => eventsRepository.getEvents())
+        .thenAnswer((_) async => cachedEvents);
+    when(() => categoriesRepository.getCategories())
+        .thenAnswer((_) async => cachedCategories);
+    when(() => eventsRepository.deleteEvent(1))
+        .thenThrow(EventsRequestFailure());
+
+    final cubit = buildCubit();
+    await expectLater(cubit.stream,
+        emitsThrough(predicate<HomeState>((s) => s.initialized)));
+    await cubit.deleteEvent(1);
+
+    expect(cubit.state.modal, AppMessage.unexpectedError);
+
+    await cubit.close();
+  });
+
   test('refreshes the cached snapshot from the network when it lands',
       () async {
     final freshEvents = [

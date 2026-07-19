@@ -9,6 +9,7 @@ import 'package:homl/components/input.dart';
 import 'package:homl/components/tag.dart';
 import 'package:homl/components/tag_input.dart';
 import 'package:homl/data/models/category.dart';
+import 'package:homl/data/models/event.dart';
 import 'package:homl/data/repositories/events.repository.dart';
 import 'package:homl/data/repositories/tags.repository.dart';
 import 'package:homl/helpers/app_message.dart';
@@ -33,6 +34,66 @@ class InsertPage extends StatelessWidget {
   }
 }
 
+/// Edit form for an existing event, pushed from the event detail sheet. It
+/// reuses [InsertView] with an [InsertCubit] seeded from the event, so the
+/// tag resolution/creation logic stays in one place.
+class EditEventPage extends StatelessWidget {
+  /// The HomeCubit is passed through the route on purpose: this page lives in
+  /// its own navigator route, outside the provider scope of the home page
+  /// (see AccountPage for the same convention).
+  final HomeCubit homeCubit;
+  final Event event;
+
+  const EditEventPage(
+      {required this.homeCubit, required this.event, super.key});
+
+  static Route<void> route(HomeCubit homeCubit, Event event) {
+    return MaterialPageRoute<void>(
+        builder: (_) => EditEventPage(homeCubit: homeCubit, event: event));
+  }
+
+  /// Categories whose tags are backend-managed date tags (month/year).
+  /// Legacy backends do not send the kind: fall back to the convention that
+  /// the first category is Dates (same rule as the categories page).
+  Set<int> _dateCategoryIds(List<Category> categories) {
+    final ids = categories
+        .where((category) => category.kind == CategoryKind.date)
+        .map((category) => category.id)
+        .toSet();
+    if (ids.isNotEmpty || categories.isEmpty) return ids;
+    return {categories.first.id};
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    var localization = AppLocalizations.of(context)!;
+
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider.value(value: homeCubit),
+        BlocProvider(
+            create: (_) => InsertCubit(
+                homeCubit.eventsRepository, homeCubit.tagsRepository,
+                editing: event,
+                dateCategoryIds:
+                    _dateCategoryIds(homeCubit.state.categories))),
+      ],
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(localization.list_editEvent),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              Navigator.pop(context);
+            },
+          ),
+        ),
+        body: const InsertView(),
+      ),
+    );
+  }
+}
+
 class InsertView extends StatefulWidget {
   const InsertView({super.key});
 
@@ -46,6 +107,13 @@ class _InsertViewState extends State<InsertView> {
   /// Owned here (handed to [TagInput]) so the logo flow below can read and
   /// clear the pending tag text.
   final TextEditingController _tagController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    // Prefilled in edit mode, empty on the insert tab.
+    _descriptionController.text = context.read<InsertCubit>().state.description;
+  }
 
   @override
   void dispose() {
@@ -101,6 +169,17 @@ class _InsertViewState extends State<InsertView> {
       listener: (context, state) {
         final insertCubit = context.read<InsertCubit>();
         if (state.status == InsertStatus.success) {
+          if (state.editingEventId != null) {
+            // Edit mode: pop back to the list. The messenger is app-level,
+            // so the confirmation snackbar survives the pop.
+            final messenger = ScaffoldMessenger.of(context);
+            Navigator.of(context).pop();
+            messenger
+              ..hideCurrentSnackBar()
+              ..showSnackBar(
+                  SnackBar(content: Text(localization.list_eventUpdated)));
+            return;
+          }
           _descriptionController.clear();
           ScaffoldMessenger.of(context)
             ..hideCurrentSnackBar()
@@ -213,7 +292,9 @@ class _InsertViewState extends State<InsertView> {
                     state.status == InsertStatus.submitting
                         ? const Center(child: CircularProgressIndicator())
                         : Button(
-                            text: localization.insert_submit,
+                            text: state.editingEventId != null
+                                ? localization.global_save
+                                : localization.insert_submit,
                             onPressed: () => context.read<InsertCubit>().submitEvent(homeState.categories,
                                     homeState.allTagsMap),
                           ),

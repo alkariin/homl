@@ -231,6 +231,19 @@ class AppLocalizationsDe extends AppLocalizations {
   String get list_noEvents => 'Keine Ereignisse gefunden';
 
   @override
+  String get list_editEvent => 'Ereignis bearbeiten';
+
+  @override
+  String get list_deleteEventTitle => 'Ereignis löschen?';
+
+  @override
+  String get list_deleteEventInfo =>
+      'Dieses Ereignis und seine Beschreibung werden endgültig gelöscht.';
+
+  @override
+  String get list_eventUpdated => 'Ereignis aktualisiert';
+
+  @override
   String get categories_newCategory => 'Neue Kategorie';
 
   @override
