@@ -6,6 +6,7 @@ import 'package:pinput/pinput.dart';
 import 'package:homl/components/button.dart';
 import 'package:homl/components/input.dart';
 import 'package:homl/data/repositories/users.repository.dart';
+import 'package:homl/helpers/toast.dart';
 import 'package:homl/helpers/validations.dart';
 import 'package:homl/pages/forgot_password/bloc/forgot_password_cubit.dart';
 
@@ -41,17 +42,20 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
     final localization = AppLocalizations.of(context)!;
 
     return BlocConsumer<ForgotPasswordCubit, ForgotPasswordState>(
+        // Only when the message itself changes: it stays set until the next
+        // submit, so listening to every emission re-showed the toast on each
+        // keystroke. Submitting resets it to none, so the same error twice in
+        // a row still shows twice.
+        listenWhen: (previous, current) =>
+            current.message != ForgotPasswordMessage.none &&
+            current.message != previous.message,
         listener: (context, state) {
-          if (state.message == ForgotPasswordMessage.none) return;
-          final content = state.message == ForgotPasswordMessage.invalidCode
-              ? localization.forgot_invalidCode
-              : localization.global_unexpectedError;
-          ScaffoldMessenger.of(context)
-            ..hideCurrentSnackBar()
-            ..showSnackBar(SnackBar(
-              content: Text(content),
-              backgroundColor: Colors.redAccent,
-            ));
+          showToast(
+              context,
+              state.message == ForgotPasswordMessage.invalidCode
+                  ? localization.forgot_invalidCode
+                  : localization.global_unexpectedError,
+              isError: true);
         },
         builder: (context, state) => Scaffold(
             appBar: AppBar(

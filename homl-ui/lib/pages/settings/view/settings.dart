@@ -5,6 +5,7 @@ import 'package:homl/components/settings_group.dart';
 import 'package:homl/data/repositories/settings.repository.dart';
 import 'package:homl/helpers/app_message.dart';
 import 'package:homl/helpers/colors.dart';
+import 'package:homl/helpers/toast.dart';
 import 'package:homl/pages/settings/view/home_tab_dialog.dart';
 import 'package:homl/pages/settings/view/language_dialog.dart';
 
@@ -42,18 +43,14 @@ class SettingsView extends StatelessWidget {
           BlocListener<SettingsCubit, SettingsState>(listener: (context, state) {
             if (state.errorModal != null) {
               final settingsCubit = context.read<SettingsCubit>();
-              ScaffoldMessenger.of(context)
-                ..hideCurrentSnackBar()
-                ..showSnackBar(SnackBar(
-                  content: Text(state.errorModal!.localize(localization)),
-                  action: SnackBarAction(
-                      label: localization.global_close, onPressed: () {}),
-                  duration: const Duration(seconds: 5),
-                )).closed.then(
-                  (_) {
-                    settingsCubit.endModal();
-                  },
-                );
+              showToast(context, state.errorModal!.localize(localization),
+                      duration: const Duration(seconds: 5))
+                  .closed
+                  .then(
+                (_) {
+                  settingsCubit.endModal();
+                },
+              );
             }
           }),
         ],

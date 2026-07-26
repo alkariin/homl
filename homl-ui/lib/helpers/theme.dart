@@ -123,8 +123,9 @@ ThemeData homlTheme() {
       thickness: 0.5,
       space: 0.5,
     ),
-    // Notifications as floating white toasts (they auto-dismiss: 3s for
-    // confirmations, 5s for errors with a Close action).
+    // Notifications as floating white toasts. They are always shown through
+    // `showToast` (lib/helpers/toast.dart), which owns the durations and makes
+    // the whole surface tappable to dismiss.
     snackBarTheme: SnackBarThemeData(
       backgroundColor: Colors.white,
       behavior: SnackBarBehavior.floating,
