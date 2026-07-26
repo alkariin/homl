@@ -132,34 +132,56 @@ class _HomeViewState extends State<HomeView>
       localization.nav_add,
     ];
 
+    // Read-only identity line under the logo (the login username is the
+    // account email).
+    final email = context.select<HomeCubit, String>((c) => c.state.username);
+
     final drawerItems = ListView(
       padding: const EdgeInsets.symmetric(horizontal: 8),
       children: [
         SizedBox(
-          height: 96.0,
+          height: 148.0,
           child: DrawerHeader(
-            padding: const EdgeInsets.only(left: 12, right: 4),
+            padding: const EdgeInsets.fromLTRB(12, 10, 4, 16),
             margin: const EdgeInsets.only(bottom: 8),
             decoration: const BoxDecoration(
               border: Border(
                   bottom: BorderSide(color: Color(0x14000000), width: 1)),
             ),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // The bare two-tone hash, as large as the tag-input button.
-                const HomlLogo(size: 51, circled: false),
-                const SizedBox(width: 12),
-                const Text(
-                  'HOML',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                Row(
+                  children: [
+                    // The bare two-tone hash, as large as the tag-input
+                    // button.
+                    const HomlLogo(size: 51, circled: false),
+                    const SizedBox(width: 12),
+                    const Text(
+                      'HOML',
+                      style:
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                        iconSize: 18,
+                        icon: const FaIcon(FontAwesomeIcons.xmark),
+                        onPressed: () {
+                          Navigator.pop(context);
+                        }),
+                  ],
                 ),
                 const Spacer(),
-                IconButton(
-                    iconSize: 18,
-                    icon: const FaIcon(FontAwesomeIcons.xmark),
-                    onPressed: () {
-                      Navigator.pop(context);
-                    }),
+                Padding(
+                  padding: const EdgeInsets.only(left: 4),
+                  child: Text(
+                    email,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontSize: 13, color: ink.withValues(alpha: 0.5)),
+                  ),
+                ),
               ],
             ),
           ),
@@ -225,10 +247,15 @@ class _HomeViewState extends State<HomeView>
             ),
             PageView(
               controller: _pageController,
-              children: const [
-                CategoriesPage(),
-                ListPage(),
-                InsertPage(),
+              children: [
+                const CategoriesPage(),
+                const ListPage(),
+                // A created event brings the user back to the list.
+                InsertPage(
+                  onCreated: () => _pageController.animateToPage(1,
+                      duration: const Duration(milliseconds: 400),
+                      curve: Curves.ease),
+                ),
               ],
               onPageChanged: (index) {
                 setState(() {

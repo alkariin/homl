@@ -43,13 +43,15 @@ ThemeData homlTheme() {
       floatingLabelStyle: const TextStyle(
           color: ink, fontSize: 14, fontWeight: FontWeight.w500),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      // Hairline on the filled fields: they melt into light backgrounds
+      // otherwise.
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
+        borderSide: const BorderSide(color: Color(0x14000000)),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
+        borderSide: const BorderSide(color: Color(0x14000000)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
@@ -121,18 +123,24 @@ ThemeData homlTheme() {
       thickness: 0.5,
       space: 0.5,
     ),
+    // Notifications as floating white toasts (they auto-dismiss: 3s for
+    // confirmations, 5s for errors with a Close action).
     snackBarTheme: SnackBarThemeData(
-      backgroundColor: ink,
+      backgroundColor: Colors.white,
       behavior: SnackBarBehavior.floating,
-      elevation: 4,
+      elevation: 6,
       insetPadding: const EdgeInsets.fromLTRB(16, 5, 16, 16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: const BorderSide(color: Color(0x14000000)),
+      ),
       contentTextStyle: const TextStyle(
         fontFamily: fontFamily,
         fontSize: 14.5,
-        color: Colors.white,
+        fontWeight: FontWeight.w500,
+        color: ink,
       ),
-      actionTextColor: yellow,
+      actionTextColor: ink,
     ),
     switchTheme: SwitchThemeData(
       trackColor: WidgetStateProperty.resolveWith((states) =>

@@ -131,8 +131,8 @@ class AccountView extends StatelessWidget {
                   ..hideCurrentSnackBar()
                   ..showSnackBar(
                     SnackBar(
-                        content:
-                            Text(localization.account_passwordUpdated)),
+                        content: Text(localization.account_passwordUpdated),
+                        duration: const Duration(seconds: 3)),
                   );
               }
             },

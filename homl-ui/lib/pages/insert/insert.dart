@@ -18,7 +18,11 @@ import 'package:homl/pages/home/bloc/home_cubit.dart';
 import 'package:homl/pages/insert/bloc/insert_cubit.dart';
 
 class InsertPage extends StatelessWidget {
-  const InsertPage({super.key});
+  /// Called after a successful creation (not edits): the home page uses it
+  /// to bring the user back to the Search tab.
+  final VoidCallback? onCreated;
+
+  const InsertPage({this.onCreated, super.key});
 
   static Route<void> route() {
     return MaterialPageRoute<void>(builder: (_) => const InsertPage());
@@ -29,7 +33,7 @@ class InsertPage extends StatelessWidget {
     return BlocProvider(
       create: (context) => InsertCubit(
           context.read<EventsRepository>(), context.read<TagsRepository>()),
-      child: const InsertView(),
+      child: InsertView(onCreated: onCreated),
     );
   }
 }
@@ -96,7 +100,10 @@ class EditEventPage extends StatelessWidget {
 }
 
 class InsertView extends StatefulWidget {
-  const InsertView({super.key});
+  /// See [InsertPage.onCreated]; null in edit mode (the edit route pops).
+  final VoidCallback? onCreated;
+
+  const InsertView({this.onCreated, super.key});
 
   @override
   State<InsertView> createState() => _InsertViewState();
@@ -177,18 +184,22 @@ class _InsertViewState extends State<InsertView> {
             Navigator.of(context).pop();
             messenger
               ..hideCurrentSnackBar()
-              ..showSnackBar(
-                  SnackBar(content: Text(localization.list_eventUpdated)));
+              ..showSnackBar(SnackBar(
+                  content: Text(localization.list_eventUpdated),
+                  duration: const Duration(seconds: 3)));
             return;
           }
           _descriptionController.clear();
           ScaffoldMessenger.of(context)
             ..hideCurrentSnackBar()
-            ..showSnackBar(
-                SnackBar(content: Text(localization.insert_eventCreated)));
+            ..showSnackBar(SnackBar(
+                content: Text(localization.insert_eventCreated),
+                duration: const Duration(seconds: 3)));
           // The search tab follows the shared events through the repository
           // changes stream, so no explicit refresh is needed here.
           insertCubit.endModal();
+          // Back to the list: the created event is the natural next focus.
+          widget.onCreated?.call();
         } else if (state.modal != null) {
           ScaffoldMessenger.of(context)
             ..hideCurrentSnackBar()

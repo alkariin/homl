@@ -3,7 +3,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import 'package:homl/helpers/colors.dart' as palette;
 
-/// Tag chip: fully rounded pill tinted with the category color, label in
+/// Tag chip: rounded rectangle tinted with the category color, label in
 /// neutral ink so every pastel preset reads the same.
 /// [large] bumps the paddings and font for prominent spots (the selected
 /// tags above the search/insert inputs).
@@ -39,7 +39,7 @@ class Tag extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(100),
+        borderRadius: BorderRadius.circular(10),
         onTap: onTap,
         onLongPress: onDeleteTag == null ? null : () => onDeleteTag!(id),
         child: Container(
@@ -52,7 +52,7 @@ class Tag extends StatelessWidget {
             // pastels would otherwise melt into light backgrounds.
             border: Border.all(
                 color: palette.darken(base, .3).withValues(alpha: 0.4)),
-            borderRadius: BorderRadius.circular(100),
+            borderRadius: BorderRadius.circular(10),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,

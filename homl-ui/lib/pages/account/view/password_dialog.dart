@@ -80,7 +80,7 @@ class _PasswordDialogViewState extends State<PasswordDialogView> {
         title: Text(localization.account_enterPassword),
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Form(
                 key: _formKey,
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -98,6 +98,7 @@ class _PasswordDialogViewState extends State<PasswordDialogView> {
                     },
                     controller: _oldController,
                   ),
+                  const SizedBox(height: 14),
                   Input(
                     inputType: InputType.password,
                     labelText: localization.account_enterPassword,
@@ -112,6 +113,7 @@ class _PasswordDialogViewState extends State<PasswordDialogView> {
                     },
                     controller: _newController,
                   ),
+                  const SizedBox(height: 14),
                   Input(
                     inputType: InputType.password,
                     labelText: localization.account_repeatPassword,
@@ -132,14 +134,16 @@ class _PasswordDialogViewState extends State<PasswordDialogView> {
                       builder: (context, state) {
                     return Visibility(
                       visible: state.responseError != null,
-                      child: Text(
-                        state.responseError?.localize(localization) ?? "",
-                        style: const TextStyle(
-                          color: Color.fromARGB(255, 255, 0, 0),
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: Text(
+                          state.responseError?.localize(localization) ?? "",
+                          style: TextStyle(color: Colors.red.shade400),
                         ),
                       ),
                     );
                   }),
+                  const SizedBox(height: 20),
                   Button(
                     text: localization.global_update,
                     onPressed: () {
