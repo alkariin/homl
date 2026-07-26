@@ -13,8 +13,8 @@ import (
 // Tags belong to the Category aggregate, so their persistence operations are
 // methods of CategoriesRepository.
 
-func (c *CategoriesRepository) CreateTag(ctx context.Context, tagNameEncrypt string, idCategory uint, idParentTag *uint) (uint, error) {
-	res, err := c.DB.ExecContext(ctx, "INSERT INTO Tags (tag, idCategory, idParentTag) VALUES (?, ?, ?)", tagNameEncrypt, idCategory, idParentTag)
+func (c *CategoriesRepository) CreateTag(ctx context.Context, tagNameEncrypt string, tagIndex *string, idCategory uint, idParentTag *uint) (uint, error) {
+	res, err := c.DB.ExecContext(ctx, "INSERT INTO Tags (tag, tagIndex, idCategory, idParentTag) VALUES (?, ?, ?, ?)", tagNameEncrypt, tagIndex, idCategory, idParentTag)
 	if err != nil {
 		return 0, err
 	}
@@ -27,14 +27,14 @@ func (c *CategoriesRepository) CreateTag(ctx context.Context, tagNameEncrypt str
 	return uint(idTag), nil
 }
 
-func (c *CategoriesRepository) UpdateTag(ctx context.Context, tagNameEncrypt string, idCategory uint, idTag uint, idParentTag *uint) error {
+func (c *CategoriesRepository) UpdateTag(ctx context.Context, tagNameEncrypt string, tagIndex *string, idCategory uint, idTag uint, idParentTag *uint) error {
 	tx, err := c.DB.BeginTxx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback() // no-op once Commit succeeds
 
-	res, err := tx.ExecContext(ctx, "UPDATE Tags SET tag = ?, idCategory = ?, idParentTag = ? WHERE id = ?", tagNameEncrypt, idCategory, idParentTag, idTag)
+	res, err := tx.ExecContext(ctx, "UPDATE Tags SET tag = ?, tagIndex = ?, idCategory = ?, idParentTag = ? WHERE id = ?", tagNameEncrypt, tagIndex, idCategory, idParentTag, idTag)
 
 	if err != nil {
 		return err

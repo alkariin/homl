@@ -35,7 +35,7 @@ func TestCreateTag(t *testing.T) {
 
 		catRepo.On("FindByIdForUser", uint(4), uint64(1)).
 			Return(&category.Category{Id: 4, Kind: category.KindPerson}, nil)
-		catRepo.On("CreateTag", mock.Anything, uint(4), (*uint)(nil)).Return(uint(1), nil)
+		catRepo.On("CreateTag", mock.Anything, (*string)(nil), uint(4), (*uint)(nil)).Return(uint(1), nil)
 
 		_, err := svc.CreateTag(ctx, 1, &category.Tag{Tag: "Anything", IdCategory: 4})
 
@@ -66,7 +66,7 @@ func TestCreateTag(t *testing.T) {
 		catRepo.On("CreateTag", mock.MatchedBy(func(enc string) bool {
 			dec, err := testCrypto.Decrypt(enc, 1)
 			return err == nil && dec == "Cinema"
-		}), uint(2), (*uint)(nil)).Return(uint(1), nil)
+		}), (*string)(nil), uint(2), (*uint)(nil)).Return(uint(1), nil)
 
 		id, err := svc.CreateTag(ctx, 1, &category.Tag{Tag: "cinema", IdCategory: 2})
 
@@ -90,7 +90,7 @@ func TestCreateTag(t *testing.T) {
 		catRepo.On("CreateTag", mock.MatchedBy(func(enc string) bool {
 			dec, err := testCrypto.Decrypt(enc, 1)
 			return err == nil && dec == "Movies"
-		}), uint(2), &idParent).Return(uint(11), nil)
+		}), (*string)(nil), uint(2), &idParent).Return(uint(11), nil)
 
 		id, err := svc.CreateTag(ctx, 1, &category.Tag{Tag: "movies", IdCategory: 2, IdParentTag: &idParent})
 
@@ -226,7 +226,7 @@ func TestUpdateTag(t *testing.T) {
 		catRepo.On("UpdateTag", mock.MatchedBy(func(enc string) bool {
 			dec, err := testCrypto.Decrypt(enc, 1)
 			return err == nil && dec == "Cinema"
-		}), uint(2), idTag, (*uint)(nil)).Return(nil)
+		}), (*string)(nil), uint(2), idTag, (*uint)(nil)).Return(nil)
 
 		err := svc.UpdateTag(ctx, 1, &category.Tag{Id: idTag, Tag: "cinema", IdCategory: 2})
 

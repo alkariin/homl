@@ -12,6 +12,16 @@ import (
 // are small JSON documents; 1 MiB leaves plenty of headroom.
 const maxRequestBodyBytes = 1 << 20
 
+// e2eeMigrateMaxBodyBytes caps the E2EE migration endpoint, whose payload
+// carries the user's whole dataset re-encrypted (a few MB for years of
+// events, see docs/e2ee.md).
+const e2eeMigrateMaxBodyBytes = 32 << 20
+
+// e2eeMigrateTimeout bounds the migration handler, which rewrites every row
+// of the user in one transaction and can outlive the API-wide handler
+// timeout on large datasets.
+const e2eeMigrateTimeout = 60 * time.Second
+
 // MaxBodySize rejects request bodies larger than n bytes. The handlers'
 // ShouldBindJSON surfaces the *http.MaxBytesError, which the responder maps
 // to a 413.
@@ -28,12 +38,14 @@ func MaxBodySize(n int64) gin.HandlerFunc {
 type Server struct {
 	Auth        Authenticator
 	RateLimiter RateLimiter
+	E2EEFlags   E2EEFlagSource
 	Health      *HealthHandler
 	User        *UserHandler
 	Category    *CategoryHandler
 	Tag         *TagHandler
 	Event       *EventHandler
 	Settings    *SettingsHandler
+	E2EE        *E2EEHandler
 }
 
 func SetupRouter(s *Server, baseUrl string, timeoutDuration time.Duration, isDev bool, corsOrigin string) *gin.Engine {
@@ -63,6 +75,9 @@ func SetupRouter(s *Server, baseUrl string, timeoutDuration time.Duration, isDev
 	g.Use(Timeout(timeoutDuration, apperror.NewServiceUnavailable()))
 
 	authRequired := TokenAuthMiddleware(s.Auth)
+	// Data routes branch on the user's E2EE mode (docs/e2ee.md): the flag is
+	// resolved once per request, after authentication.
+	e2eeFlag := E2EEFlagMiddleware(s.E2EEFlags)
 
 	// Per-IP throttling on the unauthenticated auth endpoints (anti-bruteforce
 	// / anti-email-bombing). Tuned per endpoint.
@@ -81,25 +96,33 @@ func SetupRouter(s *Server, baseUrl string, timeoutDuration time.Duration, isDev
 	g.POST("/challenge", challengeLimit, s.User.Challenge)
 	g.PUT("/secureAuth", authRequired, s.User.SecureAuth)
 
-	g.GET("/categories", authRequired, s.Category.GetCategories)
-	g.POST("/categories", authRequired, s.Category.CreateCategory)
-	g.PATCH("/categories/:id", authRequired, s.Category.UpdateCategory)
-	g.DELETE("/categories/:id", authRequired, s.Category.DeleteCategory)
-	g.GET("/categories/:id/usage", authRequired, s.Category.GetCategoryUsage)
+	g.GET("/categories", authRequired, e2eeFlag, s.Category.GetCategories)
+	g.POST("/categories", authRequired, e2eeFlag, s.Category.CreateCategory)
+	g.PATCH("/categories/:id", authRequired, e2eeFlag, s.Category.UpdateCategory)
+	g.DELETE("/categories/:id", authRequired, e2eeFlag, s.Category.DeleteCategory)
+	g.GET("/categories/:id/usage", authRequired, e2eeFlag, s.Category.GetCategoryUsage)
 
-	g.POST("/tags", authRequired, s.Tag.CreateTag)
-	g.PATCH("/tags/:id", authRequired, s.Tag.UpdateTag)
-	g.DELETE("/tags/:id", authRequired, s.Tag.DeleteTag)
-	g.GET("/tags/:id/usage", authRequired, s.Tag.GetTagUsage)
+	g.POST("/tags", authRequired, e2eeFlag, s.Tag.CreateTag)
+	g.PATCH("/tags/:id", authRequired, e2eeFlag, s.Tag.UpdateTag)
+	g.DELETE("/tags/:id", authRequired, e2eeFlag, s.Tag.DeleteTag)
+	g.GET("/tags/:id/usage", authRequired, e2eeFlag, s.Tag.GetTagUsage)
 
-
-	g.GET("/events", authRequired, s.Event.GetEvents)
-	g.POST("/events", authRequired, s.Event.CreateEvent)
-	g.PATCH("/events/:id", authRequired, s.Event.UpdateEvent)
-	g.DELETE("/events/:id", authRequired, s.Event.DeleteEvent)
+	g.GET("/events", authRequired, e2eeFlag, s.Event.GetEvents)
+	g.POST("/events", authRequired, e2eeFlag, s.Event.CreateEvent)
+	g.PATCH("/events/:id", authRequired, e2eeFlag, s.Event.UpdateEvent)
+	g.DELETE("/events/:id", authRequired, e2eeFlag, s.Event.DeleteEvent)
 
 	g.GET("/settings", authRequired, s.Settings.GetSettings)
 	g.PUT("/settings", authRequired, s.Settings.UpdateSettings)
+
+	g.POST("/e2ee/purge", authRequired, s.E2EE.Purge)
+
+	// The migration payload is the user's whole dataset, so the endpoint gets
+	// its own body cap and timeout, far above the API-wide defaults.
+	m := router.Group(baseUrl)
+	m.Use(MaxBodySize(e2eeMigrateMaxBodyBytes))
+	m.Use(Timeout(e2eeMigrateTimeout, apperror.NewServiceUnavailable()))
+	m.POST("/e2ee/migrate", authRequired, s.E2EE.Migrate)
 
 	return router
 }

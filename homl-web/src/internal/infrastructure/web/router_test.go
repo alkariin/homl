@@ -36,6 +36,14 @@ func (allowAllLimiter) Allow(context.Context, string, int, time.Duration) (bool,
 	return true, nil
 }
 
+// fakeE2EEFlags reports every test user as non-E2EE, matching the mocked
+// services which expect plaintext values.
+type fakeE2EEFlags struct{}
+
+func (fakeE2EEFlags) IsEnabled(context.Context, uint64) (bool, error) {
+	return false, nil
+}
+
 // These HTTP integration tests replace the old Postman suite: they boot the
 // real Gin router (SetupRouter) wired with mocked services and assert the
 // status code + JSON body for every request, exactly like the Postman test
@@ -72,6 +80,7 @@ func newTestServer() (*gin.Engine, *serverMocks) {
 	server := &Server{
 		Auth:        authenticator,
 		RateLimiter: allowAllLimiter{},
+		E2EEFlags:   fakeE2EEFlags{},
 		User:        &UserHandler{UsersService: sm.users, Tokens: testJWT},
 		Category:    &CategoryHandler{CategoriesService: sm.categories},
 		Tag:         &TagHandler{TagsService: sm.tags},
