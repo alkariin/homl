@@ -451,7 +451,7 @@ abstract class AppLocalizations {
   /// No description provided for @account_e2eeSwitchText.
   ///
   /// In en, this message translates to:
-  /// **'Encrypt my data (end-to-end)'**
+  /// **'End-to-end encryption (only this device can read)'**
   String get account_e2eeSwitchText;
 
   /// No description provided for @account_e2eeEnableTitle.
@@ -475,7 +475,7 @@ abstract class AppLocalizations {
   /// No description provided for @account_e2eeDisableWarning.
   ///
   /// In en, this message translates to:
-  /// **'Your data will be re-uploaded and the server will be able to read it again. Continue?'**
+  /// **'Your data will stay encrypted on the server, but the server will be able to read it again. Continue?'**
   String get account_e2eeDisableWarning;
 
   /// No description provided for @account_e2eeEnabled.

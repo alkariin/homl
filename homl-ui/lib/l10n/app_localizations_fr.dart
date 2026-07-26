@@ -201,7 +201,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get e2ee_continue => 'Continuer';
 
   @override
-  String get account_e2eeSwitchText => 'Chiffrer mes données (de bout en bout)';
+  String get account_e2eeSwitchText =>
+      'Chiffrement de bout en bout (seul cet appareil peut lire)';
 
   @override
   String get account_e2eeEnableTitle => 'Chiffrer vos données';
@@ -215,7 +216,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get account_e2eeDisableWarning =>
-      'Vos données seront renvoyées au serveur, qui pourra de nouveau les lire. Continuer ?';
+      'Vos données resteront chiffrées sur le serveur, mais celui-ci pourra de nouveau les lire. Continuer ?';
 
   @override
   String get account_e2eeEnabled => 'Chiffrement activé';

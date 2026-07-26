@@ -74,11 +74,11 @@
 
   "e2ee_cancel": "Abbrechen",
   "e2ee_continue": "Weiter",
-  "account_e2eeSwitchText": "Meine Daten verschlüsseln (Ende-zu-Ende)",
+  "account_e2eeSwitchText": "Ende-zu-Ende-Verschlüsselung (nur dieses Gerät kann lesen)",
   "account_e2eeEnableTitle": "Daten verschlüsseln",
   "account_e2eeEnableWarning": "Deine Tags, Kategorien und Notizen werden auf diesem Gerät mit einem Schlüssel verschlüsselt, den nur du besitzt. Der Server kann sie nicht mehr lesen. Wenn du den Schlüssel und seine Wiederherstellungsphrase verlierst, sind die Daten unwiederbringlich verloren.",
   "account_e2eeDisableTitle": "Verschlüsselung deaktivieren",
-  "account_e2eeDisableWarning": "Deine Daten werden erneut hochgeladen und der Server kann sie wieder lesen. Fortfahren?",
+  "account_e2eeDisableWarning": "Deine Daten bleiben auf dem Server verschlüsselt, aber der Server kann sie wieder lesen. Fortfahren?",
   "account_e2eeEnabled": "Verschlüsselung aktiviert",
   "account_e2eeDisabled": "Verschlüsselung deaktiviert",
   "account_e2eeError": "Änderung der Verschlüsselung fehlgeschlagen, später erneut versuchen",
