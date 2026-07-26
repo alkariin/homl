@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:homl/components/button.dart';
 import 'package:homl/components/input.dart';
+import 'package:homl/helpers/toast.dart';
 import 'package:homl/helpers/validations.dart';
 import 'package:homl/l10n/app_localizations.dart';
 import 'package:homl/pages/forgot_password/view/forgot_password.dart';
@@ -56,17 +57,14 @@ class _LoginViewState extends State<LoginView> {
     final localization = AppLocalizations.of(context)!;
 
     return BlocConsumer<LoginCubit, LoginState>(
+        // Only on the transition into the error: the flag stays true until the
+        // next submit, so listening to every emission re-showed the toast on
+        // each keystroke of the corrected password.
+        listenWhen: (previous, current) =>
+            current.isLoginIncorrect && !previous.isLoginIncorrect,
         listener: (context, state) {
-          if (state.isLoginIncorrect) {
-            ScaffoldMessenger.of(context)
-              ..hideCurrentSnackBar()
-              ..showSnackBar(
-                SnackBar(
-                  content: Text(localization.login_incorrectCredentials),
-                  backgroundColor: Colors.redAccent,
-                ),
-              );
-          }
+          showToast(context, localization.login_incorrectCredentials,
+              isError: true);
         },
         builder: (context, state) => Scaffold(
             body: Align(

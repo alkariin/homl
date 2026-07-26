@@ -6,6 +6,7 @@ import 'package:homl/components/button.dart';
 import 'package:homl/components/input.dart';
 import 'package:homl/data/repositories/users.repository.dart';
 import 'package:homl/helpers/language.dart';
+import 'package:homl/helpers/toast.dart';
 import 'package:homl/helpers/validations.dart';
 import 'package:homl/pages/register/bloc/register_cubit.dart';
 
@@ -44,15 +45,12 @@ class _RegisterViewState extends State<RegisterView> {
     final localization = AppLocalizations.of(context)!;
 
     return BlocConsumer<RegisterCubit, RegisterState>(
+        // Only on the transition into the error, see the login page: the flag
+        // stays true until the next submit.
+        listenWhen: (previous, current) =>
+            current.isRegisterIncorrect && !previous.isRegisterIncorrect,
         listener: (context, state) {
-          final localization = AppLocalizations.of(context)!;
-          if (state.isRegisterIncorrect) {
-            ScaffoldMessenger.of(context)
-              ..hideCurrentSnackBar()
-              ..showSnackBar(
-                SnackBar(content: Text(localization.register_failure)),
-              );
-          }
+          showToast(context, AppLocalizations.of(context)!.register_failure);
         },
         builder: (context, state) => Scaffold(
             appBar: AppBar(

@@ -13,6 +13,7 @@ import 'package:homl/data/models/event.dart';
 import 'package:homl/data/repositories/events.repository.dart';
 import 'package:homl/data/repositories/tags.repository.dart';
 import 'package:homl/helpers/app_message.dart';
+import 'package:homl/helpers/toast.dart';
 import 'package:homl/pages/categories/view/category_management.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
 import 'package:homl/pages/insert/bloc/insert_cubit.dart';
@@ -178,39 +179,29 @@ class _InsertViewState extends State<InsertView> {
         final insertCubit = context.read<InsertCubit>();
         if (state.status == InsertStatus.success) {
           if (state.editingEventId != null) {
-            // Edit mode: pop back to the list. The messenger is app-level,
-            // so the confirmation snackbar survives the pop.
+            // Edit mode: pop back to the list. The messenger is resolved
+            // before the pop (the context is gone after it) and the toast
+            // shown after it, since the route observer clears the toasts on
+            // the way out.
             final messenger = ScaffoldMessenger.of(context);
             Navigator.of(context).pop();
-            messenger
-              ..hideCurrentSnackBar()
-              ..showSnackBar(SnackBar(
-                  content: Text(localization.list_eventUpdated),
-                  duration: const Duration(seconds: 3)));
+            showToastWith(messenger, localization.list_eventUpdated);
             return;
           }
           _descriptionController.clear();
-          ScaffoldMessenger.of(context)
-            ..hideCurrentSnackBar()
-            ..showSnackBar(SnackBar(
-                content: Text(localization.insert_eventCreated),
-                duration: const Duration(seconds: 3)));
+          showToast(context, localization.insert_eventCreated);
           // The search tab follows the shared events through the repository
           // changes stream, so no explicit refresh is needed here.
           insertCubit.endModal();
           // Back to the list: the created event is the natural next focus.
           widget.onCreated?.call();
         } else if (state.modal != null) {
-          ScaffoldMessenger.of(context)
-            ..hideCurrentSnackBar()
-            ..showSnackBar(SnackBar(
-              content: Text(state.modal!.localize(localization)),
-              action: SnackBarAction(
-                  label: localization.global_close, onPressed: () {}),
-              duration: const Duration(seconds: 5),
-            )).closed.then((_) {
-              insertCubit.endModal();
-            });
+          showToast(context, state.modal!.localize(localization),
+                  duration: const Duration(seconds: 5))
+              .closed
+              .then((_) {
+            insertCubit.endModal();
+          });
         }
       },
       child: BlocBuilder<HomeCubit, HomeState>(builder: (context, homeState) {
