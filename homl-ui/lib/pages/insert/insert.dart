@@ -164,6 +164,13 @@ class _InsertViewState extends State<InsertView> {
     final locale = Localizations.localeOf(context).toString();
 
     return BlocListener<InsertCubit, InsertState>(
+      // The navigation and the toasts react to the *transition* into a status
+      // or a message, never to any state that happens to carry one: the form
+      // keeps emitting while the success is on screen (the description field
+      // notifies its text when it loses focus on the way out), and a second
+      // run of the edit branch would pop the list route too.
+      listenWhen: (previous, current) =>
+          previous.status != current.status || previous.modal != current.modal,
       listener: (context, state) {
         final insertCubit = context.read<InsertCubit>();
         if (state.status == InsertStatus.success) {
