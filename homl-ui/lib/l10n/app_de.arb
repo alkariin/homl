@@ -86,6 +86,14 @@
   "account_e2eeMnemonicHint": "Schreibe diese 12 Wörter auf und bewahre sie sicher auf. Sie sind der einzige Weg, deine Daten auf einem anderen Gerät oder nach einer Neuinstallation wiederherzustellen. Wir können sie nicht für dich wiederherstellen.",
   "account_e2eeMnemonicSkip": "Überspringen (riskant)",
   "account_e2eeMnemonicSaved": "Gespeichert",
+  "account_e2eeMnemonicCount": "{count} Wörter",
+  "@account_e2eeMnemonicCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "account_e2eeMnemonicCopy": "Kopieren",
+  "account_e2eeMnemonicCopied": "Wiederherstellungsphrase kopiert",
   "e2ee_lockedTitle": "Verschlüsselte Daten",
   "e2ee_lockedExplanation": "Dieses Konto ist Ende-zu-Ende verschlüsselt, aber dieses Gerät hat keinen Schlüssel. Gib deine Wiederherstellungsphrase ein, um deine Daten zu entsperren, oder lösche sie, um neu zu beginnen.",
   "e2ee_restoreHint": "Wiederherstellungsphrase (12 Wörter)",
