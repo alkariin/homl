@@ -93,6 +93,25 @@ flutter analyze
 flutter test
 ```
 
+### E2EE end-to-end test (device + live backend)
+
+`integration_test/e2ee_flow_test.dart` drives the full E2EE lifecycle with
+the real client stack — native crypto plugin, repositories, secure storage —
+against a running backend: enable migration, blob storage, blind-index
+search, client-built date tags, ciphertext-only cache, recovery-phrase
+restore, disable migration. It exists because the unit suite runs on the
+pure-Dart crypto and mocked HTTP, which cannot catch native-plugin or
+wire-contract regressions.
+
+```bash
+cd ../homl-web && make db-up && make migrateup && make local   # or make dev
+cd ../homl-ui && ./run-e2e-test.sh                             # picks the attached device
+```
+
+It registers a throwaway account and saves/restores the developer's local
+session and E2EE key around the run, so it is safe on a daily dev phone.
+`flutter test` never runs it (integration tests only run explicitly).
+
 ## Categories tab: tag & category management
 
 `lib/pages/categories/view/category_management.dart` gives full CRUD on
