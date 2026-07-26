@@ -134,8 +134,8 @@ class _TagInputState extends State<TagInput> {
       children: [
         if (widget.leading != null || widget.tags.isNotEmpty) ...[
           Wrap(
-            spacing: 5,
-            runSpacing: 5,
+            spacing: 8,
+            runSpacing: 8,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               if (widget.leading != null) widget.leading!,
@@ -145,6 +145,7 @@ class _TagInputState extends State<TagInput> {
                   id: tag.id,
                   text: tag.name,
                   color: tag.color,
+                  large: true,
                   onTap: widget.onRemoveTag == null
                       ? null
                       : () => widget.onRemoveTag!(tag),
@@ -153,7 +154,7 @@ class _TagInputState extends State<TagInput> {
                       : (_) => widget.onRemoveTag!(tag))),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 18),
         ],
         Row(
           children: [
@@ -162,7 +163,11 @@ class _TagInputState extends State<TagInput> {
                 valueListenable: _controller,
                 builder: (context, value, _) {
                   final highlight = _highlightFor(value);
-                  final logo = HomlLogo(tint: highlight);
+                  // Ink by default (the gold strokes only light up in a
+                  // category color while a suggestion highlights them), and
+                  // a small inset so the hash fills the circle.
+                  final logo =
+                      HomlLogo(tint: highlight ?? ink, insetFactor: 0.08);
                   if (widget.onLogoTap == null) return logo;
 
                   // Button affordance: circular ripple on the logo plus a
@@ -186,7 +191,7 @@ class _TagInputState extends State<TagInput> {
                               width: 20,
                               height: 20,
                               decoration: BoxDecoration(
-                                color: highlight ?? yellow,
+                                color: highlight ?? ink,
                                 shape: BoxShape.circle,
                                 border:
                                     Border.all(color: Colors.white, width: 1.5),
@@ -216,18 +221,19 @@ class _TagInputState extends State<TagInput> {
                     valueListenable: controller,
                     builder: (context, value, _) {
                       final highlight = _highlightFor(value);
-                      // A null border falls back to the theme (yellow).
+                      // A null border falls back to the theme (borderless
+                      // filled field, ink border on focus).
                       final border = highlight == null
                           ? null
                           : OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(5),
+                              borderRadius: BorderRadius.circular(12),
                               borderSide:
                                   BorderSide(color: highlight, width: 1),
                             );
                       final focusedBorder = highlight == null
                           ? null
                           : OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(5),
+                              borderRadius: BorderRadius.circular(12),
                               borderSide:
                                   BorderSide(color: highlight, width: 1.5),
                             );
@@ -243,10 +249,10 @@ class _TagInputState extends State<TagInput> {
                           suffixIcon: value.text.isEmpty
                               ? const SizedBox.shrink()
                               : IconButton(
-                                  icon: const FaIcon(
+                                  icon: FaIcon(
                                       FontAwesomeIcons.solidCircleXmark,
                                       size: 18,
-                                      color: yellow),
+                                      color: ink.withValues(alpha: 0.35)),
                                   onPressed: controller.clear,
                                 ),
                         ),
@@ -259,8 +265,11 @@ class _TagInputState extends State<TagInput> {
                   return Align(
                     alignment: Alignment.topLeft,
                     child: Material(
-                      elevation: 4,
-                      borderRadius: BorderRadius.circular(5),
+                      elevation: 6,
+                      color: Colors.white,
+                      shadowColor: Colors.black.withValues(alpha: 0.25),
+                      borderRadius: BorderRadius.circular(12),
+                      clipBehavior: Clip.antiAlias,
                       child: ConstrainedBox(
                         constraints:
                             const BoxConstraints(maxHeight: 200, maxWidth: 300),

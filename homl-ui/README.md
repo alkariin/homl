@@ -194,7 +194,10 @@ category, which keep the default styling (`lib/components/tag_input.dart`,
 `highlightColor` on `TagChipData`). The logo is an SVG
 (`assets/images/logo.svg`) rendered with `flutter_svg`: a `ColorMapper`
 repaints only its gold strokes (drawn in the palette's `yellow`), the black
-ones stay black.
+ones stay black. In the tag inputs the logo button defaults to an all-ink
+hash (the gold strokes are tinted `ink` when no suggestion highlights them),
+matching the app's monochrome controls — buttons, focus borders and the
+selected nav item are ink, the gold stays in the logo and small accents.
 
 `EventsRepository.getEvents()` and `CategoriesRepository.getCategories()`
 cache each successful payload in `flutter_secure_storage` (encrypted at

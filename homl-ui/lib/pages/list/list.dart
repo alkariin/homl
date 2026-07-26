@@ -36,7 +36,7 @@ class ListPage extends StatelessWidget {
         return BubblesBackground(
           child: Column(children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 15, 20, 5),
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
                 child: TagInput(
                   labelText: localization.list_filterLabel,
                   showLogo: true,
@@ -75,7 +75,7 @@ class ListPage extends StatelessWidget {
                     : listState.events.isEmpty
                         ? Center(child: Text(localization.list_noEvents))
                         : GridView.builder(
-                            padding: const EdgeInsets.fromLTRB(20, 15, 20, 25),
+                            padding: const EdgeInsets.fromLTRB(20, 22, 20, 25),
                             gridDelegate:
                                 const SliverGridDelegateWithMaxCrossAxisExtent(
                               maxCrossAxisExtent: 250,

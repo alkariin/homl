@@ -2,16 +2,17 @@ import 'package:flutter/material.dart';
 
 import 'package:homl/helpers/colors.dart';
 
-/// Global theme of the app: Encode Sans, white surfaces with hairline grey
-/// borders and the yellow #D3A934 accent.
+/// Global theme of the app: Encode Sans, white surfaces, monochrome ink
+/// controls (buttons, focus, selection); the gold #D3A934 stays confined to
+/// the logo and small accents.
 ThemeData homlTheme() {
   const fontFamily = 'Encode Sans';
 
   final colorScheme = ColorScheme.fromSeed(
-    seedColor: yellow,
-    primary: yellow,
+    seedColor: ink,
+    primary: ink,
     onPrimary: Colors.white,
-    secondary: blue,
+    secondary: yellow,
     surface: Colors.white,
     onSurface: ink,
   );
@@ -37,30 +38,31 @@ ThemeData homlTheme() {
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: Colors.white,
-      labelStyle: const TextStyle(color: yellow, fontSize: 14),
-      floatingLabelStyle: const TextStyle(color: yellow, fontSize: 14),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 14),
+      fillColor: const Color(0xFFF4F4F2),
+      labelStyle: TextStyle(color: ink.withValues(alpha: 0.45), fontSize: 14),
+      floatingLabelStyle: const TextStyle(
+          color: ink, fontSize: 14, fontWeight: FontWeight.w500),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(5),
-        borderSide: const BorderSide(color: yellow, width: 1),
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(5),
-        borderSide: const BorderSide(color: yellow, width: 1),
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(5),
-        borderSide: const BorderSide(color: yellow, width: 1.5),
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: ink, width: 1.5),
       ),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        backgroundColor: yellow,
+        backgroundColor: ink,
         foregroundColor: Colors.white,
         elevation: 0,
-        padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         textStyle: const TextStyle(
           fontFamily: fontFamily,
           fontSize: 16,
@@ -69,10 +71,16 @@ ThemeData homlTheme() {
       ),
     ),
     textButtonTheme: TextButtonThemeData(
-      style: TextButton.styleFrom(foregroundColor: yellow),
+      style: TextButton.styleFrom(
+        foregroundColor: ink,
+        textStyle: const TextStyle(
+          fontFamily: fontFamily,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     ),
     floatingActionButtonTheme: const FloatingActionButtonThemeData(
-      backgroundColor: yellow,
+      backgroundColor: ink,
       foregroundColor: Colors.white,
       shape: StadiumBorder(),
       extendedTextStyle: TextStyle(
@@ -107,7 +115,7 @@ ThemeData homlTheme() {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
     ),
-    progressIndicatorTheme: const ProgressIndicatorThemeData(color: yellow),
+    progressIndicatorTheme: const ProgressIndicatorThemeData(color: ink),
     dividerTheme: DividerThemeData(
       color: Colors.black.withValues(alpha: 0.2),
       thickness: 0.5,
