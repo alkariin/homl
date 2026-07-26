@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:homl/data/models/usage.dart';
 import 'package:homl/data/repositories/api.dart';
+import 'package:homl/helpers/e2ee.dart';
 
 /// Exception thrown when a tags request fails
 class TagsRequestFailure implements Exception {}
@@ -8,16 +9,24 @@ class TagsRequestFailure implements Exception {}
 /// Exception thrown when the created tag payload is empty
 class TagsNotFoundFailure implements Exception {}
 
+/// Exception thrown when the tag name is reserved for the date tags (E2EE
+/// mode mirror of the backend masterdata blacklist).
+class TagsBlacklistedFailure implements Exception {}
+
 class TagsRepository {
   final apiInstance = Api();
 
   /// Returns the id of the created tag. Pass [idParentTag] to create the tag
-  /// as a synonym of an existing main tag of the same category.
-  Future<int> createTag(String text, int idCategory, {int? idParentTag}) async {
+  /// as a synonym of an existing main tag of the same category. In E2EE mode
+  /// the name is encrypted and its blind index sent alongside; [isDateTag]
+  /// lifts the blacklist for the client-managed month/year tags.
+  Future<int> createTag(String text, int idCategory,
+      {int? idParentTag, bool isDateTag = false}) async {
     late Response<Map<String, dynamic>> response;
     try {
-      response = await apiInstance.api.post<Map<String, dynamic>>('/tags', data: {
-        'tag': text,
+      response =
+          await apiInstance.api.post<Map<String, dynamic>>('/tags', data: {
+        ...await _outgoingTag(text, isDateTag: isDateTag),
         'idCategory': idCategory,
         if (idParentTag != null) 'idParentTag': idParentTag,
       });
@@ -38,13 +47,31 @@ class TagsRepository {
       {int? idParentTag}) async {
     try {
       await apiInstance.api.patch<void>('/tags/$id', data: {
-        'tag': text,
+        ...await _outgoingTag(text),
         'idCategory': idCategory,
         if (idParentTag != null) 'idParentTag': idParentTag,
       });
     } on DioException catch (_) {
       throw TagsRequestFailure();
     }
+  }
+
+  /// Builds the tag fields of a write payload. Plaintext name as-is for
+  /// regular users; encrypted name + blind index for E2EE users, with the
+  /// blacklist enforced client-side (the server cannot read the name).
+  Future<Map<String, dynamic>> _outgoingTag(String text,
+      {bool isDateTag = false}) async {
+    final e2ee = E2ee();
+    if (!e2ee.enabled) return {'tag': text};
+
+    if (!isDateTag && e2ee.isBlacklistedTag(text)) {
+      throw TagsBlacklistedFailure();
+    }
+
+    return {
+      'tag': await e2ee.encrypt(text),
+      'tagIndex': await e2ee.tagIndex(text),
+    };
   }
 
   /// Deleting a synonym repoints its events to the main tag. Deleting a main
