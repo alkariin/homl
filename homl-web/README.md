@@ -69,7 +69,9 @@ Start only MySQL and Redis:
 ```bash
 make db-up
 make migrateup
-make seed          # optional demo data
+make seed          # optional demo data (idempotent: never duplicates the
+                   # demo user's default categories, even after an E2EE purge
+                   # deleted and recreated them)
 ```
 
 Run the backend as a local Go process:
