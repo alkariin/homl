@@ -118,11 +118,14 @@ session and E2EE key around the run, so it is safe on a daily dev phone.
 categories, tags and synonyms (rules per category kind in
 `homl-web/docs/default-categories.md`; only the Dates tags are read-only —
 the Others tags are manageable so free tags typed on the insert page can be
-sorted into real categories). `CategoryManagementBody` has two modes: the
-management view of the Categories tab (tap or long-press a tag → its actions
-menu), and a read-only picker (`showTagPickerSheet`, opened from the "#" logo
-of the tag inputs) where tapping a tag hands it to the caller. Destructive
-actions confirm with the counts served by `GET /tags/:id/usage` /
+sorted into real categories). Each category is an expandable card: a colored
+icon, the name and a tag count in the header, the tag chips and a "New tag"
+pill in the body; category edit/delete live in the header's "⋮" menu (hidden
+for locked categories and in picker mode). `CategoryManagementBody` has two
+modes: the management view of the Categories tab (tap or long-press a tag →
+its actions menu), and a read-only picker (`showTagPickerSheet`, opened from
+the "#" logo of the tag inputs) where tapping a tag hands it to the caller.
+Destructive actions confirm with the counts served by `GET /tags/:id/usage` /
 `GET /categories/:id/usage`:
 
 - a main tag can be renamed, given synonyms, **moved to another category**

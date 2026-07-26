@@ -742,6 +742,12 @@ abstract class AppLocalizations {
   /// **'Color'**
   String get categories_color;
 
+  /// No description provided for @categories_tagCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No tags} =1{1 tag} other{{count} tags}}'**
+  String categories_tagCount(int count);
+
   /// No description provided for @categories_newTag.
   ///
   /// In en, this message translates to:

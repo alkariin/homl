@@ -197,6 +197,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Rename tag'), findsNothing);
-    expect(find.byType(PopupMenuButton<String>), findsNothing);
+    expect(find.byType(SimpleDialog), findsNothing);
   });
 }
