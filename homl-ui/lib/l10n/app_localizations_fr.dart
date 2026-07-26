@@ -195,6 +195,110 @@ class AppLocalizationsFr extends AppLocalizations {
   String get global_update => 'Mettre à jour';
 
   @override
+  String get e2ee_cancel => 'Annuler';
+
+  @override
+  String get e2ee_continue => 'Continuer';
+
+  @override
+  String get account_e2eeSwitchText =>
+      'Chiffrement de bout en bout (seul cet appareil peut lire)';
+
+  @override
+  String get account_e2eeEnableTitle => 'Chiffrer vos données';
+
+  @override
+  String get account_e2eeEnableWarning =>
+      'Vos tags, catégories et notes seront chiffrés sur cet appareil avec une clé que vous seul possédez. Le serveur ne pourra plus les lire. Si vous perdez la clé et sa phrase de récupération, les données seront définitivement perdues.';
+
+  @override
+  String get account_e2eeDisableTitle => 'Désactiver le chiffrement';
+
+  @override
+  String get account_e2eeDisableWarning =>
+      'Vos données resteront chiffrées sur le serveur, mais celui-ci pourra de nouveau les lire. Continuer ?';
+
+  @override
+  String get account_e2eeEnabled => 'Chiffrement activé';
+
+  @override
+  String get account_e2eeDisabled => 'Chiffrement désactivé';
+
+  @override
+  String get account_e2eeError =>
+      'Échec du changement de chiffrement, réessayez plus tard';
+
+  @override
+  String get account_e2eeMnemonicTitle => 'Votre phrase de récupération';
+
+  @override
+  String get account_e2eeMnemonicHint =>
+      'Notez ces 12 mots et conservez-les en lieu sûr. C\'est le seul moyen de récupérer vos données sur un autre appareil ou après une réinstallation. Nous ne pouvons pas les récupérer à votre place.';
+
+  @override
+  String get account_e2eeMnemonicSkip => 'Ignorer (risqué)';
+
+  @override
+  String get account_e2eeMnemonicSaved => 'C\'est noté';
+
+  @override
+  String account_e2eeMnemonicCount(int count) {
+    return '$count mots';
+  }
+
+  @override
+  String get account_e2eeMnemonicCopy => 'Copier';
+
+  @override
+  String get account_e2eeMnemonicCopied => 'Phrase de récupération copiée';
+
+  @override
+  String get e2ee_lockedTitle => 'Données chiffrées';
+
+  @override
+  String get e2ee_lockedExplanation =>
+      'Ce compte est chiffré de bout en bout, mais cet appareil n\'a pas de clé. Saisissez votre phrase de récupération pour déverrouiller vos données, ou supprimez-les pour repartir de zéro.';
+
+  @override
+  String get e2ee_restoreHint => 'Phrase de récupération (12 mots)';
+
+  @override
+  String get e2ee_restoreButton => 'Déverrouiller';
+
+  @override
+  String get e2ee_restoreInvalid =>
+      'Cette phrase est valide mais ne correspond pas à ce compte. Elle vient peut-être d\'un autre compte ou d\'une activation annulée.';
+
+  @override
+  String get e2ee_restoreMalformed =>
+      'Ce n\'est pas une phrase de récupération valide : vérifiez les fautes de frappe ou l\'autocorrection (12 mots anglais en minuscules).';
+
+  @override
+  String get e2ee_restoreUnknownWords => 'Mots absents du dictionnaire';
+
+  @override
+  String e2ee_restoreWordCount(int count) {
+    return 'Vous avez saisi $count mots — une phrase de récupération en compte exactement 12.';
+  }
+
+  @override
+  String get e2ee_restoreChecksum =>
+      'Les 12 mots existent, mais la somme de contrôle échoue : deux mots sont probablement inversés, ou l\'un a été remplacé par un mot proche du dictionnaire.';
+
+  @override
+  String get e2ee_purgeButton => 'Supprimer mes données chiffrées';
+
+  @override
+  String get e2ee_purgeConfirmTitle => 'Tout supprimer ?';
+
+  @override
+  String get e2ee_purgeConfirmText =>
+      'Ceci supprime définitivement tous vos événements, tags et catégories chiffrés et désactive le chiffrement. Cette action est irréversible.';
+
+  @override
+  String get e2ee_purgeConfirmAction => 'Supprimer';
+
+  @override
   String get nav_categories => 'Catégories';
 
   @override

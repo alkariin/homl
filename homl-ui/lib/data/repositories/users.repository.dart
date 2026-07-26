@@ -4,6 +4,7 @@ import 'dart:developer';
 import 'package:dio/dio.dart';
 import 'package:homl/data/models/user.dart';
 
+import 'package:homl/helpers/e2ee.dart';
 import 'package:homl/helpers/language.dart';
 import 'package:homl/helpers/local_storage_manager.dart';
 
@@ -78,6 +79,9 @@ class UsersRepository {
     } finally {
       await LocalStorageManager.remove(LocalStorageKey.refreshToken);
       await LocalStorageManager.clearDataCaches();
+      // Drop the in-memory E2EE keys; the stored seed survives on purpose so
+      // the same user unlocks again on the next login.
+      E2ee().lock();
       apiInstance.accessToken = null;
       apiInstance.updateStatus(AuthenticationStatus.unauthenticated);
     }

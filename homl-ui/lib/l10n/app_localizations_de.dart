@@ -196,6 +196,110 @@ class AppLocalizationsDe extends AppLocalizations {
   String get global_update => 'Aktualisieren';
 
   @override
+  String get e2ee_cancel => 'Abbrechen';
+
+  @override
+  String get e2ee_continue => 'Weiter';
+
+  @override
+  String get account_e2eeSwitchText =>
+      'Ende-zu-Ende-Verschlüsselung (nur dieses Gerät kann lesen)';
+
+  @override
+  String get account_e2eeEnableTitle => 'Daten verschlüsseln';
+
+  @override
+  String get account_e2eeEnableWarning =>
+      'Deine Tags, Kategorien und Notizen werden auf diesem Gerät mit einem Schlüssel verschlüsselt, den nur du besitzt. Der Server kann sie nicht mehr lesen. Wenn du den Schlüssel und seine Wiederherstellungsphrase verlierst, sind die Daten unwiederbringlich verloren.';
+
+  @override
+  String get account_e2eeDisableTitle => 'Verschlüsselung deaktivieren';
+
+  @override
+  String get account_e2eeDisableWarning =>
+      'Deine Daten bleiben auf dem Server verschlüsselt, aber der Server kann sie wieder lesen. Fortfahren?';
+
+  @override
+  String get account_e2eeEnabled => 'Verschlüsselung aktiviert';
+
+  @override
+  String get account_e2eeDisabled => 'Verschlüsselung deaktiviert';
+
+  @override
+  String get account_e2eeError =>
+      'Änderung der Verschlüsselung fehlgeschlagen, später erneut versuchen';
+
+  @override
+  String get account_e2eeMnemonicTitle => 'Deine Wiederherstellungsphrase';
+
+  @override
+  String get account_e2eeMnemonicHint =>
+      'Schreibe diese 12 Wörter auf und bewahre sie sicher auf. Sie sind der einzige Weg, deine Daten auf einem anderen Gerät oder nach einer Neuinstallation wiederherzustellen. Wir können sie nicht für dich wiederherstellen.';
+
+  @override
+  String get account_e2eeMnemonicSkip => 'Überspringen (riskant)';
+
+  @override
+  String get account_e2eeMnemonicSaved => 'Gespeichert';
+
+  @override
+  String account_e2eeMnemonicCount(int count) {
+    return '$count Wörter';
+  }
+
+  @override
+  String get account_e2eeMnemonicCopy => 'Kopieren';
+
+  @override
+  String get account_e2eeMnemonicCopied => 'Wiederherstellungsphrase kopiert';
+
+  @override
+  String get e2ee_lockedTitle => 'Verschlüsselte Daten';
+
+  @override
+  String get e2ee_lockedExplanation =>
+      'Dieses Konto ist Ende-zu-Ende verschlüsselt, aber dieses Gerät hat keinen Schlüssel. Gib deine Wiederherstellungsphrase ein, um deine Daten zu entsperren, oder lösche sie, um neu zu beginnen.';
+
+  @override
+  String get e2ee_restoreHint => 'Wiederherstellungsphrase (12 Wörter)';
+
+  @override
+  String get e2ee_restoreButton => 'Entsperren';
+
+  @override
+  String get e2ee_restoreInvalid =>
+      'Diese Phrase ist gültig, passt aber nicht zu diesem Konto. Sie stammt möglicherweise von einem anderen Konto oder einer abgebrochenen Aktivierung.';
+
+  @override
+  String get e2ee_restoreMalformed =>
+      'Dies ist keine gültige Wiederherstellungsphrase: prüfe auf Tippfehler oder Autokorrektur (12 englische Wörter in Kleinbuchstaben).';
+
+  @override
+  String get e2ee_restoreUnknownWords => 'Wörter nicht im Wörterbuch';
+
+  @override
+  String e2ee_restoreWordCount(int count) {
+    return 'Du hast $count Wörter eingegeben — eine Wiederherstellungsphrase hat genau 12.';
+  }
+
+  @override
+  String get e2ee_restoreChecksum =>
+      'Alle 12 Wörter existieren, aber die Prüfsumme der Phrase schlägt fehl: wahrscheinlich sind zwei Wörter vertauscht oder eines wurde durch ein ähnliches Wörterbuchwort ersetzt.';
+
+  @override
+  String get e2ee_purgeButton => 'Meine verschlüsselten Daten löschen';
+
+  @override
+  String get e2ee_purgeConfirmTitle => 'Alles löschen?';
+
+  @override
+  String get e2ee_purgeConfirmText =>
+      'Dies löscht dauerhaft alle deine verschlüsselten Ereignisse, Tags und Kategorien und deaktiviert die Verschlüsselung. Dies kann nicht rückgängig gemacht werden.';
+
+  @override
+  String get e2ee_purgeConfirmAction => 'Löschen';
+
+  @override
   String get nav_categories => 'Kategorien';
 
   @override

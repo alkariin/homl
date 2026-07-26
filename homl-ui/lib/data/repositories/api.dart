@@ -17,6 +17,12 @@ enum AuthenticationStatus {
   pinCheck,
   pinLocked,
   biometricCheck,
+
+  /// The account is end-to-end encrypted but this device has no (matching)
+  /// key: the app is blocked on the restore-or-purge screen. Never emitted
+  /// by [Api] itself — the AuthenticationCubit derives it after fetching the
+  /// settings.
+  e2eeLocked,
 }
 
 /// Outcome of a PIN authentication attempt, carrying the server-side

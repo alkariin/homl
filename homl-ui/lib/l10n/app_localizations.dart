@@ -436,6 +436,186 @@ abstract class AppLocalizations {
   /// **'Update'**
   String get global_update;
 
+  /// No description provided for @e2ee_cancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get e2ee_cancel;
+
+  /// No description provided for @e2ee_continue.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get e2ee_continue;
+
+  /// No description provided for @account_e2eeSwitchText.
+  ///
+  /// In en, this message translates to:
+  /// **'End-to-end encryption (only this device can read)'**
+  String get account_e2eeSwitchText;
+
+  /// No description provided for @account_e2eeEnableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Encrypt your data'**
+  String get account_e2eeEnableTitle;
+
+  /// No description provided for @account_e2eeEnableWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Your tags, categories and notes will be encrypted on this device with a key only you hold. The server can no longer read them. If you lose the key and its recovery phrase, the data is lost for good.'**
+  String get account_e2eeEnableWarning;
+
+  /// No description provided for @account_e2eeDisableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn off encryption'**
+  String get account_e2eeDisableTitle;
+
+  /// No description provided for @account_e2eeDisableWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Your data will stay encrypted on the server, but the server will be able to read it again. Continue?'**
+  String get account_e2eeDisableWarning;
+
+  /// No description provided for @account_e2eeEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Encryption enabled'**
+  String get account_e2eeEnabled;
+
+  /// No description provided for @account_e2eeDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Encryption disabled'**
+  String get account_e2eeDisabled;
+
+  /// No description provided for @account_e2eeError.
+  ///
+  /// In en, this message translates to:
+  /// **'Encryption change failed, try again later'**
+  String get account_e2eeError;
+
+  /// No description provided for @account_e2eeMnemonicTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your recovery phrase'**
+  String get account_e2eeMnemonicTitle;
+
+  /// No description provided for @account_e2eeMnemonicHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Write these 12 words down and keep them somewhere safe. They are the only way to recover your data on another device or after reinstalling. We cannot recover them for you.'**
+  String get account_e2eeMnemonicHint;
+
+  /// No description provided for @account_e2eeMnemonicSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip (risky)'**
+  String get account_e2eeMnemonicSkip;
+
+  /// No description provided for @account_e2eeMnemonicSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'I saved it'**
+  String get account_e2eeMnemonicSaved;
+
+  /// No description provided for @account_e2eeMnemonicCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} words'**
+  String account_e2eeMnemonicCount(int count);
+
+  /// No description provided for @account_e2eeMnemonicCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get account_e2eeMnemonicCopy;
+
+  /// No description provided for @account_e2eeMnemonicCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Recovery phrase copied'**
+  String get account_e2eeMnemonicCopied;
+
+  /// No description provided for @e2ee_lockedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Encrypted data'**
+  String get e2ee_lockedTitle;
+
+  /// No description provided for @e2ee_lockedExplanation.
+  ///
+  /// In en, this message translates to:
+  /// **'This account is end-to-end encrypted, but this device has no key. Enter your recovery phrase to unlock your data, or delete it to start over.'**
+  String get e2ee_lockedExplanation;
+
+  /// No description provided for @e2ee_restoreHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Recovery phrase (12 words)'**
+  String get e2ee_restoreHint;
+
+  /// No description provided for @e2ee_restoreButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock'**
+  String get e2ee_restoreButton;
+
+  /// No description provided for @e2ee_restoreInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'This phrase is valid but does not match this account. It may come from another account or an older, cancelled activation.'**
+  String get e2ee_restoreInvalid;
+
+  /// No description provided for @e2ee_restoreMalformed.
+  ///
+  /// In en, this message translates to:
+  /// **'This is not a valid recovery phrase: check for typos or autocorrected words (12 lowercase English words).'**
+  String get e2ee_restoreMalformed;
+
+  /// No description provided for @e2ee_restoreUnknownWords.
+  ///
+  /// In en, this message translates to:
+  /// **'Words not in the dictionary'**
+  String get e2ee_restoreUnknownWords;
+
+  /// No description provided for @e2ee_restoreWordCount.
+  ///
+  /// In en, this message translates to:
+  /// **'You entered {count} words — a recovery phrase has exactly 12.'**
+  String e2ee_restoreWordCount(int count);
+
+  /// No description provided for @e2ee_restoreChecksum.
+  ///
+  /// In en, this message translates to:
+  /// **'All 12 words exist, but the phrase\'s checksum fails: two words are probably swapped, or one was replaced by a similar dictionary word.'**
+  String get e2ee_restoreChecksum;
+
+  /// No description provided for @e2ee_purgeButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete my encrypted data'**
+  String get e2ee_purgeButton;
+
+  /// No description provided for @e2ee_purgeConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete everything?'**
+  String get e2ee_purgeConfirmTitle;
+
+  /// No description provided for @e2ee_purgeConfirmText.
+  ///
+  /// In en, this message translates to:
+  /// **'This permanently deletes all your encrypted events, tags and categories and turns encryption off. This cannot be undone.'**
+  String get e2ee_purgeConfirmText;
+
+  /// No description provided for @e2ee_purgeConfirmAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get e2ee_purgeConfirmAction;
+
   /// No description provided for @nav_categories.
   ///
   /// In en, this message translates to:

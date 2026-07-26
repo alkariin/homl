@@ -72,6 +72,47 @@
   "global_close": "Fermer",
   "global_update": "Mettre à jour",
 
+  "e2ee_cancel": "Annuler",
+  "e2ee_continue": "Continuer",
+  "account_e2eeSwitchText": "Chiffrement de bout en bout (seul cet appareil peut lire)",
+  "account_e2eeEnableTitle": "Chiffrer vos données",
+  "account_e2eeEnableWarning": "Vos tags, catégories et notes seront chiffrés sur cet appareil avec une clé que vous seul possédez. Le serveur ne pourra plus les lire. Si vous perdez la clé et sa phrase de récupération, les données seront définitivement perdues.",
+  "account_e2eeDisableTitle": "Désactiver le chiffrement",
+  "account_e2eeDisableWarning": "Vos données resteront chiffrées sur le serveur, mais celui-ci pourra de nouveau les lire. Continuer ?",
+  "account_e2eeEnabled": "Chiffrement activé",
+  "account_e2eeDisabled": "Chiffrement désactivé",
+  "account_e2eeError": "Échec du changement de chiffrement, réessayez plus tard",
+  "account_e2eeMnemonicTitle": "Votre phrase de récupération",
+  "account_e2eeMnemonicHint": "Notez ces 12 mots et conservez-les en lieu sûr. C'est le seul moyen de récupérer vos données sur un autre appareil ou après une réinstallation. Nous ne pouvons pas les récupérer à votre place.",
+  "account_e2eeMnemonicSkip": "Ignorer (risqué)",
+  "account_e2eeMnemonicSaved": "C'est noté",
+  "account_e2eeMnemonicCount": "{count} mots",
+  "@account_e2eeMnemonicCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "account_e2eeMnemonicCopy": "Copier",
+  "account_e2eeMnemonicCopied": "Phrase de récupération copiée",
+  "e2ee_lockedTitle": "Données chiffrées",
+  "e2ee_lockedExplanation": "Ce compte est chiffré de bout en bout, mais cet appareil n'a pas de clé. Saisissez votre phrase de récupération pour déverrouiller vos données, ou supprimez-les pour repartir de zéro.",
+  "e2ee_restoreHint": "Phrase de récupération (12 mots)",
+  "e2ee_restoreButton": "Déverrouiller",
+  "e2ee_restoreInvalid": "Cette phrase est valide mais ne correspond pas à ce compte. Elle vient peut-être d'un autre compte ou d'une activation annulée.",
+  "e2ee_restoreMalformed": "Ce n'est pas une phrase de récupération valide : vérifiez les fautes de frappe ou l'autocorrection (12 mots anglais en minuscules).",
+  "e2ee_restoreUnknownWords": "Mots absents du dictionnaire",
+  "e2ee_restoreWordCount": "Vous avez saisi {count} mots — une phrase de récupération en compte exactement 12.",
+  "@e2ee_restoreWordCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "e2ee_restoreChecksum": "Les 12 mots existent, mais la somme de contrôle échoue : deux mots sont probablement inversés, ou l'un a été remplacé par un mot proche du dictionnaire.",
+  "e2ee_purgeButton": "Supprimer mes données chiffrées",
+  "e2ee_purgeConfirmTitle": "Tout supprimer ?",
+  "e2ee_purgeConfirmText": "Ceci supprime définitivement tous vos événements, tags et catégories chiffrés et désactive le chiffrement. Cette action est irréversible.",
+  "e2ee_purgeConfirmAction": "Supprimer",
+
   "nav_categories": "Catégories",
   "nav_search": "Rechercher",
   "nav_add": "Ajouter",

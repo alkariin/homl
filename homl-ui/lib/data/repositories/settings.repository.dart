@@ -15,23 +15,30 @@ class SettingsNotFoundFailure implements Exception {}
 
 class SettingsRepository {
   final api = Api().api;
-  final StreamController<Settings> _settingsController = BehaviorSubject();
+  final BehaviorSubject<Settings> _settingsController = BehaviorSubject();
   Stream<Settings> get settingsStream => _settingsController.stream;
 
-  Future<void> getSettings() async {
+  /// Last settings fetched from the backend, if any.
+  Settings? get current => _settingsController.valueOrNull;
+
+  /// Fetches the settings, pushes them on [settingsStream] and returns them
+  /// (null when the request failed).
+  Future<Settings?> getSettings() async {
     try {
       final response =
           await api.get<Map<String, dynamic>>('${Api.baseUrl}/settings');
 
       if (response.data == null) {
         _settingsController.addError(SettingsNotFoundFailure());
-        return;
+        return null;
       }
 
       Settings result = Settings.fromJson(response.data!);
       _settingsController.add(result);
+      return result;
     } on DioException catch (_) {
       _settingsController.addError(SettingsRequestFailure());
+      return null;
     }
   }
 
