@@ -70,7 +70,13 @@ class _E2eeRestorePageState extends State<E2eeRestorePage> {
               '${localization.e2ee_restoreUnknownWords}: '
               '${_unknownWords.join(', ')}';
         }
-        return localization.e2ee_restoreMalformed;
+        // All words valid: either the count is off (skipped word) or two
+        // words are swapped/substituted — say which.
+        final count = E2ee.mnemonicWordCount(_phraseController.text);
+        if (count != 12) {
+          return localization.e2ee_restoreWordCount(count);
+        }
+        return localization.e2ee_restoreChecksum;
       case E2eeRestoreResult.mismatch:
         return localization.e2ee_restoreInvalid;
       case E2eeRestoreResult.ok:

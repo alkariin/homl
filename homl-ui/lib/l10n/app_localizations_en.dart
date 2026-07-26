@@ -261,6 +261,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get e2ee_restoreUnknownWords => 'Words not in the dictionary';
 
   @override
+  String e2ee_restoreWordCount(int count) {
+    return 'You entered $count words — a recovery phrase has exactly 12.';
+  }
+
+  @override
+  String get e2ee_restoreChecksum =>
+      'All 12 words exist, but the phrase\'s checksum fails: two words are probably swapped, or one was replaced by a similar dictionary word.';
+
+  @override
   String get e2ee_purgeButton => 'Delete my encrypted data';
 
   @override

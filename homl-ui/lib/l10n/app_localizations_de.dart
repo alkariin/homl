@@ -267,6 +267,15 @@ class AppLocalizationsDe extends AppLocalizations {
   String get e2ee_restoreUnknownWords => 'Wörter nicht im Wörterbuch';
 
   @override
+  String e2ee_restoreWordCount(int count) {
+    return 'Du hast $count Wörter eingegeben — eine Wiederherstellungsphrase hat genau 12.';
+  }
+
+  @override
+  String get e2ee_restoreChecksum =>
+      'Alle 12 Wörter existieren, aber die Prüfsumme der Phrase schlägt fehl: wahrscheinlich sind zwei Wörter vertauscht oder eines wurde durch ein ähnliches Wörterbuchwort ersetzt.';
+
+  @override
   String get e2ee_purgeButton => 'Meine verschlüsselten Daten löschen';
 
   @override
