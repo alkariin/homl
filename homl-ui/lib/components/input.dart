@@ -91,10 +91,21 @@ class _NormalInputState extends State<_NormalInput> {
     if (focusNode.hasFocus) return;
     widget.onBlur?.call(_controller.text);
     if (_controller.text.isEmpty) {
-      formKey.currentState?.reset();
+      _resetEmptied();
     } else if (formKey.currentState?.validate() ?? false) {
       formKey.currentState?.save();
     }
+  }
+
+  /// Drops the validation error left on a field the user emptied. The reset
+  /// also puts the initial text back and re-notifies [Input.onChange] with
+  /// it, so an emptied field would refill itself on blur (and the parent
+  /// would hear a change it did not make): clear it again right after.
+  void _resetEmptied() {
+    formKey.currentState?.reset();
+    if (_controller.text.isEmpty) return;
+    _controller.clear();
+    widget.onChange?.call('');
   }
 
   @override
@@ -179,7 +190,13 @@ class _PasswordInputState extends State<_PasswordInput> {
     if (focusNode.hasFocus) return;
     widget.onBlur?.call(_controller.text);
     if (_controller.text.isEmpty) {
+      // See _NormalInputState._resetEmptied: the reset would refill the field
+      // with its initial text.
       formKey.currentState?.reset();
+      if (_controller.text.isNotEmpty) {
+        _controller.clear();
+        widget.onChange?.call('');
+      }
     } else if (formKey.currentState?.validate() ?? false) {
       formKey.currentState?.save();
     }
