@@ -10,6 +10,10 @@ type Tag struct {
 	// IdParentTag links a synonym to its main tag (nil = main tag).
 	// Depth is limited to one level: a synonym can never be a parent.
 	IdParentTag *uint `json:"idParentTag" db:"idParentTag"`
+	// TagIndex is the client-side blind index of the normalized tag name,
+	// required from E2EE users (whose Tag value is an opaque blob) and NULL
+	// otherwise. See docs/e2ee.md.
+	TagIndex *string `json:"tagIndex,omitempty" db:"tagIndex"`
 }
 
 type TagDTO struct {

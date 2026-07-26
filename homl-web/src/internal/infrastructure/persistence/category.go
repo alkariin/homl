@@ -8,6 +8,7 @@ import (
 	"github.com/alkariin/homl/homl-web/internal/apperror"
 	"github.com/alkariin/homl/homl-web/internal/application"
 	"github.com/alkariin/homl/homl-web/internal/domain/category"
+	"github.com/alkariin/homl/homl-web/internal/domain/e2ee"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -81,9 +82,13 @@ func (c *CategoriesRepository) GetAllCategoriesWithTags(ctx context.Context, idU
 
 		// if the category is empty, Tag will be null
 		if sqlTag.Id.Valid && sqlTag.Tag.Valid {
-			decTag, err := c.Crypto.Decrypt(sqlTag.Tag.String, idUser)
-			if err != nil {
-				return nil, nil, err
+			// E2EE tag names are opaque blobs returned verbatim.
+			decTag := sqlTag.Tag.String
+			if !e2ee.Enabled(ctx) {
+				decTag, err = c.Crypto.Decrypt(sqlTag.Tag.String, idUser)
+				if err != nil {
+					return nil, nil, err
+				}
 			}
 			t = category.TagDTO{Id: uint(sqlTag.Id.Int64), Tag: decTag}
 			if sqlTag.IdParentTag.Valid {
