@@ -556,6 +556,12 @@ abstract class AppLocalizations {
   /// **'This is not a valid recovery phrase: check for typos or autocorrected words (12 lowercase English words).'**
   String get e2ee_restoreMalformed;
 
+  /// No description provided for @e2ee_restoreUnknownWords.
+  ///
+  /// In en, this message translates to:
+  /// **'Words not in the dictionary'**
+  String get e2ee_restoreUnknownWords;
+
   /// No description provided for @e2ee_purgeButton.
   ///
   /// In en, this message translates to:

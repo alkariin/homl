@@ -29,6 +29,7 @@ class _E2eeRestorePageState extends State<E2eeRestorePage> {
 
   bool _busy = false;
   E2eeRestoreResult? _restoreFailure;
+  List<String> _unknownWords = const [];
 
   @override
   void dispose() {
@@ -50,6 +51,9 @@ class _E2eeRestorePageState extends State<E2eeRestorePage> {
       setState(() {
         _busy = false;
         _restoreFailure = result;
+        _unknownWords = result == E2eeRestoreResult.malformed
+            ? E2ee.unknownMnemonicWords(_phraseController.text)
+            : const [];
       });
       return;
     }
@@ -60,6 +64,12 @@ class _E2eeRestorePageState extends State<E2eeRestorePage> {
   String? _restoreErrorText(AppLocalizations localization) {
     switch (_restoreFailure) {
       case E2eeRestoreResult.malformed:
+        // Point at the offending words: the actionable half of the error.
+        if (_unknownWords.isNotEmpty) {
+          return '${localization.e2ee_restoreMalformed}\n'
+              '${localization.e2ee_restoreUnknownWords}: '
+              '${_unknownWords.join(', ')}';
+        }
         return localization.e2ee_restoreMalformed;
       case E2eeRestoreResult.mismatch:
         return localization.e2ee_restoreInvalid;
@@ -146,7 +156,7 @@ class _E2eeRestorePageState extends State<E2eeRestorePage> {
                   border: const OutlineInputBorder(),
                   labelText: localization.e2ee_restoreHint,
                   errorText: _restoreErrorText(localization),
-                  errorMaxLines: 3,
+                  errorMaxLines: 5,
                 ),
               ),
               const SizedBox(height: 12),

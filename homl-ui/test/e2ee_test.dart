@@ -183,6 +183,28 @@ void main() {
       expect(E2ee().enabled, isFalse);
     });
 
+    test('a phrase survives keyboard noise (case, numbering, punctuation)',
+        () async {
+      final mnemonic = await E2ee().prepareEnable();
+      final check = await E2ee().keyCheck();
+      E2ee().abortEnable();
+
+      // "1. Word,  2. word." style input must still restore.
+      final words = mnemonic.split(' ');
+      final noisy = [
+        for (var i = 0; i < words.length; i++)
+          '${i + 1}. ${i.isEven ? words[i].toUpperCase() : words[i]},'
+      ].join('  ');
+
+      expect(await E2ee().restore(noisy, check), E2eeRestoreResult.ok);
+    });
+
+    test('unknownMnemonicWords points at the offending words', () {
+      expect(E2ee.unknownMnemonicWords('abandon xyzzy about frobnicate'),
+          ['xyzzy', 'frobnicate']);
+      expect(E2ee.unknownMnemonicWords('1. Abandon, 2. about'), isEmpty);
+    });
+
     test('the correct recovery phrase restores the key', () async {
       // A fresh device: derive the phrase, then simulate typing it back.
       final mnemonic = await E2ee().prepareEnable();

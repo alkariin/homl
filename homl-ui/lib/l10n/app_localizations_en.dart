@@ -258,6 +258,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'This is not a valid recovery phrase: check for typos or autocorrected words (12 lowercase English words).';
 
   @override
+  String get e2ee_restoreUnknownWords => 'Words not in the dictionary';
+
+  @override
   String get e2ee_purgeButton => 'Delete my encrypted data';
 
   @override

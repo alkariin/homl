@@ -264,6 +264,9 @@ class AppLocalizationsDe extends AppLocalizations {
       'Dies ist keine gültige Wiederherstellungsphrase: prüfe auf Tippfehler oder Autokorrektur (12 englische Wörter in Kleinbuchstaben).';
 
   @override
+  String get e2ee_restoreUnknownWords => 'Wörter nicht im Wörterbuch';
+
+  @override
   String get e2ee_purgeButton => 'Meine verschlüsselten Daten löschen';
 
   @override

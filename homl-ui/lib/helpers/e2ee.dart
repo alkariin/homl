@@ -1,6 +1,10 @@
 import 'dart:convert';
 
 import 'package:bip39/bip39.dart' as bip39;
+// The package does not re-export its wordlist; we need it to tell the user
+// WHICH typed word is wrong instead of a blanket "invalid phrase".
+// ignore: implementation_imports
+import 'package:bip39/src/wordlists/english.dart' as bip39_words;
 import 'package:cryptography/cryptography.dart';
 
 import 'package:homl/data/models/settings.dart';
@@ -164,14 +168,31 @@ class E2ee {
     lock();
   }
 
+  /// Normalizes a typed recovery phrase: lowercase, and anything that is not
+  /// a letter becomes a separator. This forgives the usual mobile-keyboard
+  /// noise (numbering like "1.", auto-inserted punctuation, non-breaking
+  /// spaces) — the BIP39 checksum still guards the words themselves.
+  static String normalizeMnemonic(String mnemonic) => mnemonic
+      .toLowerCase()
+      .split(RegExp(r'[^a-z]+'))
+      .where((w) => w.isNotEmpty)
+      .join(' ');
+
+  /// The typed words that are not in the BIP39 dictionary — the actionable
+  /// half of an "invalid phrase" error.
+  static List<String> unknownMnemonicWords(String mnemonic) =>
+      normalizeMnemonic(mnemonic)
+          .split(' ')
+          .where((w) => w.isNotEmpty && !bip39_words.WORDLIST.contains(w))
+          .toList();
+
   /// Restores the key from a typed recovery phrase, verified against the
   /// server-stored key check before anything is persisted. The two failure
   /// modes are reported separately so the user knows whether to fix a typo
   /// (malformed) or fetch another phrase (mismatch).
   Future<E2eeRestoreResult> restore(
       String mnemonic, String? expectedKeyCheck) async {
-    final normalized =
-        mnemonic.trim().toLowerCase().split(RegExp(r'\s+')).join(' ');
+    final normalized = normalizeMnemonic(mnemonic);
     if (!bip39.validateMnemonic(normalized)) {
       return E2eeRestoreResult.malformed;
     }
