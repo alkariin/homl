@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 
 import 'package:homl/l10n/app_localizations.dart';
 
-/// Shows the freshly generated E2EE recovery phrase (12 BIP39 words + QR).
+/// Shows the freshly generated E2EE recovery phrase (12 BIP39 words).
 /// Returns true when the user proceeds (phrase saved, or explicitly skipped),
 /// false/null when they back out — the caller then discards the pending key.
 class E2eeMnemonicDialog extends StatelessWidget {
@@ -62,14 +61,6 @@ class E2eeMnemonicDialog extends StatelessWidget {
                           content: Text(
                               localization.account_e2eeMnemonicCopied)));
                   },
-                ),
-              ),
-              const SizedBox(height: 8),
-              Center(
-                child: QrImageView(
-                  data: mnemonic,
-                  size: 150,
-                  backgroundColor: Colors.white,
                 ),
               ),
             ],
