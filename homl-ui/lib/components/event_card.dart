@@ -4,8 +4,8 @@ import 'package:intl/intl.dart';
 import 'package:homl/components/tag.dart';
 import 'package:homl/data/models/event.dart';
 
-/// Event card: white, radius 15, soft shadow. Sized by its parent (grid
-/// cell); overflowing tags/description are clipped or faded.
+/// Event card: white, radius 16, hairline border and soft shadow. Sized by
+/// its parent (grid cell); overflowing tags/description are clipped or faded.
 class EventCard extends StatelessWidget {
   final Event event;
 
@@ -27,12 +27,13 @@ class EventCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 20,
-            spreadRadius: 1,
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -40,9 +41,9 @@ class EventCard extends StatelessWidget {
       // decoration without hiding it.
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(16),
         child: InkWell(
-          borderRadius: BorderRadius.circular(15),
+          borderRadius: BorderRadius.circular(16),
           onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.all(12),

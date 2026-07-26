@@ -234,12 +234,14 @@ class _InsertViewState extends State<InsertView> {
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(15),
+                  borderRadius: BorderRadius.circular(18),
+                  border:
+                      Border.all(color: Colors.black.withValues(alpha: 0.06)),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1),
-                      blurRadius: 20,
-                      spreadRadius: 1,
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 14,
+                      offset: const Offset(0, 6),
                     ),
                   ],
                 ),
@@ -274,10 +276,11 @@ class _InsertViewState extends State<InsertView> {
                         id: -1,
                         text: DateFormat.yMd(locale).format(state.date),
                         isDate: true,
+                        large: true,
                         onTap: pickDate,
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 28),
                     Input(
                       labelText: localization.insert_descriptionLabel,
                       controller: _descriptionController,

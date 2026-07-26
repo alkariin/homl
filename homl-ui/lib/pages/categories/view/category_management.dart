@@ -251,7 +251,7 @@ class _CategoryTileState extends State<_CategoryTile> {
                             child: Align(
                               alignment: Alignment.centerLeft,
                               child: Material(
-                                color: yellow.withValues(alpha: 0.12),
+                                color: ink.withValues(alpha: 0.06),
                                 shape: const StadiumBorder(),
                                 child: InkWell(
                                   customBorder: const StadiumBorder(),
@@ -269,16 +269,15 @@ class _CategoryTileState extends State<_CategoryTile> {
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Icon(Icons.add,
-                                            size: 16,
-                                            color: darken(yellow, .15)),
+                                        const Icon(Icons.add,
+                                            size: 16, color: ink),
                                         const SizedBox(width: 4),
                                         Text(
                                           localization.categories_newTag,
-                                          style: TextStyle(
+                                          style: const TextStyle(
                                             fontSize: 13,
                                             fontWeight: FontWeight.w600,
-                                            color: darken(yellow, .15),
+                                            color: ink,
                                           ),
                                         ),
                                       ],

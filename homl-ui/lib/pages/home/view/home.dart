@@ -203,12 +203,6 @@ class _HomeViewState extends State<HomeView>
             ),
           ),
           title: Text(tabTitles[_currentIndex]),
-          actions: const [
-            Padding(
-              padding: EdgeInsets.only(right: 16),
-              child: HomlLogo(size: 46, circled: false),
-            ),
-          ],
         ),
         body: PageView(
           controller: _pageController,
@@ -236,8 +230,8 @@ class _HomeViewState extends State<HomeView>
             elevation: 0,
             showSelectedLabels: false,
             showUnselectedLabels: false,
-            selectedItemColor: yellow,
-            unselectedItemColor: ink,
+            selectedItemColor: ink,
+            unselectedItemColor: ink.withValues(alpha: 0.3),
             iconSize: 22,
             onTap: (index) {
               setState(() {

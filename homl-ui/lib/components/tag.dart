@@ -3,9 +3,10 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import 'package:homl/helpers/colors.dart' as palette;
 
-/// Tag chip: fully rounded pill tinted with the category color.
-/// The label uses a darkened version of the category color so the pastel
-/// presets stay readable on the light fill.
+/// Tag chip: fully rounded pill tinted with the category color, label in
+/// neutral ink so every pastel preset reads the same.
+/// [large] bumps the paddings and font for prominent spots (the selected
+/// tags above the search/insert inputs).
 class Tag extends StatelessWidget {
   final int id;
   final String text;
@@ -17,6 +18,7 @@ class Tag extends StatelessWidget {
   /// Called on long press. When null the tag is not removable (date tag).
   final Function(int id)? onDeleteTag;
   final bool isDate;
+  final bool large;
 
   const Tag(
       {required this.id,
@@ -25,13 +27,14 @@ class Tag extends StatelessWidget {
       this.onTap,
       this.onDeleteTag,
       this.isDate = false,
+      this.large = false,
       super.key});
 
   @override
   Widget build(BuildContext context) {
     final Color base =
         color != null ? palette.colorFromHex(color!) : palette.yellow;
-    final Color label = palette.darken(base, .45);
+    final Color label = palette.ink.withValues(alpha: 0.75);
 
     return Material(
       color: Colors.transparent,
@@ -40,7 +43,9 @@ class Tag extends StatelessWidget {
         onTap: onTap,
         onLongPress: onDeleteTag == null ? null : () => onDeleteTag!(id),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+          padding: large
+              ? const EdgeInsets.symmetric(horizontal: 14, vertical: 7)
+              : const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
           decoration: BoxDecoration(
             color: base.withValues(alpha: 0.35),
             borderRadius: BorderRadius.circular(100),
@@ -49,13 +54,14 @@ class Tag extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (isDate) ...[
-                FaIcon(FontAwesomeIcons.calendar, size: 12, color: label),
+                FaIcon(FontAwesomeIcons.calendar,
+                    size: large ? 13 : 12, color: label),
                 const SizedBox(width: 5),
               ],
               Text(
                 text,
                 style: TextStyle(
-                  fontSize: 13.5,
+                  fontSize: large ? 15 : 13.5,
                   fontWeight: FontWeight.w500,
                   color: label,
                 ),
