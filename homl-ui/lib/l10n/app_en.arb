@@ -1,7 +1,7 @@
 {
   "global_unexpectedError": "Unexpected error",
 
-  "account": "Account",
+  "account": "Security",
   "account_logout": "Logout",
   "account_updatePassword": "Update password",
   "account_currentPassword": "Current password",

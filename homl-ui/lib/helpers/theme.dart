@@ -121,10 +121,43 @@ ThemeData homlTheme() {
       thickness: 0.5,
       space: 0.5,
     ),
-    snackBarTheme: const SnackBarThemeData(
+    snackBarTheme: SnackBarThemeData(
       backgroundColor: ink,
-      contentTextStyle: TextStyle(fontFamily: fontFamily, color: Colors.white),
+      behavior: SnackBarBehavior.floating,
+      elevation: 4,
+      insetPadding: const EdgeInsets.fromLTRB(16, 5, 16, 16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      contentTextStyle: const TextStyle(
+        fontFamily: fontFamily,
+        fontSize: 14.5,
+        color: Colors.white,
+      ),
       actionTextColor: yellow,
+    ),
+    switchTheme: SwitchThemeData(
+      trackColor: WidgetStateProperty.resolveWith((states) =>
+          states.contains(WidgetState.selected)
+              ? ink
+              : const Color(0xFFE9E9E7)),
+      thumbColor: WidgetStateProperty.resolveWith((states) =>
+          states.contains(WidgetState.selected)
+              ? Colors.white
+              : const Color(0xFF9A9A96)),
+      trackOutlineColor: const WidgetStatePropertyAll(Colors.transparent),
+    ),
+    listTileTheme: ListTileThemeData(
+      iconColor: ink.withValues(alpha: 0.65),
+      titleTextStyle: const TextStyle(
+        fontFamily: fontFamily,
+        fontSize: 15,
+        fontWeight: FontWeight.w500,
+        color: ink,
+      ),
+      subtitleTextStyle: TextStyle(
+        fontFamily: fontFamily,
+        fontSize: 12.5,
+        color: ink.withValues(alpha: 0.45),
+      ),
     ),
   );
 }

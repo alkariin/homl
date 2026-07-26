@@ -5,6 +5,7 @@ import 'package:homl/l10n/app_localizations.dart';
 import 'package:homl/data/repositories/categories.repository.dart';
 import 'package:homl/data/repositories/events.repository.dart';
 
+import 'package:homl/components/bubbles_background.dart';
 import 'package:homl/components/logo.dart';
 import 'package:homl/data/repositories/settings.repository.dart';
 import 'package:homl/data/repositories/tags.repository.dart';
@@ -132,18 +133,21 @@ class _HomeViewState extends State<HomeView>
     ];
 
     final drawerItems = ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
       children: [
         SizedBox(
-          height: 90.0,
+          height: 96.0,
           child: DrawerHeader(
-            padding: const EdgeInsets.only(left: 20, right: 20),
+            padding: const EdgeInsets.only(left: 12, right: 4),
+            margin: const EdgeInsets.only(bottom: 8),
             decoration: const BoxDecoration(
-              color: Colors.white,
-              border: Border(bottom: BorderSide(color: borderGrey, width: 0.5)),
+              border: Border(
+                  bottom: BorderSide(color: Color(0x14000000), width: 1)),
             ),
             child: Row(
               children: [
-                const HomlLogo(size: 40),
+                // The bare two-tone hash, as large as the tag-input button.
+                const HomlLogo(size: 51, circled: false),
                 const SizedBox(width: 12),
                 const Text(
                   'HOML',
@@ -162,7 +166,7 @@ class _HomeViewState extends State<HomeView>
         ),
         _DrawerListTile(
           title: localization.account,
-          icon: const FaIcon(FontAwesomeIcons.user),
+          icon: Icons.shield_outlined,
           onTap: () {
             Navigator.of(context)
                 .push(AccountPage.route(context.read<HomeCubit>()));
@@ -170,7 +174,7 @@ class _HomeViewState extends State<HomeView>
         ),
         _DrawerListTile(
           title: localization.settings,
-          icon: const Icon(Icons.settings),
+          icon: Icons.settings_outlined,
           onTap: () {
             Navigator.of(context).push(SettingsPage.route());
           },
@@ -198,26 +202,43 @@ class _HomeViewState extends State<HomeView>
         appBar: AppBar(
           leading: Builder(
             builder: (context) => IconButton(
-              icon: const FaIcon(FontAwesomeIcons.user, size: 18),
+              icon: const Icon(Icons.menu_rounded),
               onPressed: () => Scaffold.of(context).openDrawer(),
             ),
           ),
           title: Text(tabTitles[_currentIndex]),
         ),
-        body: PageView(
-          controller: _pageController,
-          children: const [
-            CategoriesPage(),
-            ListPage(),
-            InsertPage(),
+        body: Stack(
+          children: [
+            // One decorative background for the three tabs, wider than the
+            // screen and slid sideways with the PageView: swiping to a tab
+            // reveals the matching slice of the artwork.
+            AnimatedBuilder(
+              animation: _pageController,
+              builder: (context, _) {
+                final page = _pageController.hasClients &&
+                        _pageController.position.haveDimensions
+                    ? _pageController.page ?? _currentIndex.toDouble()
+                    : _currentIndex.toDouble();
+                return _ParallaxBackground(page: page, pageCount: 3);
+              },
+            ),
+            PageView(
+              controller: _pageController,
+              children: const [
+                CategoriesPage(),
+                ListPage(),
+                InsertPage(),
+              ],
+              onPageChanged: (index) {
+                setState(() {
+                  // A change we did not trigger ourselves is a user swipe.
+                  if (index != _currentIndex) _userNavigated = true;
+                  _currentIndex = index;
+                });
+              },
+            ),
           ],
-          onPageChanged: (index) {
-            setState(() {
-              // A change we did not trigger ourselves is a user swipe.
-              if (index != _currentIndex) _userNavigated = true;
-              _currentIndex = index;
-            });
-          },
         ),
         bottomNavigationBar: Container(
           decoration: const BoxDecoration(
@@ -261,24 +282,64 @@ class _HomeViewState extends State<HomeView>
   }
 }
 
+/// Drawer entry: identical layout for every destination (icon, label,
+/// chevron), rounded highlight.
 class _DrawerListTile extends StatelessWidget {
   const _DrawerListTile(
       {required this.title, required this.icon, required this.onTap});
 
   final String title;
-  final Widget icon;
+  final IconData icon;
   final void Function() onTap;
 
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      contentPadding: const EdgeInsets.only(left: 25),
-      minLeadingWidth: 30,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+      minLeadingWidth: 32,
+      leading: Icon(icon, size: 22),
       title: Text(title),
-      leading: icon,
-      onTap: () {
-        onTap();
-      },
+      trailing: Icon(Icons.chevron_right,
+          size: 20, color: ink.withValues(alpha: 0.3)),
+      onTap: onTap,
     );
+  }
+}
+
+/// Renders the shared decorative background wider than the screen and slides
+/// it with the PageView position: the leftmost tab shows its left slice, the
+/// rightmost tab its right slice.
+class _ParallaxBackground extends StatelessWidget {
+  /// Extra width of the artwork relative to the screen.
+  static const _overflow = 0.4;
+
+  final double page;
+  final int pageCount;
+
+  const _ParallaxBackground({required this.page, required this.pageCount});
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, constraints) {
+      final w = constraints.maxWidth;
+      final extra = w * _overflow;
+      final progress = (page / (pageCount - 1)).clamp(0.0, 1.0);
+      return ClipRect(
+        child: OverflowBox(
+          alignment: Alignment.centerLeft,
+          minWidth: 0,
+          maxWidth: w + extra,
+          child: Transform.translate(
+            offset: Offset(-extra * progress, 0),
+            child: SizedBox(
+              width: w + extra,
+              height: constraints.maxHeight,
+              child: const BubblesBackground(),
+            ),
+          ),
+        ),
+      );
+    });
   }
 }

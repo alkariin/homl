@@ -109,7 +109,7 @@ abstract class AppLocalizations {
   /// No description provided for @account.
   ///
   /// In en, this message translates to:
-  /// **'Account'**
+  /// **'Security'**
   String get account;
 
   /// No description provided for @account_logout.

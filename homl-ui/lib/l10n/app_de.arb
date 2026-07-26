@@ -1,7 +1,7 @@
 {
   "global_unexpectedError": "Unerwarteter Fehler",
 
-  "account": "Konto",
+  "account": "Sicherheit",
   "account_logout": "Abmelden",
   "account_updatePassword": "Passwort aktualisieren",
   "account_currentPassword": "Aktuelles Passwort",

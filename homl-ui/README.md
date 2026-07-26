@@ -112,6 +112,14 @@ It registers a throwaway account and saves/restores the developer's local
 session and E2EE key around the run, so it is safe on a daily dev phone.
 `flutter test` never runs it (integration tests only run explicitly).
 
+## Release builds: keep `--no-tree-shake-icons`
+
+`flutter build web/apk` (release) tree-shakes icon fonts and silently drops
+some Font Awesome glyphs that *are* referenced as constants (seen 2026-07-26:
+`tag` and `ellipsisVertical` rendered as tofu boxes while `calendar`,
+`xmark` and the nav icons survived). Until that is understood, build releases
+with `--no-tree-shake-icons`.
+
 ## Categories tab: tag & category management
 
 `lib/pages/categories/view/category_management.dart` gives full CRUD on
@@ -212,7 +220,8 @@ read-only for now.
 
 ## End-to-end encryption (opt-in)
 
-An account can be end-to-end encrypted from the Account page: tag names,
+An account can be end-to-end encrypted from the Security page (drawer):
+tag names,
 category names and event descriptions are encrypted on the device with a key
 only the user holds, so the server stores ciphertext it cannot read. Design
 and wire format: [homl-web/docs/e2ee.md](../homl-web/docs/e2ee.md).

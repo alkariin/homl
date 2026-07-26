@@ -48,6 +48,10 @@ class Tag extends StatelessWidget {
               : const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
           decoration: BoxDecoration(
             color: base.withValues(alpha: 0.35),
+            // Hairline in a darkened shade of the category color: very light
+            // pastels would otherwise melt into light backgrounds.
+            border: Border.all(
+                color: palette.darken(base, .3).withValues(alpha: 0.4)),
             borderRadius: BorderRadius.circular(100),
           ),
           child: Row(

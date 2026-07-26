@@ -8,10 +8,14 @@ import 'package:homl/helpers/colors.dart';
 /// Everything is sized relative to the available space, like a background
 /// image, so the shapes always overflow the screen and scale with it instead
 /// of being pinned to phone-sized pixel offsets.
+///
+/// [child] is optional: the home page renders the background alone behind
+/// its PageView (see the parallax there), full-screen routes wrap their
+/// content with it.
 class BubblesBackground extends StatelessWidget {
-  final Widget child;
+  final Widget? child;
 
-  const BubblesBackground({required this.child, super.key});
+  const BubblesBackground({this.child, super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -59,7 +63,7 @@ class BubblesBackground extends StatelessWidget {
               ),
             ),
           ),
-          child,
+          if (child != null) child!,
         ],
       );
     });
