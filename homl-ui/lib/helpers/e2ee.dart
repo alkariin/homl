@@ -27,6 +27,12 @@ class E2ee {
   static const _indexInfo = 'homl-e2ee:v1:index';
   static const _keyCheckMessage = 'homl-e2ee:v1:keycheck';
 
+  /// Fixed HKDF salt. A salt is optional for HKDF, but the native Android
+  /// HMAC (via cryptography_flutter) rejects the empty key that an absent
+  /// salt produces in HKDF-Extract ("IllegalArgumentException: Empty key").
+  /// A constant app salt keeps the derivation deterministic and portable.
+  static const _hkdfSalt = 'homl-e2ee:v1:salt';
+
   static const _nonceLength = 12;
   static const _macLength = 16;
 
@@ -66,10 +72,15 @@ class E2ee {
 
   Future<void> _deriveKeys(List<int> seed) async {
     final hkdf = Hkdf(hmac: Hmac.sha256(), outputLength: 32);
+    final salt = utf8.encode(_hkdfSalt);
     _contentKey = await hkdf.deriveKey(
-        secretKey: SecretKey(seed), info: utf8.encode(_contentInfo));
+        secretKey: SecretKey(seed),
+        nonce: salt,
+        info: utf8.encode(_contentInfo));
     _indexKey = await hkdf.deriveKey(
-        secretKey: SecretKey(seed), info: utf8.encode(_indexInfo));
+        secretKey: SecretKey(seed),
+        nonce: salt,
+        info: utf8.encode(_indexInfo));
   }
 
   /// Resolves the E2EE state after authentication. Returns false when the
