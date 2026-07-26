@@ -3,9 +3,9 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import 'package:homl/helpers/colors.dart' as palette;
 
-/// Tag chip: thin colored border, lightly tinted fill, radius 4.
-/// The border uses a darkened version of the category color so the pastel
-/// presets stay visible on white.
+/// Tag chip: fully rounded pill tinted with the category color.
+/// The label uses a darkened version of the category color so the pastel
+/// presets stay readable on the light fill.
 class Tag extends StatelessWidget {
   final int id;
   final String text;
@@ -31,31 +31,34 @@ class Tag extends StatelessWidget {
   Widget build(BuildContext context) {
     final Color base =
         color != null ? palette.colorFromHex(color!) : palette.yellow;
-    final Color border = palette.darken(base);
+    final Color label = palette.darken(base, .45);
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(100),
         onTap: onTap,
         onLongPress: onDeleteTag == null ? null : () => onDeleteTag!(id),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
           decoration: BoxDecoration(
-            color: base.withValues(alpha: 0.12),
-            border: Border.all(color: border, width: 0.7),
-            borderRadius: BorderRadius.circular(4),
+            color: base.withValues(alpha: 0.35),
+            borderRadius: BorderRadius.circular(100),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               if (isDate) ...[
-                FaIcon(FontAwesomeIcons.calendar, size: 12, color: border),
+                FaIcon(FontAwesomeIcons.calendar, size: 12, color: label),
                 const SizedBox(width: 5),
               ],
               Text(
                 text,
-                style: const TextStyle(fontSize: 14, color: palette.ink),
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w500,
+                  color: label,
+                ),
               ),
             ],
           ),

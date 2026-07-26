@@ -19,9 +19,9 @@ class CategoriesPage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      floatingActionButton: FloatingActionButton(
-        tooltip: localization.categories_newCategory,
-        child: const Icon(Icons.add),
+      floatingActionButton: FloatingActionButton.extended(
+        icon: const Icon(Icons.add),
+        label: Text(localization.categories_newCategory),
         onPressed: () => categoryDialog(
           context,
           title: localization.categories_newCategory,

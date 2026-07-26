@@ -367,6 +367,18 @@ class AppLocalizationsDe extends AppLocalizations {
   String get categories_color => 'Farbe';
 
   @override
+  String categories_tagCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Tags',
+      one: '1 Tag',
+      zero: 'Keine Tags',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get categories_newTag => 'Neuer Tag';
 
   @override

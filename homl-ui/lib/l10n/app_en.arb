@@ -142,6 +142,12 @@
   "categories_deleteMoveTags": "Move the tags to the Other category",
   "categories_categoryName": "Name",
   "categories_color": "Color",
+  "categories_tagCount": "{count, plural, =0{No tags} =1{1 tag} other{{count} tags}}",
+  "@categories_tagCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
   "categories_newTag": "New tag",
   "categories_renameTag": "Rename tag",
   "categories_deleteTag": "Delete tag",

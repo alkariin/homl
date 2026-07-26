@@ -26,7 +26,7 @@ class CategoryManagementBody extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<HomeCubit, HomeState>(builder: (context, state) {
       return ListView(
-        padding: const EdgeInsets.only(top: 10, bottom: 80),
+        padding: const EdgeInsets.only(top: 12, bottom: 100),
         children: state.categories
             // The Others category is a grey bucket the backend guarantees:
             // only show it once tags have landed in it (free tags from the
@@ -49,6 +49,8 @@ void showTagPickerSheet(BuildContext context,
 
   showModalBottomSheet<void>(
     context: context,
+    showDragHandle: true,
+    clipBehavior: Clip.antiAlias,
     builder: (sheetContext) => BlocProvider.value(
       value: homeCubit,
       child: CategoryManagementBody(
@@ -61,16 +63,28 @@ void showTagPickerSheet(BuildContext context,
   );
 }
 
-class _CategoryTile extends StatelessWidget {
+/// Category card: colored icon, name and tag count in the collapsed header,
+/// tags and the add-tag pill in the expandable body. Category actions
+/// (edit/delete) live in the trailing "more" menu.
+class _CategoryTile extends StatefulWidget {
   final Category category;
   final void Function(TagView tag)? onTagSelected;
 
   const _CategoryTile({required this.category, required this.onTagSelected});
 
   @override
+  State<_CategoryTile> createState() => _CategoryTileState();
+}
+
+class _CategoryTileState extends State<_CategoryTile> {
+  bool _expanded = false;
+
+  @override
   Widget build(BuildContext context) {
     var localization = AppLocalizations.of(context)!;
     final homeCubit = context.read<HomeCubit>();
+    final category = widget.category;
+    final onTagSelected = widget.onTagSelected;
     final isPicker = onTagSelected != null;
     final mainTags =
         category.tags.where((tag) => tag.idParentTag == null).toList();
@@ -92,73 +106,195 @@ class _CategoryTile extends StatelessWidget {
       canManageTags = category.id != idDates && category.id != idDates + 1;
     }
 
+    final base = colorFromHex(category.color);
+
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 10,
-            spreadRadius: 1,
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
-      child: ExpansionTile(
-        shape: const Border(),
-        leading: CircleAvatar(
-          radius: 12,
-          backgroundColor: colorFromHex(category.color),
-        ),
-        title: Text(category.category),
-        trailing: isPicker || category.isLocked
-            ? const SizedBox.shrink()
-            : Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: const FaIcon(FontAwesomeIcons.pen, size: 16),
-                    tooltip: localization.categories_editCategory,
-                    onPressed: () => categoryDialog(
-                      context,
-                      title: localization.categories_editCategory,
-                      initialName: category.category,
-                      initialColor: category.color,
-                      onSubmit: (name, color) => homeCubit
-                          .updateCategory(category.id, name, color),
+      child: Material(
+        color: Colors.transparent,
+        child: Column(
+          children: [
+            InkWell(
+              onTap: () => setState(() => _expanded = !_expanded),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: base.withValues(alpha: 0.45),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Center(
+                        child: FaIcon(FontAwesomeIcons.tag,
+                            size: 15, color: darken(base, .4)),
+                      ),
                     ),
-                  ),
-                  IconButton(
-                    icon: const FaIcon(FontAwesomeIcons.trash, size: 16),
-                    tooltip: localization.global_delete,
-                    onPressed: () => _deleteCategoryDialog(context, category),
-                  ),
-                ],
-              ),
-        children: [
-          ...mainTags.map((mainTag) => _TagRow(
-              category: category,
-              mainTag: mainTag,
-              canManage: canManageTags,
-              onTagSelected: onTagSelected,
-              synonyms: category.tags
-                  .where((tag) => tag.idParentTag == mainTag.id)
-                  .toList())),
-          if (canManageTags && !isPicker)
-            ListTile(
-              dense: true,
-              leading: const Icon(Icons.add, size: 18),
-              title: Text(localization.categories_newTag),
-              onTap: () => _textDialog(
-                context,
-                title: localization.categories_newTag,
-                label: localization.categories_categoryName,
-                onSubmit: (name) => homeCubit.createTag(name, category.id),
+                    const SizedBox(width: 13),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            category.category,
+                            style: const TextStyle(
+                                fontSize: 15.5, fontWeight: FontWeight.w600),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            localization.categories_tagCount(mainTags.length),
+                            style: TextStyle(
+                                fontSize: 12.5,
+                                color: ink.withValues(alpha: 0.45)),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (!isPicker && !category.isLocked)
+                      PopupMenuButton<String>(
+                        icon: FaIcon(FontAwesomeIcons.ellipsisVertical,
+                            size: 15, color: ink.withValues(alpha: 0.45)),
+                        onSelected: (action) {
+                          if (action == 'edit') {
+                            categoryDialog(
+                              context,
+                              title: localization.categories_editCategory,
+                              initialName: category.category,
+                              initialColor: category.color,
+                              onSubmit: (name, color) => homeCubit
+                                  .updateCategory(category.id, name, color),
+                            );
+                          } else {
+                            _deleteCategoryDialog(context, category);
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          PopupMenuItem(
+                            value: 'edit',
+                            child: Row(
+                              children: [
+                                FaIcon(FontAwesomeIcons.pen,
+                                    size: 14,
+                                    color: ink.withValues(alpha: 0.6)),
+                                const SizedBox(width: 12),
+                                Text(localization.categories_editCategory),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem(
+                            value: 'delete',
+                            child: Row(
+                              children: [
+                                FaIcon(FontAwesomeIcons.trash,
+                                    size: 14, color: Colors.red.shade400),
+                                const SizedBox(width: 12),
+                                Text(localization.global_delete,
+                                    style: TextStyle(
+                                        color: Colors.red.shade400)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    AnimatedRotation(
+                      turns: _expanded ? 0.5 : 0,
+                      duration: const Duration(milliseconds: 200),
+                      child: Icon(Icons.expand_more,
+                          color: ink.withValues(alpha: 0.35)),
+                    ),
+                    const SizedBox(width: 4),
+                  ],
+                ),
               ),
             ),
-        ],
+            AnimatedSize(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeInOut,
+              alignment: Alignment.topCenter,
+              child: !_expanded
+                  ? const SizedBox(width: double.infinity)
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Container(
+                          height: 1,
+                          margin: const EdgeInsets.symmetric(horizontal: 14),
+                          color: Colors.black.withValues(alpha: 0.05),
+                        ),
+                        const SizedBox(height: 10),
+                        ...mainTags.map((mainTag) => _TagRow(
+                            category: category,
+                            mainTag: mainTag,
+                            canManage: canManageTags,
+                            onTagSelected: onTagSelected,
+                            synonyms: category.tags
+                                .where((tag) => tag.idParentTag == mainTag.id)
+                                .toList())),
+                        if (canManageTags && !isPicker)
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 14),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Material(
+                                color: yellow.withValues(alpha: 0.12),
+                                shape: const StadiumBorder(),
+                                child: InkWell(
+                                  customBorder: const StadiumBorder(),
+                                  onTap: () => _textDialog(
+                                    context,
+                                    title: localization.categories_newTag,
+                                    label:
+                                        localization.categories_categoryName,
+                                    onSubmit: (name) =>
+                                        homeCubit.createTag(name, category.id),
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 6),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.add,
+                                            size: 16,
+                                            color: darken(yellow, .15)),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          localization.categories_newTag,
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                            color: darken(yellow, .15),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          )
+                        else
+                          const SizedBox(height: 12),
+                      ],
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -253,12 +389,11 @@ class _TagRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final isPicker = onTagSelected != null;
 
-    return ListTile(
-      dense: true,
-      contentPadding: const EdgeInsets.only(left: 25, right: 10),
-      title: Wrap(
-        spacing: 5,
-        runSpacing: 5,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+      child: Wrap(
+        spacing: 6,
+        runSpacing: 6,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           components.Tag(
@@ -393,11 +528,15 @@ void pickCategoryDialog(BuildContext context,
           .map((category) => SimpleDialogOption(
                 child: Row(
                   children: [
-                    CircleAvatar(
-                      radius: 8,
-                      backgroundColor: colorFromHex(category.color),
+                    Container(
+                      width: 20,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        color: colorFromHex(category.color),
+                        borderRadius: BorderRadius.circular(7),
+                      ),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 12),
                     Text(category.category),
                   ],
                 ),
@@ -723,20 +862,34 @@ class _CategoryDialogState extends State<_CategoryDialog> {
           ),
           const SizedBox(height: 20),
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: categoryColors
-                .map((color) => GestureDetector(
-                      onTap: () => setState(() => _selectedColor = color),
-                      child: CircleAvatar(
-                        radius: 15,
-                        backgroundColor: colorFromHex(color),
-                        child: _selectedColor == color
-                            ? const Icon(Icons.check, size: 16)
-                            : null,
-                      ),
-                    ))
-                .toList(),
+            spacing: 10,
+            runSpacing: 10,
+            children: categoryColors.map((color) {
+              final swatch = colorFromHex(color);
+              final selected = _selectedColor == color;
+              return GestureDetector(
+                onTap: () => setState(() => _selectedColor = color),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: swatch,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: selected
+                          ? darken(swatch, .35)
+                          : Colors.transparent,
+                      width: 2,
+                    ),
+                  ),
+                  child: selected
+                      ? Icon(Icons.check,
+                          size: 18, color: darken(swatch, .35))
+                      : null,
+                ),
+              );
+            }).toList(),
           ),
         ],
       ),
