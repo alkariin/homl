@@ -6,7 +6,9 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/alkariin/homl/homl-web/internal/apperror"
 	"github.com/alkariin/homl/homl-web/internal/domain/category"
+	"github.com/alkariin/homl/homl-web/internal/domain/e2ee"
 	"github.com/alkariin/homl/homl-web/internal/domain/event"
 )
 
@@ -39,19 +41,34 @@ func NewEventsService(c *ESConfig) EventsService {
 }
 
 func (e *eventsService) GetEvents(ctx context.Context, idUser uint64, tags []string) ([]event.GetEventsResponse, error) {
+	isE2ee := e2ee.Enabled(ctx)
+
 	// Deduplicate the requested tags: the repository matches events against
 	// ALL of them by counting distinct names, so duplicates would never match.
 	var encTags []string
 	seen := make(map[string]bool)
 	for _, t := range tags {
-		// Tags are stored title-cased (see validateTag): normalize the search
-		// term the same way or the deterministic ciphertexts never match.
-		t = titleCase(t)
+		if isE2ee {
+			// E2EE clients search by blind index; the values must not be
+			// normalized or encrypted server-side.
+			if !e2ee.IsIndex(t) {
+				return nil, apperror.NewBadRequest("The given tags filter is not valid")
+			}
+		} else {
+			// Tags are stored title-cased (see validateTag): normalize the
+			// search term the same way or the deterministic ciphertexts never
+			// match.
+			t = titleCase(t)
+		}
 		if seen[t] {
 			continue
 		}
 		seen[t] = true
 
+		if isE2ee {
+			encTags = append(encTags, t)
+			continue
+		}
 		encTag, err := e.Crypto.Encrypt(t, idUser)
 		if err != nil {
 			return nil, err
@@ -73,9 +90,14 @@ func (e *eventsService) GetEvents(ctx context.Context, idUser uint64, tags []str
 	var responses = make([]event.GetEventsResponse, 0)
 	for _, k := range keys {
 		evt := resEvents[uint(k)]
-		decDescription, err := e.Crypto.Decrypt(evt.Description, idUser)
-		if err != nil {
-			return nil, err
+		// E2EE descriptions are opaque blobs returned verbatim; only the
+		// client can decrypt them.
+		decDescription := evt.Description
+		if !isE2ee {
+			decDescription, err = e.Crypto.Decrypt(evt.Description, idUser)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		var response event.GetEventsResponse
@@ -96,7 +118,7 @@ func (e *eventsService) CreateEvent(ctx context.Context, idUser uint64, event *e
 		return err
 	}
 
-	tags, err := e.buildDateTags(ctx, idUser, event.Date)
+	tags, err := e.prepareEvent(ctx, idUser, event)
 	if err != nil {
 		return err
 	}
@@ -109,12 +131,27 @@ func (e *eventsService) UpdateEvent(ctx context.Context, idUser uint64, event *e
 		return err
 	}
 
-	tags, err := e.buildDateTags(ctx, idUser, event.Date)
+	tags, err := e.prepareEvent(ctx, idUser, event)
 	if err != nil {
 		return err
 	}
 
 	return e.EventsRepository.UpdateEventWithTags(ctx, tags, tagsId, event, idUser)
+}
+
+// prepareEvent runs the mode-specific write checks shared by CreateEvent and
+// UpdateEvent and returns the backend-managed tags to attach. E2EE clients
+// send an encrypted description and manage their own date tags, so there is
+// nothing to build for them.
+func (e *eventsService) prepareEvent(ctx context.Context, idUser uint64, event *event.Event) ([]category.Tag, error) {
+	if e2ee.Enabled(ctx) {
+		if event.Description != "" && !e2ee.IsBlob(event.Description) {
+			return nil, apperror.NewBadRequest("The given description is not a valid encrypted payload")
+		}
+		return nil, nil
+	}
+
+	return e.buildDateTags(ctx, idUser, event.Date)
 }
 
 // buildDateTags returns the month and year tags of the event's date, reusing

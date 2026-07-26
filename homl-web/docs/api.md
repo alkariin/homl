@@ -189,14 +189,19 @@ rejected, and the date category is off-limits: it cannot be the target of a
 create/update, and its tags cannot be updated or deleted (they are managed by
 the backend from the event dates).
 
+**E2EE users** (see [e2ee.md](e2ee.md)): `tag` must be an `e2ee:v1:` blob and
+`tagIndex` (32-char lowercase hex blind index) is required; blacklist,
+normalization and the date-category restrictions are enforced client-side
+instead, so date tags can be created/updated/deleted directly.
+
 `idParentTag` turns the tag into a synonym of another tag of the same
 category (one level deep, any category except dates — see
 [tag-synonyms.md](tag-synonyms.md)).
 
 | Method | Path | Body | Response |
 | --- | --- | --- | --- |
-| POST | `/tags` | `{tag, idCategory, idParentTag?}` | `201` |
-| PATCH | `/tags/:id` | `{tag, idCategory, idParentTag?}` | `204` |
+| POST | `/tags` | `{tag, idCategory, idParentTag?, tagIndex?}` | `201` |
+| PATCH | `/tags/:id` | `{tag, idCategory, idParentTag?, tagIndex?}` | `204` |
 | DELETE | `/tags/:id` | `{deleteEvents?}` (optional) | `204` |
 | GET | `/tags/:id/usage` | — | `200` usage below |
 
@@ -226,6 +231,11 @@ repeated once per tag name (`?tags=2024&tags=July`). The Flutter app no
 longer uses this filter — its Search tab filters the cached full list locally
 (see homl-ui/README.md) — but the parameter stays supported for API clients.
 
+**E2EE users** (see [e2ee.md](e2ee.md)): `description` must be an `e2ee:v1:`
+blob (or empty) and is returned verbatim, the `tags` filter values are blind
+indexes instead of names, and the backend does **not** add date tags — the
+client creates and attaches its own.
+
 | Method | Path | Body / query | Response |
 | --- | --- | --- | --- |
 | GET | `/events` | `?tags=<name>&tags=<name>` (optional) | `200` list below |
@@ -251,8 +261,52 @@ All endpoints require auth.
 
 | Method | Path | Body | Response |
 | --- | --- | --- | --- |
-| GET | `/settings` | — | `200` `{language, defaultScreen, isFingerprintEnabled, isPinEnabled}` |
+| GET | `/settings` | — | `200` `{language, defaultScreen, isE2eeEnabled}` |
 | PUT | `/settings` | `{language, defaultScreen}` | `200` updated settings |
 
-The second-factor flags are read-only here — they are managed through
-`PUT /secureAuth`.
+`isE2eeEnabled` is read-only here — it is flipped by `POST /e2ee/migrate`
+only. A fresh install reads it after login to decide whether to show the
+restore-or-purge screen (see [e2ee.md](e2ee.md)).
+
+## End-to-end encryption
+
+All endpoints require auth. See [e2ee.md](e2ee.md) for the full design.
+
+| Method | Path | Body | Response |
+| --- | --- | --- | --- |
+| POST | `/e2ee/migrate` | see below | `204` |
+| POST | `/e2ee/purge` | — | `204` |
+
+### POST /e2ee/migrate
+
+Atomically swaps the user's whole dataset and flips `isE2eeEnabled`, in one
+SQL transaction — a failed or interrupted migration changes nothing and is
+simply retried. The `id` sets must exactly match the user's stored rows;
+any drift (or requesting the direction already in place) returns `409
+CONFLICT` and the client refetches and retries. The endpoint accepts bodies
+up to 32 MiB and runs under its own 60 s timeout.
+
+```json
+{
+  "direction": "enable",
+  "keyCheck": "<64 hex chars>",
+  "categories": [ { "id": 1, "category": "e2ee:v1:…" } ],
+  "tags":       [ { "id": 7, "tag": "e2ee:v1:…", "tagIndex": "<32 hex chars>" } ],
+  "events":     [ { "id": 42, "description": "e2ee:v1:…" } ]
+}
+```
+
+- `direction: "enable"` — values are client-encrypted blobs; every tag needs
+  its `tagIndex`; `keyCheck` (stored on the user) lets a restoring device
+  verify a typed recovery phrase. Malformed values return `400`.
+- `direction: "disable"` — values are plaintext; the server re-normalizes
+  names, re-encrypts everything with the at-rest scheme and clears the
+  indexes and `keyCheck`. Two tags collapsing onto the same name in one
+  category return `409` (the client merges them first).
+
+### POST /e2ee/purge
+
+Lost-key escape hatch: deletes every event, tag and category of the user,
+reseeds the default categories and disables E2EE — the account survives, the
+data does not. Returns `409` if the user is not in E2EE mode. The client
+double-confirms before calling.

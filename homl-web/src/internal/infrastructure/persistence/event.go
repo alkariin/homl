@@ -8,6 +8,7 @@ import (
 	"github.com/alkariin/homl/homl-web/internal/apperror"
 	"github.com/alkariin/homl/homl-web/internal/application"
 	"github.com/alkariin/homl/homl-web/internal/domain/category"
+	"github.com/alkariin/homl/homl-web/internal/domain/e2ee"
 	"github.com/alkariin/homl/homl-web/internal/domain/event"
 	"github.com/jmoiron/sqlx"
 )
@@ -36,12 +37,21 @@ func NewEventsRepository(db *sqlx.DB, crypto application.Encryptor) event.Reposi
 // encTags is provided, only events matching ALL the given tag names are
 // returned; a name matches through its whole synonym group (main tag +
 // synonyms, resolved via COALESCE(idParentTag, id) as the group root).
+// E2EE users match on the blind-index column instead of the (deterministic)
+// ciphertext one; the semantics are identical.
 func (e *EventsRepository) FindEventsWithTags(ctx context.Context, encTags []string, idUser uint64) (map[uint]event.Event, map[uint][]category.Tag, error) {
+	isE2ee := e2ee.Enabled(ctx)
+
 	var filterClause string
 	if len(encTags) > 0 {
-		// The Categories.idUser filter on the named tags is mandatory:
-		// encryption is deterministic, so without it another user's
-		// identically-named tag could leak matches.
+		// The Categories.idUser filter on the named tags is mandatory: both
+		// deterministic ciphertexts and blind indexes are per-user values,
+		// but without it another user's identically-derived tag could leak
+		// matches.
+		matchColumn := "named.tag"
+		if isE2ee {
+			matchColumn = "named.tagIndex"
+		}
 		filterClause = `
 				AND idEvent IN (
 					SELECT ET.idEvent
@@ -52,9 +62,9 @@ func (e *EventsRepository) FindEventsWithTags(ctx context.Context, encTags []str
 					INNER JOIN Categories c ON named.idCategory = c.id
 					WHERE ET.idUser = ?
 					AND c.idUser = ?
-					AND named.tag IN (?)
+					AND ` + matchColumn + ` IN (?)
 					GROUP BY ET.idEvent
-					HAVING COUNT(DISTINCT named.tag) = ?
+					HAVING COUNT(DISTINCT ` + matchColumn + `) = ?
 				)`
 	}
 	query := `
@@ -97,12 +107,14 @@ func (e *EventsRepository) FindEventsWithTags(ctx context.Context, encTags []str
 		}
 		event.Description = nullStringToString(description)
 
-		decTag, err := e.Crypto.Decrypt(tag.Tag, idUser)
-		if err != nil {
-			return nil, nil, err
+		// E2EE tag names are opaque blobs returned verbatim.
+		if !isE2ee {
+			decTag, err := e.Crypto.Decrypt(tag.Tag, idUser)
+			if err != nil {
+				return nil, nil, err
+			}
+			tag.Tag = decTag
 		}
-
-		tag.Tag = decTag
 		resTags[event.Id] = append(resTags[event.Id], tag)
 		resEvents[event.Id] = event
 	}
@@ -127,7 +139,7 @@ func (e *EventsRepository) CreateEventWithTags(ctx context.Context, tags []categ
 	tagsId = append(tagsId, otherTagsId...)
 
 	// it works even if the description has been omitted
-	encDescription, err := e.Crypto.Encrypt(event.Description, idUser)
+	encDescription, err := e.storedDescription(ctx, event.Description, idUser)
 	if err != nil {
 		return err
 	}
@@ -177,7 +189,7 @@ func (e *EventsRepository) UpdateEventWithTags(ctx context.Context, tags []categ
 	}
 	tagsId = append(tagsId, otherTagsId...)
 
-	encDescription, err := e.Crypto.Encrypt(event.Description, idUser)
+	encDescription, err := e.storedDescription(ctx, event.Description, idUser)
 	if err != nil {
 		return err
 	}
@@ -201,6 +213,16 @@ func (e *EventsRepository) UpdateEventWithTags(ctx context.Context, tags []categ
 	}
 
 	return tx.Commit()
+}
+
+// storedDescription returns the description column value: the client blob
+// verbatim for E2EE users (validated upstream), the at-rest ciphertext
+// otherwise.
+func (e *EventsRepository) storedDescription(ctx context.Context, description string, idUser uint64) (string, error) {
+	if e2ee.Enabled(ctx) {
+		return description, nil
+	}
+	return e.Crypto.Encrypt(description, idUser)
 }
 
 func (e *EventsRepository) Delete(ctx context.Context, id uint, idUser uint64) error {

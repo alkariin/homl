@@ -1,9 +1,11 @@
 package web
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/alkariin/homl/homl-web/internal/apperror"
+	"github.com/alkariin/homl/homl-web/internal/domain/e2ee"
 	"github.com/gin-gonic/gin"
 )
 
@@ -41,4 +43,35 @@ func UserIDFromContext(c *gin.Context) (uint64, error) {
 		return 0, apperror.NewAuthorization("Not authorized")
 	}
 	return userID, nil
+}
+
+// E2EEFlagSource exposes the persisted per-user E2EE flag to the middleware
+// below. Implemented by persistence.E2EERepository.
+type E2EEFlagSource interface {
+	IsEnabled(ctx context.Context, idUser uint64) (bool, error)
+}
+
+// E2EEFlagMiddleware loads the authenticated user's E2EE flag once per
+// request and stores it in the request context, where the application and
+// persistence layers branch on it (encrypt/decrypt vs pass-through, tag
+// search column, date-tag management). Must run after TokenAuthMiddleware.
+func E2EEFlagMiddleware(src E2EEFlagSource) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		idUser, err := UserIDFromContext(c)
+		if err != nil {
+			SendGinError(c, err)
+			c.Abort()
+			return
+		}
+
+		enabled, err := src.IsEnabled(c.Request.Context(), idUser)
+		if err != nil {
+			SendGinError(c, apperror.NewInternal())
+			c.Abort()
+			return
+		}
+
+		c.Request = c.Request.WithContext(e2ee.WithEnabled(c.Request.Context(), enabled))
+		c.Next()
+	}
 }

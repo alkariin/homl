@@ -34,6 +34,7 @@ func inject(cfg *config.Config, d *db.DataSources) *gin.Engine {
 	categoriesRepository := persistence.NewCategoriesRepository(d.DB, aes)
 	eventsRepository := persistence.NewEventsRepository(d.DB, aes)
 	usersRepository := persistence.NewUsersRepository(d.DB, d.RedisClient, aes)
+	e2eeRepository := persistence.NewE2EERepository(d.DB, aes)
 
 	// services
 	categoriesService := application.NewCategoriesService(&application.CSConfig{
@@ -51,6 +52,9 @@ func inject(cfg *config.Config, d *db.DataSources) *gin.Engine {
 	tagsService := application.NewTagsService(&application.TSConfig{
 		CategoriesRepository: categoriesRepository,
 		Crypto:               aes,
+	})
+	e2eeService := application.NewE2EEService(&application.E2EEConfig{
+		E2EERepository: e2eeRepository,
 	})
 	// In DEV or without SMTP configured, reset codes are logged instead of emailed.
 	var mailer application.Mailer = &mail.SMTPMailer{
@@ -76,17 +80,19 @@ func inject(cfg *config.Config, d *db.DataSources) *gin.Engine {
 	server := &web.Server{
 		Auth:        authenticator,
 		RateLimiter: limiter,
+		E2EEFlags:   e2eeRepository,
 		Health: &web.HealthHandler{
 			CheckDB: d.DB.PingContext,
 			CheckRedis: func(ctx context.Context) error {
 				return d.RedisClient.Ping(ctx).Err()
 			},
 		},
-		User:        &web.UserHandler{UsersService: usersService, Tokens: jwt},
-		Category:    &web.CategoryHandler{CategoriesService: categoriesService},
-		Tag:         &web.TagHandler{TagsService: tagsService},
-		Event:       &web.EventHandler{EventsService: eventsService},
-		Settings:    &web.SettingsHandler{SettingsService: settingsService},
+		User:     &web.UserHandler{UsersService: usersService, Tokens: jwt},
+		Category: &web.CategoryHandler{CategoriesService: categoriesService},
+		Tag:      &web.TagHandler{TagsService: tagsService},
+		Event:    &web.EventHandler{EventsService: eventsService},
+		Settings: &web.SettingsHandler{SettingsService: settingsService},
+		E2EE:     &web.E2EEHandler{E2EEService: e2eeService},
 	}
 
 	return web.SetupRouter(server, cfg.BaseURL, cfg.HandlerTimeout, cfg.IsDev(), cfg.CorsOrigin)

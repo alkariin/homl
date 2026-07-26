@@ -127,8 +127,8 @@ func (m *MockCategoriesRepo) GetCategoryUsage(ctx context.Context, idCategory ui
 	return r0, r1
 }
 
-func (m *MockCategoriesRepo) CreateTag(ctx context.Context, tagNameEncrypt string, idCategory uint, idParentTag *uint) (uint, error) {
-	ret := m.Called(tagNameEncrypt, idCategory, idParentTag)
+func (m *MockCategoriesRepo) CreateTag(ctx context.Context, tagNameEncrypt string, tagIndex *string, idCategory uint, idParentTag *uint) (uint, error) {
+	ret := m.Called(tagNameEncrypt, tagIndex, idCategory, idParentTag)
 
 	var r0 uint
 	if ret.Get(0) != nil {
@@ -143,8 +143,8 @@ func (m *MockCategoriesRepo) CreateTag(ctx context.Context, tagNameEncrypt strin
 	return r0, r1
 }
 
-func (m *MockCategoriesRepo) UpdateTag(ctx context.Context, tagNameEncrypt string, idCategory uint, idTag uint, idParentTag *uint) error {
-	ret := m.Called(tagNameEncrypt, idCategory, idTag, idParentTag)
+func (m *MockCategoriesRepo) UpdateTag(ctx context.Context, tagNameEncrypt string, tagIndex *string, idCategory uint, idTag uint, idParentTag *uint) error {
+	ret := m.Called(tagNameEncrypt, tagIndex, idCategory, idTag, idParentTag)
 
 	var r0 error
 	if ret.Get(0) != nil {
