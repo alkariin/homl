@@ -1,7 +1,7 @@
 {
   "global_unexpectedError": "Unerwarteter Fehler",
 
-  "account": "Konto",
+  "account": "Sicherheit",
   "account_logout": "Abmelden",
   "account_updatePassword": "Passwort aktualisieren",
   "account_currentPassword": "Aktuelles Passwort",
@@ -137,6 +137,12 @@
   "categories_deleteMoveTags": "Tags in die Kategorie Other verschieben",
   "categories_categoryName": "Name",
   "categories_color": "Farbe",
+  "categories_tagCount": "{count, plural, =0{Keine Tags} =1{1 Tag} other{{count} Tags}}",
+  "@categories_tagCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
   "categories_newTag": "Neuer Tag",
   "categories_renameTag": "Tag umbenennen",
   "categories_deleteTag": "Tag löschen",
