@@ -5,9 +5,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:homl/data/models/user.dart';
 
+import 'package:homl/data/repositories/e2ee.repository.dart';
+import 'package:homl/data/repositories/settings.repository.dart';
 import 'package:homl/data/repositories/users.repository.dart';
 import 'package:homl/helpers/app_message.dart';
 import 'package:homl/helpers/biometric_storage.dart';
+import 'package:homl/helpers/e2ee.dart';
 import 'package:homl/helpers/encryption.dart' as encryption;
 import 'package:homl/helpers/local_storage_manager.dart';
 
@@ -16,7 +19,20 @@ part 'account_state.dart';
 class AccountCubit extends Cubit<AccountState> {
   final UsersRepository usersRepository;
 
-  AccountCubit(this.usersRepository) : super(const AccountState.initial()) {
+  /// Both optional so the existing tests keep constructing the cubit with the
+  /// users repository only. The E2EE repository is created lazily (it builds
+  /// the Api singleton, which needs API_BASE_URL) so plain account tests do
+  /// not depend on it. Production passes the app-level settings repository so
+  /// the settings stream (HomeCubit, SettingsCubit) sees the new E2EE flag.
+  final SettingsRepository? settingsRepository;
+  E2eeRepository? _e2eeRepository;
+  E2eeRepository get e2eeRepository =>
+      _e2eeRepository ??= E2eeRepository();
+
+  AccountCubit(this.usersRepository,
+      {E2eeRepository? e2eeRepository, this.settingsRepository})
+      : _e2eeRepository = e2eeRepository,
+        super(const AccountState.initial()) {
     init();
   }
 
@@ -32,7 +48,8 @@ class AccountCubit extends Cubit<AccountState> {
     emit(state.copyWith(
         user: User(
             isFingerprintEnabled: isFingerprintEnabled,
-            isPinEnabled: pinKeypair != null)));
+            isPinEnabled: pinKeypair != null),
+        isE2eeEnabled: E2ee().enabled));
   }
 
   void resetPasswordDialogState() {
@@ -130,6 +147,47 @@ class AccountCubit extends Cubit<AccountState> {
       } catch (e) {
         emit(state.copyWith(modal: AppMessage.unexpectedError));
       }
+    }
+  }
+
+  /// Step 1 of enabling E2EE: generates the key and returns the recovery
+  /// phrase to show. Nothing is persisted or migrated yet — the view then
+  /// calls [confirmEnableE2ee] or [cancelEnableE2ee].
+  Future<String> startEnableE2ee() => E2ee().prepareEnable();
+
+  /// Discards a pending enable attempt (user backed out of the dialog).
+  void cancelEnableE2ee() => E2ee().abortEnable();
+
+  /// Step 2 of enabling E2EE: runs the whole-dataset migration, persists the
+  /// key on success, discards it on failure (nothing changed server-side).
+  Future<void> confirmEnableE2ee() async {
+    emit(state.copyWith(e2eeBusy: true));
+    try {
+      await e2eeRepository.enable();
+      await E2ee().commitEnable();
+      await settingsRepository?.getSettings();
+      emit(state.copyWith(
+          e2eeBusy: false, isE2eeEnabled: true, modal: AppMessage.e2eeEnabled));
+    } catch (_) {
+      E2ee().abortEnable();
+      emit(state.copyWith(e2eeBusy: false, modal: AppMessage.e2eeError));
+    }
+  }
+
+  /// Disables E2EE: the reverse migration re-uploads plaintext (the server
+  /// re-encrypts at rest), then the local key is wiped.
+  Future<void> disableE2ee() async {
+    emit(state.copyWith(e2eeBusy: true));
+    try {
+      await e2eeRepository.disable();
+      await E2ee().disable();
+      await settingsRepository?.getSettings();
+      emit(state.copyWith(
+          e2eeBusy: false,
+          isE2eeEnabled: false,
+          modal: AppMessage.e2eeDisabled));
+    } catch (_) {
+      emit(state.copyWith(e2eeBusy: false, modal: AppMessage.e2eeError));
     }
   }
 

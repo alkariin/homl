@@ -184,3 +184,27 @@ same device cannot read them.
 
 Writes (creating events/tags) still require the network; offline is
 read-only for now.
+
+## End-to-end encryption (opt-in)
+
+An account can be end-to-end encrypted from the Account page: tag names,
+category names and event descriptions are encrypted on the device with a key
+only the user holds, so the server stores ciphertext it cannot read. Design
+and wire format: [homl-web/docs/e2ee.md](../homl-web/docs/e2ee.md).
+
+- `lib/helpers/e2ee.dart` (`E2ee` singleton) holds the crypto: a 16-byte seed
+  in secure storage (`e2eeMasterKey`, exportable as a 12-word BIP39 recovery
+  phrase), HKDF-derived content and index keys, AES-256-GCM value encryption
+  (`e2ee:v1:` blobs) and the tag blind index. It also mirrors the backend tag
+  blacklist and English month names, which the server can no longer enforce
+  for these users.
+- The repositories encrypt on write and decrypt on read at their boundary
+  (`events`/`categories`/`tags`), so the rest of the app only sees plaintext;
+  the offline caches deliberately store the ciphertext.
+- Under E2EE the client builds the month/year date tags itself
+  (`InsertCubit`), since the backend can no longer derive them from an
+  encrypted event.
+- Enabling/disabling runs an atomic whole-dataset migration
+  (`E2eeRepository`); after login an encrypted account with no local key is
+  blocked on the restore-or-purge screen (`lib/pages/e2ee/`) reached via the
+  `e2eeLocked` authentication status.

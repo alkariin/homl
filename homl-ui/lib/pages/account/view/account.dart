@@ -4,10 +4,12 @@ import 'package:homl/l10n/app_localizations.dart';
 import 'package:homl/components/pin_dialog.dart';
 import 'package:homl/data/repositories/api.dart';
 
+import 'package:homl/data/repositories/settings.repository.dart';
 import 'package:homl/data/repositories/users.repository.dart';
 import 'package:homl/helpers/app_message.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
 import 'package:homl/pages/account/bloc/account_cubit.dart';
+import 'package:homl/pages/account/view/e2ee_mnemonic_dialog.dart';
 import 'package:homl/pages/account/view/password_dialog.dart';
 
 class AccountPage extends StatelessWidget {
@@ -29,8 +31,9 @@ class AccountPage extends StatelessWidget {
     return MultiBlocProvider(
       providers: [
         BlocProvider(
-            create: (BuildContext context) =>
-                AccountCubit(context.read<UsersRepository>())),
+            create: (BuildContext context) => AccountCubit(
+                context.read<UsersRepository>(),
+                settingsRepository: context.read<SettingsRepository>())),
         BlocProvider.value(value: homeCubit),
       ],
       child: AccountView(homeCubit),
@@ -51,6 +54,70 @@ class AccountView extends StatelessWidget {
       Navigator.pop(context);
       context.read<AccountCubit>().submitPin(pin);
       return Future.value(const PinAuthResult(success: true));
+    }
+
+    /// Enable flow: warning → recovery phrase (savable, skippable, or
+    /// cancellable) → blocking migration handled by the cubit.
+    Future<void> enableE2ee(BuildContext context) async {
+      final cubit = context.read<AccountCubit>();
+
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(localization.account_e2eeEnableTitle),
+          content: Text(localization.account_e2eeEnableWarning),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: Text(localization.e2ee_cancel),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: Text(localization.e2ee_continue),
+            ),
+          ],
+        ),
+      );
+      if (proceed != true || !context.mounted) return;
+
+      final mnemonic = await cubit.startEnableE2ee();
+      if (!context.mounted) {
+        cubit.cancelEnableE2ee();
+        return;
+      }
+
+      final confirmed = await E2eeMnemonicDialog.show(context, mnemonic);
+      if (confirmed != true) {
+        cubit.cancelEnableE2ee();
+        return;
+      }
+
+      await cubit.confirmEnableE2ee();
+    }
+
+    Future<void> disableE2ee(BuildContext context) async {
+      final cubit = context.read<AccountCubit>();
+
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(localization.account_e2eeDisableTitle),
+          content: Text(localization.account_e2eeDisableWarning),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: Text(localization.e2ee_cancel),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: Text(localization.e2ee_continue),
+            ),
+          ],
+        ),
+      );
+      if (proceed != true) return;
+
+      await cubit.disableE2ee();
     }
 
     return MultiBlocListener(
@@ -151,6 +218,25 @@ class AccountView extends StatelessWidget {
                     },
                     secondary: const Icon(Icons.lightbulb_outline),
                   ),
+                  SwitchListTile(
+                    title: Text(localization.account_e2eeSwitchText),
+                    value: state.isE2eeEnabled,
+                    onChanged: state.e2eeBusy
+                        ? null
+                        : (bool value) {
+                            if (value) {
+                              enableE2ee(context);
+                            } else {
+                              disableE2ee(context);
+                            }
+                          },
+                    secondary: const Icon(Icons.lock_outline),
+                  ),
+                  if (state.e2eeBusy)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      child: LinearProgressIndicator(),
+                    ),
                   ElevatedButton(
                     child: Text(localization.account_logout),
                     onPressed: () async {

@@ -13,6 +13,9 @@ enum AppMessage {
   pinDisabled,
   passwordIncorrect,
   passwordUpdateError,
+  e2eeEnabled,
+  e2eeDisabled,
+  e2eeError,
 }
 
 extension AppMessageLocalization on AppMessage {
@@ -32,6 +35,12 @@ extension AppMessageLocalization on AppMessage {
         return localization.account_passwordIncorrect;
       case AppMessage.passwordUpdateError:
         return localization.account_passwordUpdateError;
+      case AppMessage.e2eeEnabled:
+        return localization.account_e2eeEnabled;
+      case AppMessage.e2eeDisabled:
+        return localization.account_e2eeDisabled;
+      case AppMessage.e2eeError:
+        return localization.account_e2eeError;
     }
   }
 }

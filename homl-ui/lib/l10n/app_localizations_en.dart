@@ -191,6 +191,81 @@ class AppLocalizationsEn extends AppLocalizations {
   String get global_update => 'Update';
 
   @override
+  String get e2ee_cancel => 'Cancel';
+
+  @override
+  String get e2ee_continue => 'Continue';
+
+  @override
+  String get account_e2eeSwitchText => 'Encrypt my data (end-to-end)';
+
+  @override
+  String get account_e2eeEnableTitle => 'Encrypt your data';
+
+  @override
+  String get account_e2eeEnableWarning =>
+      'Your tags, categories and notes will be encrypted on this device with a key only you hold. The server can no longer read them. If you lose the key and its recovery phrase, the data is lost for good.';
+
+  @override
+  String get account_e2eeDisableTitle => 'Turn off encryption';
+
+  @override
+  String get account_e2eeDisableWarning =>
+      'Your data will be re-uploaded and the server will be able to read it again. Continue?';
+
+  @override
+  String get account_e2eeEnabled => 'Encryption enabled';
+
+  @override
+  String get account_e2eeDisabled => 'Encryption disabled';
+
+  @override
+  String get account_e2eeError => 'Encryption change failed, try again later';
+
+  @override
+  String get account_e2eeMnemonicTitle => 'Your recovery phrase';
+
+  @override
+  String get account_e2eeMnemonicHint =>
+      'Write these 12 words down and keep them somewhere safe. They are the only way to recover your data on another device or after reinstalling. We cannot recover them for you.';
+
+  @override
+  String get account_e2eeMnemonicSkip => 'Skip (risky)';
+
+  @override
+  String get account_e2eeMnemonicSaved => 'I saved it';
+
+  @override
+  String get e2ee_lockedTitle => 'Encrypted data';
+
+  @override
+  String get e2ee_lockedExplanation =>
+      'This account is end-to-end encrypted, but this device has no key. Enter your recovery phrase to unlock your data, or delete it to start over.';
+
+  @override
+  String get e2ee_restoreHint => 'Recovery phrase (12 words)';
+
+  @override
+  String get e2ee_restoreButton => 'Unlock';
+
+  @override
+  String get e2ee_restoreInvalid =>
+      'This recovery phrase does not match this account.';
+
+  @override
+  String get e2ee_purgeButton => 'Delete my encrypted data';
+
+  @override
+  String get e2ee_purgeConfirmTitle => 'Delete everything?';
+
+  @override
+  String get e2ee_purgeConfirmText =>
+      'This permanently deletes all your encrypted events, tags and categories and turns encryption off. This cannot be undone.';
+
+  @override
+  String get e2ee_purgeConfirmAction => 'Delete';
+
+  @override
   String get nav_categories => 'Categories';
 
   @override
