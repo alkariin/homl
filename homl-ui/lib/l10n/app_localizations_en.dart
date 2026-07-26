@@ -251,7 +251,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get e2ee_restoreInvalid =>
-      'This recovery phrase does not match this account.';
+      'This phrase is valid but does not match this account. It may come from another account or an older, cancelled activation.';
+
+  @override
+  String get e2ee_restoreMalformed =>
+      'This is not a valid recovery phrase: check for typos or autocorrected words (12 lowercase English words).';
 
   @override
   String get e2ee_purgeButton => 'Delete my encrypted data';

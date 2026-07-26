@@ -172,7 +172,14 @@ void main() {
       final restored = await E2ee().restore(
           'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about',
           check);
-      expect(restored, isFalse);
+      expect(restored, E2eeRestoreResult.mismatch);
+      expect(E2ee().enabled, isFalse);
+    });
+
+    test('a malformed phrase is reported as such', () async {
+      final restored =
+          await E2ee().restore('definitely not twelve bip39 words', 'ab');
+      expect(restored, E2eeRestoreResult.malformed);
       expect(E2ee().enabled, isFalse);
     });
 
@@ -184,7 +191,7 @@ void main() {
       E2ee().abortEnable();
 
       final restored = await E2ee().restore(mnemonic, check);
-      expect(restored, isTrue);
+      expect(restored, E2eeRestoreResult.ok);
       expect(await E2ee().decrypt(probe), 'note');
     });
 
