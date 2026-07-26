@@ -41,6 +41,29 @@ void main() {
     E2ee().lock();
   });
 
+  group('Settings wire format', () {
+    // Regression guard: the login gate reads these fields from the real
+    // GET /settings payload — a stale settings.g.dart silently dropped them
+    // once, letting an E2EE account through without a key.
+    test('fromJson carries the E2EE flag and key check', () {
+      final settings = Settings.fromJson({
+        'language': 'en',
+        'defaultScreen': false,
+        'isE2eeEnabled': true,
+        'e2eeKeyCheck': 'abc123',
+      });
+      expect(settings.isE2eeEnabled, isTrue);
+      expect(settings.e2eeKeyCheck, 'abc123');
+    });
+
+    test('fromJson tolerates a payload without the E2EE fields', () {
+      final settings =
+          Settings.fromJson({'language': 'en', 'defaultScreen': true});
+      expect(settings.isE2eeEnabled, isFalse);
+      expect(settings.e2eeKeyCheck, isNull);
+    });
+  });
+
   group('E2ee crypto', () {
     test('encrypt/decrypt round-trips and produces a versioned blob',
         () async {

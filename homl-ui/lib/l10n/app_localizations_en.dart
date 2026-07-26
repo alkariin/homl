@@ -197,7 +197,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get e2ee_continue => 'Continue';
 
   @override
-  String get account_e2eeSwitchText => 'Encrypt my data (end-to-end)';
+  String get account_e2eeSwitchText =>
+      'End-to-end encryption (only this device can read)';
 
   @override
   String get account_e2eeEnableTitle => 'Encrypt your data';
@@ -211,7 +212,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get account_e2eeDisableWarning =>
-      'Your data will be re-uploaded and the server will be able to read it again. Continue?';
+      'Your data will stay encrypted on the server, but the server will be able to read it again. Continue?';
 
   @override
   String get account_e2eeEnabled => 'Encryption enabled';

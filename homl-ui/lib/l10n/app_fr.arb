@@ -74,11 +74,11 @@
 
   "e2ee_cancel": "Annuler",
   "e2ee_continue": "Continuer",
-  "account_e2eeSwitchText": "Chiffrer mes données (de bout en bout)",
+  "account_e2eeSwitchText": "Chiffrement de bout en bout (seul cet appareil peut lire)",
   "account_e2eeEnableTitle": "Chiffrer vos données",
   "account_e2eeEnableWarning": "Vos tags, catégories et notes seront chiffrés sur cet appareil avec une clé que vous seul possédez. Le serveur ne pourra plus les lire. Si vous perdez la clé et sa phrase de récupération, les données seront définitivement perdues.",
   "account_e2eeDisableTitle": "Désactiver le chiffrement",
-  "account_e2eeDisableWarning": "Vos données seront renvoyées au serveur, qui pourra de nouveau les lire. Continuer ?",
+  "account_e2eeDisableWarning": "Vos données resteront chiffrées sur le serveur, mais celui-ci pourra de nouveau les lire. Continuer ?",
   "account_e2eeEnabled": "Chiffrement activé",
   "account_e2eeDisabled": "Chiffrement désactivé",
   "account_e2eeError": "Échec du changement de chiffrement, réessayez plus tard",

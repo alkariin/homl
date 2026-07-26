@@ -203,7 +203,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get account_e2eeSwitchText =>
-      'Meine Daten verschlüsseln (Ende-zu-Ende)';
+      'Ende-zu-Ende-Verschlüsselung (nur dieses Gerät kann lesen)';
 
   @override
   String get account_e2eeEnableTitle => 'Daten verschlüsseln';
@@ -217,7 +217,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get account_e2eeDisableWarning =>
-      'Deine Daten werden erneut hochgeladen und der Server kann sie wieder lesen. Fortfahren?';
+      'Deine Daten bleiben auf dem Server verschlüsselt, aber der Server kann sie wieder lesen. Fortfahren?';
 
   @override
   String get account_e2eeEnabled => 'Verschlüsselung aktiviert';

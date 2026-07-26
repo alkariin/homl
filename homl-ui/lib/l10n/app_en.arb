@@ -74,11 +74,11 @@
 
   "e2ee_cancel": "Cancel",
   "e2ee_continue": "Continue",
-  "account_e2eeSwitchText": "Encrypt my data (end-to-end)",
+  "account_e2eeSwitchText": "End-to-end encryption (only this device can read)",
   "account_e2eeEnableTitle": "Encrypt your data",
   "account_e2eeEnableWarning": "Your tags, categories and notes will be encrypted on this device with a key only you hold. The server can no longer read them. If you lose the key and its recovery phrase, the data is lost for good.",
   "account_e2eeDisableTitle": "Turn off encryption",
-  "account_e2eeDisableWarning": "Your data will be re-uploaded and the server will be able to read it again. Continue?",
+  "account_e2eeDisableWarning": "Your data will stay encrypted on the server, but the server will be able to read it again. Continue?",
   "account_e2eeEnabled": "Encryption enabled",
   "account_e2eeDisabled": "Encryption disabled",
   "account_e2eeError": "Encryption change failed, try again later",
