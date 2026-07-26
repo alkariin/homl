@@ -152,7 +152,21 @@ screen:
 The blocs that keep a message in their state (`isLoginIncorrect`, a `modal`
 code) expose it until the next submit, so their listener needs a `listenWhen`
 guard on the *transition* into the message; without it every unrelated
-emission (a keystroke) re-shows the toast.
+emission (a keystroke) re-shows the toast. The same guard protects the
+navigation: `InsertStatus.success` also stays in the state, and the insert
+form does keep emitting while it is on screen (the description field notifies
+its text when it loses focus on the way out), so a listener reacting to every
+state carrying `success` popped the route twice — the second pop took the list
+route with it and left a black screen.
+
+## Text inputs (`lib/components/input.dart`)
+
+`Input` wraps a `TextFormField` and drops the validation error of a field the
+user emptied when it loses the focus. `FormFieldState.reset()` is the only way
+to do that, but it *also* puts the initial text back and re-notifies
+`onChanged` with it, so the field is cleared again right after
+(`_resetEmptied`): without it an erased description reappeared on blur and the
+parent bloc heard a change the user never made.
 
 ## Categories tab: tag & category management
 
