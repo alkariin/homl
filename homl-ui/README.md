@@ -156,6 +156,10 @@ The "#" logo next to the tag inputs is a button:
   letting it fall into Others on submit); with an existing tag typed it does
   nothing.
 
+Submitting a new event slides back to the Search tab (`InsertPage.onCreated`,
+wired to the home PageView) — the created event is the natural next focus.
+Edits pop back to the list instead.
+
 The dialogs owning a `TextEditingController` are `StatefulWidget`s so the
 controller is disposed with the route: disposing it from `showDialog`'s
 future crashes, the future completes on pop while the dialog is still
