@@ -3,7 +3,9 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:homl/data/models/event.dart';
+import 'package:homl/data/models/tag.dart';
 import 'package:homl/data/repositories/api.dart';
+import 'package:homl/helpers/e2ee.dart';
 import 'package:homl/helpers/local_storage_manager.dart';
 
 /// Exception thrown when an events request fails
@@ -46,10 +48,31 @@ class EventsRepository {
         .map((e) => Event.fromJson(e as Map<String, dynamic>))
         .toList();
 
+    // The cache is written BEFORE decryption on purpose: for E2EE users it
+    // must only ever hold ciphertext (homl-web/docs/e2ee.md).
     await LocalStorageManager.setValue(
         LocalStorageKey.eventsCache, jsonEncode(response.data));
 
-    return events;
+    return _decryptEvents(events);
+  }
+
+  /// Decrypts E2EE payloads at the repository boundary, so every model
+  /// handed to the app (and the local tag search) carries plaintext.
+  Future<List<Event>> _decryptEvents(List<Event> events) async {
+    final e2ee = E2ee();
+    if (!e2ee.enabled) return events;
+
+    return Future.wait(events.map((event) async => Event(
+          id: event.id,
+          description: await e2ee.decrypt(event.description),
+          date: event.date,
+          tags: await Future.wait(event.tags.map((tag) async => Tag(
+                id: tag.id,
+                tag: await e2ee.decrypt(tag.tag),
+                idCategory: tag.idCategory,
+                idParentTag: tag.idParentTag,
+              ))),
+        )));
   }
 
   /// Returns the last events payload fetched from the backend, or null when
@@ -61,9 +84,10 @@ class EventsRepository {
     }
 
     try {
-      return (jsonDecode(raw) as List<dynamic>)
+      final events = (jsonDecode(raw) as List<dynamic>)
           .map((e) => Event.fromJson(e as Map<String, dynamic>))
           .toList();
+      return await _decryptEvents(events);
     } catch (_) {
       // A cache that no longer parses (model change) is just dropped.
       await LocalStorageManager.remove(LocalStorageKey.eventsCache);
@@ -79,7 +103,7 @@ class EventsRepository {
     try {
       await apiInstance.api.post<void>('/events', data: {
         if (description != null && description.isNotEmpty)
-          'description': description,
+          'description': await _outgoingDescription(description),
         'date': date.toUtc().toIso8601String(),
         'tagsId': tagsId,
       });
@@ -88,6 +112,13 @@ class EventsRepository {
     }
 
     _changesController.add(null);
+  }
+
+  /// Encrypts an outgoing description for E2EE users; the empty string stays
+  /// empty in both modes.
+  Future<String> _outgoingDescription(String description) async {
+    if (!E2ee().enabled || description.isEmpty) return description;
+    return E2ee().encrypt(description);
   }
 
   /// The backend PATCH is full-state: the description is always sent (an
@@ -101,7 +132,7 @@ class EventsRepository {
   }) async {
     try {
       await apiInstance.api.patch<void>('/events/$id', data: {
-        'description': description ?? '',
+        'description': await _outgoingDescription(description ?? ''),
         'date': date.toUtc().toIso8601String(),
         'tagsId': tagsId,
       });

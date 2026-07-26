@@ -3,9 +3,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:homl/data/models/category.dart';
 import 'package:homl/data/models/event.dart';
+import 'package:homl/data/models/tag.dart';
 import 'package:homl/data/repositories/events.repository.dart';
 import 'package:homl/data/repositories/tags.repository.dart';
 import 'package:homl/helpers/app_message.dart';
+import 'package:homl/helpers/e2ee.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart' show TagView;
 
 part 'insert_state.dart';
@@ -42,6 +44,34 @@ class InsertCubit extends Cubit<InsertState> {
       if (!category.isLocked) return category.id;
     }
     return null;
+  }
+
+  /// Builds the month/year date tags of [date] for E2EE users, mirroring the
+  /// backend buildDateTags (English month name + year). Existing tags of the
+  /// date category are reused; missing ones are created with the blacklist
+  /// lifted (they ARE the reserved month names).
+  Future<List<int>> _buildDateTags(
+      List<Category> categories, DateTime date) async {
+    final dateCategory = categories.cast<Category?>().firstWhere(
+        (category) => category?.kind == CategoryKind.date,
+        orElse: () => null);
+    if (dateCategory == null) return const [];
+
+    final names = [E2ee.englishMonths[date.month - 1], date.year.toString()];
+
+    final ids = <int>[];
+    for (final name in names) {
+      final existing = dateCategory.tags.cast<Tag?>().firstWhere(
+          (tag) => tag?.tag.toLowerCase() == name.toLowerCase(),
+          orElse: () => null);
+      if (existing != null) {
+        ids.add(existing.id);
+      } else {
+        ids.add(await tagsRepository.createTag(name, dateCategory.id,
+            isDateTag: true));
+      }
+    }
+    return ids;
   }
 
   /// Case-insensitive lookup in the known tags.
@@ -100,6 +130,13 @@ class InsertCubit extends Cubit<InsertState> {
           throw EventsRequestFailure();
         }
         tagsId.add(await tagsRepository.createTag(name, idCategory));
+      }
+
+      // Under E2EE the backend can no longer derive the month/year date tags
+      // from the (encrypted) event, so the client builds them itself,
+      // mirroring the backend's English month names.
+      if (E2ee().enabled) {
+        tagsId.addAll(await _buildDateTags(categories, state.date));
       }
 
       // The repository notifies its change stream, which refreshes the

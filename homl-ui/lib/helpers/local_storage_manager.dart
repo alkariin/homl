@@ -6,7 +6,11 @@ enum LocalStorageKey {
   fingerprintStorage,
   pinKeypair,
   eventsCache,
-  categoriesCache
+  categoriesCache,
+
+  /// 16-byte E2EE seed (base64). Deliberately NOT removed on logout: it must
+  /// survive re-logins on the same device — losing it means losing the data.
+  e2eeMasterKey,
 }
 
 class LocalStorageManager {

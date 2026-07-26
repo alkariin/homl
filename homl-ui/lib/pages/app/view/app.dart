@@ -10,6 +10,7 @@ import 'package:homl/helpers/app_message.dart';
 import 'package:homl/helpers/language.dart';
 import 'package:homl/helpers/theme.dart';
 import 'package:homl/pages/app/bloc/app_cubit.dart';
+import 'package:homl/pages/e2ee/view/e2ee_restore_page.dart';
 import 'package:homl/pages/home/view/home.dart';
 import 'package:homl/pages/login/bloc/login_cubit.dart';
 import 'package:homl/pages/login/view/login.dart';
@@ -182,6 +183,12 @@ class _AppViewState extends State<AppView> {
                         onRetry: widget._apiInstance.retryBiometricAuth,
                         onUsePassword:
                             widget._apiInstance.cancelBiometricAuth)));
+                    break;
+                  case AuthenticationStatus.e2eeLocked:
+                    // E2EE account without a matching local key: block the
+                    // app on the restore-or-purge screen.
+                    unawaited(_navigator.pushAndRemoveUntil<void>(
+                        E2eeRestorePage.route(), (route) => false));
                     break;
                   case AuthenticationStatus.unknown:
                     break;

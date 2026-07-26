@@ -11,7 +11,7 @@ import (
 
 func (u *UsersRepository) FindSettingsByIdUser(ctx context.Context, idUser uint64) (*user.Settings, error) {
 	settings := user.Settings{}
-	err := u.DB.GetContext(ctx, &settings, "SELECT language, defaultScreen, isE2eeEnabled FROM Users WHERE id = ?;", idUser)
+	err := u.DB.GetContext(ctx, &settings, "SELECT language, defaultScreen, isE2eeEnabled, e2eeKeyCheck FROM Users WHERE id = ?;", idUser)
 	if err != nil {
 		return nil, err
 	}
