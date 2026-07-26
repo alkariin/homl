@@ -266,6 +266,15 @@ class AppLocalizationsFr extends AppLocalizations {
   String get e2ee_restoreUnknownWords => 'Mots absents du dictionnaire';
 
   @override
+  String e2ee_restoreWordCount(int count) {
+    return 'Vous avez saisi $count mots — une phrase de récupération en compte exactement 12.';
+  }
+
+  @override
+  String get e2ee_restoreChecksum =>
+      'Les 12 mots existent, mais la somme de contrôle échoue : deux mots sont probablement inversés, ou l\'un a été remplacé par un mot proche du dictionnaire.';
+
+  @override
   String get e2ee_purgeButton => 'Supprimer mes données chiffrées';
 
   @override

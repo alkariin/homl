@@ -562,6 +562,18 @@ abstract class AppLocalizations {
   /// **'Words not in the dictionary'**
   String get e2ee_restoreUnknownWords;
 
+  /// No description provided for @e2ee_restoreWordCount.
+  ///
+  /// In en, this message translates to:
+  /// **'You entered {count} words — a recovery phrase has exactly 12.'**
+  String e2ee_restoreWordCount(int count);
+
+  /// No description provided for @e2ee_restoreChecksum.
+  ///
+  /// In en, this message translates to:
+  /// **'All 12 words exist, but the phrase\'s checksum fails: two words are probably swapped, or one was replaced by a similar dictionary word.'**
+  String get e2ee_restoreChecksum;
+
   /// No description provided for @e2ee_purgeButton.
   ///
   /// In en, this message translates to:

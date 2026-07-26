@@ -93,6 +93,13 @@
   "e2ee_restoreInvalid": "Diese Phrase ist gültig, passt aber nicht zu diesem Konto. Sie stammt möglicherweise von einem anderen Konto oder einer abgebrochenen Aktivierung.",
   "e2ee_restoreMalformed": "Dies ist keine gültige Wiederherstellungsphrase: prüfe auf Tippfehler oder Autokorrektur (12 englische Wörter in Kleinbuchstaben).",
   "e2ee_restoreUnknownWords": "Wörter nicht im Wörterbuch",
+  "e2ee_restoreWordCount": "Du hast {count} Wörter eingegeben — eine Wiederherstellungsphrase hat genau 12.",
+  "@e2ee_restoreWordCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "e2ee_restoreChecksum": "Alle 12 Wörter existieren, aber die Prüfsumme der Phrase schlägt fehl: wahrscheinlich sind zwei Wörter vertauscht oder eines wurde durch ein ähnliches Wörterbuchwort ersetzt.",
   "e2ee_purgeButton": "Meine verschlüsselten Daten löschen",
   "e2ee_purgeConfirmTitle": "Alles löschen?",
   "e2ee_purgeConfirmText": "Dies löscht dauerhaft alle deine verschlüsselten Ereignisse, Tags und Kategorien und deaktiviert die Verschlüsselung. Dies kann nicht rückgängig gemacht werden.",

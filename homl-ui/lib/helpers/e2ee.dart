@@ -186,6 +186,14 @@ class E2ee {
           .where((w) => w.isNotEmpty && !bip39_words.WORDLIST.contains(w))
           .toList();
 
+  /// Number of words after normalization. A phrase whose words are all valid
+  /// but whose count is not 12 fails the checksum with no visible reason —
+  /// surface the count so a skipped word is obvious.
+  static int mnemonicWordCount(String mnemonic) {
+    final normalized = normalizeMnemonic(mnemonic);
+    return normalized.isEmpty ? 0 : normalized.split(' ').length;
+  }
+
   /// Restores the key from a typed recovery phrase, verified against the
   /// server-stored key check before anything is persisted. The two failure
   /// modes are reported separately so the user knows whether to fix a typo
