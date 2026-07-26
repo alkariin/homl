@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:homl/helpers/toast.dart';
 import 'package:homl/l10n/app_localizations.dart';
 
 /// Shows the freshly generated E2EE recovery phrase (12 BIP39 words).
@@ -55,11 +56,8 @@ class E2eeMnemonicDialog extends StatelessWidget {
                   onPressed: () async {
                     await Clipboard.setData(ClipboardData(text: mnemonic));
                     if (!context.mounted) return;
-                    ScaffoldMessenger.of(context)
-                      ..hideCurrentSnackBar()
-                      ..showSnackBar(SnackBar(
-                          content: Text(
-                              localization.account_e2eeMnemonicCopied)));
+                    showToast(
+                        context, localization.account_e2eeMnemonicCopied);
                   },
                 ),
               ),

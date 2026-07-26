@@ -9,6 +9,7 @@ import 'package:homl/data/repositories/settings.repository.dart';
 import 'package:homl/data/repositories/users.repository.dart';
 import 'package:homl/helpers/app_message.dart';
 import 'package:homl/helpers/colors.dart';
+import 'package:homl/helpers/toast.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
 import 'package:homl/pages/account/bloc/account_cubit.dart';
 import 'package:homl/pages/account/view/e2ee_mnemonic_dialog.dart';
@@ -127,13 +128,7 @@ class AccountView extends StatelessWidget {
           BlocListener<AccountCubit, AccountState>(
             listener: (context, state) {
               if (state.isFormSubmitted && state.responseError == null) {
-                ScaffoldMessenger.of(context)
-                  ..hideCurrentSnackBar()
-                  ..showSnackBar(
-                    SnackBar(
-                        content: Text(localization.account_passwordUpdated),
-                        duration: const Duration(seconds: 3)),
-                  );
+                showToast(context, localization.account_passwordUpdated);
               }
             },
           ),
@@ -141,35 +136,27 @@ class AccountView extends StatelessWidget {
             listener: (context, state) {
               final accountCubit = context.read<AccountCubit>();
               if (state.modal != null) {
-                ScaffoldMessenger.of(context)
-                  ..hideCurrentSnackBar()
-                  ..showSnackBar(SnackBar(
-                    content: Text(state.modal!.localize(localization)),
-                    action: SnackBarAction(
-                        label: localization.global_close, onPressed: () {}),
-                    duration: const Duration(seconds: 5),
-                  )).closed.then(
-                    (_) {
-                      accountCubit.endModal();
-                    },
-                  );
+                showToast(context, state.modal!.localize(localization),
+                        duration: const Duration(seconds: 5))
+                    .closed
+                    .then(
+                  (_) {
+                    accountCubit.endModal();
+                  },
+                );
               }
             },
           ),
           BlocListener<HomeCubit, HomeState>(listener: (context, state) {
             if (state.modal != null) {
-              ScaffoldMessenger.of(context)
-                ..hideCurrentSnackBar()
-                ..showSnackBar(SnackBar(
-                  content: Text(state.modal!.localize(localization)),
-                  action: SnackBarAction(
-                      label: localization.global_close, onPressed: () {}),
-                  duration: const Duration(seconds: 5),
-                )).closed.then(
-                  (_) {
-                    homeCubit.endModal();
-                  },
-                );
+              showToast(context, state.modal!.localize(localization),
+                      duration: const Duration(seconds: 5))
+                  .closed
+                  .then(
+                (_) {
+                  homeCubit.endModal();
+                },
+              );
             }
           })
         ],

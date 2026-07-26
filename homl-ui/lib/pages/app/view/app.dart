@@ -9,6 +9,7 @@ import 'package:homl/components/pin_dialog.dart';
 import 'package:homl/helpers/app_message.dart';
 import 'package:homl/helpers/language.dart';
 import 'package:homl/helpers/theme.dart';
+import 'package:homl/helpers/toast.dart';
 import 'package:homl/pages/app/bloc/app_cubit.dart';
 import 'package:homl/pages/e2ee/view/e2ee_restore_page.dart';
 import 'package:homl/pages/home/view/home.dart';
@@ -85,6 +86,10 @@ class _AppViewState extends State<AppView> {
   final _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
   NavigatorState get _navigator => _navigatorKey.currentState!;
 
+  /// The messenger sits above the navigator, so toasts have to be cleared by
+  /// hand when the user goes somewhere else.
+  late final _toastObserver = ToastRouteObserver(_scaffoldMessengerKey);
+
   /// Guards against stacking a second biometric dialog when a failed retry
   /// re-emits biometricCheck while the dialog is still shown.
   bool _biometricDialogShown = false;
@@ -119,6 +124,7 @@ class _AppViewState extends State<AppView> {
       return MaterialApp(
         navigatorKey: _navigatorKey,
         scaffoldMessengerKey: _scaffoldMessengerKey,
+        navigatorObservers: [_toastObserver],
         theme: homlTheme(),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
@@ -130,14 +136,12 @@ class _AppViewState extends State<AppView> {
                 if (state.errorModal != null) {
                   final localization = AppLocalizations.of(context)!;
                   final appCubit = context.read<AppCubit>();
-                  ScaffoldMessenger.of(context)
-                    ..hideCurrentSnackBar()
-                    ..showSnackBar(SnackBar(
-                      content: Text(state.errorModal!.localize(localization)),
-                      duration: const Duration(seconds: 5),
-                    )).closed.then((_) {
-                      appCubit.endErrorModal();
-                    });
+                  showToast(context, state.errorModal!.localize(localization),
+                          duration: const Duration(seconds: 5))
+                      .closed
+                      .then((_) {
+                    appCubit.endErrorModal();
+                  });
                 }
               },
             ),
@@ -168,13 +172,11 @@ class _AppViewState extends State<AppView> {
                   case AuthenticationStatus.pinLocked:
                     unawaited(_navigator.pushAndRemoveUntil<void>(
                         LoginPage.route(), (route) => false));
-                    _scaffoldMessengerKey.currentState
-                      ?..hideCurrentSnackBar()
-                      ..showSnackBar(SnackBar(
-                        content: Text(
-                            AppLocalizations.of(context)!.login_pinLocked),
-                        duration: const Duration(seconds: 5),
-                      ));
+                    // After the navigation: the route observer clears the
+                    // toasts on push, and this one is about the new screen.
+                    showToast(
+                        context, AppLocalizations.of(context)!.login_pinLocked,
+                        duration: const Duration(seconds: 5));
                     break;
                   case AuthenticationStatus.biometricCheck:
                     if (_biometricDialogShown) break;
