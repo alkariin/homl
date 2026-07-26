@@ -256,7 +256,11 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get e2ee_restoreInvalid =>
-      'Cette phrase de récupération ne correspond pas à ce compte.';
+      'Cette phrase est valide mais ne correspond pas à ce compte. Elle vient peut-être d\'un autre compte ou d\'une activation annulée.';
+
+  @override
+  String get e2ee_restoreMalformed =>
+      'Ce n\'est pas une phrase de récupération valide : vérifiez les fautes de frappe ou l\'autocorrection (12 mots anglais en minuscules).';
 
   @override
   String get e2ee_purgeButton => 'Supprimer mes données chiffrées';

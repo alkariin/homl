@@ -7,6 +7,19 @@ import 'package:homl/data/models/settings.dart';
 import 'package:homl/helpers/event_search.dart';
 import 'package:homl/helpers/local_storage_manager.dart';
 
+/// Outcome of a recovery-phrase restore attempt.
+enum E2eeRestoreResult {
+  ok,
+
+  /// Not a valid BIP39 phrase (typo, missing word, autocorrected word): the
+  /// checksum over the 12 words fails.
+  malformed,
+
+  /// A well-formed phrase that does not match this account's key check —
+  /// it belongs to another account or an older, discarded enable attempt.
+  mismatch,
+}
+
 /// Client side of the opt-in end-to-end encryption (homl-web/docs/e2ee.md).
 ///
 /// A 16-byte seed lives in the device secure storage (and nowhere else —
@@ -152,22 +165,28 @@ class E2ee {
   }
 
   /// Restores the key from a typed recovery phrase, verified against the
-  /// server-stored key check before anything is persisted.
-  Future<bool> restore(String mnemonic, String? expectedKeyCheck) async {
-    final normalized = mnemonic.trim().toLowerCase().split(RegExp(r'\s+')).join(' ');
-    if (!bip39.validateMnemonic(normalized)) return false;
+  /// server-stored key check before anything is persisted. The two failure
+  /// modes are reported separately so the user knows whether to fix a typo
+  /// (malformed) or fetch another phrase (mismatch).
+  Future<E2eeRestoreResult> restore(
+      String mnemonic, String? expectedKeyCheck) async {
+    final normalized =
+        mnemonic.trim().toLowerCase().split(RegExp(r'\s+')).join(' ');
+    if (!bip39.validateMnemonic(normalized)) {
+      return E2eeRestoreResult.malformed;
+    }
 
     final seed = _seedFromMnemonic(normalized);
     await _deriveKeys(seed);
     if (expectedKeyCheck != null && expectedKeyCheck != await keyCheck()) {
       lock();
-      return false;
+      return E2eeRestoreResult.mismatch;
     }
 
     await LocalStorageManager.setValue(
         LocalStorageKey.e2eeMasterKey, base64.encode(seed));
     _enabled = true;
-    return true;
+    return E2eeRestoreResult.ok;
   }
 
   /// Clears the in-memory keys (logout / lock). The stored seed is untouched:

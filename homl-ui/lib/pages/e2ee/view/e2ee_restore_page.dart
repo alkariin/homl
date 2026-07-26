@@ -28,7 +28,7 @@ class _E2eeRestorePageState extends State<E2eeRestorePage> {
   final _e2eeRepository = E2eeRepository();
 
   bool _busy = false;
-  bool _restoreFailed = false;
+  E2eeRestoreResult? _restoreFailure;
 
   @override
   void dispose() {
@@ -39,22 +39,34 @@ class _E2eeRestorePageState extends State<E2eeRestorePage> {
   Future<void> _restore() async {
     setState(() {
       _busy = true;
-      _restoreFailed = false;
+      _restoreFailure = null;
     });
 
     final keyCheck = context.read<SettingsRepository>().current?.e2eeKeyCheck;
-    final restored = await E2ee().restore(_phraseController.text, keyCheck);
+    final result = await E2ee().restore(_phraseController.text, keyCheck);
     if (!mounted) return;
 
-    if (!restored) {
+    if (result != E2eeRestoreResult.ok) {
       setState(() {
         _busy = false;
-        _restoreFailed = true;
+        _restoreFailure = result;
       });
       return;
     }
 
     await context.read<AuthenticationCubit>().recheckAuthenticated();
+  }
+
+  String? _restoreErrorText(AppLocalizations localization) {
+    switch (_restoreFailure) {
+      case E2eeRestoreResult.malformed:
+        return localization.e2ee_restoreMalformed;
+      case E2eeRestoreResult.mismatch:
+        return localization.e2ee_restoreInvalid;
+      case E2eeRestoreResult.ok:
+      case null:
+        return null;
+    }
   }
 
   Future<void> _confirmPurge() async {
@@ -133,8 +145,8 @@ class _E2eeRestorePageState extends State<E2eeRestorePage> {
                 decoration: InputDecoration(
                   border: const OutlineInputBorder(),
                   labelText: localization.e2ee_restoreHint,
-                  errorText:
-                      _restoreFailed ? localization.e2ee_restoreInvalid : null,
+                  errorText: _restoreErrorText(localization),
+                  errorMaxLines: 3,
                 ),
               ),
               const SizedBox(height: 12),

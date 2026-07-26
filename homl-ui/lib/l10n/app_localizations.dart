@@ -547,8 +547,14 @@ abstract class AppLocalizations {
   /// No description provided for @e2ee_restoreInvalid.
   ///
   /// In en, this message translates to:
-  /// **'This recovery phrase does not match this account.'**
+  /// **'This phrase is valid but does not match this account. It may come from another account or an older, cancelled activation.'**
   String get e2ee_restoreInvalid;
+
+  /// No description provided for @e2ee_restoreMalformed.
+  ///
+  /// In en, this message translates to:
+  /// **'This is not a valid recovery phrase: check for typos or autocorrected words (12 lowercase English words).'**
+  String get e2ee_restoreMalformed;
 
   /// No description provided for @e2ee_purgeButton.
   ///
