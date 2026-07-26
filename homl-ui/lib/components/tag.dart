@@ -20,6 +20,40 @@ class Tag extends StatelessWidget {
   final bool isDate;
   final bool large;
 
+  static const double _fontSize = 13.5;
+  static const double _largeFontSize = 15;
+  static const double _verticalPadding = 5;
+  static const double _largeVerticalPadding = 7;
+
+  /// Width of the hairline border, which a Container adds around its padding.
+  static const double _borderWidth = 1;
+
+  static TextStyle _labelStyle(Color color, {required bool large}) => TextStyle(
+        fontSize: large ? _largeFontSize : _fontSize,
+        fontWeight: FontWeight.w500,
+        color: color,
+      );
+
+  /// Laid-out height of a chip, under the ambient font and text scale. The
+  /// event card needs it to fit whole tag rows in the room it can spare.
+  static double heightOf(BuildContext context, {bool large = false}) {
+    final painter = TextPainter(
+      text: TextSpan(
+        // Ascender + descender: the tallest line the label can produce.
+        text: 'Hg',
+        style: DefaultTextStyle.of(context)
+            .style
+            .merge(_labelStyle(Colors.black, large: large)),
+      ),
+      textDirection: TextDirection.ltr,
+      textScaler: MediaQuery.textScalerOf(context),
+    )..layout();
+
+    return painter.height +
+        2 * (large ? _largeVerticalPadding : _verticalPadding) +
+        2 * _borderWidth;
+  }
+
   const Tag(
       {required this.id,
       required this.text,
@@ -44,14 +78,17 @@ class Tag extends StatelessWidget {
         onLongPress: onDeleteTag == null ? null : () => onDeleteTag!(id),
         child: Container(
           padding: large
-              ? const EdgeInsets.symmetric(horizontal: 14, vertical: 7)
-              : const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              ? const EdgeInsets.symmetric(
+                  horizontal: 14, vertical: _largeVerticalPadding)
+              : const EdgeInsets.symmetric(
+                  horizontal: 12, vertical: _verticalPadding),
           decoration: BoxDecoration(
             color: base.withValues(alpha: 0.35),
             // Hairline in a darkened shade of the category color: very light
             // pastels would otherwise melt into light backgrounds.
             border: Border.all(
-                color: palette.darken(base, .3).withValues(alpha: 0.4)),
+                color: palette.darken(base, .3).withValues(alpha: 0.4),
+                width: _borderWidth),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Row(
@@ -62,12 +99,15 @@ class Tag extends StatelessWidget {
                     size: large ? 13 : 12, color: label),
                 const SizedBox(width: 5),
               ],
-              Text(
-                text,
-                style: TextStyle(
-                  fontSize: large ? 15 : 13.5,
-                  fontWeight: FontWeight.w500,
-                  color: label,
+              // A label longer than the room the chip is given (a narrow grid
+              // card) is truncated instead of overflowing its container.
+              Flexible(
+                child: Text(
+                  text,
+                  maxLines: 1,
+                  softWrap: false,
+                  overflow: TextOverflow.ellipsis,
+                  style: _labelStyle(label, large: large),
                 ),
               ),
             ],

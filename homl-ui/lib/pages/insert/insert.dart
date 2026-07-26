@@ -13,6 +13,7 @@ import 'package:homl/data/models/event.dart';
 import 'package:homl/data/repositories/events.repository.dart';
 import 'package:homl/data/repositories/tags.repository.dart';
 import 'package:homl/helpers/app_message.dart';
+import 'package:homl/helpers/categories.dart';
 import 'package:homl/helpers/toast.dart';
 import 'package:homl/pages/categories/view/category_management.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
@@ -57,18 +58,6 @@ class EditEventPage extends StatelessWidget {
         builder: (_) => EditEventPage(homeCubit: homeCubit, event: event));
   }
 
-  /// Categories whose tags are backend-managed date tags (month/year).
-  /// Legacy backends do not send the kind: fall back to the convention that
-  /// the first category is Dates (same rule as the categories page).
-  Set<int> _dateCategoryIds(List<Category> categories) {
-    final ids = categories
-        .where((category) => category.kind == CategoryKind.date)
-        .map((category) => category.id)
-        .toSet();
-    if (ids.isNotEmpty || categories.isEmpty) return ids;
-    return {categories.first.id};
-  }
-
   @override
   Widget build(BuildContext context) {
     var localization = AppLocalizations.of(context)!;
@@ -80,7 +69,7 @@ class EditEventPage extends StatelessWidget {
             create: (_) => InsertCubit(
                 homeCubit.eventsRepository, homeCubit.tagsRepository,
                 editing: event,
-                dateCategoryIds: _dateCategoryIds(homeCubit.state.categories))),
+                dateCategoryIds: dateCategoryIds(homeCubit.state.categories))),
       ],
       child: Scaffold(
         appBar: AppBar(

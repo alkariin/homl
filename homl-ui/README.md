@@ -199,6 +199,29 @@ controller is disposed with the route: disposing it from `showDialog`'s
 future crashes, the future completes on pop while the dialog is still
 animating out.
 
+## Search tab: the event cards
+
+The events are laid out in a grid of `EventCard`s
+(`lib/components/event_card.dart`). A cell is small, so the card decides what
+fits:
+
+- the date is the card header, so the month/year date tags are **not** chipped
+  — they would only repeat it. The card gets an `isDateTag` predicate from
+  `ListPage`, which resolves each tag's category through
+  `HomeState.allTagsMap` (the categories fetch, more reliable than the
+  category carried by a cached event) and compares it to
+  `dateCategoryIds(...)` (`lib/helpers/categories.dart`, shared with the edit
+  page);
+- a tag longer than the card is truncated with an ellipsis (`Tag` makes its
+  label flexible), so a single very long tag still reads;
+- with a description, the tags get every whole row that fits once the
+  separator and one line of description are set aside: a second row pushes
+  the description down instead of dropping tags, but the description is never
+  hidden — at worst it ends up flush with the bottom of the card. Rows are
+  clipped whole (`Tag.heightOf` gives the row height), so tags that do not
+  fit are simply not shown rather than half-drawn;
+- without a description the tags fill the card.
+
 ## Search tab: event detail, edit & delete
 
 Tapping an event card opens a bottom sheet
