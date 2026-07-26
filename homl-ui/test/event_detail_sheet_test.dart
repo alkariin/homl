@@ -168,4 +168,36 @@ void main() {
     expect(find.text('Football'), findsOneWidget);
     expect(find.text('MonthTag'), findsNothing);
   });
+
+  testWidgets('erasing the description saves it and pops back to the list',
+      (tester) async {
+    when(() => eventsRepository.updateEvent(
+        id: any(named: 'id'),
+        description: any(named: 'description'),
+        date: any(named: 'date'),
+        tagsId: any(named: 'tagsId'))).thenAnswer((_) async {});
+
+    await openSheet(tester);
+    await tester.tap(faIcon(FontAwesomeIcons.pen));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+        find.widgetWithText(TextFormField, description), '');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    verify(() => eventsRepository.updateEvent(
+        id: 1,
+        description: '',
+        date: any(named: 'date'),
+        tagsId: any(named: 'tagsId'))).called(1);
+
+    // Exactly one route is popped: losing the focus made the emptied field
+    // notify its text again, which used to run the success branch twice and
+    // pop the list route too, leaving a black screen.
+    expect(find.byType(EditEventPage), findsNothing);
+    expect(find.byType(ListPage), findsOneWidget);
+    expect(find.text('Event updated'), findsOneWidget);
+  });
 }
