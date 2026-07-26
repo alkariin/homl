@@ -56,15 +56,20 @@ func inject(cfg *config.Config, d *db.DataSources) *gin.Engine {
 	e2eeService := application.NewE2EEService(&application.E2EEConfig{
 		E2EERepository: e2eeRepository,
 	})
-	// In DEV or without SMTP configured, reset codes are logged instead of emailed.
-	var mailer application.Mailer = &mail.SMTPMailer{
-		Host:     cfg.SmtpHost,
-		Port:     cfg.SmtpPort,
-		From:     cfg.SmtpFrom,
-		Password: cfg.SmtpPassword,
-	}
-	if cfg.IsDev() || cfg.SmtpHost == "" {
-		mailer = &mail.LogMailer{}
+	// Without SMTP configured, reset codes are logged instead of emailed — the
+	// usual DEV setup. A configured host wins even in DEV, so the real SMTP
+	// path and its localized templates can be exercised against a local
+	// catcher (see docs/auth-flows.md) instead of first running in production.
+	var mailer application.Mailer = &mail.LogMailer{}
+	if cfg.SmtpHost != "" {
+		// Sending is detached from the request on purpose: see mail.AsyncMailer.
+		mailer = mail.NewAsyncMailer(&mail.SMTPMailer{
+			Host:     cfg.SmtpHost,
+			Port:     cfg.SmtpPort,
+			From:     cfg.SmtpFrom,
+			User:     cfg.SmtpUser,
+			Password: cfg.SmtpPassword,
+		})
 	}
 
 	usersService := application.NewUsersService(&application.UserConfig{

@@ -3,6 +3,25 @@ services:
     build:
       dockerfile: Dockerfile.local
       # No proxy args needed — vendor/ is committed; build runs fully offline.
+    # Route reset emails to the catcher below. This is what makes the SMTPMailer
+    # path — and the localized templates — reachable in DEV; without SMTP_HOST
+    # the code is only written to the log. No password: anonymous submission.
+    environment:
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      SMTP_FROM: no_reply@homl.local
+      SMTP_PASSWORD: ""
+    depends_on:
+      - mailpit
+
+  # Catches outgoing email instead of delivering it. Web UI on
+  # http://localhost:8025, where the reset email lands within a second.
+  mailpit:
+    image: "axllent/mailpit:latest"
+    container_name: mailpit_container
+    ports:
+      - "8025:8025"
+      - "1025:1025"
 
   # Uncomment and adjust when Docker Hub is unreachable (use a registry mirror or local cache).
   # redis:
