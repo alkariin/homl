@@ -263,6 +263,9 @@ class AppLocalizationsFr extends AppLocalizations {
       'Ce n\'est pas une phrase de récupération valide : vérifiez les fautes de frappe ou l\'autocorrection (12 mots anglais en minuscules).';
 
   @override
+  String get e2ee_restoreUnknownWords => 'Mots absents du dictionnaire';
+
+  @override
   String get e2ee_purgeButton => 'Supprimer mes données chiffrées';
 
   @override

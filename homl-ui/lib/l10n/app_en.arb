@@ -92,6 +92,7 @@
   "e2ee_restoreButton": "Unlock",
   "e2ee_restoreInvalid": "This phrase is valid but does not match this account. It may come from another account or an older, cancelled activation.",
   "e2ee_restoreMalformed": "This is not a valid recovery phrase: check for typos or autocorrected words (12 lowercase English words).",
+  "e2ee_restoreUnknownWords": "Words not in the dictionary",
   "e2ee_purgeButton": "Delete my encrypted data",
   "e2ee_purgeConfirmTitle": "Delete everything?",
   "e2ee_purgeConfirmText": "This permanently deletes all your encrypted events, tags and categories and turns encryption off. This cannot be undone.",
