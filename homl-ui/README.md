@@ -112,17 +112,28 @@ It registers a throwaway account and saves/restores the developer's local
 session and E2EE key around the run, so it is safe on a daily dev phone.
 `flutter test` never runs it (integration tests only run explicitly).
 
+## Release builds: keep `--no-tree-shake-icons`
+
+`flutter build web/apk` (release) tree-shakes icon fonts and silently drops
+some Font Awesome glyphs that *are* referenced as constants (seen 2026-07-26:
+`tag` and `ellipsisVertical` rendered as tofu boxes while `calendar`,
+`xmark` and the nav icons survived). Until that is understood, build releases
+with `--no-tree-shake-icons`.
+
 ## Categories tab: tag & category management
 
 `lib/pages/categories/view/category_management.dart` gives full CRUD on
 categories, tags and synonyms (rules per category kind in
 `homl-web/docs/default-categories.md`; only the Dates tags are read-only —
 the Others tags are manageable so free tags typed on the insert page can be
-sorted into real categories). `CategoryManagementBody` has two modes: the
-management view of the Categories tab (tap or long-press a tag → its actions
-menu), and a read-only picker (`showTagPickerSheet`, opened from the "#" logo
-of the tag inputs) where tapping a tag hands it to the caller. Destructive
-actions confirm with the counts served by `GET /tags/:id/usage` /
+sorted into real categories). Each category is an expandable card: a colored
+icon, the name and a tag count in the header, the tag chips and a "New tag"
+pill in the body; category edit/delete live in the header's "⋮" menu (hidden
+for locked categories and in picker mode). `CategoryManagementBody` has two
+modes: the management view of the Categories tab (tap or long-press a tag →
+its actions menu), and a read-only picker (`showTagPickerSheet`, opened from
+the "#" logo of the tag inputs) where tapping a tag hands it to the caller.
+Destructive actions confirm with the counts served by `GET /tags/:id/usage` /
 `GET /categories/:id/usage`:
 
 - a main tag can be renamed, given synonyms, **moved to another category**
@@ -144,6 +155,10 @@ The "#" logo next to the tag inputs is a button:
   tag belongs to, creates it there and chips it on the event (instead of
   letting it fall into Others on submit); with an existing tag typed it does
   nothing.
+
+Submitting a new event slides back to the Search tab (`InsertPage.onCreated`,
+wired to the home PageView) — the created event is the natural next focus.
+Edits pop back to the list instead.
 
 The dialogs owning a `TextEditingController` are `StatefulWidget`s so the
 controller is disposed with the route: disposing it from `showDialog`'s
@@ -191,7 +206,10 @@ category, which keep the default styling (`lib/components/tag_input.dart`,
 `highlightColor` on `TagChipData`). The logo is an SVG
 (`assets/images/logo.svg`) rendered with `flutter_svg`: a `ColorMapper`
 repaints only its gold strokes (drawn in the palette's `yellow`), the black
-ones stay black.
+ones stay black. In the tag inputs the logo button defaults to an all-ink
+hash (the gold strokes are tinted `ink` when no suggestion highlights them),
+matching the app's monochrome controls — buttons, focus borders and the
+selected nav item are ink, the gold stays in the logo and small accents.
 
 `EventsRepository.getEvents()` and `CategoriesRepository.getCategories()`
 cache each successful payload in `flutter_secure_storage` (encrypted at
@@ -206,7 +224,8 @@ read-only for now.
 
 ## End-to-end encryption (opt-in)
 
-An account can be end-to-end encrypted from the Account page: tag names,
+An account can be end-to-end encrypted from the Security page (drawer):
+tag names,
 category names and event descriptions are encrypted on the device with a key
 only the user holds, so the server stores ciphertext it cannot read. Design
 and wire format: [homl-web/docs/e2ee.md](../homl-web/docs/e2ee.md).

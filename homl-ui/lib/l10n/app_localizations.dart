@@ -109,7 +109,7 @@ abstract class AppLocalizations {
   /// No description provided for @account.
   ///
   /// In en, this message translates to:
-  /// **'Account'**
+  /// **'Security'**
   String get account;
 
   /// No description provided for @account_logout.
@@ -741,6 +741,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Color'**
   String get categories_color;
+
+  /// No description provided for @categories_tagCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No tags} =1{1 tag} other{{count} tags}}'**
+  String categories_tagCount(int count);
 
   /// No description provided for @categories_newTag.
   ///

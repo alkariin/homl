@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 
 /// Design palette of the app.
 const Color yellow = Color(0xFFD3A934);
+
+/// [yellow] as the backend "#RRGGBB" convention (e.g. the fixed color of the
+/// Dates category).
+const String yellowHex = "#D3A934";
 const Color blue = Color(0xFF14B7EB);
 const Color background = Color(0xFFFBFBFB);
 const Color borderGrey = Color(0xFFB7B7B7);

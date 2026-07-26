@@ -12,7 +12,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get global_unexpectedError => 'Erreur inattendue';
 
   @override
-  String get account => 'Compte';
+  String get account => 'Sécurité';
 
   @override
   String get account_logout => 'Se déconnecter';
@@ -364,6 +364,18 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get categories_color => 'Couleur';
+
+  @override
+  String categories_tagCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tags',
+      one: '1 tag',
+      zero: 'Aucun tag',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get categories_newTag => 'Nouveau tag';

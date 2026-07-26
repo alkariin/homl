@@ -70,7 +70,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Fondue'), findsOneWidget);
-    expect(logoTint(tester), isNull);
+    // Default styling: the logo falls back to its ink tint and the border
+    // to the theme.
+    expect(logoTint(tester), ink);
     expect(enabledBorderColor(tester), isNull);
   });
 
@@ -79,11 +81,11 @@ void main() {
     await tester.pumpWidget(wrap());
     await tester.enterText(find.byType(TextField), 'foot');
     await tester.pumpAndSettle();
-    expect(logoTint(tester), isNotNull);
+    expect(logoTint(tester), isNot(ink));
 
     await tester.enterText(find.byType(TextField), '');
     await tester.pumpAndSettle();
-    expect(logoTint(tester), isNull);
+    expect(logoTint(tester), ink);
     expect(enabledBorderColor(tester), isNull);
   });
 
@@ -95,6 +97,6 @@ void main() {
     // The chip in the Wrap still shows "Football": only the suggestion list
     // must not offer it again.
     expect(find.widgetWithText(ListTile, 'Football'), findsNothing);
-    expect(logoTint(tester), isNull);
+    expect(logoTint(tester), ink);
   });
 }
