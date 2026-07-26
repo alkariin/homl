@@ -12,7 +12,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get global_unexpectedError => 'Erreur inattendue';
 
   @override
-  String get account => 'Compte';
+  String get account => 'Sécurité';
 
   @override
   String get account_logout => 'Se déconnecter';

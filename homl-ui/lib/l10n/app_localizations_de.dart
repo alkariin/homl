@@ -12,7 +12,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get global_unexpectedError => 'Unerwarteter Fehler';
 
   @override
-  String get account => 'Konto';
+  String get account => 'Sicherheit';
 
   @override
   String get account_logout => 'Abmelden';

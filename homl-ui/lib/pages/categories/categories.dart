@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:homl/l10n/app_localizations.dart';
 
-import 'package:homl/components/bubbles_background.dart';
 import 'package:homl/pages/categories/view/category_management.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
 
@@ -28,9 +27,9 @@ class CategoriesPage extends StatelessWidget {
           onSubmit: (name, color) => homeCubit.createCategory(name, color),
         ),
       ),
-      body: const BubblesBackground(
-        child: CategoryManagementBody(),
-      ),
+      // The decorative background is shared by the tabs (parallax in the
+      // home page), so the body is transparent.
+      body: const CategoryManagementBody(),
     );
   }
 }

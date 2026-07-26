@@ -4,9 +4,11 @@ import 'package:homl/l10n/app_localizations.dart';
 import 'package:homl/components/pin_dialog.dart';
 import 'package:homl/data/repositories/api.dart';
 
+import 'package:homl/components/settings_group.dart';
 import 'package:homl/data/repositories/settings.repository.dart';
 import 'package:homl/data/repositories/users.repository.dart';
 import 'package:homl/helpers/app_message.dart';
+import 'package:homl/helpers/colors.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
 import 'package:homl/pages/account/bloc/account_cubit.dart';
 import 'package:homl/pages/account/view/e2ee_mnemonic_dialog.dart';
@@ -173,7 +175,7 @@ class AccountView extends StatelessWidget {
         ],
         child: Scaffold(
             appBar: AppBar(
-              title: const Text("Homl"),
+              title: Text(localization.account),
               leading: IconButton(
                 icon: const Icon(Icons.arrow_back),
                 onPressed: () {
@@ -183,66 +185,85 @@ class AccountView extends StatelessWidget {
             ),
             body: BlocBuilder<AccountCubit, AccountState>(
                 builder: (context, state) {
-              return Column(
+              return ListView(
+                padding: const EdgeInsets.all(16),
                 children: [
-                  ElevatedButton(
-                    child: Text(localization.account_updatePassword),
-                    onPressed: () {
-                      context
-                          .read<AccountCubit>()
-                          .resetPasswordDialogState();
-                      Navigator.push(context, PasswordDialog.route(context));
-                    },
-                  ),
-                  SwitchListTile(
-                    title: Text(localization.account_fingerprintSwitchText),
-                    value: state.user?.isFingerprintEnabled ?? false,
-                    onChanged: (bool value) {
-                      context
-                          .read<AccountCubit>()
-                          .updateIsFingerprintEnabled(value);
-                    },
-                    secondary: const Icon(Icons.lightbulb_outline),
-                  ),
-                  SwitchListTile(
-                    title: Text(localization.account_pinSwitchText),
-                    value: state.user?.isPinEnabled ?? false,
-                    onChanged: (bool value) {
-                      if (value) {
-                        context.read<AccountCubit>().resetPinViewState();
-                        Navigator.push(
-                            context, PinDialog.route(context, onPinChanged));
-                      } else {
-                        context.read<AccountCubit>().submitPin(null);
-                      }
-                    },
-                    secondary: const Icon(Icons.lightbulb_outline),
-                  ),
-                  SwitchListTile(
-                    title: Text(localization.account_e2eeSwitchText),
-                    value: state.isE2eeEnabled,
-                    onChanged: state.e2eeBusy
-                        ? null
-                        : (bool value) {
-                            if (value) {
-                              enableE2ee(context);
-                            } else {
-                              disableE2ee(context);
-                            }
-                          },
-                    secondary: const Icon(Icons.lock_outline),
-                  ),
-                  if (state.e2eeBusy)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: LinearProgressIndicator(),
+                  // Authentication: password and the local unlock factors.
+                  SettingsGroup(children: [
+                    ListTile(
+                      leading: const Icon(Icons.key_outlined),
+                      title: Text(localization.account_updatePassword),
+                      trailing: Icon(Icons.chevron_right,
+                          size: 20, color: ink.withValues(alpha: 0.3)),
+                      onTap: () {
+                        context
+                            .read<AccountCubit>()
+                            .resetPasswordDialogState();
+                        Navigator.push(context, PasswordDialog.route(context));
+                      },
                     ),
-                  ElevatedButton(
-                    child: Text(localization.account_logout),
-                    onPressed: () async {
-                      await context.read<UsersRepository>().logout();
-                    },
-                  ),
+                    SwitchListTile(
+                      title: Text(localization.account_fingerprintSwitchText),
+                      value: state.user?.isFingerprintEnabled ?? false,
+                      onChanged: (bool value) {
+                        context
+                            .read<AccountCubit>()
+                            .updateIsFingerprintEnabled(value);
+                      },
+                      secondary: const Icon(Icons.fingerprint),
+                    ),
+                    SwitchListTile(
+                      title: Text(localization.account_pinSwitchText),
+                      value: state.user?.isPinEnabled ?? false,
+                      onChanged: (bool value) {
+                        if (value) {
+                          context.read<AccountCubit>().resetPinViewState();
+                          Navigator.push(
+                              context, PinDialog.route(context, onPinChanged));
+                        } else {
+                          context.read<AccountCubit>().submitPin(null);
+                        }
+                      },
+                      secondary: const Icon(Icons.pin_outlined),
+                    ),
+                  ]),
+                  // Encryption.
+                  SettingsGroup(children: [
+                    SwitchListTile(
+                      title: Text(localization.account_e2eeSwitchText),
+                      value: state.isE2eeEnabled,
+                      onChanged: state.e2eeBusy
+                          ? null
+                          : (bool value) {
+                              if (value) {
+                                enableE2ee(context);
+                              } else {
+                                disableE2ee(context);
+                              }
+                            },
+                      secondary: const Icon(Icons.lock_outline),
+                    ),
+                    if (state.e2eeBusy)
+                      const Padding(
+                        padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
+                        child: LinearProgressIndicator(),
+                      ),
+                  ]),
+                  // Destructive, so styled apart from the toggles above.
+                  SettingsGroup(children: [
+                    ListTile(
+                      leading: Icon(Icons.logout, color: Colors.red.shade400),
+                      title: Text(
+                        localization.account_logout,
+                        style: TextStyle(
+                            color: Colors.red.shade400,
+                            fontWeight: FontWeight.w600),
+                      ),
+                      onTap: () async {
+                        await context.read<UsersRepository>().logout();
+                      },
+                    ),
+                  ]),
                 ],
               );
             })));

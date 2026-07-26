@@ -14,6 +14,7 @@ import 'package:homl/data/repositories/events.repository.dart';
 import 'package:homl/data/repositories/settings.repository.dart';
 import 'package:homl/data/repositories/tags.repository.dart';
 import 'package:homl/helpers/app_message.dart';
+import 'package:homl/helpers/colors.dart';
 
 part 'home_state.dart';
 
@@ -48,6 +49,23 @@ class HomeCubit extends Cubit<HomeState> {
     init();
   }
 
+  /// The Dates category always wears the logo gold, whatever the backend
+  /// stored: its color is not editable and brands the date tags across the
+  /// app. Purely cosmetic, so legacy backends without [Category.kind] keep
+  /// their stored color rather than risk gilding the wrong category.
+  List<Category> _withFixedDateColor(List<Category> categories) => [
+        for (final category in categories)
+          category.kind == CategoryKind.date
+              ? Category(
+                  id: category.id,
+                  category: category.category,
+                  color: yellowHex,
+                  isLocked: category.isLocked,
+                  kind: category.kind,
+                  tags: category.tags)
+              : category,
+      ];
+
   Map<String, TagView> _buildTagsMap(List<Category> categories) {
     Map<String, TagView> tagMap = {};
 
@@ -65,7 +83,8 @@ class HomeCubit extends Cubit<HomeState> {
 
   /// Re-fetches the categories (and the tags map) after any tag/category CRUD.
   Future<void> _refreshCategories() async {
-    final categories = await categoriesRepository.getCategories();
+    final categories =
+        _withFixedDateColor(await categoriesRepository.getCategories());
     emit(state.copyWith(
         categories: categories, allTagsMap: _buildTagsMap(categories)));
   }
@@ -78,17 +97,19 @@ class HomeCubit extends Cubit<HomeState> {
       final cachedCategories = await categoriesRepository.getCachedCategories();
 
       if (cachedEvents != null && cachedCategories != null) {
+        final categories = _withFixedDateColor(cachedCategories);
         emit(state.copyWith(
             events: cachedEvents,
-            categories: cachedCategories,
-            allTagsMap: _buildTagsMap(cachedCategories),
+            categories: categories,
+            allTagsMap: _buildTagsMap(categories),
             initialized: true));
       }
     }
 
     try {
       final events = await eventsRepository.getEvents();
-      final categories = await categoriesRepository.getCategories();
+      final categories =
+          _withFixedDateColor(await categoriesRepository.getCategories());
 
       emit(state.copyWith(
           events: events,

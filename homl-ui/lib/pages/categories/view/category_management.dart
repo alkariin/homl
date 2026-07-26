@@ -204,8 +204,8 @@ class _CategoryTileState extends State<_CategoryTile> {
                                     size: 14, color: Colors.red.shade400),
                                 const SizedBox(width: 12),
                                 Text(localization.global_delete,
-                                    style: TextStyle(
-                                        color: Colors.red.shade400)),
+                                    style:
+                                        TextStyle(color: Colors.red.shade400)),
                               ],
                             ),
                           ),
@@ -258,8 +258,7 @@ class _CategoryTileState extends State<_CategoryTile> {
                                   onTap: () => _textDialog(
                                     context,
                                     title: localization.categories_newTag,
-                                    label:
-                                        localization.categories_categoryName,
+                                    label: localization.categories_categoryName,
                                     onSubmit: (name) =>
                                         homeCubit.createTag(name, category.id),
                                   ),
@@ -343,8 +342,8 @@ class _TagRow extends StatelessWidget {
           context,
           title: localization.categories_addSynonym,
           label: localization.categories_synonymName,
-          onSubmit: (name) => homeCubit.createTag(name, category.id,
-              idParentTag: mainTag.id),
+          onSubmit: (name) =>
+              homeCubit.createTag(name, category.id, idParentTag: mainTag.id),
         );
         break;
       case 'move':
@@ -404,9 +403,8 @@ class _TagRow extends StatelessWidget {
                 : !canManage
                     ? null
                     : () => _mainTagDialog(context),
-            onDeleteTag: isPicker || !canManage
-                ? null
-                : (_) => _mainTagDialog(context),
+            onDeleteTag:
+                isPicker || !canManage ? null : (_) => _mainTagDialog(context),
           ),
           ...synonyms.map((synonym) => components.Tag(
                 id: synonym.id,
@@ -603,8 +601,7 @@ Future<void> _deleteTagDialog(
                     RadioListTile<bool>(
                       value: false,
                       dense: true,
-                      title:
-                          Text(localization.categories_deleteTagKeepEvents),
+                      title: Text(localization.categories_deleteTagKeepEvents),
                     ),
                     RadioListTile<bool>(
                       value: true,
@@ -850,47 +847,50 @@ class _CategoryDialogState extends State<_CategoryDialog> {
 
     return AlertDialog(
       title: Text(widget.title),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: _controller,
-            autofocus: true,
-            decoration:
-                InputDecoration(labelText: localization.categories_categoryName),
-          ),
-          const SizedBox(height: 20),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: categoryColors.map((color) {
-              final swatch = colorFromHex(color);
-              final selected = _selectedColor == color;
-              return GestureDetector(
-                onTap: () => setState(() => _selectedColor = color),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: swatch,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: selected
-                          ? darken(swatch, .35)
-                          : Colors.transparent,
-                      width: 2,
+      // Scrollable: the swatch grid rounds up to a fraction of a pixel more
+      // than the dialog offers on some densities ("bottom overflowed").
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _controller,
+              autofocus: true,
+              decoration: InputDecoration(
+                  labelText: localization.categories_categoryName),
+            ),
+            const SizedBox(height: 20),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: categoryColors.map((color) {
+                final swatch = colorFromHex(color);
+                final selected = _selectedColor == color;
+                return GestureDetector(
+                  onTap: () => setState(() => _selectedColor = color),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: swatch,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color:
+                            selected ? darken(swatch, .35) : Colors.transparent,
+                        width: 2,
+                      ),
                     ),
+                    child: selected
+                        ? Icon(Icons.check,
+                            size: 18, color: darken(swatch, .35))
+                        : null,
                   ),
-                  child: selected
-                      ? Icon(Icons.check,
-                          size: 18, color: darken(swatch, .35))
-                      : null,
-                ),
-              );
-            }).toList(),
-          ),
-        ],
+                );
+              }).toList(),
+            ),
+          ],
+        ),
       ),
       actions: [
         TextButton(

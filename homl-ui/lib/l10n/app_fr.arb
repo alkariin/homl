@@ -1,7 +1,7 @@
 {
   "global_unexpectedError": "Erreur inattendue",
 
-  "account": "Compte",
+  "account": "Sécurité",
   "account_logout": "Se déconnecter",
   "account_updatePassword": "Mettre à jour le mot de passe",
   "account_currentPassword": "Mot de passe actuel",
