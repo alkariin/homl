@@ -237,6 +237,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get account_e2eeMnemonicSaved => 'I saved it';
 
   @override
+  String account_e2eeMnemonicCount(int count) {
+    return '$count words';
+  }
+
+  @override
+  String get account_e2eeMnemonicCopy => 'Copy';
+
+  @override
+  String get account_e2eeMnemonicCopied => 'Recovery phrase copied';
+
+  @override
   String get e2ee_lockedTitle => 'Encrypted data';
 
   @override

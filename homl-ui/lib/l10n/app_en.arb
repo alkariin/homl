@@ -86,6 +86,14 @@
   "account_e2eeMnemonicHint": "Write these 12 words down and keep them somewhere safe. They are the only way to recover your data on another device or after reinstalling. We cannot recover them for you.",
   "account_e2eeMnemonicSkip": "Skip (risky)",
   "account_e2eeMnemonicSaved": "I saved it",
+  "account_e2eeMnemonicCount": "{count} words",
+  "@account_e2eeMnemonicCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "account_e2eeMnemonicCopy": "Copy",
+  "account_e2eeMnemonicCopied": "Recovery phrase copied",
   "e2ee_lockedTitle": "Encrypted data",
   "e2ee_lockedExplanation": "This account is end-to-end encrypted, but this device has no key. Enter your recovery phrase to unlock your data, or delete it to start over.",
   "e2ee_restoreHint": "Recovery phrase (12 words)",

@@ -242,6 +242,17 @@ class AppLocalizationsFr extends AppLocalizations {
   String get account_e2eeMnemonicSaved => 'C\'est noté';
 
   @override
+  String account_e2eeMnemonicCount(int count) {
+    return '$count mots';
+  }
+
+  @override
+  String get account_e2eeMnemonicCopy => 'Copier';
+
+  @override
+  String get account_e2eeMnemonicCopied => 'Phrase de récupération copiée';
+
+  @override
   String get e2ee_lockedTitle => 'Données chiffrées';
 
   @override

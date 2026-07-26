@@ -243,6 +243,17 @@ class AppLocalizationsDe extends AppLocalizations {
   String get account_e2eeMnemonicSaved => 'Gespeichert';
 
   @override
+  String account_e2eeMnemonicCount(int count) {
+    return '$count Wörter';
+  }
+
+  @override
+  String get account_e2eeMnemonicCopy => 'Kopieren';
+
+  @override
+  String get account_e2eeMnemonicCopied => 'Wiederherstellungsphrase kopiert';
+
+  @override
   String get e2ee_lockedTitle => 'Verschlüsselte Daten';
 
   @override

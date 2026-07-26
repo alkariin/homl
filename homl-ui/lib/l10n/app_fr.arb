@@ -86,6 +86,14 @@
   "account_e2eeMnemonicHint": "Notez ces 12 mots et conservez-les en lieu sûr. C'est le seul moyen de récupérer vos données sur un autre appareil ou après une réinstallation. Nous ne pouvons pas les récupérer à votre place.",
   "account_e2eeMnemonicSkip": "Ignorer (risqué)",
   "account_e2eeMnemonicSaved": "C'est noté",
+  "account_e2eeMnemonicCount": "{count} mots",
+  "@account_e2eeMnemonicCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "account_e2eeMnemonicCopy": "Copier",
+  "account_e2eeMnemonicCopied": "Phrase de récupération copiée",
   "e2ee_lockedTitle": "Données chiffrées",
   "e2ee_lockedExplanation": "Ce compte est chiffré de bout en bout, mais cet appareil n'a pas de clé. Saisissez votre phrase de récupération pour déverrouiller vos données, ou supprimez-les pour repartir de zéro.",
   "e2ee_restoreHint": "Phrase de récupération (12 mots)",

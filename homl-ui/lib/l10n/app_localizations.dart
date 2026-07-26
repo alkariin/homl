@@ -520,6 +520,24 @@ abstract class AppLocalizations {
   /// **'I saved it'**
   String get account_e2eeMnemonicSaved;
 
+  /// No description provided for @account_e2eeMnemonicCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} words'**
+  String account_e2eeMnemonicCount(int count);
+
+  /// No description provided for @account_e2eeMnemonicCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get account_e2eeMnemonicCopy;
+
+  /// No description provided for @account_e2eeMnemonicCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Recovery phrase copied'**
+  String get account_e2eeMnemonicCopied;
+
   /// No description provided for @e2ee_lockedTitle.
   ///
   /// In en, this message translates to:
