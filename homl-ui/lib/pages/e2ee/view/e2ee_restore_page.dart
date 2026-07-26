@@ -5,6 +5,7 @@ import 'package:homl/data/repositories/e2ee.repository.dart';
 import 'package:homl/data/repositories/settings.repository.dart';
 import 'package:homl/data/repositories/users.repository.dart';
 import 'package:homl/helpers/e2ee.dart';
+import 'package:homl/helpers/toast.dart';
 import 'package:homl/l10n/app_localizations.dart';
 import 'package:homl/services/authentication/bloc/authentication_cubit.dart';
 
@@ -117,12 +118,8 @@ class _E2eeRestorePageState extends State<E2eeRestorePage> {
       if (!mounted) return;
       setState(() => _busy = false);
       final localization = AppLocalizations.of(context)!;
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(
-          content: Text(localization.global_unexpectedError),
-          duration: const Duration(seconds: 5),
-        ));
+      showToast(context, localization.global_unexpectedError,
+          duration: const Duration(seconds: 5));
     }
   }
 

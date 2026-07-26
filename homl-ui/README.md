@@ -120,6 +120,40 @@ some Font Awesome glyphs that *are* referenced as constants (seen 2026-07-26:
 `xmark` and the nav icons survived). Until that is understood, build releases
 with `--no-tree-shake-icons`.
 
+## Toasts (user-facing messages)
+
+Every message goes through `showToast` (`lib/helpers/toast.dart`), never
+through `ScaffoldMessenger.showSnackBar` directly. On top of the theme's
+floating white snackbar it owns three behaviours:
+
+- **tap to dismiss**: the whole surface reacts to a tap (hence
+  `padding: EdgeInsets.zero` on the SnackBar and the padding inside the
+  gesture detector), so the timeout is a fallback, not the only way out;
+- **replace, never queue**: each call clears the queue first. Queued toasts
+  play one after another, so a listener firing repeatedly (a failed login,
+  then every keystroke of the corrected password) left a trail of toasts
+  still running long after the screen that produced them;
+- **durations**: 3s for confirmations, 5s for errors, `isError: true` for the
+  red ones (auth failures only — everything else stays white).
+
+Toasts are cleared when the user goes elsewhere, because the messenger lives
+on the `MaterialApp`, above the navigator, and a toast otherwise outlives its
+screen:
+
+- `ToastRouteObserver` (wired in `MaterialApp.navigatorObservers`) clears on
+  every push/pop/replace. Observers are notified synchronously during the
+  navigation call, so the navigate-then-confirm flows still work: resolve the
+  messenger first, navigate, then `showToastWith` (see the edit flow in
+  `lib/pages/insert/insert.dart`);
+- the home page clears on tab change, except for the moves it triggers itself
+  (`_ownPageChange`) — the "event created" confirmation has to ride along to
+  the Search tab.
+
+The blocs that keep a message in their state (`isLoginIncorrect`, a `modal`
+code) expose it until the next submit, so their listener needs a `listenWhen`
+guard on the *transition* into the message; without it every unrelated
+emission (a keystroke) re-shows the toast.
+
 ## Categories tab: tag & category management
 
 `lib/pages/categories/view/category_management.dart` gives full CRUD on

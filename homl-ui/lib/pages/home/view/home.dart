@@ -11,6 +11,7 @@ import 'package:homl/data/repositories/settings.repository.dart';
 import 'package:homl/data/repositories/tags.repository.dart';
 import 'package:homl/helpers/app_message.dart';
 import 'package:homl/helpers/colors.dart';
+import 'package:homl/helpers/toast.dart';
 import 'package:homl/pages/settings/view/settings.dart';
 import 'package:homl/pages/categories/categories.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
@@ -91,6 +92,12 @@ class _HomeViewState extends State<HomeView>
   /// defaultScreen setting must not override an explicit navigation.
   bool _userNavigated = false;
 
+  /// Set while we drive the PageView ourselves (a created event sends the user
+  /// back to the list, the defaultScreen setting arrives late): the resulting
+  /// page change is not a user navigation and must not wipe the toast we just
+  /// showed.
+  bool _ownPageChange = false;
+
   @override
   void initState() {
     super.initState();
@@ -111,6 +118,7 @@ class _HomeViewState extends State<HomeView>
         _currentIndex = widget.defaultView ? 2 : 1;
       });
       if (_pageController.hasClients) {
+        _ownPageChange = true;
         _pageController.jumpToPage(_currentIndex);
       }
     }
@@ -208,16 +216,12 @@ class _HomeViewState extends State<HomeView>
       listener: (context, state) {
         final homeCubit = context.read<HomeCubit>();
         if (state.modal != null) {
-          ScaffoldMessenger.of(context)
-            ..hideCurrentSnackBar()
-            ..showSnackBar(SnackBar(
-              content: Text(state.modal!.localize(localization)),
-              action: SnackBarAction(
-                  label: localization.global_close, onPressed: () {}),
-              duration: const Duration(seconds: 5),
-            )).closed.then((_) {
-              homeCubit.endModal();
-            });
+          showToast(context, state.modal!.localize(localization),
+                  duration: const Duration(seconds: 5))
+              .closed
+              .then((_) {
+            homeCubit.endModal();
+          });
         }
       },
       child: Scaffold(
@@ -252,14 +256,25 @@ class _HomeViewState extends State<HomeView>
                 const ListPage(),
                 // A created event brings the user back to the list.
                 InsertPage(
-                  onCreated: () => _pageController.animateToPage(1,
-                      duration: const Duration(milliseconds: 400),
-                      curve: Curves.ease),
+                  onCreated: () {
+                    _ownPageChange = true;
+                    _pageController.animateToPage(1,
+                        duration: const Duration(milliseconds: 400),
+                        curve: Curves.ease);
+                  },
                 ),
               ],
               onPageChanged: (index) {
+                // A change we did not trigger ourselves is a user swipe: the
+                // toast of the tab he is leaving does not belong to the new
+                // one. Our own moves keep it (the "event created"
+                // confirmation rides along to the list).
+                if (_ownPageChange) {
+                  _ownPageChange = false;
+                } else {
+                  dismissToasts(context);
+                }
                 setState(() {
-                  // A change we did not trigger ourselves is a user swipe.
                   if (index != _currentIndex) _userNavigated = true;
                   _currentIndex = index;
                 });
@@ -282,9 +297,11 @@ class _HomeViewState extends State<HomeView>
             unselectedItemColor: ink.withValues(alpha: 0.3),
             iconSize: 22,
             onTap: (index) {
+              dismissToasts(context);
               setState(() {
                 _userNavigated = true;
                 _currentIndex = index;
+                _ownPageChange = true;
                 _pageController.animateToPage(index,
                     duration: const Duration(milliseconds: 500),
                     curve: Curves.ease);
