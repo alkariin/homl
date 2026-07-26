@@ -41,6 +41,7 @@ type Config struct {
 	SmtpHost     string
 	SmtpPort     string
 	SmtpFrom     string
+	SmtpUser     string // auth identity; defaults to SmtpFrom when empty
 	SmtpPassword string
 }
 
@@ -73,6 +74,7 @@ func Load() (*Config, error) {
 		SmtpHost:       os.Getenv("SMTP_HOST"),
 		SmtpPort:       os.Getenv("SMTP_PORT"),
 		SmtpFrom:       os.Getenv("SMTP_FROM"),
+		SmtpUser:       os.Getenv("SMTP_USER"),
 		SmtpPassword:   os.Getenv("SMTP_PASSWORD"),
 	}
 

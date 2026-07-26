@@ -45,10 +45,13 @@ the handlers next to it.
 | POST | `/logout` | ✔ | — |
 | POST | `/refresh` | refresh token | 30/min |
 | PUT | `/password` | ✔ | — |
-| POST | `/resetPassword` | — | 5/hour |
-| POST | `/confirmResetPassword` | reset token | 5/hour |
+| POST | `/resetPassword` | — | 5/hour ¹ |
+| POST | `/confirmResetPassword` | — | 5/hour ¹ |
 | POST | `/challenge` | refresh token | 30/min |
 | PUT | `/secureAuth` | ✔ | — |
+
+¹ Both reset endpoints share a single per-IP budget, so a full reset round trip
+spends two of the five hourly requests.
 
 ### POST /registration
 
@@ -103,20 +106,29 @@ signature or locked pin.
 { "username": "a@b.c" }
 ```
 
-→ `204` always (anti-enumeration). If the account exists, a single-use reset
-link (15 min TTL) is emailed.
+→ `204` always (anti-enumeration), `422` if `username` is not an email. If the
+account exists, a single-use 6-digit code (15 min TTL) is emailed in the user's
+stored language. A second request for the same account within 1 minute is
+silently dropped (per-user cooldown), still returning `204`. The email is sent
+outside the request, so neither the status nor the latency reveals whether the
+address is known — see `docs/auth-flows.md`.
 
 ### POST /confirmResetPassword
 
-The reset token from the emailed link goes in the `Authorization: Bearer`
-header; the body carries only the new password.
+Unauthenticated: the code emailed above is carried in the body, alongside the
+username it was issued for.
 
 ```json
-{ "password": "newSecret123" }
+{ "username": "a@b.c", "code": "123456", "password": "newSecret123" }
 ```
 
-→ `200` fresh token pair — `401` if the token is unknown, expired or already
-used.
+→ `200` fresh token pair — `422` if `code` is not 6 digits or the password
+fails validation, `401` `RESET_CODE_INVALID` for an unknown username, a wrong,
+expired or already-consumed code. All of those share one error so the endpoint
+cannot enumerate accounts. Five wrong guesses destroy the code and a new one
+must be requested.
+
+Changing the password invalidates every existing session for that user.
 
 ### POST /challenge
 
