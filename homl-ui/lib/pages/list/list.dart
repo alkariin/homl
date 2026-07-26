@@ -5,6 +5,7 @@ import 'package:homl/l10n/app_localizations.dart';
 import 'package:homl/components/event_card.dart';
 import 'package:homl/components/tag_input.dart';
 import 'package:homl/data/models/category.dart';
+import 'package:homl/helpers/categories.dart';
 import 'package:homl/pages/categories/view/category_management.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
 import 'package:homl/pages/list/bloc/list_cubit.dart';
@@ -30,6 +31,8 @@ class ListPage extends StatelessWidget {
           .where((category) => category.kind == CategoryKind.other)
           .map((category) => category.id)
           .toSet();
+
+      final dateIds = dateCategoryIds(homeState.categories);
 
       return BlocBuilder<ListCubit, ListState>(builder: (context, listState) {
         // The decorative background is shared by the tabs (parallax in the
@@ -89,6 +92,17 @@ class ListPage extends StatelessWidget {
                             event: event,
                             tagColorResolver: (tagName) =>
                                 homeState.allTagsMap[tagName]?.color,
+                            // The tags map comes from the categories fetch:
+                            // prefer it over the category carried by the
+                            // event payload, which a cached event may have
+                            // taken before a tag was moved.
+                            isDateTag: (tag) {
+                              final idCategory =
+                                  homeState.allTagsMap[tag.tag]?.idCategory ??
+                                      tag.idCategory;
+                              return idCategory != null &&
+                                  dateIds.contains(idCategory);
+                            },
                             onTap: () =>
                                 showEventDetailSheet(context, event: event),
                           );
