@@ -101,7 +101,9 @@ classDiagram
   protected by a hard lockout (`PinTryCounter`).
 - `Settings` is a value object with no identity of its own — one row per
   user, persisted as columns of the `Users` table (`language`,
-  `defaultScreen`).
+  `defaultScreen`, plus the read-only `isE2eeEnabled` flag flipped by the
+  E2EE migration; `e2eeKeyCheck` verifies a recovery phrase — see
+  [e2ee.md](e2ee.md)).
 - `TokenDetails`, `AccessDetails` and `RefreshDetails` are auth value objects;
   token state lives in Redis, the rest of the aggregate in MySQL.
 - Registration creates the user **and** its default categories in one
@@ -123,6 +125,17 @@ classDiagram
   except the date one (see [tag-synonyms.md](tag-synonyms.md)). A "person"
   is not a dedicated aggregate: it is an ordinary tag (plus synonyms for its
   alternative names) in whatever category the user likes.
+- `TagIndex` is the client-side blind index of E2EE users (NULL otherwise):
+  uniqueness and tag search use it when the `tag` column holds opaque client
+  blobs. See [e2ee.md](e2ee.md).
+
+### E2EE (`domain/e2ee`)
+
+- Cross-cutting feature package, not an aggregate: the `e2ee:v1:` payload
+  format and its shape validators, the per-request mode flag carried in the
+  context (set once per request by the web middleware, branched on by the
+  application and persistence layers), the migration DTOs and the migration
+  persistence port. See [e2ee.md](e2ee.md).
 
 ### Event (`domain/event`)
 
@@ -148,6 +161,7 @@ crossing the port.
 | `user.Repository` | Registration (user + default categories, transactional), lookup, password/pin/fingerprint updates, Redis auth tokens, single-use password-reset tokens, settings read/write |
 | `category.Repository` | Category CRUD (delete moves the tags to Others or removes them with their exclusive events), tag CRUD (synonyms included, moving a main tag takes its synonyms along), tag lookup by name, usage counts (`TagUsage`, `CategoryUsage`) |
 | `event.Repository` | Event CRUD with tags, per-user listing |
+| `e2ee.Repository` | E2EE flag lookup, atomic whole-dataset enable/disable migration, lost-key purge (reseeds the default categories) |
 
 ## DTOs
 

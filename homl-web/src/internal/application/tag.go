@@ -5,6 +5,7 @@ import (
 
 	"github.com/alkariin/homl/homl-web/internal/apperror"
 	"github.com/alkariin/homl/homl-web/internal/domain/category"
+	"github.com/alkariin/homl/homl-web/internal/domain/e2ee"
 	"github.com/alkariin/homl/homl-web/internal/domain/masterdata"
 )
 
@@ -34,13 +35,32 @@ func NewTagsService(c *TSConfig) TagsService {
 }
 
 // validateTag runs the checks shared by CreateTag and UpdateTag and returns
-// the tag name ready to be encrypted.
+// the tag name ready to be stored (title-cased plaintext to encrypt, or the
+// client blob as-is for E2EE users).
 func (t *tagsService) validateTag(ctx context.Context, idUser uint64, tag *category.Tag) (string, error) {
-	// The target category must belong to the user and must not be the date
-	// category: its month/year tags are managed by the backend only.
+	// The target category must belong to the user. For non-E2EE users it must
+	// not be the date category either: its month/year tags are managed by the
+	// backend only. E2EE clients manage their own date tags (the backend
+	// cannot derive them from an encrypted description/date pipeline), so the
+	// restriction does not apply to them.
 	targetCategory, err := t.CategoriesRepository.FindByIdForUser(ctx, tag.IdCategory, idUser)
 	if err != nil {
 		return "", apperror.NewBadRequest("The given idCategory is not valid")
+	}
+
+	if e2ee.Enabled(ctx) {
+		// Blacklist and normalization are enforced client-side before
+		// encryption; the server can only check the shape.
+		if !e2ee.IsBlob(tag.Tag) {
+			return "", apperror.NewBadRequest("The given tag is not a valid encrypted payload")
+		}
+		if tag.TagIndex == nil || !e2ee.IsIndex(*tag.TagIndex) {
+			return "", apperror.NewBadRequest("The given tagIndex is not valid")
+		}
+		if err := t.validateParent(ctx, idUser, tag); err != nil {
+			return "", err
+		}
+		return tag.Tag, nil
 	}
 
 	if targetCategory.Kind == category.KindDate {
@@ -99,12 +119,27 @@ func (t *tagsService) CreateTag(ctx context.Context, idUser uint64, tag *categor
 		return 0, err
 	}
 
-	encTag, err := t.Crypto.Encrypt(uTag, idUser)
+	encTag, tagIndex, err := t.storedTagValue(ctx, idUser, uTag, tag)
 	if err != nil {
 		return 0, err
 	}
 
-	return t.CategoriesRepository.CreateTag(ctx, encTag, tag.IdCategory, tag.IdParentTag)
+	return t.CategoriesRepository.CreateTag(ctx, encTag, tagIndex, tag.IdCategory, tag.IdParentTag)
+}
+
+// storedTagValue returns the tag column value and blind index to persist: the
+// client blob and its index for E2EE users, the at-rest ciphertext and no
+// index otherwise (a stray tagIndex from a non-E2EE client is dropped).
+func (t *tagsService) storedTagValue(ctx context.Context, idUser uint64, uTag string, tag *category.Tag) (string, *string, error) {
+	if e2ee.Enabled(ctx) {
+		return uTag, tag.TagIndex, nil
+	}
+
+	encTag, err := t.Crypto.Encrypt(uTag, idUser)
+	if err != nil {
+		return "", nil, err
+	}
+	return encTag, nil, nil
 }
 
 // UpdateTag implements TagsService.
@@ -137,12 +172,12 @@ func (t *tagsService) UpdateTag(ctx context.Context, idUser uint64, tag *categor
 		return err
 	}
 
-	encTag, err := t.Crypto.Encrypt(uTag, idUser)
+	encTag, tagIndex, err := t.storedTagValue(ctx, idUser, uTag, tag)
 	if err != nil {
 		return err
 	}
 
-	return t.CategoriesRepository.UpdateTag(ctx, encTag, tag.IdCategory, tag.Id, tag.IdParentTag)
+	return t.CategoriesRepository.UpdateTag(ctx, encTag, tagIndex, tag.IdCategory, tag.Id, tag.IdParentTag)
 }
 
 // DeleteTag implements TagsService. deleteEvents only matters for main tags:
@@ -174,8 +209,13 @@ func (t *tagsService) GetTagUsage(ctx context.Context, idTag uint, idUser uint64
 }
 
 // rejectDateCategoryTag forbids the operation when the tag's current category
-// is the user's date category, whose tags only the backend may touch.
+// is the user's date category, whose tags only the backend may touch. E2EE
+// users manage their own date tags, so nothing is rejected for them.
 func (t *tagsService) rejectDateCategoryTag(ctx context.Context, idUser uint64, idCategory uint) error {
+	if e2ee.Enabled(ctx) {
+		return nil
+	}
+
 	storedCategory, err := t.CategoriesRepository.FindByIdForUser(ctx, idCategory, idUser)
 	if err != nil {
 		return err

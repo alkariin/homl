@@ -59,13 +59,13 @@ func TestTagDeleteLifecycle(t *testing.T) {
 	catPerson, err := r.cats.FindIdByKind(ctx, alice, category.KindPerson)
 	require.NoError(t, err)
 
-	alpha, err := r.cats.CreateTag(ctx, r.enc(t, "Alpha", alice), catA, nil)
+	alpha, err := r.cats.CreateTag(ctx, r.enc(t, "Alpha", alice), nil, catA, nil)
 	require.NoError(t, err)
-	beta, err := r.cats.CreateTag(ctx, r.enc(t, "Beta", alice), catA, &alpha)
+	beta, err := r.cats.CreateTag(ctx, r.enc(t, "Beta", alice), nil, catA, &alpha)
 	require.NoError(t, err)
-	gamma, err := r.cats.CreateTag(ctx, r.enc(t, "Gamma", alice), catPerson, nil)
+	gamma, err := r.cats.CreateTag(ctx, r.enc(t, "Gamma", alice), nil, catPerson, nil)
 	require.NoError(t, err)
-	dateTag, err := r.cats.CreateTag(ctx, r.enc(t, "2026", alice), catDate, nil)
+	dateTag, err := r.cats.CreateTag(ctx, r.enc(t, "2026", alice), nil, catDate, nil)
 	require.NoError(t, err)
 
 	// e1 only carries the group (plus a date tag): exclusive.
@@ -104,7 +104,7 @@ func TestTagDeleteLifecycle(t *testing.T) {
 	})
 
 	t.Run("deleting a main tag without deleteEvents preserves the events", func(t *testing.T) {
-		delta, err := r.cats.CreateTag(ctx, r.enc(t, "Delta", alice), catA, nil)
+		delta, err := r.cats.CreateTag(ctx, r.enc(t, "Delta", alice), nil, catA, nil)
 		require.NoError(t, err)
 		e3 := newEvent(t, r, alice, []uint{delta, dateTag})
 
@@ -127,12 +127,12 @@ func TestMainTagMoveTakesSynonymsAlong(t *testing.T) {
 	catA := newCustomCategory(t, r, alice, r.enc(t, "Old", alice))
 	catB := newCustomCategory(t, r, alice, r.enc(t, "New", alice))
 
-	main, err := r.cats.CreateTag(ctx, r.enc(t, "Main", alice), catA, nil)
+	main, err := r.cats.CreateTag(ctx, r.enc(t, "Main", alice), nil, catA, nil)
 	require.NoError(t, err)
-	syn, err := r.cats.CreateTag(ctx, r.enc(t, "Syn", alice), catA, &main)
+	syn, err := r.cats.CreateTag(ctx, r.enc(t, "Syn", alice), nil, catA, &main)
 	require.NoError(t, err)
 
-	require.NoError(t, r.cats.UpdateTag(ctx, r.enc(t, "Main", alice), catB, main, nil))
+	require.NoError(t, r.cats.UpdateTag(ctx, r.enc(t, "Main", alice), nil, catB, main, nil))
 
 	moved, err := r.cats.FindTagForUser(ctx, syn, alice)
 	require.NoError(t, err)
@@ -156,16 +156,16 @@ func TestCategoryDeleteLifecycle(t *testing.T) {
 	catOther, err := r.cats.FindIdByKind(ctx, alice, category.KindOther)
 	require.NoError(t, err)
 
-	gamma, err := r.cats.CreateTag(ctx, r.enc(t, "Gamma", alice), catPerson, nil)
+	gamma, err := r.cats.CreateTag(ctx, r.enc(t, "Gamma", alice), nil, catPerson, nil)
 	require.NoError(t, err)
-	dateTag, err := r.cats.CreateTag(ctx, r.enc(t, "2026", alice), catDate, nil)
+	dateTag, err := r.cats.CreateTag(ctx, r.enc(t, "2026", alice), nil, catDate, nil)
 	require.NoError(t, err)
 
 	t.Run("moveTags relocates the tags to the Other category", func(t *testing.T) {
 		catB := newCustomCategory(t, r, alice, r.enc(t, "Doomed", alice))
-		zeta, err := r.cats.CreateTag(ctx, r.enc(t, "Zeta", alice), catB, nil)
+		zeta, err := r.cats.CreateTag(ctx, r.enc(t, "Zeta", alice), nil, catB, nil)
 		require.NoError(t, err)
-		zetaSyn, err := r.cats.CreateTag(ctx, r.enc(t, "ZetaSyn", alice), catB, &zeta)
+		zetaSyn, err := r.cats.CreateTag(ctx, r.enc(t, "ZetaSyn", alice), nil, catB, &zeta)
 		require.NoError(t, err)
 
 		require.NoError(t, r.cats.Delete(ctx, catB, alice, true, false))
@@ -182,7 +182,7 @@ func TestCategoryDeleteLifecycle(t *testing.T) {
 
 	t.Run("deleteEvents removes the events exclusive to the category", func(t *testing.T) {
 		catB := newCustomCategory(t, r, alice, r.enc(t, "Doomed2", alice))
-		zeta, err := r.cats.CreateTag(ctx, r.enc(t, "Zeta2", alice), catB, nil)
+		zeta, err := r.cats.CreateTag(ctx, r.enc(t, "Zeta2", alice), nil, catB, nil)
 		require.NoError(t, err)
 
 		e1 := newEvent(t, r, alice, []uint{zeta, dateTag})
@@ -196,7 +196,7 @@ func TestCategoryDeleteLifecycle(t *testing.T) {
 
 	t.Run("without deleteEvents the events are preserved", func(t *testing.T) {
 		catB := newCustomCategory(t, r, alice, r.enc(t, "Doomed3", alice))
-		zeta, err := r.cats.CreateTag(ctx, r.enc(t, "Zeta3", alice), catB, nil)
+		zeta, err := r.cats.CreateTag(ctx, r.enc(t, "Zeta3", alice), nil, catB, nil)
 		require.NoError(t, err)
 
 		e1 := newEvent(t, r, alice, []uint{zeta, dateTag})

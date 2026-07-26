@@ -99,7 +99,7 @@ func TestCrossTenantEventIsolation(t *testing.T) {
 	// their EventsTags rows, so a tag-less event would be invisible).
 	aliceOther, err := r.cats.FindIdByKind(ctx, alice, category.KindOther)
 	require.NoError(t, err)
-	aliceTag, err := r.cats.CreateTag(ctx, r.enc(t, "Trip", alice), aliceOther, nil)
+	aliceTag, err := r.cats.CreateTag(ctx, r.enc(t, "Trip", alice), nil, aliceOther, nil)
 	require.NoError(t, err)
 	require.NoError(t, r.events.CreateEventWithTags(ctx, nil, []uint{aliceTag}, &event.Event{Description: r.enc(t, "secret", alice), Date: time.Now()}, alice))
 	aliceEvents, _, err := r.events.FindEventsWithTags(ctx, nil, alice)
@@ -162,7 +162,7 @@ func TestCrossTenantCategoryIsolation(t *testing.T) {
 
 	t.Run("mallory's tagsId cannot reference alice's tags", func(t *testing.T) {
 		// Create a tag in alice's "other" category.
-		aliceTag, err := r.cats.CreateTag(ctx, "enc-tag", aliceOther, nil)
+		aliceTag, err := r.cats.CreateTag(ctx, "enc-tag", nil, aliceOther, nil)
 		require.NoError(t, err)
 
 		err = r.cats.CheckTagsBelongToUser(ctx, []uint{aliceTag}, mallory)
@@ -182,7 +182,7 @@ func TestCrossTenantTagIsolation(t *testing.T) {
 
 	alicePersonCat, err := r.cats.FindIdByKind(ctx, alice, category.KindPerson)
 	require.NoError(t, err)
-	aliceTag, err := r.cats.CreateTag(ctx, r.enc(t, "JaneDoe", alice), alicePersonCat, nil)
+	aliceTag, err := r.cats.CreateTag(ctx, r.enc(t, "JaneDoe", alice), nil, alicePersonCat, nil)
 	require.NoError(t, err)
 
 	t.Run("mallory cannot delete alice's tag", func(t *testing.T) {

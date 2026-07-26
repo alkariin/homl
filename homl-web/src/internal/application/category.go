@@ -6,6 +6,7 @@ import (
 
 	"github.com/alkariin/homl/homl-web/internal/apperror"
 	"github.com/alkariin/homl/homl-web/internal/domain/category"
+	"github.com/alkariin/homl/homl-web/internal/domain/e2ee"
 )
 
 // CategoriesService is the use-case port of the Category aggregate.
@@ -40,6 +41,8 @@ func (c *categoriesService) GetCategories(ctx context.Context, idUser uint64) ([
 		return nil, err
 	}
 
+	isE2ee := e2ee.Enabled(ctx)
+
 	keys := make([]int, 0)
 	for k, _ := range categories {
 		keys = append(keys, int(k))
@@ -48,9 +51,14 @@ func (c *categoriesService) GetCategories(ctx context.Context, idUser uint64) ([
 	var responses = make([]category.GetCategoryResponse, 0)
 	for _, k := range keys {
 		cat := categories[uint(k)]
-		decCategory, err := c.Crypto.Decrypt(cat.Category, idUser)
-		if err != nil {
-			return nil, err
+		// E2EE names are opaque blobs returned verbatim; only the client can
+		// decrypt them.
+		decCategory := cat.Category
+		if !isE2ee {
+			decCategory, err = c.Crypto.Decrypt(cat.Category, idUser)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		// A category without tags must serialize as [], not null: a missing
@@ -74,8 +82,7 @@ func (c *categoriesService) GetCategories(ctx context.Context, idUser uint64) ([
 }
 
 func (c *categoriesService) CreateCategory(ctx context.Context, newCategory *category.Category) error {
-	uCategory := titleCase(newCategory.Category)
-	encCategory, err := c.Crypto.Encrypt(uCategory, newCategory.IdUser)
+	encCategory, err := c.storedCategoryValue(ctx, newCategory, true)
 	if err != nil {
 		return err
 	}
@@ -109,7 +116,7 @@ func (c *categoriesService) UpdateCategory(ctx context.Context, newCategory *cat
 		return apperror.NewStatusForbidden()
 	}
 
-	encCategory, err := c.Crypto.Encrypt(newCategory.Category, newCategory.IdUser)
+	encCategory, err := c.storedCategoryValue(ctx, newCategory, false)
 	if err != nil {
 		return err
 	}
@@ -127,6 +134,24 @@ func (c *categoriesService) UpdateCategory(ctx context.Context, newCategory *cat
 	}
 
 	return nil
+}
+
+// storedCategoryValue returns the category name to persist: the validated
+// client blob for E2EE users, the (optionally normalized) at-rest ciphertext
+// otherwise. Historically only CreateCategory title-cases the name.
+func (c *categoriesService) storedCategoryValue(ctx context.Context, newCategory *category.Category, normalize bool) (string, error) {
+	if e2ee.Enabled(ctx) {
+		if !e2ee.IsBlob(newCategory.Category) {
+			return "", apperror.NewBadRequest("The given category is not a valid encrypted payload")
+		}
+		return newCategory.Category, nil
+	}
+
+	uCategory := newCategory.Category
+	if normalize {
+		uCategory = titleCase(uCategory)
+	}
+	return c.Crypto.Encrypt(uCategory, newCategory.IdUser)
 }
 
 // DeleteCategory removes a category: moveTags relocates its tags to the Other

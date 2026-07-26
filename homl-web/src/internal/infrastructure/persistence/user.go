@@ -107,23 +107,30 @@ func (u *UsersRepository) Registration(ctx context.Context, user *user.User, lan
 	}
 	user.ID = uint64(insertedID)
 
-	// Create default categories, each carrying its explicit kind (date,
-	// person, other) so the services never have to rely on id arithmetic.
-	categories := masterdata.DefaultCategories()
+	if err := seedDefaultCategories(ctx, tx, u.Crypto, user.ID); err != nil {
+		return err
+	}
 
-	for i := 0; i < len(categories); i++ {
-		encCategory, err := u.Crypto.Encrypt(categories[i].Name, user.ID)
+	return tx.Commit()
+}
+
+// seedDefaultCategories inserts the default categories of a user, each
+// carrying its explicit kind (date, person, other) so the services never have
+// to rely on id arithmetic. Shared by Registration and the E2EE purge, which
+// leaves the account in the same state as a fresh one.
+func seedDefaultCategories(ctx context.Context, tx *sqlx.Tx, crypto application.Encryptor, idUser uint64) error {
+	for _, c := range masterdata.DefaultCategories() {
+		encCategory, err := crypto.Encrypt(c.Name, idUser)
 		if err != nil {
 			return err
 		}
 
-		_, err = tx.ExecContext(ctx, "INSERT INTO Categories (category, color, isLocked, kind, idUser) VALUES (?, ?, ?, ?, ?)", encCategory, categories[i].Color, categories[i].Locked, categories[i].Kind, user.ID)
+		_, err = tx.ExecContext(ctx, "INSERT INTO Categories (category, color, isLocked, kind, idUser) VALUES (?, ?, ?, ?, ?)", encCategory, c.Color, c.Locked, c.Kind, idUser)
 		if err != nil {
 			return err
 		}
 	}
-
-	return tx.Commit()
+	return nil
 }
 
 func (r *UsersRepository) FindById(ctx context.Context, idUser uint64) (*user.User, error) {

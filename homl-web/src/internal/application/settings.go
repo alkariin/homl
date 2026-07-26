@@ -43,6 +43,7 @@ func (s *settingsService) GetSettings(ctx context.Context, idUser uint64) (*user
 	response := &user.SettingsResponse{
 		Language:      res.Language,
 		DefaultScreen: res.DefaultScreen,
+		IsE2eeEnabled: res.IsE2eeEnabled,
 	}
 
 	return response, nil
@@ -57,6 +58,8 @@ func (s *settingsService) GetSettings(ctx context.Context, idUser uint64) (*user
  *   pin?: string,
  *   pkey?: string
  * }
+ *
+ * isE2eeEnabled is read-only here: only POST /e2ee/migrate flips it.
  */
 func (s *settingsService) UpdateSettings(ctx context.Context, idUser uint64, newSettings *user.Settings) (*user.SettingsResponse, error) {
 	err := s.UsersRepository.UpdateSettings(ctx, newSettings, idUser)
@@ -73,6 +76,7 @@ func (s *settingsService) UpdateSettings(ctx context.Context, idUser uint64, new
 	response := &user.SettingsResponse{
 		Language:      res.Language,
 		DefaultScreen: res.DefaultScreen,
+		IsE2eeEnabled: res.IsE2eeEnabled,
 	}
 
 	return response, nil

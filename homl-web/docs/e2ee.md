@@ -1,6 +1,6 @@
 # End-to-End Encryption (E2EE) — Specification
 
-Status: **draft — approved design, not yet implemented**
+Status: **backend implemented (phase 1) — Flutter client pending**
 
 Opt-in feature: the client encrypts tag names, category names and event
 descriptions on-device with a key that never leaves the device (except through
