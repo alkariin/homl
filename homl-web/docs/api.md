@@ -141,6 +141,10 @@ flow). The refresh token is carried in the request body.
 
 → `200` `"<challenge>"` (base64url string).
 
+The body is a **bare JSON string**, quotes included. Clients must JSON-decode
+it before signing: the server verifies the signature against the decoded
+value, so signing the raw body fails every refresh with `401`.
+
 ### PUT /secureAuth
 
 Enables/disables the pin or fingerprint factor. Pin and fingerprint are
