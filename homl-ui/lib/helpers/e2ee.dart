@@ -8,6 +8,7 @@ import 'package:bip39/src/wordlists/english.dart' as bip39_words;
 import 'package:cryptography/cryptography.dart';
 
 import 'package:homl/data/models/settings.dart';
+import 'package:homl/helpers/date_tags.dart';
 import 'package:homl/helpers/event_search.dart';
 import 'package:homl/helpers/local_storage_manager.dart';
 
@@ -52,25 +53,6 @@ class E2ee {
 
   static const _nonceLength = 12;
   static const _macLength = 16;
-
-  /// The backend creates its date tags with English month names; the client
-  /// mirrors that under E2EE so an enable/disable round trip is stable. The
-  /// same list doubles as the tag blacklist (masterdata BLACKLIST_TAGS),
-  /// enforced client-side because the server cannot read E2EE tag names.
-  static const englishMonths = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
 
   final _aes = AesGcm.with256bits();
   final _hmac = Hmac.sha256();
@@ -266,7 +248,7 @@ class E2ee {
   /// Whether creating [tagName] is forbidden (mirror of the backend
   /// masterdata blacklist, which the server skips for E2EE users).
   bool isBlacklistedTag(String tagName) =>
-      englishMonths.contains(normalizeTagName(tagName));
+      dateTagMonths.contains(normalizeTagName(tagName));
 
   Future<List<int>?> _readStoredSeed() async {
     final stored =
