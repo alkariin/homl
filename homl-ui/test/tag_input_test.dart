@@ -13,15 +13,25 @@ const info =
 /// A free-typed tag of the Others category: suggested, but never highlighted.
 const other = TagChipData(id: 3, name: 'Fondue', color: '#f2e5c2');
 
-Widget wrap({List<TagChipData> tags = const []}) {
+/// A month date tag: stored in English, displayed in the app language.
+const july = TagChipData(
+    id: 4,
+    name: 'July',
+    displayName: 'juillet',
+    color: '#ffff60',
+    highlightColor: '#ffff60');
+
+Widget wrap(
+    {List<TagChipData> tags = const [],
+    void Function(String name)? onAddTag}) {
   return MaterialApp(
     home: Scaffold(
       body: TagInput(
         labelText: 'Filter',
         showLogo: true,
         tags: tags,
-        suggestions: const [info, football, other],
-        onAddTag: (_) {},
+        suggestions: const [info, football, other, july],
+        onAddTag: onAddTag ?? (_) {},
       ),
     ),
   );
@@ -87,6 +97,34 @@ void main() {
     await tester.pumpAndSettle();
     expect(logoTint(tester), ink);
     expect(enabledBorderColor(tester), isNull);
+  });
+
+  testWidgets('suggests a translated label but reports the stored name',
+      (tester) async {
+    final added = <String>[];
+    await tester.pumpWidget(wrap(onAddTag: added.add));
+    await tester.enterText(find.byType(TextField), 'juil');
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(ListTile, 'juillet'), findsOneWidget);
+    await tester.tap(find.widgetWithText(ListTile, 'juillet'));
+    await tester.pumpAndSettle();
+
+    expect(added, ['July']);
+  });
+
+  testWidgets('resolves a translated label typed in full to the stored name',
+      (tester) async {
+    final added = <String>[];
+    await tester.pumpWidget(wrap(onAddTag: added.add));
+
+    // Submitted without picking the suggestion: it must still add the "July"
+    // date tag instead of creating a second, untranslated tag.
+    await tester.enterText(find.byType(TextField), 'juillet');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+
+    expect(added, ['July']);
   });
 
   testWidgets('ignores suggestions already added as filters', (tester) async {

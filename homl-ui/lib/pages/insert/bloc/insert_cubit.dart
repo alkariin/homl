@@ -7,6 +7,7 @@ import 'package:homl/data/models/tag.dart';
 import 'package:homl/data/repositories/events.repository.dart';
 import 'package:homl/data/repositories/tags.repository.dart';
 import 'package:homl/helpers/app_message.dart';
+import 'package:homl/helpers/date_tags.dart';
 import 'package:homl/helpers/e2ee.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart' show TagView;
 
@@ -57,7 +58,7 @@ class InsertCubit extends Cubit<InsertState> {
         orElse: () => null);
     if (dateCategory == null) return const [];
 
-    final names = [E2ee.englishMonths[date.month - 1], date.year.toString()];
+    final names = [dateTagMonths[date.month - 1], date.year.toString()];
 
     final ids = <int>[];
     for (final name in names) {

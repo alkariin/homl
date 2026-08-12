@@ -213,6 +213,35 @@ controller is disposed with the route: disposing it from `showDialog`'s
 future crashes, the future completes on pop while the dialog is still
 animating out.
 
+## Insert tab: the date chips & the month tag language
+
+The insert form (and the edit form, same `InsertView`) opens with two fixed
+chips in front of the tag input: the **month** and the **year** of the event.
+They are not decorative — they are exactly the two date tags the event ends up
+filed under (`buildDateTags` on the backend, `InsertCubit._buildDateTags`
+under E2EE), so what the form shows is what the Dates category will hold and
+what the search can filter on. Both chips open the date picker, and both
+follow the picked date (`leading` of `TagInput` takes a list of widgets).
+
+The date tags are stored in **English** for every user: they are keys shared
+with the backend, and under E2EE the client must be able to rebuild the exact
+same names. Translating them is therefore a display-only concern, handled by
+`lib/helpers/date_tags.dart`:
+
+- `localizedTagName(name, locale)` returns the app-language month name
+  ("juillet", "Juli") for a month tag and the stored name for anything else.
+  It is applied wherever a stored tag reaches the screen — the search filters
+  and their suggestions, the event detail sheet and the Categories tab;
+- `TagChipData.displayName` carries that label next to the stored `name`.
+  `TagInput` displays the label, matches the typed text against **both**, and
+  always reports the stored `name` to `onAddTag` — a French user typing
+  "juillet" (or picking it in the suggestions) filters on `July`, which is
+  what the tag names in the events actually are.
+
+`dateTagMonths` (same file) is the single source of the English month names:
+the client builds the date tags from it under E2EE and enforces the tag-name
+blacklist with it (`E2ee.isBlacklistedTag`).
+
 ## Search tab: the event cards
 
 The events are laid out in a grid of `EventCard`s
@@ -305,8 +334,9 @@ and wire format: [homl-web/docs/e2ee.md](../homl-web/docs/e2ee.md).
   in secure storage (`e2eeMasterKey`, exportable as a 12-word BIP39 recovery
   phrase), HKDF-derived content and index keys, AES-256-GCM value encryption
   (`e2ee:v1:` blobs) and the tag blind index. It also mirrors the backend tag
-  blacklist and English month names, which the server can no longer enforce
-  for these users.
+  blacklist (`isBlacklistedTag`, over the `dateTagMonths` of
+  `lib/helpers/date_tags.dart`), which the server can no longer enforce for
+  these users.
 - The repositories encrypt on write and decrypt on read at their boundary
   (`events`/`categories`/`tags`), so the rest of the app only sees plaintext;
   the offline caches deliberately store the ciphertext.
