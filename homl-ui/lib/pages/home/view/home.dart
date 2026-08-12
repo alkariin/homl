@@ -147,51 +147,55 @@ class _HomeViewState extends State<HomeView>
     final drawerItems = ListView(
       padding: const EdgeInsets.symmetric(horizontal: 8),
       children: [
-        SizedBox(
-          height: 148.0,
-          child: DrawerHeader(
-            padding: const EdgeInsets.fromLTRB(12, 10, 4, 16),
-            margin: const EdgeInsets.only(bottom: 8),
-            decoration: const BoxDecoration(
-              border: Border(
-                  bottom: BorderSide(color: Color(0x14000000), width: 1)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    // The bare two-tone hash, as large as the tag-input
-                    // button.
-                    const HomlLogo(size: 51, circled: false),
-                    const SizedBox(width: 12),
-                    const Text(
-                      'HOML',
-                      style:
-                          TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-                    ),
-                    const Spacer(),
-                    IconButton(
-                        iconSize: 18,
-                        icon: const FaIcon(FontAwesomeIcons.xmark),
-                        onPressed: () {
-                          Navigator.pop(context);
-                        }),
-                  ],
-                ),
-                const Spacer(),
-                Padding(
-                  padding: const EdgeInsets.only(left: 4),
-                  child: Text(
-                    email,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        fontSize: 13, color: ink.withValues(alpha: 0.5)),
+        // Deliberately NOT a DrawerHeader: that widget hardcodes a 161px
+        // height and adds the status bar inset to its top padding, so the
+        // leftover space (and any Spacer in it) differed between mobile and
+        // web. This sizes to its content instead, keeping the logo/email gap
+        // identical everywhere, and insets the status bar itself.
+        Container(
+          padding: EdgeInsets.fromLTRB(
+              12, 10 + MediaQuery.paddingOf(context).top, 4, 16),
+          margin: const EdgeInsets.only(bottom: 8),
+          decoration: const BoxDecoration(
+            border:
+                Border(bottom: BorderSide(color: Color(0x14000000), width: 1)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  // The bare two-tone hash, as large as the tag-input button.
+                  const HomlLogo(size: 51, circled: false),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'HOML',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
                   ),
+                  const Spacer(),
+                  IconButton(
+                      iconSize: 18,
+                      icon: const FaIcon(FontAwesomeIcons.xmark),
+                      onPressed: () {
+                        Navigator.pop(context);
+                      }),
+                ],
+              ),
+              // Matches what the old Spacer resolved to on mobile, which is
+              // where this header already looked right.
+              const SizedBox(height: 18),
+              Padding(
+                padding: const EdgeInsets.only(left: 4),
+                child: Text(
+                  email,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style:
+                      TextStyle(fontSize: 13, color: ink.withValues(alpha: 0.5)),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
         _DrawerListTile(
