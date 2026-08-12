@@ -148,10 +148,15 @@ class Api {
     return _refreshToken(refreshToken);
   }
 
+  /// Fetches the one-time challenge to sign. The response is a bare JSON
+  /// string, so it must be decoded: asking Dio for a `String` would force
+  /// `ResponseType.plain` and hand back the raw body — the challenge still
+  /// wrapped in its JSON quotes. Signing those quotes makes the server-side
+  /// ed25519 verification fail and logs the user out on every start.
   Future<String> _askForChallengeString(String refreshToken) async {
     final response = await api
-        .post<String>('/challenge', data: {'refresh_token': refreshToken});
-    return response.data!;
+        .post<dynamic>('/challenge', data: {'refresh_token': refreshToken});
+    return response.data as String;
   }
 
   Future<Response<dynamic>> _retry(RequestOptions requestOptions) async {
