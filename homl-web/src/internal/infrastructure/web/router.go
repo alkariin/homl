@@ -79,17 +79,20 @@ type Server struct {
 	E2EE        *E2EEHandler
 }
 
-func SetupRouter(s *Server, baseUrl string, timeoutDuration time.Duration, isDev bool, corsOrigin string) *gin.Engine {
+func SetupRouter(s *Server, baseUrl string, timeoutDuration time.Duration, isDev bool, corsOrigin string, trustedProxies []string) *gin.Engine {
 	if !isDev {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
 	router := gin.Default()
-	// Do not trust X-Forwarded-For from arbitrary peers: without this, gin
-	// resolves ClientIP() from any spoofed header and the per-IP rate limits
-	// on the auth endpoints can be bypassed. Set an explicit proxy CIDR here
-	// if the service is ever deployed behind a reverse proxy.
-	if err := router.SetTrustedProxies(nil); err != nil {
+	// Only the configured proxies may set X-Forwarded-For: trusting any peer
+	// would let a client spoof its address and walk past the per-IP rate
+	// limits on the auth endpoints. Empty (the default) trusts none, which is
+	// right for a directly exposed service — but behind a reverse proxy it
+	// makes every request share the proxy's address, and with it a single
+	// rate-limit budget, so TRUSTED_PROXIES must then list the proxy.
+	// Values are validated by the config loader.
+	if err := router.SetTrustedProxies(trustedProxies); err != nil {
 		panic(err)
 	}
 	router.Use(CorsMiddleware(corsOrigin))

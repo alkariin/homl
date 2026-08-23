@@ -87,7 +87,7 @@ func newTestServer() (*gin.Engine, *serverMocks) {
 		Event:       &EventHandler{EventsService: sm.events},
 		Settings:    &SettingsHandler{SettingsService: sm.settings},
 	}
-	router := SetupRouter(server, "", 5*time.Second, false, "")
+	router := SetupRouter(server, "", 5*time.Second, false, "", nil)
 	return router, sm
 }
 

@@ -14,6 +14,7 @@ services:
       MYSQL_DATABASE: ${MYSQL_DATABASE:-homl}
       REDIS_PASSWORD: ${REDIS_PASSWORD:-change_me_redis}
       CORS_ORIGIN: ${CORS_ORIGIN:?CORS_ORIGIN required (explicit origin, no wildcard, outside DEV)}
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
       ACCESS_SECRET: ${ACCESS_SECRET:?ACCESS_SECRET required}
       REFRESH_SECRET: ${REFRESH_SECRET:?REFRESH_SECRET required}
       ENCRYPT_SECRET: ${ENCRYPT_SECRET:?ENCRYPT_SECRET required}
