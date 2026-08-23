@@ -144,6 +144,11 @@ outside DEV.
 
 Single binary listening on `:8080` (Gin). Shutdown is graceful: SIGINT/SIGTERM
 closes the data sources, then gives in-flight requests 5 seconds to finish.
+Connections are bounded by the server-wide `ReadTimeout`/`WriteTimeout` of
+`main.go`; a route needing more (the E2EE migration) raises its own deadlines
+through the `Deadlines` middleware, since those server timeouts are absolute
+and a handler timeout cannot lift them.
+
 Local orchestration (MySQL, Redis, API) is described in `docker-compose.yml`
 and the `Makefile`.
 
