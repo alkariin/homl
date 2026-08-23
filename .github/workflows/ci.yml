@@ -32,6 +32,120 @@ jobs:
       - name: Test
         run: go test -race ./...
 
+  database:
+    name: Backend DB tests (Go + MySQL)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: homl-web
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: change_me_root
+          MYSQL_DATABASE: homl
+          MYSQL_USER: homl
+          MYSQL_PASSWORD: change_me_mysql
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root -pchange_me_root"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+          cache-dependency-path: homl-web/src/go.sum
+
+      - name: Install golang-migrate
+        run: |
+          curl -fsSL https://github.com/golang-migrate/migrate/releases/download/v4.19.1/migrate.linux-amd64.tar.gz \
+            | sudo tar xz -C /usr/local/bin migrate
+
+      - name: Apply migrations
+        run: migrate -path db/migrations -database "mysql://homl:change_me_mysql@tcp(127.0.0.1:3306)/homl" -verbose up
+
+      # These are the tests the mocked suites cannot replace: real SQL, real
+      # constraints, real transactions (cross-tenant isolation, tag lifecycle,
+      # the atomic E2EE migration and purge).
+      - name: Test
+        working-directory: homl-web/src
+        env:
+          DBTEST_DSN: homl:change_me_mysql@tcp(127.0.0.1:3306)/homl?parseTime=true
+        run: go test -tags dbtest -count=1 ./test/dbtest/...
+
+  e2e:
+    name: Backend end-to-end (full stack)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: homl-web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+          cache-dependency-path: homl-web/src/go.sum
+
+      # Throwaway secrets: this stack lives for the duration of the job and is
+      # never reachable from outside the runner.
+      - name: Write a CI .env
+        run: |
+          cat > .env <<'ENVFILE'
+          ENVIRONMENT=DEV
+          HOST=http://localhost:8080
+          HOML_API_URL=/api
+          HANDLER_TIMEOUT=5
+          CORS_ORIGIN=http://localhost:8080
+          MYSQL_ADDRESS=localhost:3306
+          MYSQL_USER=homl
+          MYSQL_PASSWORD=change_me_mysql
+          MYSQL_DATABASE=homl
+          MYSQL_ROOT_PASSWORD=change_me_root
+          REDIS_ADDRESS=localhost:6379
+          REDIS_PASSWORD=change_me_redis
+          ACCESS_SECRET=ci_access_secret_ci_access_secret
+          REFRESH_SECRET=ci_refresh_secret_ci_refresh_secr
+          ENCRYPT_SECRET=ci_encrypt_secret_ci_encrypt_sec1
+          ENVFILE
+
+      - name: Start the stack
+        run: docker compose up -d --build
+
+      - name: Wait for the API
+        run: |
+          for i in $(seq 1 60); do
+            curl -fsS http://localhost:8080/healthz >/dev/null 2>&1 && echo "ready" && exit 0
+            sleep 2
+          done
+          echo "backend never became healthy"; docker compose logs; exit 1
+
+      - name: Install golang-migrate
+        run: |
+          curl -fsSL https://github.com/golang-migrate/migrate/releases/download/v4.19.1/migrate.linux-amd64.tar.gz \
+            | sudo tar xz -C /usr/local/bin migrate
+
+      - name: Migrate and seed the demo user
+        run: |
+          make migrateup
+          make seed
+
+      - name: Test
+        run: make test-e2e
+
+      - name: Backend logs on failure
+        if: failure()
+        run: docker compose logs --no-color
+
+      - name: Stop the stack
+        if: always()
+        run: docker compose down --remove-orphans --volumes
+
   frontend:
     name: Frontend (Flutter)
     runs-on: ubuntu-latest

@@ -14,6 +14,10 @@ so they run on every commit; each HTTP test fires a real request and asserts the
 **status code** and **JSON body**. The last two are gated behind build tags
 (`dbtest`, `e2e`) so `go test ./...` never picks them up.
 
+All four run in CI on every pull request (`.github/workflows/ci.yml`): the
+DB-backed job gets a MySQL service container, the end-to-end job boots the
+whole stack with Docker Compose.
+
 ## Running the tests
 
 ```bash
