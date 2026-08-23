@@ -1,4 +1,4 @@
-package ch.app.homl
+package dev.homl.app
 
 import io.flutter.embedding.android.FlutterFragmentActivity;
 
