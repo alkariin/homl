@@ -139,7 +139,10 @@ func TestCategoryLifecycle(t *testing.T) {
 	c := newClient(t)
 	c.login()
 
-	name := fmt.Sprintf("E2E-%d", time.Now().UnixNano())
+	// CreateCategory title-cases what it stores, so "E2E-1" would come back
+	// as "E2e-1" and never match. This form is already title-cased and
+	// survives the normalization unchanged — do not "fix" the casing.
+	name := fmt.Sprintf("E2e-%d", time.Now().UnixNano())
 
 	if status, body := c.do(http.MethodPost, "/categories", map[string]string{
 		"category": name,
