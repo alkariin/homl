@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:intl/intl.dart';
 import 'package:homl/l10n/app_localizations.dart';
 
 import 'package:homl/components/bubbles_background.dart';
@@ -14,6 +13,7 @@ import 'package:homl/data/repositories/events.repository.dart';
 import 'package:homl/data/repositories/tags.repository.dart';
 import 'package:homl/helpers/app_message.dart';
 import 'package:homl/helpers/categories.dart';
+import 'package:homl/helpers/date_tags.dart';
 import 'package:homl/helpers/toast.dart';
 import 'package:homl/pages/categories/view/category_management.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
@@ -257,6 +257,7 @@ class _InsertViewState extends State<InsertView> {
                         .map((name) => TagChipData(
                             id: homeState.allTagsMap[name]?.id ?? -1,
                             name: name,
+                            displayName: localizedTagName(name, locale),
                             color: homeState.allTagsMap[name]?.color ??
                                 otherCategoryColor))
                         .toList(),
@@ -264,20 +265,35 @@ class _InsertViewState extends State<InsertView> {
                         .map((tagView) => TagChipData(
                             id: tagView.id,
                             name: tagView.tagName,
+                            displayName:
+                                localizedTagName(tagView.tagName, locale),
                             color: tagView.color))
                         .toList(),
                     onAddTag: (name) =>
                         context.read<InsertCubit>().addTag(name),
                     onRemoveTag: (tag) =>
                         context.read<InsertCubit>().removeTag(tag.name),
-                    // The date tag is always there and cannot be removed
-                    leading: Tag(
-                      id: -1,
-                      text: DateFormat.yMd(locale).format(state.date),
-                      isDate: true,
-                      large: true,
-                      onTap: pickDate,
-                    ),
+                    // The date chips are always there and cannot be removed.
+                    // They mirror the month/year date tags the event is filed
+                    // under (translated for display, stored in English), and
+                    // both open the date picker: changing the date updates
+                    // the two of them.
+                    leading: [
+                      Tag(
+                        id: -1,
+                        text: monthLabel(state.date.month, locale),
+                        isDate: true,
+                        large: true,
+                        onTap: pickDate,
+                      ),
+                      Tag(
+                        id: -1,
+                        text: state.date.year.toString(),
+                        isDate: true,
+                        large: true,
+                        onTap: pickDate,
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 28),
                   Input(
