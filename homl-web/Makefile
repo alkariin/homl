@@ -92,7 +92,7 @@ build: ## Build backend Docker image
 db-up: _network ## Start MySQL + Redis standalone (no backend)
 	docker rm -f redis_container >/dev/null 2>&1 || true
 	docker run --net-alias redis_container --name redis_container \
-	  --net $(DOCKER_NETWORK) --rm -d -p 6379:6379 redis:alpine \
+	  --net $(DOCKER_NETWORK) --rm -d -p 127.0.0.1:6379:6379 redis:alpine \
 	  /bin/sh -c 'redis-server --appendonly yes --requirepass $(REDIS_PASSWORD)'
 	docker rm -f mysql_container >/dev/null 2>&1 || true
 	docker run --net-alias mysql_container --name mysql_container \
@@ -101,7 +101,7 @@ db-up: _network ## Start MySQL + Redis standalone (no backend)
 	  -e MYSQL_DATABASE=$(MYSQL_DATABASE) \
 	  -e MYSQL_USER=$(MYSQL_USER) \
 	  -e MYSQL_PASSWORD=$(MYSQL_PASSWORD) \
-	  -p 3306:3306 mysql:8.4
+	  -p 127.0.0.1:3306:3306 mysql:8.4
 	@printf "Waiting for MySQL"
 	@until docker exec mysql_container mysql -u$(MYSQL_USER) -p$(MYSQL_PASSWORD) \
 	  -e "SELECT 1" >/dev/null 2>&1; do printf "."; sleep 2; done && echo " ready"
