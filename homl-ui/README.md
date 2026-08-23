@@ -1,5 +1,9 @@
 # homl-ui frontend
 
+Flutter client for HOML (iOS · Android · Web). It needs a running backend:
+see [../homl-web/README.md](../homl-web/README.md) for the stack, and
+[../homl-web/docs/api.md](../homl-web/docs/api.md) for the API it consumes.
+
 ## 1) Install dependencies
 
 ```bash
@@ -111,6 +115,45 @@ cd ../homl-ui && ./run-e2e-test.sh                             # picks the attac
 It registers a throwaway account and saves/restores the developer's local
 session and E2EE key around the run, so it is safe on a daily dev phone.
 `flutter test` never runs it (integration tests only run explicitly).
+
+## Project layout
+
+```
+lib/
+├── main.dart          # entry point: bloc observer, logo preload, runApp(App)
+├── components/        # reusable widgets (Tag, TagInput, EventCard, Input, dialogs…)
+├── data/
+│   ├── models/        # json_serializable DTOs (*.g.dart committed)
+│   └── repositories/  # one per backend resource + api.dart (Dio client, refresh, cache)
+├── helpers/           # cross-cutting logic: e2ee, date_tags, event_search, theme, toast…
+├── l10n/              # .arb sources + generated AppLocalizations
+├── pages/             # one folder per screen: <page>/bloc (cubit + state) and <page>/view
+│                      # pages/app wires the repository + cubit providers and routes on auth status
+└── services/          # authentication service and its cubit (session lifecycle)
+```
+
+A page owns a `Cubit` and an immutable state; widgets stay dumb and read the
+state. Everything that talks to the backend goes through a repository, never
+through a widget or a cubit directly — that is also where the offline cache and
+the E2EE encrypt/decrypt boundary live.
+
+## Code generation
+
+Both the model serializers and the translations are generated **and
+committed**, so a plain `flutter pub get && flutter run` needs no codegen step.
+Regenerate after touching a model or an `.arb` file:
+
+```bash
+dart run build_runner build --delete-conflicting-outputs   # lib/data/models/*.g.dart
+flutter gen-l10n                                           # lib/l10n/app_localizations*.dart
+```
+
+Translations live in `lib/l10n/app_{en,fr,de}.arb` (`app_en.arb` is the
+template, see `l10n.yaml`). The three files must stay in sync — `flutter
+gen-l10n` reports every key missing from a locale as an untranslated message.
+The date tags are the exception that proves the rule — they are stored in
+English and translated at display time only (see the insert-tab section
+below).
 
 ## Release builds: keep `--no-tree-shake-icons`
 
