@@ -9,6 +9,9 @@ import 'package:homl/helpers/colors.dart';
 /// exist on the backend yet.
 class TagChipData {
   final int id;
+
+  /// Stored name of the tag: what the callbacks report and what the requests
+  /// carry, whatever the chip displays.
   final String name;
   final String? color;
 
@@ -16,8 +19,20 @@ class TagChipData {
   /// top suggestion; null keeps the default styling (e.g. Others tags).
   final String? highlightColor;
 
+  /// Label shown instead of [name] when they differ — the month date tags are
+  /// stored in English and displayed in the app locale (see
+  /// helpers/date_tags.dart). The input matches the typed text against both,
+  /// so a translated month is searchable under its label too.
+  final String? displayName;
+
   const TagChipData(
-      {required this.id, required this.name, this.color, this.highlightColor});
+      {required this.id,
+      required this.name,
+      this.color,
+      this.highlightColor,
+      this.displayName});
+
+  String get label => displayName ?? name;
 }
 
 /// Shared tag input: a text field with autocomplete on the existing tags.
@@ -35,8 +50,9 @@ class TagInput extends StatefulWidget {
   final void Function(String name) onAddTag;
   final void Function(TagChipData tag)? onRemoveTag;
 
-  /// Rendered before the chips (e.g. the fixed date chip of the insert form).
-  final Widget? leading;
+  /// Rendered before the chips, in the same wrap (e.g. the fixed month/year
+  /// date chips of the insert form).
+  final List<Widget> leading;
 
   /// Rendered after the text field (e.g. the categories management button).
   final Widget? trailing;
@@ -60,7 +76,7 @@ class TagInput extends StatefulWidget {
       required this.suggestions,
       required this.onAddTag,
       this.onRemoveTag,
-      this.leading,
+      this.leading = const [],
       this.trailing,
       this.showLogo = false,
       this.onLogoTap,
@@ -85,34 +101,57 @@ class _TagInputState extends State<TagInput> {
     super.dispose();
   }
 
-  void _submit(String name) {
-    final trimmed = name.trim();
+  void _submit(String text) {
+    final trimmed = text.trim();
     if (trimmed.isEmpty) return;
-    if (widget.tags
-        .any((tag) => tag.name.toLowerCase() == trimmed.toLowerCase())) {
+
+    // A typed label that names a known tag is resolved to its stored name, so
+    // a French user typing "juillet" adds the "July" date tag instead of
+    // creating a second, untranslated tag.
+    final name = _suggestionFor(trimmed)?.name ?? trimmed;
+    if (widget.tags.any((tag) => tag.name.toLowerCase() == name.toLowerCase())) {
       _controller.clear();
       return;
     }
 
-    widget.onAddTag(trimmed);
+    widget.onAddTag(name);
     _controller.clear();
     _focusNode.requestFocus();
+  }
+
+  /// Suggestion whose stored name or displayed label is exactly [text].
+  TagChipData? _suggestionFor(String text) {
+    final lowered = text.toLowerCase();
+    for (final suggestion in widget.suggestions) {
+      if (suggestion.name.toLowerCase() == lowered ||
+          suggestion.label.toLowerCase() == lowered) {
+        return suggestion;
+      }
+    }
+    return null;
   }
 
   Iterable<TagChipData> _filterSuggestions(TextEditingValue value) {
     final query = value.text.trim().toLowerCase();
     if (query.isEmpty) return const Iterable<TagChipData>.empty();
 
+    // Matched on the label as well as the stored name: a translated month tag
+    // is reachable by typing it in the app language.
     final candidates = widget.suggestions.where((suggestion) =>
-        suggestion.name.toLowerCase().contains(query) &&
+        (suggestion.name.toLowerCase().contains(query) ||
+            suggestion.label.toLowerCase().contains(query)) &&
         !widget.tags.any(
             (tag) => tag.name.toLowerCase() == suggestion.name.toLowerCase()));
 
     // Tags starting with the query come first, so the top suggestion (which
     // also drives the highlight color below) is the most natural completion.
+    bool startsWithQuery(TagChipData s) =>
+        s.name.toLowerCase().startsWith(query) ||
+        s.label.toLowerCase().startsWith(query);
+
     return [
-      ...candidates.where((s) => s.name.toLowerCase().startsWith(query)),
-      ...candidates.where((s) => !s.name.toLowerCase().startsWith(query)),
+      ...candidates.where(startsWithQuery),
+      ...candidates.where((s) => !startsWithQuery(s)),
     ];
   }
 
@@ -132,18 +171,18 @@ class _TagInputState extends State<TagInput> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (widget.leading != null || widget.tags.isNotEmpty) ...[
+        if (widget.leading.isNotEmpty || widget.tags.isNotEmpty) ...[
           Wrap(
             spacing: 8,
             runSpacing: 8,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              if (widget.leading != null) widget.leading!,
-              // A simple tap on a chip removes it (the date chip is the
-              // [leading] widget and keeps its own onTap)
+              ...widget.leading,
+              // A simple tap on a chip removes it (the date chips are the
+              // [leading] widgets and keep their own onTap)
               ...widget.tags.map((tag) => Tag(
                   id: tag.id,
-                  text: tag.name,
+                  text: tag.label,
                   color: tag.color,
                   large: true,
                   onTap: widget.onRemoveTag == null
@@ -212,7 +251,7 @@ class _TagInputState extends State<TagInput> {
               child: RawAutocomplete<TagChipData>(
                 textEditingController: _controller,
                 focusNode: _focusNode,
-                displayStringForOption: (option) => option.name,
+                displayStringForOption: (option) => option.label,
                 optionsBuilder: _filterSuggestions,
                 onSelected: (option) => _submit(option.name),
                 fieldViewBuilder:
@@ -281,7 +320,7 @@ class _TagInputState extends State<TagInput> {
                             final option = options.elementAt(index);
                             return ListTile(
                               dense: true,
-                              title: Text(option.name),
+                              title: Text(option.label),
                               onTap: () => onSelected(option),
                             );
                           },

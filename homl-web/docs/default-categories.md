@@ -26,6 +26,10 @@ reference for how each of them behaves in the backend and in the app.
     locked category.
 - Month names are additionally blacklisted as user tag names
   (`BLACKLIST_TAGS`) so free tags cannot collide with date tags.
+- Month tags are stored in English for every user — they are keys shared with
+  the client, which has to rebuild the very same names under E2EE. The app
+  translates them for display only (`homl-ui/lib/helpers/date_tags.dart`) and
+  keeps filtering and creating on the stored English name.
 
 ## Persons — a default suggestion, not mandatory
 

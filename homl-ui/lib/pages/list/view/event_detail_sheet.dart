@@ -6,6 +6,7 @@ import 'package:homl/l10n/app_localizations.dart';
 
 import 'package:homl/components/tag.dart' as components;
 import 'package:homl/data/models/event.dart';
+import 'package:homl/helpers/date_tags.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
 import 'package:homl/pages/insert/insert.dart';
 
@@ -113,7 +114,7 @@ class _EventDetailSheetBody extends StatelessWidget {
                   children: event.tags
                       .map((tag) => components.Tag(
                           id: tag.id,
-                          text: tag.tag,
+                          text: localizedTagName(tag.tag, locale),
                           color: state.allTagsMap[tag.tag]?.color))
                       .toList(),
                 ),

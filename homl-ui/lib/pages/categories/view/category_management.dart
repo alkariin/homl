@@ -7,6 +7,7 @@ import 'package:homl/components/tag.dart' as components;
 import 'package:homl/data/models/category.dart';
 import 'package:homl/data/models/tag.dart';
 import 'package:homl/helpers/colors.dart';
+import 'package:homl/helpers/date_tags.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
 
 /// Categories list: every category with its tags and synonyms.
@@ -386,6 +387,9 @@ class _TagRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isPicker = onTagSelected != null;
+    // Read-only translation of the month date tags, which are stored in
+    // English for every user (helpers/date_tags.dart).
+    final locale = Localizations.localeOf(context).toString();
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
@@ -396,7 +400,7 @@ class _TagRow extends StatelessWidget {
         children: [
           components.Tag(
             id: mainTag.id,
-            text: mainTag.tag,
+            text: localizedTagName(mainTag.tag, locale),
             color: category.color,
             onTap: isPicker
                 ? () => _selectTag(context, mainTag)
@@ -408,7 +412,7 @@ class _TagRow extends StatelessWidget {
           ),
           ...synonyms.map((synonym) => components.Tag(
                 id: synonym.id,
-                text: synonym.tag,
+                text: localizedTagName(synonym.tag, locale),
                 color: category.color,
                 onTap: isPicker
                     ? () => _selectTag(context, synonym)
