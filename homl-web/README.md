@@ -121,6 +121,7 @@ The backend design docs live in [`docs/`](docs):
 [API reference](docs/api.md) ·
 [auth flows](docs/auth-flows.md) ·
 [end-to-end encryption](docs/e2ee.md) ·
+[deployment](docs/deployment.md) ·
 [default categories](docs/default-categories.md) ·
 [tag synonyms](docs/tag-synonyms.md).
 

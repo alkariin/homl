@@ -92,7 +92,8 @@ CORS middleware → security headers
 orchestrators can poll it. Gin is started with no trusted proxies, so
 `ClientIP()` cannot be spoofed through `X-Forwarded-For` unless `TRUSTED_PROXIES`
 says so — which must be set before deploying behind a reverse proxy, or the
-per-IP rate limits all collapse onto the proxy's address.
+per-IP rate limits all collapse onto the proxy's address
+(see [deployment.md](deployment.md)).
 
 Three cross-cutting rules the layers enforce:
 
@@ -136,7 +137,7 @@ outside DEV.
 | `HOST` | Public base URL of the deployment (informational: the reset code is typed by the user, never linked) |
 | `HOML_API_URL` | API route prefix |
 | `CORS_ORIGIN` | Allowed CORS origin |
-| `TRUSTED_PROXIES` | Proxies allowed to set `X-Forwarded-For` (comma-separated IPs/CIDRs); empty trusts none. Required behind a reverse proxy |
+| `TRUSTED_PROXIES` | Proxies allowed to set `X-Forwarded-For` (comma-separated IPs/CIDRs); empty trusts none. Required behind a reverse proxy, see [deployment.md](deployment.md) |
 | `HANDLER_TIMEOUT` | Per-request timeout (seconds) |
 | `MYSQL_*`, `REDIS_*` | Data-source connections |
 | `SMTP_*` | Password-reset email sending; an empty `SMTP_HOST` selects the log mailer (see [auth-flows.md](auth-flows.md)) |
@@ -151,7 +152,7 @@ through the `Deadlines` middleware, since those server timeouts are absolute
 and a handler timeout cannot lift them.
 
 Local orchestration (MySQL, Redis, API) is described in `docker-compose.yml`
-and the `Makefile`.
+and the `Makefile`; running it on a server is [deployment.md](deployment.md).
 
 ## Repository layout
 
