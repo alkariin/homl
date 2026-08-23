@@ -6,6 +6,7 @@ package config
 import (
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -24,9 +25,14 @@ type Config struct {
 	AccessSecret  string
 	RefreshSecret string
 	EncryptSecret string
-	Host          string // public host used in password-reset links
+	Host          string // public base URL of the deployment (not consumed yet: the reset code is typed, never linked)
 	BaseURL       string // API route prefix (HOML_API_URL)
 	CorsOrigin    string // allowed CORS origin ("*" when empty)
+	// TrustedProxies lists the reverse proxies allowed to set X-Forwarded-For.
+	// Empty means trust none, so ClientIP() is the direct peer. Behind a
+	// proxy this MUST be set, or every request carries the proxy's address
+	// and the per-IP rate limits become one shared budget.
+	TrustedProxies []string
 
 	HandlerTimeout time.Duration
 
@@ -64,6 +70,7 @@ func Load() (*Config, error) {
 		Host:           os.Getenv("HOST"),
 		BaseURL:        os.Getenv("HOML_API_URL"),
 		CorsOrigin:     os.Getenv("CORS_ORIGIN"),
+		TrustedProxies: splitList(os.Getenv("TRUSTED_PROXIES")),
 		HandlerTimeout: time.Duration(ht) * time.Second,
 		MysqlAddress:   os.Getenv("MYSQL_ADDRESS"),
 		MysqlUser:      os.Getenv("MYSQL_USER"),
@@ -87,6 +94,18 @@ func Load() (*Config, error) {
 	}
 
 	return cfg, nil
+}
+
+// splitList parses a comma-separated env value into its non-empty, trimmed
+// entries.
+func splitList(value string) []string {
+	var out []string
+	for _, item := range strings.Split(value, ",") {
+		if item = strings.TrimSpace(item); item != "" {
+			out = append(out, item)
+		}
+	}
+	return out
 }
 
 // validate rejects configurations that would silently weaken security: unset,
@@ -113,6 +132,17 @@ func (c *Config) validate() error {
 	if !c.IsDev() {
 		if c.CorsOrigin == "" || c.CorsOrigin == "*" {
 			return fmt.Errorf("CORS_ORIGIN must be an explicit origin outside DEV (got %q)", c.CorsOrigin)
+		}
+	}
+
+	// Caught here rather than at router setup: a typo would otherwise take
+	// the whole service down with a panic instead of a readable message.
+	for _, proxy := range c.TrustedProxies {
+		if _, _, err := net.ParseCIDR(proxy); err == nil {
+			continue
+		}
+		if net.ParseIP(proxy) == nil {
+			return fmt.Errorf("TRUSTED_PROXIES entry %q is neither an IP nor a CIDR", proxy)
 		}
 	}
 
