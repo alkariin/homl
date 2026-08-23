@@ -3,11 +3,11 @@
 Curated view of the backend domain layer (`src/internal/domain`). The code is
 the source of truth — regenerate this document whenever an aggregate changes.
 
-The domain is split into three aggregates (`user`, `category`, `event`)
-plus a static reference-data package (`masterdata`). Each aggregate
-package holds its entities, value objects, DTOs and a `Repository` interface
-that acts as its persistence port (implemented in
-`src/internal/infrastructure/persistence`).
+The domain is split into three aggregates (`user`, `category`, `event`), a
+static reference-data package (`masterdata`) and a cross-cutting feature
+package (`e2ee`). Each aggregate package holds its entities, value objects,
+DTOs and a `Repository` interface that acts as its persistence port
+(implemented in `src/internal/infrastructure/persistence`).
 
 ## Aggregates and relations
 
@@ -31,6 +31,8 @@ classDiagram
         <<value object>>
         +Language Language
         +bool DefaultScreen
+        +bool IsE2eeEnabled
+        +*string E2eeKeyCheck
     }
     class TokenDetails {
         <<value object>>
@@ -66,6 +68,7 @@ classDiagram
         +string Tag
         +uint IdCategory
         +*uint IdParentTag
+        +*string TagIndex
     }
 
     %% EventAggregate
@@ -158,7 +161,7 @@ crossing the port.
 
 | Port | Responsibilities |
 | --- | --- |
-| `user.Repository` | Registration (user + default categories, transactional), lookup, password/pin/fingerprint updates, Redis auth tokens, single-use password-reset tokens, settings read/write |
+| `user.Repository` | Registration (user + default categories, transactional), lookup, password/pin/fingerprint updates, Redis auth sessions, single-use password-reset codes (attempt counter + cooldown), settings read/write |
 | `category.Repository` | Category CRUD (delete moves the tags to Others or removes them with their exclusive events), tag CRUD (synonyms included, moving a main tag takes its synonyms along), tag lookup by name, usage counts (`TagUsage`, `CategoryUsage`) |
 | `event.Repository` | Event CRUD with tags, per-user listing |
 | `e2ee.Repository` | E2EE flag lookup, atomic whole-dataset enable/disable migration, lost-key purge (reseeds the default categories) |

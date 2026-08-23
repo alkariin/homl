@@ -29,37 +29,36 @@ make vendor   # requires HTTP_PROXY / HTTPS_PROXY set in your shell or .env.loca
 make dev
 ```
 
-Starts MySQL, Redis, and the backend in detached mode, then applies migrations and
-seeds demo data. MySQL data is persisted in a named Docker volume across restarts.
+Builds the image, starts MySQL, Redis and the backend, applies migrations, seeds
+demo data, then attaches to the logs — `Ctrl-C` stops the stack. MySQL and Redis
+data are persisted in named Docker volumes across restarts.
 
 ```
 → http://localhost:8080  (demo@homl.local / Demo1234!)
 ```
 
-To follow logs in the foreground instead:
+Once the database is migrated and seeded, plain
 
 ```bash
 make up
 ```
 
-Stop everything:
-
-```bash
-make down
-```
+is enough to start the stack again with live logs (no migrate/seed step).
 
 ## Backend development workflow
 
-After modifying Go code, rebuild and restart only the backend — MySQL and Redis keep running:
+After modifying Go code, rebuild the backend image and restart the stack — the
+MySQL and Redis volumes survive, so the data stays:
 
 ```bash
-make reload
+make up      # docker compose up --build
 ```
 
-For rapid iteration without a Docker rebuild, run the Go process directly (requires the stack already running):
+For rapid iteration without a Docker rebuild, run the Go process directly
+against the containerized MySQL/Redis:
 
 ```bash
-make local   # go run ./src
+make local   # cd src && go run .
 ```
 
 ## Local backend mode (Go process + Docker deps)
@@ -80,13 +79,50 @@ Run the backend as a local Go process:
 make local
 ```
 
+## Database migrations
+
+Schema changes live in `db/migrations` (golang-migrate format, one `.up.sql` /
+`.down.sql` pair per step) and are applied against the running MySQL:
+
+```bash
+make migratecreate   # new migration pair
+make migrateup       # apply everything pending
+make migratedown     # roll back the last step
+make migratefix      # force the version after a failed migration
+```
+
+The demo dataset is regenerated from Go (`make seed-gen` writes `db/seeder.sql`
+with the data encrypted under the current `ENCRYPT_SECRET`), so a changed
+secret means a re-seed.
+
 ## Testing
 
 ```bash
 make test          # unit + HTTP integration tests (needs a local Go toolchain)
 make test-docker   # same, in a golang container (no local Go needed)
+make test-db       # DB-backed persistence tests (make db-up + migrateup first)
 make test-e2e      # end-to-end tests against a running stack (make dev first)
 ```
+
+See [TESTING.md](TESTING.md) for what each layer covers.
+
+## Cleanup
+
+```bash
+make down    # stop the compose stack
+make clean   # stop it and drop the named volumes, orphans and locally built images
+```
+
+## Documentation
+
+The backend design docs live in [`docs/`](docs):
+[architecture](docs/architecture.md) ·
+[domain model](docs/domain-model.md) ·
+[API reference](docs/api.md) ·
+[auth flows](docs/auth-flows.md) ·
+[end-to-end encryption](docs/e2ee.md) ·
+[default categories](docs/default-categories.md) ·
+[tag synonyms](docs/tag-synonyms.md).
 
 ## Updating dependencies
 
