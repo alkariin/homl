@@ -148,6 +148,13 @@ func (tw *timeoutWriter) Header() http.Header {
 	return tw.h
 }
 
+// Unwrap exposes the writer underneath so http.ResponseController can reach
+// the connection (deadlines, flush) through this wrapper. Without it a
+// controller built after this middleware silently loses those capabilities.
+func (tw *timeoutWriter) Unwrap() http.ResponseWriter {
+	return tw.ResponseWriter
+}
+
 func checkWriteHeaderCode(code int) {
 	if code < 100 || code > 999 {
 		panic(fmt.Sprintf("invalid WriteHeader code %v", code))
