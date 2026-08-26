@@ -72,3 +72,28 @@ func TestValidate(t *testing.T) {
 		assert.Error(t, c.validate())
 	})
 }
+
+func TestSplitList(t *testing.T) {
+	assert.Equal(t, []string{"10.0.0.0/8", "172.18.0.5"}, splitList(" 10.0.0.0/8 , 172.18.0.5 ,"))
+	assert.Nil(t, splitList("  "))
+}
+
+func TestValidateTrustedProxies(t *testing.T) {
+	t.Run("accepts IPs and CIDRs", func(t *testing.T) {
+		c := baseConfig()
+		c.TrustedProxies = []string{"10.0.0.0/8", "172.18.0.5", "::1"}
+
+		assert.NoError(t, c.validate())
+	})
+
+	// A typo would otherwise reach gin and panic the whole service at
+	// startup, so it has to be rejected with a readable message instead.
+	t.Run("rejects anything else", func(t *testing.T) {
+		c := baseConfig()
+		c.TrustedProxies = []string{"nginx"}
+
+		err := c.validate()
+
+		assert.ErrorContains(t, err, "TRUSTED_PROXIES")
+	})
+}

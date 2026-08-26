@@ -100,7 +100,7 @@ func inject(cfg *config.Config, d *db.DataSources) *gin.Engine {
 		E2EE:     &web.E2EEHandler{E2EEService: e2eeService},
 	}
 
-	return web.SetupRouter(server, cfg.BaseURL, cfg.HandlerTimeout, cfg.IsDev(), cfg.CorsOrigin)
+	return web.SetupRouter(server, cfg.BaseURL, cfg.HandlerTimeout, cfg.IsDev(), cfg.CorsOrigin, cfg.TrustedProxies)
 }
 
 func main() {

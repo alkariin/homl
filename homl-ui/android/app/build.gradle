@@ -10,14 +10,14 @@ kotlin {
 }
 
 android {
-    namespace = "ch.app.homl"
+    namespace = "dev.homl.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = "25.1.8937393"
 
     defaultConfig {
+        // Permanent identity of the app: an install can never be upgraded by
+        // a build carrying a different one. Kept equal to the namespace.
         applicationId = "dev.homl.app"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://docs.flutter.dev/deployment/android#reviewing-the-gradle-build-configuration.
         minSdk = Math.max(flutter.minSdkVersion, 23)
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

@@ -177,9 +177,12 @@ All endpoints require auth. A category groups tags; locked categories
 ```json
 [
   { "id": 1, "category": "Dates", "color": "#ffff60", "isLocked": true,
-    "kind": "date", "tags": [ { "id": 3, "tag": "2024" } ] }
+    "kind": "date", "tags": [ { "id": 3, "tag": "2024", "idParentTag": null } ] }
 ]
 ```
+
+`idParentTag` is the synonym link (`null` on a main tag, see
+[tag-synonyms.md](tag-synonyms.md)).
 
 `DELETE` with `"moveTags": true` moves the category's tags (synonym links
 intact) to the user's Other category instead of deleting them. With
@@ -264,12 +267,14 @@ client creates and attaches its own.
 ```json
 [
   { "id": 1, "description": "…", "date": "2026-07-05T00:00:00Z",
-    "tags": [ { "id": 3, "tag": "…", "idCategory": 2 } ] }
+    "tags": [ { "id": 3, "tag": "…", "idCategory": 2, "idParentTag": null } ] }
 ]
 ```
 
 Tags carry only `idCategory` (no category join): the client already holds the
-categories from `GET /categories`.
+categories from `GET /categories`. `idParentTag` lets the client resolve a
+synonym to its group; `tagIndex` is added for E2EE users and omitted
+otherwise.
 
 ## Settings
 
@@ -277,12 +282,14 @@ All endpoints require auth.
 
 | Method | Path | Body | Response |
 | --- | --- | --- | --- |
-| GET | `/settings` | — | `200` `{language, defaultScreen, isE2eeEnabled}` |
+| GET | `/settings` | — | `200` `{language, defaultScreen, isE2eeEnabled, e2eeKeyCheck?}` |
 | PUT | `/settings` | `{language, defaultScreen}` | `200` updated settings |
 
-`isE2eeEnabled` is read-only here — it is flipped by `POST /e2ee/migrate`
-only. A fresh install reads it after login to decide whether to show the
-restore-or-purge screen (see [e2ee.md](e2ee.md)).
+`isE2eeEnabled` and `e2eeKeyCheck` are read-only here — they are set by
+`POST /e2ee/migrate` only, and `PUT /settings` ignores them in the body. A
+fresh install reads `isE2eeEnabled` after login to decide whether to show the
+restore-or-purge screen, and `e2eeKeyCheck` (omitted when unset) is what lets
+that screen validate a typed recovery phrase (see [e2ee.md](e2ee.md)).
 
 ## End-to-end encryption
 

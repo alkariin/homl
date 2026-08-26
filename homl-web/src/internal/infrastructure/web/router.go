@@ -1,6 +1,7 @@
 package web
 
 import (
+	"log"
 	"net/http"
 	"time"
 
@@ -21,6 +22,36 @@ const e2eeMigrateMaxBodyBytes = 32 << 20
 // of the user in one transaction and can outlive the API-wide handler
 // timeout on large datasets.
 const e2eeMigrateTimeout = 60 * time.Second
+
+// e2eeMigrateWriteGrace is the extra time granted to write the response once
+// the handler has used its full budget. Deadlines are absolute, so the write
+// one has to cover the handler itself plus the response.
+const e2eeMigrateWriteGrace = 15 * time.Second
+
+// Deadlines raises the connection read/write deadlines of a single route
+// above the server-wide ReadTimeout/WriteTimeout set in main.go.
+//
+// Those server timeouts are absolute per-connection deadlines that a handler
+// timeout cannot lift on its own: without this, the migration's 60 s budget
+// is silently cut short by the 20 s WriteTimeout, and its 32 MiB body by the
+// 10 s ReadTimeout. Must run *before* Timeout, whose writer wrapper hides the
+// underlying connection from the response controller.
+func Deadlines(read, write time.Duration) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		rc := http.NewResponseController(c.Writer)
+		now := time.Now()
+		// A failure here is not fatal — the request simply stays under the
+		// server-wide timeouts — but it silently reinstates the very cap this
+		// middleware exists to lift, so it must not pass unnoticed.
+		if err := rc.SetReadDeadline(now.Add(read)); err != nil {
+			log.Printf("deadlines: cannot extend the read deadline: %v", err)
+		}
+		if err := rc.SetWriteDeadline(now.Add(write)); err != nil {
+			log.Printf("deadlines: cannot extend the write deadline: %v", err)
+		}
+		c.Next()
+	}
+}
 
 // MaxBodySize rejects request bodies larger than n bytes. The handlers'
 // ShouldBindJSON surfaces the *http.MaxBytesError, which the responder maps
@@ -48,17 +79,20 @@ type Server struct {
 	E2EE        *E2EEHandler
 }
 
-func SetupRouter(s *Server, baseUrl string, timeoutDuration time.Duration, isDev bool, corsOrigin string) *gin.Engine {
+func SetupRouter(s *Server, baseUrl string, timeoutDuration time.Duration, isDev bool, corsOrigin string, trustedProxies []string) *gin.Engine {
 	if !isDev {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
 	router := gin.Default()
-	// Do not trust X-Forwarded-For from arbitrary peers: without this, gin
-	// resolves ClientIP() from any spoofed header and the per-IP rate limits
-	// on the auth endpoints can be bypassed. Set an explicit proxy CIDR here
-	// if the service is ever deployed behind a reverse proxy.
-	if err := router.SetTrustedProxies(nil); err != nil {
+	// Only the configured proxies may set X-Forwarded-For: trusting any peer
+	// would let a client spoof its address and walk past the per-IP rate
+	// limits on the auth endpoints. Empty (the default) trusts none, which is
+	// right for a directly exposed service — but behind a reverse proxy it
+	// makes every request share the proxy's address, and with it a single
+	// rate-limit budget, so TRUSTED_PROXIES must then list the proxy.
+	// Values are validated by the config loader.
+	if err := router.SetTrustedProxies(trustedProxies); err != nil {
 		panic(err)
 	}
 	router.Use(CorsMiddleware(corsOrigin))
@@ -118,8 +152,11 @@ func SetupRouter(s *Server, baseUrl string, timeoutDuration time.Duration, isDev
 	g.POST("/e2ee/purge", authRequired, s.E2EE.Purge)
 
 	// The migration payload is the user's whole dataset, so the endpoint gets
-	// its own body cap and timeout, far above the API-wide defaults.
+	// its own body cap and timeout, far above the API-wide defaults. The
+	// connection deadlines are raised first, otherwise the server-wide ones
+	// would cap both.
 	m := router.Group(baseUrl)
+	m.Use(Deadlines(e2eeMigrateTimeout, e2eeMigrateTimeout+e2eeMigrateWriteGrace))
 	m.Use(MaxBodySize(e2eeMigrateMaxBodyBytes))
 	m.Use(Timeout(e2eeMigrateTimeout, apperror.NewServiceUnavailable()))
 	m.POST("/e2ee/migrate", authRequired, s.E2EE.Migrate)
