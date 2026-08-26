@@ -1,0 +1,22 @@
+# Production overlay for docker-compose.yml. Copy it next to the base file:
+#
+#   cp docker-compose.prod.example.yml docker-compose.prod.yml
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# See docs/deployment.md. Note that the Makefile targets do NOT pick this file
+# up (they are the development workflow): on a server, drive compose directly.
+
+services:
+  homlback:
+    restart: unless-stopped
+    # The API is only ever reached through the reverse proxy terminating TLS
+    # on the same host, so it has no reason to listen on a public interface.
+    # `!override` replaces the base port list instead of appending to it.
+    ports: !override
+      - "127.0.0.1:8080:8080"
+
+  mysql:
+    restart: unless-stopped
+
+  redis:
+    restart: unless-stopped

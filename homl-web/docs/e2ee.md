@@ -2,6 +2,15 @@
 
 Status: **implemented (phase 1) — backend + Flutter client**
 
+Where the pieces live, now that it is built: migration
+`db/migrations/000006_e2ee`, `internal/domain/e2ee` (wire format, per-request
+mode flag, migration port), `internal/application/e2ee.go`,
+`internal/infrastructure/persistence/e2ee.go` (the atomic migration and the
+purge), `web.E2EEFlagMiddleware`, and on the client
+`homl-ui/lib/helpers/e2ee.dart` plus `homl-ui/lib/pages/e2ee/`. The routes are
+listed in [api.md](api.md); the SQL is exercised by
+`src/test/dbtest/e2ee_test.go`.
+
 Opt-in feature: the client encrypts tag names, category names and event
 descriptions on-device with a key that never leaves the device (except through
 an explicit user-initiated recovery-phrase export). The server stores opaque
@@ -80,7 +89,7 @@ current behavior unchanged; both modes coexist.
 ## 3. Data model changes
 
 ```sql
--- new migration
+-- db/migrations/000006_e2ee.up.sql
 ALTER TABLE Users ADD COLUMN isE2eeEnabled TINYINT(1) NOT NULL DEFAULT 0;
 ALTER TABLE Users ADD COLUMN e2eeKeyCheck VARCHAR(64) NULL;
 ALTER TABLE Tags  ADD COLUMN tagIndex VARCHAR(32) NULL;
@@ -116,11 +125,14 @@ API surface changes:
   the user is E2EE, rejected otherwise).
 - `GET /events?tags=`: for E2EE users the values are 32-hex `tagIndex` strings
   instead of plaintext names.
-- `GET /settings` (and the auth/refresh response): expose `isE2eeEnabled` so a
-  fresh install knows before rendering any data screen (§7).
+- `GET /settings`: exposes the read-only `isE2eeEnabled` and `e2eeKeyCheck`,
+  so a fresh install knows the mode — and can validate a typed recovery
+  phrase — before rendering any data screen (§7). The login/refresh responses
+  are unchanged (token pair only); the client reads the settings right after
+  authenticating.
 - `POST /events`, `PATCH /events/:id`: unchanged shape; `description` carries
-  a blob. The client is responsible for creating Month/Year date tags (in the
-  user's app locale) via `POST /tags` and including their ids in `tagsId`.
+  a blob. The client is responsible for creating the Month/Year date tags
+  (English names, §6) via `POST /tags` and including their ids in `tagsId`.
 
 ---
 
@@ -138,6 +150,10 @@ POST /e2ee/migrate
   "events":     [{ "id": 42, "description": "e2ee:v1:..." }, ...]
 }
 ```
+
+The endpoint carries the user's whole dataset, so it runs under its own
+limits: a 32 MiB body cap and a 60 s handler timeout, instead of the API-wide
+1 MiB / `HANDLER_TIMEOUT`.
 
 Server, in **one SQL transaction**: verify every id belongs to the user,
 verify the id sets exactly match the user's current rows (any mismatch →
@@ -170,8 +186,11 @@ atomic metadata commit; the endpoint itself does not change.
 
 ## 6. Client changes (homl-ui)
 
-- **Crypto helper**: extend `lib/helpers/encryption.dart` with AES-GCM
-  encrypt/decrypt, HKDF derivation, blind-index HMAC, BIP39 encode/decode.
+- **Crypto helper**: `lib/helpers/e2ee.dart` — the `E2ee` singleton owns the
+  seed in secure storage, the HKDF derivation, AES-GCM encrypt/decrypt, the
+  blind-index HMAC, the key check and the BIP39 encode/decode.
+  `lib/helpers/encryption.dart` stays what it always was: the ed25519
+  device-key helpers of the fingerprint factor, unrelated to E2EE.
 - **Repositories**: for E2EE users, encrypt on write / decrypt on read at the
   repository layer (`events`, `categories`, `tags`). Filtering by tags sends
   indexes.
@@ -180,10 +199,15 @@ atomic metadata commit; the endpoint itself does not change.
   cache never becomes a second plaintext store.
 - **Date tags**: on event create/update, the client ensures the Month/Year
   tags exist (create with ciphertext + index if missing) and references their
-  ids — mirroring `buildDateTags` locally, using the device locale.
+  ids — mirroring `buildDateTags` locally (`InsertCubit._buildDateTags`). The
+  names are the **English** month names of `lib/helpers/date_tags.dart`
+  (`dateTagMonths`), never the device locale: they are keys shared with the
+  backend, and both sides must derive the exact same tag. The app translates
+  them for display only.
 - **Blacklist + normalization**: applied client-side before encryption
-  (mirror of `masterdata.BlacklistedTags()` shipped in the app).
-- **Settings UX**: toggle lives on the Account page
+  (`E2ee.isBlacklistedTag` over the same `dateTagMonths`, mirroring
+  `masterdata.BlacklistedTags()`).
+- **Settings UX**: the toggle lives on the Security page of the drawer
   (`lib/pages/account/view/account.dart`), alongside the fingerprint/PIN
   switches which already follow the generate-key + secure-storage pattern.
   Enabling shows: explanation → recovery phrase (optional) → blocking
@@ -195,15 +219,20 @@ atomic metadata commit; the endpoint itself does not change.
 ## 7. New device / lost key
 
 After login, if the server reports `isE2eeEnabled=true` and no `e2eeMasterKey`
-exists locally, the app shows a **blocking screen** (no data screens behind
-it):
+exists locally, the app enters the `e2eeLocked` authentication status and shows
+a **blocking screen** (`lib/pages/e2ee/view/e2ee_restore_page.dart`, no data
+screens behind it):
 
 - **Enter recovery phrase** → rebuild `seed`, verify against `e2eeKeyCheck`
-  (wrong phrase = clear error, no partial state), store the key, proceed.
-- **Delete my encrypted data** (destructive, double-confirmed) → new endpoint
-  `POST /e2ee/purge`: deletes the user's tags, categories (non-default) and
-  events, resets `isE2eeEnabled` and `e2eeKeyCheck`. The account survives, the
-  data does not.
+  (wrong phrase = clear error, no partial state), store the key, proceed. The
+  client distinguishes a phrase that fails its own BIP39 checksum (a typo,
+  down to which word) from a well-formed phrase belonging to another account.
+- **Delete my encrypted data** (destructive, double-confirmed) →
+  `POST /e2ee/purge`: in one transaction it deletes the user's events and
+  **all** their categories (cascading to tags and event links), reseeds the
+  default categories exactly like a fresh registration, and resets
+  `isE2eeEnabled` / `e2eeKeyCheck`. The account survives, the data does not.
+  `409` if the user is not in E2EE mode.
 - **Log out.**
 
 ---
