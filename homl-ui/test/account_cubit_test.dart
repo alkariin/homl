@@ -116,4 +116,49 @@ void main() {
 
     await cubit.close();
   });
+
+  test('deleteAccount reports a wrong password inline', () async {
+    when(() => repository.deleteAccount(any()))
+        .thenAnswer((_) async => throw UserRequestFailure());
+
+    final cubit = await buildInitializedCubit();
+    unawaited(cubit.deleteAccount('WrongPass123!'));
+
+    await expectLater(
+      cubit.stream,
+      emitsThrough(predicate<AccountState>((s) =>
+          s.deleteError == AppMessage.passwordIncorrect && !s.deleteBusy)),
+    );
+    verify(() => repository.deleteAccount('WrongPass123!')).called(1);
+
+    await cubit.close();
+  });
+
+  test('deleteAccount maps any other failure to accountDeleteError', () async {
+    when(() => repository.deleteAccount(any()))
+        .thenAnswer((_) async => throw UserOtherFailure());
+
+    final cubit = await buildInitializedCubit();
+    unawaited(cubit.deleteAccount('Delete1234!'));
+
+    await expectLater(
+      cubit.stream,
+      emitsThrough(predicate<AccountState>((s) =>
+          s.deleteError == AppMessage.accountDeleteError && !s.deleteBusy)),
+    );
+
+    await cubit.close();
+  });
+
+  test('deleteAccount stays busy on success: the app navigates away', () async {
+    when(() => repository.deleteAccount(any())).thenAnswer((_) async {});
+
+    final cubit = await buildInitializedCubit();
+    await cubit.deleteAccount('Delete1234!');
+
+    expect(cubit.state.deleteBusy, isTrue);
+    expect(cubit.state.deleteError, isNull);
+
+    await cubit.close();
+  });
 }

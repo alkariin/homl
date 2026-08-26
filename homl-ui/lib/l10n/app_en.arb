@@ -21,6 +21,11 @@
   "account_passwordUpdateError": "An error appeared during the update, try again later",
   "account_currentPasswordError": "Enter your current password",
   "account_passwordsNotIdentical": "Passwords aren't identical",
+  "account_deleteAccount": "Delete my account",
+  "account_deleteAccountTitle": "Delete your account?",
+  "account_deleteAccountWarning": "This permanently deletes your account and all your events, tags and categories, on every device. This cannot be undone. Enter your password to confirm.",
+  "account_deleteAccountError": "The account could not be deleted, try again later",
+  "account_deleted": "Your account has been deleted",
 
   "login_usernameLabel": "username",
   "login_passwordLabel": "password",

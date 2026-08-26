@@ -74,6 +74,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get account_passwordsNotIdentical => 'Passwords aren\'t identical';
 
   @override
+  String get account_deleteAccount => 'Delete my account';
+
+  @override
+  String get account_deleteAccountTitle => 'Delete your account?';
+
+  @override
+  String get account_deleteAccountWarning =>
+      'This permanently deletes your account and all your events, tags and categories, on every device. This cannot be undone. Enter your password to confirm.';
+
+  @override
+  String get account_deleteAccountError =>
+      'The account could not be deleted, try again later';
+
+  @override
+  String get account_deleted => 'Your account has been deleted';
+
+  @override
   String get login_usernameLabel => 'username';
 
   @override

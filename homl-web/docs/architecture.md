@@ -120,6 +120,12 @@ Three cross-cutting rules the layers enforce:
 | MySQL | `Users` (credentials, pin, pkey, challenge, settings columns, E2EE flag + key check), `Categories`, `Tags` (incl. the E2EE blind index), `Events`, `EventsTags` |
 | Redis | Access/refresh sessions (`uuid → user_id`, TTL = token expiry), password-reset codes with their attempt counter and per-user cooldown (`pwdreset:*`, 15 min TTL), rate-limit counters (`rl:<endpoint>:<ip>`) |
 
+Every table is owned by a user through a cascading foreign key, so deleting an
+account (`DELETE /account`) needs no per-table sweep: the `Users` row carries
+the whole dataset with it. Its Redis keys (`auth:*`, `pwdreset:*`) are deleted
+explicitly, since Redis has no cascade — see
+[auth-flows.md](auth-flows.md#account-deletion).
+
 Schema migrations live in `db/migrations` (golang-migrate format).
 
 ## Configuration

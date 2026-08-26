@@ -21,6 +21,11 @@
   "account_passwordUpdateError": "Beim Aktualisieren ist ein Fehler aufgetreten, versuchen Sie es später erneut",
   "account_currentPasswordError": "Geben Sie Ihr aktuelles Passwort ein",
   "account_passwordsNotIdentical": "Die Passwörter stimmen nicht überein",
+  "account_deleteAccount": "Mein Konto löschen",
+  "account_deleteAccountTitle": "Konto löschen?",
+  "account_deleteAccountWarning": "Dies löscht dauerhaft dein Konto sowie alle deine Ereignisse, Tags und Kategorien auf allen Geräten. Dies kann nicht rückgängig gemacht werden. Gib dein Passwort ein, um zu bestätigen.",
+  "account_deleteAccountError": "Das Konto konnte nicht gelöscht werden, versuche es später erneut",
+  "account_deleted": "Dein Konto wurde gelöscht",
 
   "login_usernameLabel": "Benutzername",
   "login_passwordLabel": "Passwort",

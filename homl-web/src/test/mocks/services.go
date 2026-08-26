@@ -70,6 +70,10 @@ func (m *MockUsersService) UpdatePassword(ctx context.Context, oldPassword strin
 	return tokensAt(ret, 0), errAt(ret, 1)
 }
 
+func (m *MockUsersService) DeleteAccount(ctx context.Context, password string, idUser uint64) error {
+	return errAt(m.Called(password, idUser), 0)
+}
+
 func (m *MockUsersService) Challenge(ctx context.Context, refreshToken string) (*string, error) {
 	ret := m.Called(refreshToken)
 	var r0 *string

@@ -76,6 +76,23 @@ class AppLocalizationsFr extends AppLocalizations {
       'Les mots de passe ne sont pas identiques';
 
   @override
+  String get account_deleteAccount => 'Supprimer mon compte';
+
+  @override
+  String get account_deleteAccountTitle => 'Supprimer votre compte ?';
+
+  @override
+  String get account_deleteAccountWarning =>
+      'Ceci supprime définitivement votre compte ainsi que tous vos événements, tags et catégories, sur tous vos appareils. Cette action est irréversible. Saisissez votre mot de passe pour confirmer.';
+
+  @override
+  String get account_deleteAccountError =>
+      'Le compte n\'a pas pu être supprimé, réessayez plus tard';
+
+  @override
+  String get account_deleted => 'Votre compte a été supprimé';
+
+  @override
   String get login_usernameLabel => 'identifiant';
 
   @override

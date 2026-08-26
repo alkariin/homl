@@ -21,6 +21,11 @@
   "account_passwordUpdateError": "Une erreur est survenue pendant la mise à jour, réessayez plus tard",
   "account_currentPasswordError": "Entrez votre mot de passe actuel",
   "account_passwordsNotIdentical": "Les mots de passe ne sont pas identiques",
+  "account_deleteAccount": "Supprimer mon compte",
+  "account_deleteAccountTitle": "Supprimer votre compte ?",
+  "account_deleteAccountWarning": "Ceci supprime définitivement votre compte ainsi que tous vos événements, tags et catégories, sur tous vos appareils. Cette action est irréversible. Saisissez votre mot de passe pour confirmer.",
+  "account_deleteAccountError": "Le compte n'a pas pu être supprimé, réessayez plus tard",
+  "account_deleted": "Votre compte a été supprimé",
 
   "login_usernameLabel": "identifiant",
   "login_passwordLabel": "mot de passe",

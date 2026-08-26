@@ -29,6 +29,9 @@ class AuthenticationState extends Equatable {
   const AuthenticationState.e2eeLocked()
       : this._(status: AuthenticationStatus.e2eeLocked);
 
+  const AuthenticationState.accountDeleted()
+      : this._(status: AuthenticationStatus.accountDeleted);
+
   @override
   List<Object> get props {
     if (settings == null) return [status];

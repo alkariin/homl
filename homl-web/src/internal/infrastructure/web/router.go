@@ -129,6 +129,9 @@ func SetupRouter(s *Server, baseUrl string, timeoutDuration time.Duration, isDev
 	g.POST("/confirmResetPassword", resetLimit, s.User.ConfirmResetPassword)
 	g.POST("/challenge", challengeLimit, s.User.Challenge)
 	g.PUT("/secureAuth", authRequired, s.User.SecureAuth)
+	// Destructive and password-gated, so it shares the per-IP /login budget: a
+	// leaked access token must not buy unlimited password guesses here.
+	g.DELETE("/account", loginLimit, authRequired, s.User.DeleteAccount)
 
 	g.GET("/categories", authRequired, e2eeFlag, s.Category.GetCategories)
 	g.POST("/categories", authRequired, e2eeFlag, s.Category.CreateCategory)

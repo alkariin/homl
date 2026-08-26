@@ -274,3 +274,27 @@ done
 `POST /logout` clears the pending challenge and deletes the access session
 from Redis (`DEL access_uuid`), which immediately invalidates the access
 token at the middleware. Returns `204`.
+
+## Account deletion
+
+`DELETE /account` takes the password again (`{ "password": "..." }`) and
+compares it with bcrypt, exactly like `PUT /password`: an access token alone —
+stolen, or found on an unlocked phone — must not be able to destroy the data.
+A wrong password answers `401` and changes nothing.
+
+The order of the three steps matters:
+
+1. `RevokeAllSessions` — every live access/refresh pair of the user.
+2. `DeleteResetCodes` — `pwdreset:code|attempts|cooldown:<id>`, so a code
+   issued moments earlier cannot outlive the account on its remaining TTL.
+3. `DELETE FROM Users WHERE id = ?` — the irreversible step, hence last. The
+   schema does the rest: `Categories`, `Events` and `EventsTags` cascade from
+   the user row, `Tags` (and their synonyms) from the categories.
+
+Redis is purged *before* the row because a failure at any point then leaves a
+consistent, recoverable account — at worst logged out everywhere, which the
+user fixes by logging in again. The reverse order would leave live sessions
+resolving a user id that no longer exists until their TTL expired.
+
+Returns `204`. The client then wipes its local state, E2EE seed included, and
+lands on the login screen with a confirmation toast.
