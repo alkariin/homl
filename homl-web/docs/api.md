@@ -49,9 +49,13 @@ the handlers next to it.
 | POST | `/confirmResetPassword` | — | 5/hour ¹ |
 | POST | `/challenge` | refresh token | 30/min |
 | PUT | `/secureAuth` | ✔ | — |
+| DELETE | `/account` | ✔ | 10/min ² |
 
 ¹ Both reset endpoints share a single per-IP budget, so a full reset round trip
 spends two of the five hourly requests.
+
+² `DELETE /account` shares the per-IP budget of `/login` and `/registration`:
+it takes a password, so it must not become a brute-force oracle.
 
 ### POST /registration
 
@@ -157,6 +161,25 @@ factor is enabled.
 
 → `200` `{ "isFingerprintEnabled": bool, "isPinEnabled": bool }` — `400` on an
 inconsistent combination.
+
+### DELETE /account
+
+Deletes the account for good, together with every category, tag and event it
+owns (the schema cascades from the `Users` row, so nothing is left behind).
+Every session and any pending password-reset code are revoked first. There is
+no grace period, no soft delete and no confirmation email.
+
+The password is re-entered by the client and re-checked here: a stolen access
+token must not be enough to destroy the data. The client double-confirms and
+wipes its own state afterwards — including the E2EE seed, which is the one
+thing logout deliberately keeps.
+
+```json
+{ "password": "..." }
+```
+
+→ `204` — `401` if the password does not match — `422` if it is missing or too
+short — `404` if the account is already gone.
 
 ## Categories
 

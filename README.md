@@ -44,7 +44,7 @@ App icons and native splash screens are generated from the logo — see
 | [homl-web/docs/architecture.md](homl-web/docs/architecture.md) | Backend layering (hexagonal), ports & adapters, request lifecycle, configuration |
 | [homl-web/docs/domain-model.md](homl-web/docs/domain-model.md) | Aggregates, relations and persistence ports |
 | [homl-web/docs/api.md](homl-web/docs/api.md) | HTTP reference: every route, body, status code and error shape |
-| [homl-web/docs/auth-flows.md](homl-web/docs/auth-flows.md) | Login, refresh with PIN/fingerprint, password reset, logout |
+| [homl-web/docs/auth-flows.md](homl-web/docs/auth-flows.md) | Login, refresh with PIN/fingerprint, password reset, logout, account deletion |
 | [homl-web/docs/e2ee.md](homl-web/docs/e2ee.md) | End-to-end encryption: crypto, wire format, migration, recovery |
 | [homl-web/docs/deployment.md](homl-web/docs/deployment.md) | Self-hosting: secrets, TLS, reverse proxy, email, backups, upgrades |
 | [homl-web/docs/default-categories.md](homl-web/docs/default-categories.md) | The three seeded categories and their rules |

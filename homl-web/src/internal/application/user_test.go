@@ -2,8 +2,11 @@ package application_test
 
 import (
 	"context"
+	"errors"
+	"net/http"
 	"testing"
 
+	"github.com/alkariin/homl/homl-web/internal/apperror"
 	"github.com/alkariin/homl/homl-web/internal/application"
 	"github.com/alkariin/homl/homl-web/internal/domain/user"
 	"github.com/alkariin/homl/homl-web/test/mocks"
@@ -382,6 +385,57 @@ func TestRefresh(t *testing.T) {
 		assert.Error(t, err)
 		assert.Nil(t, tokens)
 		mockRepo.AssertNotCalled(t, "RevokeSessionByRefresh")
+	})
+}
+
+func TestDeleteAccount(t *testing.T) {
+	t.Run("Purges the sessions and reset codes before deleting the row", func(t *testing.T) {
+		mockRepo := new(mocks.MockUsersRepo)
+		svc := application.NewUsersService(&application.UserConfig{UsersRepository: mockRepo, Tokens: testTokens})
+
+		hash, _ := bcrypt.GenerateFromPassword([]byte("Delete1234!"), bcrypt.MinCost)
+		hashStr := string(hash)
+		mockRepo.On("FindPasswordById", uint64(1)).Return(&hashStr, nil)
+		mockRepo.On("RevokeAllSessions", uint64(1)).Return(nil)
+		mockRepo.On("DeleteResetCodes", uint64(1)).Return(nil)
+		mockRepo.On("Delete", uint64(1)).Return(nil)
+
+		err := svc.DeleteAccount(context.Background(), "Delete1234!", 1)
+
+		assert.NoError(t, err)
+		mockRepo.AssertExpectations(t)
+	})
+
+	t.Run("Rejects a wrong password without touching anything", func(t *testing.T) {
+		mockRepo := new(mocks.MockUsersRepo)
+		svc := application.NewUsersService(&application.UserConfig{UsersRepository: mockRepo, Tokens: testTokens})
+
+		hash, _ := bcrypt.GenerateFromPassword([]byte("Delete1234!"), bcrypt.MinCost)
+		hashStr := string(hash)
+		mockRepo.On("FindPasswordById", uint64(1)).Return(&hashStr, nil)
+
+		err := svc.DeleteAccount(context.Background(), "WrongPass123!", 1)
+
+		assert.Error(t, err)
+		assert.Equal(t, http.StatusUnauthorized, apperror.Status(err))
+		mockRepo.AssertNotCalled(t, "RevokeAllSessions")
+		mockRepo.AssertNotCalled(t, "DeleteResetCodes")
+		mockRepo.AssertNotCalled(t, "Delete")
+	})
+
+	t.Run("Keeps the account when the session purge fails", func(t *testing.T) {
+		mockRepo := new(mocks.MockUsersRepo)
+		svc := application.NewUsersService(&application.UserConfig{UsersRepository: mockRepo, Tokens: testTokens})
+
+		hash, _ := bcrypt.GenerateFromPassword([]byte("Delete1234!"), bcrypt.MinCost)
+		hashStr := string(hash)
+		mockRepo.On("FindPasswordById", uint64(1)).Return(&hashStr, nil)
+		mockRepo.On("RevokeAllSessions", uint64(1)).Return(errors.New("redis down"))
+
+		err := svc.DeleteAccount(context.Background(), "Delete1234!", 1)
+
+		assert.Error(t, err)
+		mockRepo.AssertNotCalled(t, "Delete")
 	})
 }
 

@@ -191,6 +191,32 @@ class AccountCubit extends Cubit<AccountState> {
     }
   }
 
+  /// Clears the delete dialog before it opens, so a previous failure is not
+  /// still on screen.
+  void resetDeleteDialogState() {
+    emit(state.copyWith(deleteBusy: false, clearDeleteError: true));
+  }
+
+  /// Deletes the account and everything it owns. Success emits nothing: the
+  /// repository flips the auth status to accountDeleted, the app navigates to
+  /// the login screen and this cubit is disposed with the page.
+  Future<void> deleteAccount(String password) async {
+    emit(state.copyWith(deleteBusy: true, clearDeleteError: true));
+    try {
+      await usersRepository.deleteAccount(password);
+    } on UserRequestFailure catch (_) {
+      if (!isClosed) {
+        emit(state.copyWith(
+            deleteBusy: false, deleteError: AppMessage.passwordIncorrect));
+      }
+    } catch (_) {
+      if (!isClosed) {
+        emit(state.copyWith(
+            deleteBusy: false, deleteError: AppMessage.accountDeleteError));
+      }
+    }
+  }
+
   void resetPinViewState() {
     emit(state.copyWith(
       clearModal: true,

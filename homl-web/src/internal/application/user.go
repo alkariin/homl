@@ -33,6 +33,7 @@ type UsersService interface {
 	ResetPassword(ctx context.Context, u *user.User) error
 	ConfirmResetPassword(ctx context.Context, email string, code string, newPassword string) (map[string]string, error)
 	UpdatePassword(ctx context.Context, oldPassword string, newPassword string, idUser uint64) (map[string]string, error)
+	DeleteAccount(ctx context.Context, password string, idUser uint64) error
 	Challenge(ctx context.Context, refreshToken string) (*string, error)
 	SecureAuth(ctx context.Context, u *user.User) (*user.UserResponse, error)
 }
@@ -302,6 +303,35 @@ func (u *usersService) UpdatePassword(ctx context.Context, oldPassword string, n
 	}
 
 	return u.generateAndUpdatePassword(ctx, newPassword, idUser)
+}
+
+// DeleteAccount erases the account and, through the schema cascade, every
+// category, tag and event it owns. The password is re-checked here because a
+// live access token alone must not be enough to destroy the data.
+//
+// Redis is purged before the row: the MySQL delete is the irreversible step,
+// so it goes last. A failure before it leaves a consistent account (at worst
+// logged out everywhere, which the user recovers from by logging in again),
+// whereas deleting the row first would leave live sessions resolving a dead
+// user id until their TTL expired.
+func (u *usersService) DeleteAccount(ctx context.Context, password string, idUser uint64) error {
+	storedPassword, err := u.UsersRepository.FindPasswordById(ctx, idUser)
+	if err != nil {
+		return err
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(*storedPassword), []byte(password)); err != nil {
+		return apperror.NewAuthorization("Not authorized")
+	}
+
+	if err := u.UsersRepository.RevokeAllSessions(ctx, idUser); err != nil {
+		return err
+	}
+	if err := u.UsersRepository.DeleteResetCodes(ctx, idUser); err != nil {
+		return err
+	}
+
+	return u.UsersRepository.Delete(ctx, idUser)
 }
 
 func (u *usersService) generateAndUpdatePassword(ctx context.Context, newPassword string, idUser uint64) (map[string]string, error) {

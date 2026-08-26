@@ -13,6 +13,7 @@ import 'package:homl/helpers/toast.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
 import 'package:homl/pages/account/bloc/account_cubit.dart';
 import 'package:homl/pages/account/view/e2ee_mnemonic_dialog.dart';
+import 'package:homl/pages/account/view/delete_account_dialog.dart';
 import 'package:homl/pages/account/view/password_dialog.dart';
 
 class AccountPage extends StatelessWidget {
@@ -248,6 +249,21 @@ class AccountView extends StatelessWidget {
                       ),
                       onTap: () async {
                         await context.read<UsersRepository>().logout();
+                      },
+                    ),
+                    ListTile(
+                      leading: Icon(Icons.delete_forever_outlined,
+                          color: Colors.red.shade400),
+                      title: Text(
+                        localization.account_deleteAccount,
+                        style: TextStyle(
+                            color: Colors.red.shade400,
+                            fontWeight: FontWeight.w600),
+                      ),
+                      onTap: () {
+                        context.read<AccountCubit>().resetDeleteDialogState();
+                        Navigator.push(
+                            context, DeleteAccountDialog.route(context));
                       },
                     ),
                   ]),

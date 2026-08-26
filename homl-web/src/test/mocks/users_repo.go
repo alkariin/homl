@@ -295,3 +295,25 @@ func (m *MockUsersRepo) ConsumeResetCode(ctx context.Context, userId uint64, cod
 
 	return r0
 }
+
+func (m *MockUsersRepo) Delete(ctx context.Context, idUser uint64) error {
+	ret := m.Called(idUser)
+
+	var r0 error
+	if ret.Get(0) != nil {
+		r0 = ret.Get(0).(error)
+	}
+
+	return r0
+}
+
+func (m *MockUsersRepo) DeleteResetCodes(ctx context.Context, idUser uint64) error {
+	ret := m.Called(idUser)
+
+	var r0 error
+	if ret.Get(0) != nil {
+		r0 = ret.Get(0).(error)
+	}
+
+	return r0
+}

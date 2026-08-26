@@ -10,6 +10,8 @@ enum LocalStorageKey {
 
   /// 16-byte E2EE seed (base64). Deliberately NOT removed on logout: it must
   /// survive re-logins on the same device — losing it means losing the data.
+  /// Account deletion is the one case that wipes it (see [clearAll]): there
+  /// is no data left to unlock.
   e2eeMasterKey,
 }
 
@@ -50,5 +52,14 @@ class LocalStorageManager {
   static Future<void> clearDataCaches() async {
     await remove(LocalStorageKey.eventsCache);
     await remove(LocalStorageKey.categoriesCache);
+  }
+
+  /// Removes every key this app owns. Account deletion only: unlike logout it
+  /// also drops [LocalStorageKey.e2eeMasterKey], the PIN keypair and the
+  /// fingerprint flag, because the account they unlock no longer exists.
+  static Future<void> clearAll() async {
+    for (final key in LocalStorageKey.values) {
+      await remove(key);
+    }
   }
 }

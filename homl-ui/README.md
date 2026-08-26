@@ -328,6 +328,27 @@ Neither action refreshes the list by hand: both repository calls emit on
 `EventsRepository.changes`, which `HomeCubit` already listens to (refetch +
 offline cache rewrite), and `ListCubit` re-filters from `HomeCubit.stream`.
 
+## Security page (drawer): password, PIN, fingerprint, delete account
+
+`lib/pages/account/` is the "Security" screen: password change
+(`password_dialog.dart`), the two local unlock factors (fingerprint / PIN,
+mutually exclusive), the E2EE toggle, then a destructive group with **Logout**
+and **Delete my account**.
+
+Deleting the account is irreversible, so it is gated twice: a single dialog
+(`delete_account_dialog.dart`) states what is lost *and* asks for the password,
+which the backend re-checks (`DELETE /account`, see
+[homl-web/docs/api.md](../homl-web/docs/api.md)). A wrong password shows inline
+and the dialog stays open.
+
+On success `UsersRepository.deleteAccount` wipes **everything** this device
+holds — a superset of logout: `LocalStorageManager.clearAll()` (refresh token,
+both caches, the `e2eeMasterKey` seed, the PIN keypair, the fingerprint flag)
+plus the biometric entry (`removeStorageFile`). It then emits the
+`accountDeleted` authentication status, which `app.dart` turns into
+"navigate to login + confirmation toast" — the same shape as `pinLocked`.
+The cubit emits nothing on success: the page is disposed by that navigation.
+
 ## Offline cache & local search
 
 The Search tab does **not** query the backend per filter change: it filters
@@ -359,8 +380,8 @@ cache each successful payload in `flutter_secure_storage` (encrypted at
 rest). On startup `HomeCubit.init()` serves the cached snapshot first, then
 refreshes it from the network; when the network is unavailable the cached
 copy is served instead. The caches are cleared whenever the local session
-ends (logout, rejected refresh token, PIN lockout) so another account on the
-same device cannot read them.
+ends (logout, rejected refresh token, PIN lockout, account deletion) so
+another account on the same device cannot read them.
 
 Writes (creating events/tags) still require the network; offline is
 read-only for now.
@@ -375,7 +396,8 @@ and wire format: [homl-web/docs/e2ee.md](../homl-web/docs/e2ee.md).
 
 - `lib/helpers/e2ee.dart` (`E2ee` singleton) holds the crypto: a 16-byte seed
   in secure storage (`e2eeMasterKey`, exportable as a 12-word BIP39 recovery
-  phrase), HKDF-derived content and index keys, AES-256-GCM value encryption
+  phrase; it survives logout on purpose, and is wiped only by account
+  deletion — there is no data left to unlock), HKDF-derived content and index keys, AES-256-GCM value encryption
   (`e2ee:v1:` blobs) and the tag blind index. It also mirrors the backend tag
   blacklist (`isBlacklistedTag`, over the `dateTagMonths` of
   `lib/helpers/date_tags.dart`), which the server can no longer enforce for
