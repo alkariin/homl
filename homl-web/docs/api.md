@@ -285,7 +285,10 @@ client creates and attaches its own.
 | PATCH | `/events/:id` | `{description?, date, tagsId: uint[]}` | `204` |
 | DELETE | `/events/:id` | — | `204` |
 
-`GET /events` returns:
+`GET /events` returns the events newest first (by `date` descending, most
+recently created first for the same day), so an event created for a past day
+or whose date was edited lands at its chronological slot, not at its creation
+slot:
 
 ```json
 [
