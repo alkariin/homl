@@ -15,7 +15,10 @@ class EventsRequestFailure implements Exception {}
 class EventsNotFoundFailure implements Exception {}
 
 class EventsRepository {
-  final apiInstance = Api();
+  final Api? _injectedApi;
+  late final Api apiInstance = _injectedApi ?? Api();
+
+  EventsRepository({Api? api}) : _injectedApi = api;
 
   final StreamController<void> _changesController =
       StreamController<void>.broadcast();
@@ -104,7 +107,7 @@ class EventsRepository {
       await apiInstance.api.post<void>('/events', data: {
         if (description != null && description.isNotEmpty)
           'description': await _outgoingDescription(description),
-        'date': date.toUtc().toIso8601String(),
+        'date': serializeDate(date),
         'tagsId': tagsId,
       });
     } on DioException catch (_) {
@@ -113,6 +116,17 @@ class EventsRepository {
 
     _changesController.add(null);
   }
+
+  /// Serializes an event date for the backend. The `date` column is a plain
+  /// calendar day (MySQL `DATE`), so only the year/month/day fields matter:
+  /// they are sent as UTC midnight, mirroring what `GET /events` returns.
+  ///
+  /// Never `toUtc()` here: the date picker yields the picked day at *local*
+  /// midnight, which east of UTC becomes 22:00 the day before once converted,
+  /// and MySQL then truncates it to that previous day. Editing an event to
+  /// "tomorrow" silently stored "today".
+  static String serializeDate(DateTime date) =>
+      DateTime.utc(date.year, date.month, date.day).toIso8601String();
 
   /// Encrypts an outgoing description for E2EE users; the empty string stays
   /// empty in both modes.
@@ -133,7 +147,7 @@ class EventsRepository {
     try {
       await apiInstance.api.patch<void>('/events/$id', data: {
         'description': await _outgoingDescription(description ?? ''),
-        'date': date.toUtc().toIso8601String(),
+        'date': serializeDate(date),
         'tagsId': tagsId,
       });
     } on DioException catch (_) {
