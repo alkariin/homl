@@ -294,6 +294,13 @@ client creates and attaches its own.
 ]
 ```
 
+`date` is a calendar day, not an instant: the column is a MySQL `DATE`, so
+the time part of the RFC 3339 value is truncated (`2026-08-31T22:00:00Z` is
+stored as `2026-08-31`). Clients must send the picked day as UTC midnight
+(`YYYY-MM-DDT00:00:00Z`, the same shape `GET /events` returns) and must not
+convert a local-midnight date to UTC — east of UTC that lands on the previous
+day. The month/year date tags are derived from that stored day.
+
 Tags carry only `idCategory` (no category join): the client already holds the
 categories from `GET /categories`. `idParentTag` lets the client resolve a
 synonym to its group; `tagIndex` is added for E2EE users and omitted
