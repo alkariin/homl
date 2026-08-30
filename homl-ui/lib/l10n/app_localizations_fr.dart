@@ -489,15 +489,15 @@ class AppLocalizationsFr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count événements n\'ont aucun autre tag :',
-      one: '1 événement n\'a aucun autre tag :',
+      other: '$count d\'entre eux ne garderont que leur date.',
+      one: '1 d\'entre eux ne gardera que sa date.',
     );
     return '$_temp0';
   }
 
   @override
   String get categories_deleteTagKeepEvents =>
-      'Conserver ces événements (date uniquement)';
+      'Conserver ces événements, retirer le tag';
 
   @override
   String get categories_deleteTagDeleteEvents => 'Supprimer ces événements';
@@ -539,10 +539,8 @@ class AppLocalizationsFr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other:
-          '$count événements n\'utilisent que des tags de cette catégorie et seront supprimés.',
-      one:
-          '1 événement n\'utilise que des tags de cette catégorie et sera supprimé.',
+      other: '$count événements utilisent ces tags et seront supprimés.',
+      one: '1 événement utilise ces tags et sera supprimé.',
     );
     return '$_temp0';
   }

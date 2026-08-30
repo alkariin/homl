@@ -247,8 +247,9 @@ Destructive actions confirm with the counts served by `GET /tags/:id/usage` /
 
 - a main tag can be renamed, given synonyms, **moved to another category**
   (its synonyms follow) or deleted — the delete dialog says how many events
-  use the tag and lets the user delete the events that only carry this tag or
-  keep them with their date only (`deleteEvents` on `DELETE /tags/:id`);
+  use the tag and, as soon as there is one, asks whether to keep them (only
+  the tag is removed; it says how many would be left with their date only) or
+  delete them all (`deleteEvents` on `DELETE /tags/:id`);
 - a synonym (tap or long press on its chip) can be renamed, detached or
   deleted — deletion confirms that its events are repointed to the main tag;
 - deleting a category offers to move its tags to the Others category
