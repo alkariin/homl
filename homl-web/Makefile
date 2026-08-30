@@ -128,6 +128,9 @@ seed: seed-gen ## Seed the database with demo data (idempotent)
 seed-gen: ## Generate db/seeder.sql (encrypts demo data with ENCRYPT_SECRET)
 	cd src && go run ./cmd/seedgen > ../db/seeder.sql
 
+backup: ## Dump the database to BACKUP_DIR (default /var/backups/homl, see docs/deployment.md §7)
+	scripts/backup.sh
+
 ##@ Cleanup
 
 clean: ## Remove stack, named volumes, orphan containers, and built images
