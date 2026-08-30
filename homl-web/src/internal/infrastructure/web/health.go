@@ -18,6 +18,9 @@ const healthCheckTimeout = 2 * time.Second
 type HealthHandler struct {
 	CheckDB    func(ctx context.Context) error
 	CheckRedis func(ctx context.Context) error
+	// Version is reported alongside the component states so an operator (or
+	// the app's About screen) can tell which build answers.
+	Version string
 }
 
 func (h *HealthHandler) Healthz(c *gin.Context) {
@@ -25,7 +28,7 @@ func (h *HealthHandler) Healthz(c *gin.Context) {
 	defer cancel()
 
 	status := http.StatusOK
-	components := gin.H{"mysql": "ok", "redis": "ok"}
+	components := gin.H{"mysql": "ok", "redis": "ok", "version": h.Version}
 
 	if err := h.CheckDB(ctx); err != nil {
 		status = http.StatusServiceUnavailable

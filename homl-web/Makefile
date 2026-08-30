@@ -18,6 +18,11 @@ COMPOSE_LOCAL_FILE ?= docker-compose.local.yml
 COMPOSE_FILES       = -f docker-compose.yml $(if $(wildcard $(COMPOSE_LOCAL_FILE)),-f $(COMPOSE_LOCAL_FILE),)
 DOCKERFILE         ?= Dockerfile
 DOCKER_BUILD_ARGS  ?=
+# Build identity reported by /healthz and the startup log (see
+# internal/version). Exported below, so docker compose picks it up too.
+VERSION            ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+export VERSION
+LDFLAGS             = -X github.com/alkariin/homl/homl-web/internal/version.Version=$(VERSION)
 
 MYSQL_USER          ?= homl
 MYSQL_PASSWORD      ?= change_me_mysql
@@ -54,7 +59,7 @@ down: ## Stop the compose stack
 	docker compose $(COMPOSE_FILES) down --remove-orphans
 
 local: ## Run backend process locally (requires db-up + migrateup first)
-	cd src && go run .
+	cd src && go run -ldflags "$(LDFLAGS)" .
 
 vendor: ## Refresh vendor/ (set HTTP_PROXY/HTTPS_PROXY if needed)
 	cd src && go mod tidy && go mod vendor
@@ -85,7 +90,7 @@ test-db: ## Run cross-tenant persistence tests (needs db-up + migrateup)
 ##@ Docker
 
 build: ## Build backend Docker image
-	docker build -f $(DOCKERFILE) $(DOCKER_BUILD_ARGS) -t $(APP_IMAGE) .
+	docker build -f $(DOCKERFILE) $(DOCKER_BUILD_ARGS) --build-arg VERSION=$(VERSION) -t $(APP_IMAGE) .
 
 ##@ Database
 

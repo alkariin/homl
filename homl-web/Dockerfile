@@ -9,7 +9,12 @@ COPY ./src/go.mod ./src/go.sum ./
 RUN go mod download
 
 COPY ./src/ ./
-RUN CGO_ENABLED=0 GOOS=linux go build -o /homlback .
+# VERSION is what /healthz and the startup log report; the Makefile passes
+# `git describe` (the .git directory is outside the build context).
+ARG VERSION=dev
+RUN CGO_ENABLED=0 GOOS=linux go build \
+  -ldflags "-X github.com/alkariin/homl/homl-web/internal/version.Version=${VERSION}" \
+  -o /homlback .
 
 FROM alpine:3.20
 

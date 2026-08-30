@@ -70,6 +70,16 @@
   "settings_selectLanguage": "Sprache auswählen",
   "settings_homeTab": "Startbildschirm",
   "settings_selectHomeTab": "Startbildschirm auswählen",
+  "settings_about": "Über",
+  "settings_versionApp": "App {version}",
+  "@settings_versionApp": {
+    "placeholders": { "version": { "type": "String" } }
+  },
+  "settings_versionServer": "Server {version}",
+  "@settings_versionServer": {
+    "placeholders": { "version": { "type": "String" } }
+  },
+  "settings_versionServerUnavailable": "Server nicht erreichbar",
 
   "global_cancel": "Abbrechen",
   "global_save": "Speichern",

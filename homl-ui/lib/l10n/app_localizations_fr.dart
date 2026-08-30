@@ -197,6 +197,22 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settings_selectHomeTab => 'Sélectionner l\'écran d\'accueil';
 
   @override
+  String get settings_about => 'À propos';
+
+  @override
+  String settings_versionApp(String version) {
+    return 'App $version';
+  }
+
+  @override
+  String settings_versionServer(String version) {
+    return 'Serveur $version';
+  }
+
+  @override
+  String get settings_versionServerUnavailable => 'Serveur injoignable';
+
+  @override
   String get global_cancel => 'Annuler';
 
   @override
