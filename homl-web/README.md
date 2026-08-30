@@ -23,6 +23,10 @@ Then generate the vendor directory (the shell can reach the proxy even if Docker
 make vendor   # requires HTTP_PROXY / HTTPS_PROXY set in your shell or .env.local
 ```
 
+On a real deployment, schedule `scripts/backup.sh` daily (root's crontab) and
+rehearse a restore with `scripts/restore.sh` before going live —
+[deployment.md §7](docs/deployment.md#7-backups).
+
 ## Start the full stack
 
 ```bash
