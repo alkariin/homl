@@ -5,7 +5,10 @@ WORKDIR /app
 # If you need to update dependencies: go mod tidy && go mod vendor
 # (set HTTP_PROXY / HTTPS_PROXY)
 COPY ./src/ ./
-RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor -o /homlback .
+ARG VERSION=dev
+RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor \
+  -ldflags "-X github.com/alkariin/homl/homl-web/internal/version.Version=${VERSION}" \
+  -o /homlback .
 
 FROM alpine:3.20
 WORKDIR /app

@@ -70,6 +70,16 @@
   "settings_selectLanguage": "Sélectionner la langue",
   "settings_homeTab": "Écran d'accueil",
   "settings_selectHomeTab": "Sélectionner l'écran d'accueil",
+  "settings_about": "À propos",
+  "settings_versionApp": "App {version}",
+  "@settings_versionApp": {
+    "placeholders": { "version": { "type": "String" } }
+  },
+  "settings_versionServer": "Serveur {version}",
+  "@settings_versionServer": {
+    "placeholders": { "version": { "type": "String" } }
+  },
+  "settings_versionServerUnavailable": "Serveur injoignable",
 
   "global_cancel": "Annuler",
   "global_save": "Enregistrer",
