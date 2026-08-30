@@ -89,7 +89,9 @@ CORS middleware → security headers
 ```
 
 `/healthz` sits outside the API group: unauthenticated, unthrottled, so
-orchestrators can poll it. Gin is started with no trusted proxies, so
+orchestrators can poll it. Besides the MySQL/Redis states it carries the
+build `version` (`internal/version`, set through `-ldflags -X` from the
+`VERSION` build argument; `dev` when unset). Gin is started with no trusted proxies, so
 `ClientIP()` cannot be spoofed through `X-Forwarded-For` unless `TRUSTED_PROXIES`
 says so — which must be set before deploying behind a reverse proxy, or the
 per-IP rate limits all collapse onto the proxy's address

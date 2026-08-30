@@ -198,6 +198,22 @@ class AppLocalizationsDe extends AppLocalizations {
   String get settings_selectHomeTab => 'Startbildschirm auswählen';
 
   @override
+  String get settings_about => 'Über';
+
+  @override
+  String settings_versionApp(String version) {
+    return 'App $version';
+  }
+
+  @override
+  String settings_versionServer(String version) {
+    return 'Server $version';
+  }
+
+  @override
+  String get settings_versionServerUnavailable => 'Server nicht erreichbar';
+
+  @override
   String get global_cancel => 'Abbrechen';
 
   @override

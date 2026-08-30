@@ -2,6 +2,9 @@ services:
   homlback:
     build:
       context: .
+      args:
+        # Reported by /healthz; `make dev|up|build` fill it from `git describe`.
+        VERSION: ${VERSION:-dev}
     environment:
       ENVIRONMENT: ${ENVIRONMENT:-PROD}
       HOST: ${HOST:-http://localhost:8080}

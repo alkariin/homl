@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:rxdart/rxdart.dart';
 
 import 'package:homl/data/models/settings.dart';
+import 'package:homl/helpers/version.dart';
 
 import 'api.dart';
 
@@ -56,6 +57,24 @@ class SettingsRepository {
       _settingsController.add(result);
     } on DioException catch (_) {
       _settingsController.addError(SettingsRequestFailure());
+    }
+  }
+
+  /// Version of the backend answering [Api.baseUrl], read from its `/healthz`
+  /// (see homl-web/internal/version). Null when the request fails — the About
+  /// row then says the server is unreachable rather than hiding.
+  Future<String?> getServerVersion() async {
+    try {
+      final response = await api.get<Map<String, dynamic>>(
+          healthzUrl(Api.baseUrl),
+          // /healthz answers 503 with the same body when a dependency is
+          // down; the build identity is still worth showing then.
+          options: Options(
+              validateStatus: (status) => status != null && status < 600));
+      final version = response.data?['version'];
+      return version is String && version.isNotEmpty ? version : null;
+    } on DioException catch (_) {
+      return null;
     }
   }
 

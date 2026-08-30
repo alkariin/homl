@@ -193,6 +193,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settings_selectHomeTab => 'Select home screen';
 
   @override
+  String get settings_about => 'About';
+
+  @override
+  String settings_versionApp(String version) {
+    return 'App $version';
+  }
+
+  @override
+  String settings_versionServer(String version) {
+    return 'Server $version';
+  }
+
+  @override
+  String get settings_versionServerUnavailable => 'Server unreachable';
+
+  @override
   String get global_cancel => 'Cancel';
 
   @override
