@@ -907,13 +907,13 @@ abstract class AppLocalizations {
   /// No description provided for @categories_deleteTagExclusiveEvents.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =1{1 event has no other tag:} other{{count} events have no other tag:}}'**
+  /// **'{count, plural, =1{1 of them will be left with its date only.} other{{count} of them will be left with their date only.}}'**
   String categories_deleteTagExclusiveEvents(int count);
 
   /// No description provided for @categories_deleteTagKeepEvents.
   ///
   /// In en, this message translates to:
-  /// **'Keep these events (date only)'**
+  /// **'Keep these events, remove the tag'**
   String get categories_deleteTagKeepEvents;
 
   /// No description provided for @categories_deleteTagDeleteEvents.
@@ -949,7 +949,7 @@ abstract class AppLocalizations {
   /// No description provided for @categories_deleteCategoryDeleteAllDetail.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =1{1 event only uses tags from this category and will be deleted.} other{{count} events only use tags from this category and will be deleted.}}'**
+  /// **'{count, plural, =1{1 event uses these tags and will be deleted.} other{{count} events use these tags and will be deleted.}}'**
   String categories_deleteCategoryDeleteAllDetail(int count);
 }
 

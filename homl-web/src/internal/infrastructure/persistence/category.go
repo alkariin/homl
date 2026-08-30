@@ -133,8 +133,8 @@ func (c *CategoriesRepository) Update(ctx context.Context, category *category.Ca
 
 // Delete removes a category. moveTags relocates its tags (synonym links
 // intact) to the user's Other category; otherwise the tags are cascade-
-// deleted and deleteEvents decides whether the events whose only non-date
-// tags lived in this category are deleted too or preserved date-only.
+// deleted and deleteEvents decides whether every event tagged with one of
+// them is deleted too or preserved (only the tags are removed from them).
 func (c *CategoriesRepository) Delete(ctx context.Context, idCategory uint, idUser uint64, moveTags bool, deleteEvents bool) error {
 	tx, err := c.DB.BeginTxx(ctx, nil)
 	if err != nil {
@@ -172,16 +172,22 @@ func (c *CategoriesRepository) Delete(ctx context.Context, idCategory uint, idUs
 			return err
 		}
 	} else if deleteEvents {
-		// Delete the events whose only non-date tags live in this category
-		// before the cascade removes their EventsTags rows. The derived table
-		// keeps MySQL from selecting the target table of the DELETE.
+		// Delete every event tagged with one of the category's tags (whatever
+		// other tags it carries) before the cascade removes their EventsTags
+		// rows. The derived table keeps MySQL from selecting the target table
+		// of the DELETE.
 		_, err = tx.ExecContext(ctx, `
 			DELETE FROM Events
 			WHERE idUser = ?
 			AND id IN (
-				SELECT id FROM (`+exclusiveCategoryEventsQuery+`) AS doomed
+				SELECT idEvent FROM (
+					SELECT DISTINCT et.idEvent
+					FROM EventsTags et
+					INNER JOIN Tags t ON t.id = et.idTag
+					WHERE t.idCategory = ?
+				) AS doomed
 			)
-		`, idUser, idCategory, idCategory)
+		`, idUser, idCategory)
 		if err != nil {
 			return err
 		}
@@ -201,8 +207,9 @@ func (c *CategoriesRepository) Delete(ctx context.Context, idCategory uint, idUs
 }
 
 // exclusiveCategoryEventsQuery selects the events linked to a category's tags
-// that have no other non-date tag outside the category. Args: idCategory,
-// idCategory again.
+// that have no other non-date tag outside the category — the ones a deletion
+// that keeps the events would leave date-only. Args: idCategory, idCategory
+// again.
 const exclusiveCategoryEventsQuery = `
 	SELECT e.id FROM Events e
 	WHERE EXISTS (
