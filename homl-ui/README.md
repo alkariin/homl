@@ -57,6 +57,20 @@ yes | flutter doctor --android-licenses
 flutter doctor            # Android toolchain should be [✓]
 ```
 
+### Gradle toolchain
+
+The Android build pins the versions Flutter 3.44 requires in
+`android/settings.gradle` (AGP 8.11.1, Kotlin 2.2.20) and
+`android/gradle/wrapper/gradle-wrapper.properties` (Gradle 8.14.3); all three
+are downloaded on first build. `android/app/build.gradle` uses
+`flutter.ndkVersion`, so the NDK follows the Flutter SDK (28.2 today) and is
+pulled by `sdkmanager` automatically. When Flutter warns that a version "will
+soon be dropped", bump those two files to the minimum it prints and rebuild.
+
+Disk tip: `flutter build apk --debug` produces a fat APK (arm64 + armeabi-v7a +
+x86_64) and needs ~4 GB between `build/` and `~/.gradle/caches`. For a phone,
+`flutter run` (arm64 only) or `--target-platform android-arm64` is far lighter.
+
 ### Enable debugging on the phone
 
 1. **Settings → About phone → Software information** → tap **Build number** 7×.
