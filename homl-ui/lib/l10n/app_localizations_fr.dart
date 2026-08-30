@@ -390,10 +390,19 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get categories_deleteMoveTags =>
-      'Déplacer les tags vers la catégorie Other';
+      'Déplacer les tags vers la catégorie Autres';
 
   @override
   String get categories_categoryName => 'Nom';
+
+  @override
+  String get categories_defaultDates => 'Dates';
+
+  @override
+  String get categories_defaultPersons => 'Personnes';
+
+  @override
+  String get categories_defaultOthers => 'Autres';
 
   @override
   String get categories_color => 'Couleur';
