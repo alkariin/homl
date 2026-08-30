@@ -34,6 +34,10 @@ flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:8080/api
 
 See each sub-project's README for full setup.
 
+**Self-hosting?** Before opening the instance to anyone, put
+`homl-web/scripts/backup.sh` in root's crontab and rehearse one restore with
+`scripts/restore.sh` — see [deployment.md §7](homl-web/docs/deployment.md#7-backups).
+
 App icons and native splash screens are generated from the logo — see
 [`homl-ui/tool/icons/README.md`](homl-ui/tool/icons/README.md) to regenerate them.
 

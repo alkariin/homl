@@ -202,42 +202,60 @@ timeouts, encoding) is documented in [auth-flows.md](auth-flows.md).
 The data lives in the `mysql-data` Docker volume. A volume is not a backup: it
 disappears with `docker compose down --volumes` and with the host.
 
-Dump the database daily — `mysqldump` writes the whole schema and its rows as
-a SQL script that can recreate it anywhere:
+[`scripts/backup.sh`](../scripts/backup.sh) dumps the database into a gzipped
+SQL file — `mysqldump` writes the whole schema and its rows as a script that
+recreates it anywhere:
 
 ```bash
-docker exec mysql_container mysqldump \
-  -u root -p"$MYSQL_ROOT_PASSWORD" --single-transaction --routines homl \
-  | gzip > "/var/backups/homl-$(date +%F).sql.gz"
+sudo /srv/homl/homl-web/scripts/backup.sh
+# → /var/backups/homl/homl-2026-08-23_031500.sql.gz
 ```
 
-`--single-transaction` takes the dump inside one consistent snapshot, so the
-service keeps running while it is written.
+What it does, and why:
 
-As a cron entry, keeping four weeks:
+- The dump runs **inside** the container, which already knows
+  `MYSQL_ROOT_PASSWORD` and `MYSQL_DATABASE`, and passes the password to
+  `mysqldump` through `MYSQL_PWD`. It never appears in `ps`, in the cron log
+  or on the host at all, and the script needs no `.env`.
+- `--single-transaction` takes one consistent snapshot; the service keeps
+  running while it is written.
+- The file is written to `.part` first and only renamed once the last line
+  reads `-- Dump completed`, so a broken pipe never leaves a truncated dump
+  that looks valid. The directory is `700`, each dump `600`.
+- Dumps older than `BACKUP_KEEP_DAYS` (default 28) are deleted. `BACKUP_DIR`
+  (default `/var/backups/homl`) and `MYSQL_CONTAINER` (default
+  `mysql_container`) can be overridden the same way.
+
+Run it daily from root's crontab — root because `/var/backups` and the Docker
+socket both need it:
 
 ```cron
-15 3 * * * cd /srv/homl/homl-web && set -a && . ./.env && set +a && \
-  docker exec mysql_container mysqldump -u root -p"$MYSQL_ROOT_PASSWORD" \
-  --single-transaction --routines homl | gzip > /var/backups/homl-$(date +\%F).sql.gz && \
-  find /var/backups -name 'homl-*.sql.gz' -mtime +28 -delete
+15 3 * * * /srv/homl/homl-web/scripts/backup.sh >> /var/log/homl-backup.log 2>&1
 ```
 
 Copy those dumps off the host, together with `.env` — a dump without its
 `ENCRYPT_SECRET` restores rows nobody can read (§2).
 
-Restoring:
+### Restoring
+
+[`scripts/restore.sh`](../scripts/restore.sh) loads a dump back. Rehearse it
+into a throwaway database first — an untested backup is a guess:
 
 ```bash
-gunzip < /var/backups/homl-2026-08-23.sql.gz | \
-  docker exec -i mysql_container mysql -u root -p"$MYSQL_ROOT_PASSWORD" homl
+sudo /srv/homl/homl-web/scripts/restore.sh \
+  /var/backups/homl/homl-2026-08-23_031500.sql.gz homl_restore
+# check a few rows, then:
+docker exec mysql_container sh -c \
+  'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -u root -e "DROP DATABASE homl_restore"'
 ```
+
+Without a database name the dump replaces the **live** database; the script
+asks you to type its name before it does (`RESTORE_YES=1` skips the prompt
+for scripted use). It refuses any file that does not end with
+`-- Dump completed`.
 
 Redis holds only sessions, reset codes and rate-limit counters: losing it logs
 everyone out and costs nothing else. It needs no backup.
-
-Test a restore into a throwaway database at least once. An untested backup is
-a guess.
 
 ## 8. Upgrades
 
@@ -276,5 +294,5 @@ than assume.
 - [ ] TLS working, port 8080 not reachable from outside
 - [ ] `3306` and `6379` not reachable from outside (`ss -ltn` on the host)
 - [ ] SMTP configured, a real reset email received
-- [ ] Backup cron in place and one restore tested
+- [ ] `scripts/backup.sh` in root's crontab, dumps copied off-host, one restore rehearsed with `scripts/restore.sh`
 - [ ] Client built with the production `API_BASE_URL`
