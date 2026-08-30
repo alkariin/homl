@@ -384,10 +384,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get categories_deleteCategory => 'Delete category?';
 
   @override
-  String get categories_deleteMoveTags => 'Move the tags to the Other category';
+  String get categories_deleteMoveTags =>
+      'Move the tags to the Others category';
 
   @override
   String get categories_categoryName => 'Name';
+
+  @override
+  String get categories_defaultDates => 'Dates';
+
+  @override
+  String get categories_defaultPersons => 'Persons';
+
+  @override
+  String get categories_defaultOthers => 'Others';
 
   @override
   String get categories_color => 'Color';

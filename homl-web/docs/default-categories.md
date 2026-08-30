@@ -12,6 +12,13 @@ reference for how each of them behaves in the backend and in the app.
 | Persons | `person` | no | `#60ccff` | yes | yes | user-managed, like any custom category |
 | Others | `other` | yes | `#999999` (grey, fixed) | no | no | user-managed; also filled indirectly |
 
+The seeded names are English for every user, whatever the language picked at
+registration: like the month tags, they are keys shared with the client, which
+translates them for display only (`homl-ui/lib/helpers/category_labels.dart`,
+keyed on `kind`). Dates and Others always show the translation (they cannot be
+renamed); Persons shows it while it still wears the seeded name and the user's
+own name once renamed. Requests always carry the stored name.
+
 ## Dates — mandatory, fully read-only
 
 - The category and its tags are managed by the backend only.

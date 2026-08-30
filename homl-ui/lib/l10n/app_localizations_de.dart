@@ -391,10 +391,19 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get categories_deleteMoveTags =>
-      'Tags in die Kategorie Other verschieben';
+      'Tags in die Kategorie Sonstiges verschieben';
 
   @override
   String get categories_categoryName => 'Name';
+
+  @override
+  String get categories_defaultDates => 'Daten';
+
+  @override
+  String get categories_defaultPersons => 'Personen';
+
+  @override
+  String get categories_defaultOthers => 'Sonstiges';
 
   @override
   String get categories_color => 'Farbe';

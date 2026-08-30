@@ -91,6 +91,25 @@ void main() {
     );
   }
 
+  testWidgets('the default categories are shown in the app language',
+      (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      locale: const Locale('fr'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: BlocProvider.value(
+        value: cubit,
+        child: const Scaffold(body: CategoryManagementBody()),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    // Stored in English by the backend, translated on screen only.
+    expect(find.text('Autres'), findsOneWidget);
+    expect(find.text('Others'), findsNothing);
+    expect(find.text('Hobbies'), findsOneWidget);
+  });
+
   testWidgets('tapping a main tag opens the management menu', (tester) async {
     await tester.pumpWidget(wrap());
     await tester.pumpAndSettle();
@@ -144,8 +163,8 @@ void main() {
       home: BlocProvider.value(
         value: cubit,
         child: Scaffold(
-            body: CategoryManagementBody(
-                onTagSelected: (tag) => selected = tag)),
+            body:
+                CategoryManagementBody(onTagSelected: (tag) => selected = tag)),
       ),
     ));
     await tester.pumpAndSettle();

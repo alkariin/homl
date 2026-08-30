@@ -149,8 +149,11 @@
   "categories_newCategory": "Neue Kategorie",
   "categories_editCategory": "Kategorie bearbeiten",
   "categories_deleteCategory": "Kategorie löschen?",
-  "categories_deleteMoveTags": "Tags in die Kategorie Other verschieben",
+  "categories_deleteMoveTags": "Tags in die Kategorie Sonstiges verschieben",
   "categories_categoryName": "Name",
+  "categories_defaultDates": "Daten",
+  "categories_defaultPersons": "Personen",
+  "categories_defaultOthers": "Sonstiges",
   "categories_color": "Farbe",
   "categories_tagCount": "{count, plural, =0{Keine Tags} =1{1 Tag} other{{count} Tags}}",
   "@categories_tagCount": {

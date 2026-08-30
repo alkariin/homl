@@ -167,7 +167,11 @@ template, see `l10n.yaml`). The three files must stay in sync — `flutter
 gen-l10n` reports every key missing from a locale as an untranslated message.
 The date tags are the exception that proves the rule — they are stored in
 English and translated at display time only (see the insert-tab section
-below).
+below). The three default categories (Dates, Persons, Others) follow the same
+rule: the backend seeds them in English, and
+`lib/helpers/category_labels.dart` translates them on screen keyed on
+`Category.kind` (Persons only while it still wears the seeded name, since the
+user may rename it). The stored name is what every request carries.
 
 ## Release builds: keep `--no-tree-shake-icons`
 

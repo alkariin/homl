@@ -6,6 +6,7 @@ import 'package:homl/l10n/app_localizations.dart';
 import 'package:homl/components/tag.dart' as components;
 import 'package:homl/data/models/category.dart';
 import 'package:homl/data/models/tag.dart';
+import 'package:homl/helpers/category_labels.dart';
 import 'package:homl/helpers/colors.dart';
 import 'package:homl/helpers/date_tags.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
@@ -152,7 +153,7 @@ class _CategoryTileState extends State<_CategoryTile> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            category.category,
+                            localizedCategoryName(category, localization),
                             style: const TextStyle(
                                 fontSize: 15.5, fontWeight: FontWeight.w600),
                           ),
@@ -175,7 +176,8 @@ class _CategoryTileState extends State<_CategoryTile> {
                             categoryDialog(
                               context,
                               title: localization.categories_editCategory,
-                              initialName: category.category,
+                              initialName:
+                                  localizedCategoryName(category, localization),
                               initialColor: category.color,
                               onSubmit: (name, color) => homeCubit
                                   .updateCategory(category.id, name, color),
@@ -538,7 +540,8 @@ void pickCategoryDialog(BuildContext context,
                       ),
                     ),
                     const SizedBox(width: 12),
-                    Text(category.category),
+                    Text(localizedCategoryName(
+                        category, AppLocalizations.of(dialogContext)!)),
                   ],
                 ),
                 onPressed: () {

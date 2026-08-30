@@ -781,7 +781,7 @@ abstract class AppLocalizations {
   /// No description provided for @categories_deleteMoveTags.
   ///
   /// In en, this message translates to:
-  /// **'Move the tags to the Other category'**
+  /// **'Move the tags to the Others category'**
   String get categories_deleteMoveTags;
 
   /// No description provided for @categories_categoryName.
@@ -789,6 +789,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Name'**
   String get categories_categoryName;
+
+  /// No description provided for @categories_defaultDates.
+  ///
+  /// In en, this message translates to:
+  /// **'Dates'**
+  String get categories_defaultDates;
+
+  /// No description provided for @categories_defaultPersons.
+  ///
+  /// In en, this message translates to:
+  /// **'Persons'**
+  String get categories_defaultPersons;
+
+  /// No description provided for @categories_defaultOthers.
+  ///
+  /// In en, this message translates to:
+  /// **'Others'**
+  String get categories_defaultOthers;
 
   /// No description provided for @categories_color.
   ///
