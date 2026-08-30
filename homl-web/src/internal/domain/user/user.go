@@ -108,6 +108,16 @@ type Repository interface {
 	// ConsumeResetCode verifies and invalidates the code. Wrong guesses count
 	// against a small attempt budget; exceeding it invalidates the code.
 	ConsumeResetCode(ctx context.Context, userId uint64, code string) error
+	// DeleteResetCodes drops the pending reset code, its attempt counter and
+	// its cooldown, so nothing of a deleted account outlives it in Redis.
+	DeleteResetCodes(ctx context.Context, idUser uint64) error
+
+	// Delete removes the user row. Everything it owns (categories, tags,
+	// events and their links) goes with it through ON DELETE CASCADE, so
+	// account deletion needs no per-table sweep. Returns a NotFound error
+	// when no row matched. Redis state is cleaned separately
+	// (RevokeAllSessions, DeleteResetCodes).
+	Delete(ctx context.Context, idUser uint64) error
 
 	FindSettingsByIdUser(ctx context.Context, idUser uint64) (*Settings, error)
 	UpdateSettings(ctx context.Context, s *Settings, idUser uint64) error

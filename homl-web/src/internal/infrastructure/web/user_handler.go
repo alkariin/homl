@@ -239,6 +239,47 @@ func (h *UserHandler) UpdatePassword(c *gin.Context) {
 	c.JSON(http.StatusOK, tokens)
 }
 
+/** Irreversible: deletes the account and every category, tag and event it
+ * owns. The password is re-entered by the client and re-checked server-side,
+ * so a stolen access token is not enough on its own.
+ *
+ * input:
+ * {
+ *   password: string
+ * }
+ */
+func (h *UserHandler) DeleteAccount(c *gin.Context) {
+	type DeleteAccountInput struct {
+		Password string `json:"password"`
+	}
+
+	var body DeleteAccountInput
+	err := c.ShouldBindJSON(&body)
+	if err != nil {
+		SendGinMyCustomError(c, err, apperror.NewStatusUnprocessableEntity())
+		return
+	}
+
+	if CheckGinInput(GinInputParams{Field: body.Password, Validation: passwordValidation}) {
+		SendGinError(c, apperror.NewStatusUnprocessableEntity())
+		return
+	}
+
+	idUser, err := UserIDFromContext(c)
+	if err != nil {
+		SendGinError(c, err)
+		return
+	}
+
+	err = h.UsersService.DeleteAccount(c.Request.Context(), body.Password, idUser)
+	if err != nil {
+		SendGinError(c, err)
+		return
+	}
+
+	c.Writer.WriteHeader(http.StatusNoContent)
+}
+
 /** input:
  * {
  *   refresh_token: string

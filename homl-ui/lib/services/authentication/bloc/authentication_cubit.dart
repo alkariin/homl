@@ -30,6 +30,8 @@ class AuthenticationCubit extends Cubit<AuthenticationState> {
     switch (status) {
       case AuthenticationStatus.unauthenticated:
         return emit(const AuthenticationState.unauthenticated());
+      case AuthenticationStatus.accountDeleted:
+        return emit(const AuthenticationState.accountDeleted());
       case AuthenticationStatus.authenticated:
         // We do it directly now to know asap the default screen of the user
         final settings = await _settingsRepository.getSettings();

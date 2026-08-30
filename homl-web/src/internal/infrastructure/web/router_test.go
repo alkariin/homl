@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alkariin/homl/homl-web/internal/apperror"
 	"github.com/alkariin/homl/homl-web/internal/domain/category"
 	"github.com/alkariin/homl/homl-web/internal/domain/event"
 	"github.com/alkariin/homl/homl-web/internal/domain/user"
@@ -197,6 +198,48 @@ func TestLogoutEndpoint(t *testing.T) {
 	rec := doRequest(router, http.MethodPost, "/logout", "", authHeader())
 
 	assert.Equal(t, http.StatusNoContent, rec.Code)
+	sm.users.AssertExpectations(t)
+}
+
+func TestDeleteAccountEndpoint(t *testing.T) {
+	router, sm := newTestServer()
+
+	sm.users.On("DeleteAccount", "Delete1234!", testUserID).Return(nil)
+
+	rec := doRequest(router, http.MethodDelete, "/account", `{"password":"Delete1234!"}`, authHeader())
+
+	assert.Equal(t, http.StatusNoContent, rec.Code)
+	sm.users.AssertExpectations(t)
+}
+
+func TestDeleteAccountRequiresToken(t *testing.T) {
+	router, sm := newTestServer()
+
+	rec := doRequest(router, http.MethodDelete, "/account", `{"password":"Delete1234!"}`, "")
+
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	sm.users.AssertNotCalled(t, "DeleteAccount")
+}
+
+func TestDeleteAccountRejectsMissingPassword(t *testing.T) {
+	router, sm := newTestServer()
+
+	for _, body := range []string{`{"password":""}`, `{}`, ``} {
+		rec := doRequest(router, http.MethodDelete, "/account", body, authHeader())
+		assert.Equal(t, http.StatusUnprocessableEntity, rec.Code, "body %q", body)
+	}
+
+	sm.users.AssertNotCalled(t, "DeleteAccount")
+}
+
+func TestDeleteAccountRejectsWrongPassword(t *testing.T) {
+	router, sm := newTestServer()
+
+	sm.users.On("DeleteAccount", "WrongPass123!", testUserID).Return(apperror.NewAuthorization("Not authorized"))
+
+	rec := doRequest(router, http.MethodDelete, "/account", `{"password":"WrongPass123!"}`, authHeader())
+
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
 	sm.users.AssertExpectations(t)
 }
 

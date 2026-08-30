@@ -77,6 +77,23 @@ class AppLocalizationsDe extends AppLocalizations {
       'Die Passwörter stimmen nicht überein';
 
   @override
+  String get account_deleteAccount => 'Mein Konto löschen';
+
+  @override
+  String get account_deleteAccountTitle => 'Konto löschen?';
+
+  @override
+  String get account_deleteAccountWarning =>
+      'Dies löscht dauerhaft dein Konto sowie alle deine Ereignisse, Tags und Kategorien auf allen Geräten. Dies kann nicht rückgängig gemacht werden. Gib dein Passwort ein, um zu bestätigen.';
+
+  @override
+  String get account_deleteAccountError =>
+      'Das Konto konnte nicht gelöscht werden, versuche es später erneut';
+
+  @override
+  String get account_deleted => 'Dein Konto wurde gelöscht';
+
+  @override
   String get login_usernameLabel => 'Benutzername';
 
   @override

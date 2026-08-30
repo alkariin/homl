@@ -186,6 +186,17 @@ class _AppViewState extends State<AppView> {
                         onUsePassword:
                             widget._apiInstance.cancelBiometricAuth)));
                     break;
+                  case AuthenticationStatus.accountDeleted:
+                    _biometricDialogShown = false;
+                    unawaited(_navigator.pushAndRemoveUntil<void>(
+                        LoginPage.route(), (route) => false));
+                    // After the navigation, like pinLocked: the route observer
+                    // clears the toasts on push, and this one belongs to the
+                    // screen we just landed on.
+                    showToast(context,
+                        AppLocalizations.of(context)!.account_deleted,
+                        duration: const Duration(seconds: 5));
+                    break;
                   case AuthenticationStatus.e2eeLocked:
                     // E2EE account without a matching local key: block the
                     // app on the restore-or-purge screen.

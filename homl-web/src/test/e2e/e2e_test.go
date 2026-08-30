@@ -183,3 +183,73 @@ func findCategory(t *testing.T, c *client, name string) *categoryResponse {
 	}
 	return nil
 }
+
+// register creates a throwaway account and authenticates the client as it.
+// Account deletion must never run against the shared seeded demo user, which
+// the rest of the suite (and the next run) depends on.
+func (c *client) register(email, pass string) {
+	c.t.Helper()
+	status, body := c.do(http.MethodPost, "/registration", map[string]string{
+		"username": email,
+		"password": pass,
+		"language": "en",
+	})
+	if status != http.StatusOK && status != http.StatusCreated {
+		c.t.Fatalf("registration failed: status %d, body %s", status, body)
+	}
+	var tokens map[string]string
+	if err := json.Unmarshal(body, &tokens); err != nil {
+		c.t.Fatalf("decode registration body: %v", err)
+	}
+	if tokens["access_token"] == "" {
+		c.t.Fatalf("registration response missing tokens: %s", body)
+	}
+	c.token = tokens["access_token"]
+}
+
+// TestAccountDeletion walks the whole "delete my account" flow on a throwaway
+// account: the wrong password is refused, the right one erases the account,
+// and neither the old session nor the credentials work afterwards.
+//
+// It adds one registration and one login to the per-IP /login budget
+// (10/min), which the rest of the suite leaves room for.
+func TestAccountDeletion(t *testing.T) {
+	email := fmt.Sprintf("e2e-delete-%d@homl.local", time.Now().UnixNano())
+	const pass = "Delete1234!"
+
+	c := newClient(t)
+	c.register(email, pass)
+
+	// Own some data, so the cascade has something to sweep.
+	status, body := c.do(http.MethodPost, "/categories", map[string]string{
+		"category": "Trips",
+		"color":    "#ffff60",
+	})
+	if status != http.StatusCreated && status != http.StatusOK {
+		t.Fatalf("POST /categories: status %d, body %s", status, body)
+	}
+
+	// A wrong password must not delete anything.
+	if status, body := c.do(http.MethodDelete, "/account", map[string]string{"password": "WrongPass123!"}); status != http.StatusUnauthorized {
+		t.Fatalf("DELETE /account with a wrong password: expected 401, got %d, body %s", status, body)
+	}
+	if status, body := c.do(http.MethodGet, "/categories", nil); status != http.StatusOK {
+		t.Fatalf("GET /categories after the refused deletion: status %d, body %s", status, body)
+	}
+
+	// The right password erases the account.
+	if status, body := c.do(http.MethodDelete, "/account", map[string]string{"password": pass}); status != http.StatusNoContent {
+		t.Fatalf("DELETE /account: status %d, body %s", status, body)
+	}
+
+	// The session died with the account.
+	if status, _ := c.do(http.MethodGet, "/categories", nil); status != http.StatusUnauthorized {
+		t.Fatalf("GET /categories with the token of a deleted account: expected 401, got %d", status)
+	}
+
+	// And so did the credentials.
+	fresh := newClient(t)
+	if status, _ := fresh.do(http.MethodPost, "/login", map[string]string{"username": email, "password": pass}); status != http.StatusUnauthorized {
+		t.Fatalf("POST /login with deleted credentials: expected 401, got %d", status)
+	}
+}
