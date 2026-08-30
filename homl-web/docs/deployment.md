@@ -87,7 +87,13 @@ Check the service:
 
 ```bash
 curl -fsS http://127.0.0.1:8080/healthz
+# {"mysql":"ok","redis":"ok","version":"v0.1.0"}
 ```
+
+`version` is the git tag the image was built from. It comes from the `VERSION`
+build argument, which `make dev|up|build` fill with `git describe`; a bare
+`docker compose up --build` leaves it at `dev`, so on the server pass it
+explicitly (see §8).
 
 ## 4. TLS and the reverse proxy
 
@@ -260,10 +266,12 @@ everyone out and costs nothing else. It needs no backup.
 ## 8. Upgrades
 
 ```bash
-cd /srv/homl && git pull
+cd /srv/homl && git pull && git checkout v0.2.0   # the release you are upgrading to
 cd homl-web
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+VERSION=$(git describe --tags --always) \
+  docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 make migrateup     # or the migrate command from §3
+curl -fsS http://127.0.0.1:8080/healthz          # "version" must show the new tag
 ```
 
 Take a dump first (§7) whenever the release adds a migration. Migrations run
@@ -278,7 +286,9 @@ than assume.
 ## 9. Operating it
 
 - **Health**: `GET /healthz`, unauthenticated and unthrottled, is what the
-  container healthcheck and any uptime monitor should poll.
+  container healthcheck and any uptime monitor should poll. Its `version`
+  field — also the first line the container logs at startup and what the app
+  shows under Settings → About — says which build is answering.
 - **Logs**: `docker compose logs -f homlback`. Errors are logged with their
   cause; the HTTP response only ever carries a generic `INTERNAL`, so the log
   is the only place the real error appears.

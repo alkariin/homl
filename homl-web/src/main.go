@@ -20,6 +20,7 @@ import (
 	"github.com/alkariin/homl/homl-web/internal/infrastructure/persistence"
 	"github.com/alkariin/homl/homl-web/internal/infrastructure/ratelimit"
 	"github.com/alkariin/homl/homl-web/internal/infrastructure/web"
+	"github.com/alkariin/homl/homl-web/internal/version"
 )
 
 func inject(cfg *config.Config, d *db.DataSources) *gin.Engine {
@@ -87,6 +88,7 @@ func inject(cfg *config.Config, d *db.DataSources) *gin.Engine {
 		RateLimiter: limiter,
 		E2EEFlags:   e2eeRepository,
 		Health: &web.HealthHandler{
+			Version: version.Version,
 			CheckDB: d.DB.PingContext,
 			CheckRedis: func(ctx context.Context) error {
 				return d.RedisClient.Ping(ctx).Err()
@@ -104,6 +106,8 @@ func inject(cfg *config.Config, d *db.DataSources) *gin.Engine {
 }
 
 func main() {
+	log.Printf("homl-web %s starting\n", version.Version)
+
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("Unable to load configuration: %v\n", err)

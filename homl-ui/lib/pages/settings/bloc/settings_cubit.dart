@@ -7,6 +7,7 @@ import 'package:homl/data/models/settings.dart';
 import 'package:homl/data/repositories/settings.repository.dart';
 import 'package:homl/helpers/app_message.dart';
 import 'package:homl/helpers/language.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 part 'settings_state.dart';
 
@@ -23,6 +24,28 @@ class SettingsCubit extends Cubit<SettingsState> {
     }, onError: (error) {
       errorModal(AppMessage.unexpectedError);
     });
+    unawaited(loadVersions());
+  }
+
+  /// Reads the installed app version and asks the backend for its build; both
+  /// land in the About row. Failures are not errors here: the row shows what
+  /// it could learn.
+  Future<void> loadVersions() async {
+    String? appVersion;
+    try {
+      final info = await PackageInfo.fromPlatform();
+      appVersion = info.buildNumber.isEmpty
+          ? info.version
+          : '${info.version}+${info.buildNumber}';
+    } catch (e) {
+      log('Package info unavailable: $e', name: 'SettingsCubit');
+    }
+    final serverVersion = await settingsRepository.getServerVersion();
+    if (isClosed) return;
+    emit(state.copyWith(
+        appVersion: appVersion,
+        serverVersion: serverVersion,
+        versionsLoaded: true));
   }
 
   Future<void> updateLanguage(Language language) async {

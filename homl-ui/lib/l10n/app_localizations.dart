@@ -436,6 +436,30 @@ abstract class AppLocalizations {
   /// **'Select home screen'**
   String get settings_selectHomeTab;
 
+  /// No description provided for @settings_about.
+  ///
+  /// In en, this message translates to:
+  /// **'About'**
+  String get settings_about;
+
+  /// No description provided for @settings_versionApp.
+  ///
+  /// In en, this message translates to:
+  /// **'App {version}'**
+  String settings_versionApp(String version);
+
+  /// No description provided for @settings_versionServer.
+  ///
+  /// In en, this message translates to:
+  /// **'Server {version}'**
+  String settings_versionServer(String version);
+
+  /// No description provided for @settings_versionServerUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Server unreachable'**
+  String get settings_versionServerUnavailable;
+
   /// No description provided for @global_cancel.
   ///
   /// In en, this message translates to:

@@ -31,6 +31,21 @@ class SettingsPage extends StatelessWidget {
   }
 }
 
+/// "App 0.1.0+1 · Server v0.1.0", each half only once known; the server half
+/// turns into "unreachable" when /healthz did not answer.
+String _versionSummary(AppLocalizations l10n, SettingsState state) {
+  final parts = <String>[];
+  if (state.appVersion != null) {
+    parts.add(l10n.settings_versionApp(state.appVersion!));
+  }
+  if (state.serverVersion != null) {
+    parts.add(l10n.settings_versionServer(state.serverVersion!));
+  } else if (state.versionsLoaded) {
+    parts.add(l10n.settings_versionServerUnavailable);
+  }
+  return parts.isEmpty ? '…' : parts.join(' · ');
+}
+
 class SettingsView extends StatelessWidget {
   const SettingsView({super.key});
 
@@ -40,7 +55,8 @@ class SettingsView extends StatelessWidget {
 
     return MultiBlocListener(
         listeners: [
-          BlocListener<SettingsCubit, SettingsState>(listener: (context, state) {
+          BlocListener<SettingsCubit, SettingsState>(
+              listener: (context, state) {
             if (state.errorModal != null) {
               final settingsCubit = context.read<SettingsCubit>();
               showToast(context, state.errorModal!.localize(localization),
@@ -90,6 +106,13 @@ class SettingsView extends StatelessWidget {
                       onTap: () {
                         Navigator.push(context, HomeTabDialog.route(context));
                       },
+                    ),
+                  ]),
+                  SettingsGroup(children: [
+                    ListTile(
+                      leading: const Icon(Icons.info_outline),
+                      title: Text(localization.settings_about),
+                      subtitle: Text(_versionSummary(localization, state)),
                     ),
                   ]),
                 ],

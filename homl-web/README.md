@@ -62,7 +62,7 @@ For rapid iteration without a Docker rebuild, run the Go process directly
 against the containerized MySQL/Redis:
 
 ```bash
-make local   # cd src && go run .
+make local   # cd src && go run . (with the git describe version baked in)
 ```
 
 ## Local backend mode (Go process + Docker deps)
