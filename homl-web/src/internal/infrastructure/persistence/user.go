@@ -297,6 +297,27 @@ func (r *UsersRepository) UpdatePinAndFingerprint(ctx context.Context, user *use
 	return nil
 }
 
+// Delete removes the user row. The schema does the rest: every FK owned by
+// the user (categories, events, events-tags, and transitively tags and their
+// synonyms) is declared ON DELETE CASCADE, so one statement erases the whole
+// aggregate. Redis is cleaned by the application layer before this runs.
+func (u *UsersRepository) Delete(ctx context.Context, idUser uint64) error {
+	res, err := u.DB.ExecContext(ctx, "DELETE FROM Users WHERE id = ?", idUser)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return apperror.NewNotFound("user", strconv.FormatUint(idUser, 10))
+	}
+
+	return nil
+}
+
 func (u *UsersRepository) CreateAuth(ctx context.Context, userid uint64, td *user.TokenDetails) error {
 	at := time.Unix(td.AtExpires, 0) //converting Unix to UTC(to Time object)
 	rt := time.Unix(td.RtExpires, 0)
@@ -440,4 +461,12 @@ func (u *UsersRepository) ConsumeResetCode(ctx context.Context, userId uint64, c
 		return apperror.NewResetCodeInvalid()
 	}
 	return nil
+}
+
+// DeleteResetCodes drops every password-reset artefact of the user: a code
+// issued moments before an account deletion must not outlive the account,
+// even for the few minutes left on its TTL.
+func (u *UsersRepository) DeleteResetCodes(ctx context.Context, idUser uint64) error {
+	id := strconv.FormatUint(idUser, 10)
+	return u.Redis.Del(ctx, resetCodeKeyPrefix+id, resetAttemptsKeyPrefix+id, resetCooldownKeyPrefix+id).Err()
 }

@@ -226,6 +226,36 @@ abstract class AppLocalizations {
   /// **'Passwords aren\'t identical'**
   String get account_passwordsNotIdentical;
 
+  /// No description provided for @account_deleteAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete my account'**
+  String get account_deleteAccount;
+
+  /// No description provided for @account_deleteAccountTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete your account?'**
+  String get account_deleteAccountTitle;
+
+  /// No description provided for @account_deleteAccountWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'This permanently deletes your account and all your events, tags and categories, on every device. This cannot be undone. Enter your password to confirm.'**
+  String get account_deleteAccountWarning;
+
+  /// No description provided for @account_deleteAccountError.
+  ///
+  /// In en, this message translates to:
+  /// **'The account could not be deleted, try again later'**
+  String get account_deleteAccountError;
+
+  /// No description provided for @account_deleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account has been deleted'**
+  String get account_deleted;
+
   /// No description provided for @login_usernameLabel.
   ///
   /// In en, this message translates to:

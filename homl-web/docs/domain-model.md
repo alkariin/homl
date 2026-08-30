@@ -111,6 +111,11 @@ classDiagram
   token state lives in Redis, the rest of the aggregate in MySQL.
 - Registration creates the user **and** its default categories in one
   transaction (see [Masterdata](#masterdata-domainmasterdata)).
+- Deletion is a hard delete of the aggregate root: one `DELETE` on the `Users`
+  row, and the schema cascades to every owned aggregate (categories → tags →
+  synonyms, events, event-tag links). The Redis half of the aggregate
+  (sessions, reset codes) is purged first — see
+  [auth-flows.md](auth-flows.md#account-deletion).
 
 ### Category (`domain/category`)
 
@@ -161,7 +166,7 @@ crossing the port.
 
 | Port | Responsibilities |
 | --- | --- |
-| `user.Repository` | Registration (user + default categories, transactional), lookup, password/pin/fingerprint updates, Redis auth sessions, single-use password-reset codes (attempt counter + cooldown), settings read/write |
+| `user.Repository` | Registration (user + default categories, transactional), lookup, password/pin/fingerprint updates, Redis auth sessions, single-use password-reset codes (attempt counter + cooldown), settings read/write, hard delete of the account (cascades) + reset-code cleanup |
 | `category.Repository` | Category CRUD (delete moves the tags to Others or removes them with their exclusive events), tag CRUD (synonyms included, moving a main tag takes its synonyms along), tag lookup by name, usage counts (`TagUsage`, `CategoryUsage`) |
 | `event.Repository` | Event CRUD with tags, per-user listing |
 | `e2ee.Repository` | E2EE flag lookup, atomic whole-dataset enable/disable migration, lost-key purge (reseeds the default categories) |

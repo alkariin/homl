@@ -16,6 +16,7 @@ enum AppMessage {
   e2eeEnabled,
   e2eeDisabled,
   e2eeError,
+  accountDeleteError,
 }
 
 extension AppMessageLocalization on AppMessage {
@@ -41,6 +42,8 @@ extension AppMessageLocalization on AppMessage {
         return localization.account_e2eeDisabled;
       case AppMessage.e2eeError:
         return localization.account_e2eeError;
+      case AppMessage.accountDeleteError:
+        return localization.account_deleteAccountError;
     }
   }
 }

@@ -11,13 +11,24 @@ class AccountState extends Equatable {
   /// disabled and a progress indicator shows.
   final bool e2eeBusy;
 
+  /// True while the account deletion request is in flight: the dialog buttons
+  /// are disabled and a progress indicator shows.
+  final bool deleteBusy;
+
+  /// Error of the last deletion attempt, shown inline in the delete dialog.
+  /// Kept apart from [responseError] so it cannot trip the password-update
+  /// toast or the auto-pop of the password dialog.
+  final AppMessage? deleteError;
+
   const AccountState(
       {this.user,
       this.modal,
       this.responseError,
       required this.isFormSubmitted,
       this.isE2eeEnabled = false,
-      this.e2eeBusy = false});
+      this.e2eeBusy = false,
+      this.deleteBusy = false,
+      this.deleteError});
 
   const AccountState.initial() : this(isFormSubmitted: false);
 
@@ -28,8 +39,11 @@ class AccountState extends Equatable {
       bool? isFormSubmitted,
       bool? isE2eeEnabled,
       bool? e2eeBusy,
+      bool? deleteBusy,
+      AppMessage? deleteError,
       bool clearModal = false,
-      bool clearResponseError = false}) {
+      bool clearResponseError = false,
+      bool clearDeleteError = false}) {
     return AccountState(
       user: user ?? this.user,
       modal: clearModal ? null : (modal ?? this.modal),
@@ -38,10 +52,20 @@ class AccountState extends Equatable {
       isFormSubmitted: isFormSubmitted ?? this.isFormSubmitted,
       isE2eeEnabled: isE2eeEnabled ?? this.isE2eeEnabled,
       e2eeBusy: e2eeBusy ?? this.e2eeBusy,
+      deleteBusy: deleteBusy ?? this.deleteBusy,
+      deleteError: clearDeleteError ? null : (deleteError ?? this.deleteError),
     );
   }
 
   @override
-  List<Object?> get props =>
-      [user, modal, responseError, isFormSubmitted, isE2eeEnabled, e2eeBusy];
+  List<Object?> get props => [
+        user,
+        modal,
+        responseError,
+        isFormSubmitted,
+        isE2eeEnabled,
+        e2eeBusy,
+        deleteBusy,
+        deleteError
+      ];
 }

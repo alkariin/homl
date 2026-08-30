@@ -23,6 +23,11 @@ enum AuthenticationStatus {
   /// by [Api] itself — the AuthenticationCubit derives it after fetching the
   /// settings.
   e2eeLocked,
+
+  /// The account was just deleted server-side and this device wiped: the same
+  /// destination as [unauthenticated], plus a confirmation toast on the login
+  /// screen. Emitted only by `UsersRepository.deleteAccount`.
+  accountDeleted,
 }
 
 /// Outcome of a PIN authentication attempt, carrying the server-side
