@@ -7,6 +7,7 @@ import 'package:homl/components/tag.dart' as components;
 import 'package:homl/data/models/category.dart';
 import 'package:homl/data/models/settings.dart';
 import 'package:homl/data/models/tag.dart';
+import 'package:homl/data/models/usage.dart';
 import 'package:homl/data/repositories/categories.repository.dart';
 import 'package:homl/data/repositories/events.repository.dart';
 import 'package:homl/data/repositories/settings.repository.dart';
@@ -91,6 +92,25 @@ void main() {
     );
   }
 
+  testWidgets('the default categories are shown in the app language',
+      (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      locale: const Locale('fr'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: BlocProvider.value(
+        value: cubit,
+        child: const Scaffold(body: CategoryManagementBody()),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    // Stored in English by the backend, translated on screen only.
+    expect(find.text('Autres'), findsOneWidget);
+    expect(find.text('Others'), findsNothing);
+    expect(find.text('Hobbies'), findsOneWidget);
+  });
+
   testWidgets('tapping a main tag opens the management menu', (tester) async {
     await tester.pumpWidget(wrap());
     await tester.pumpAndSettle();
@@ -144,8 +164,8 @@ void main() {
       home: BlocProvider.value(
         value: cubit,
         child: Scaffold(
-            body: CategoryManagementBody(
-                onTagSelected: (tag) => selected = tag)),
+            body:
+                CategoryManagementBody(onTagSelected: (tag) => selected = tag)),
       ),
     ));
     await tester.pumpAndSettle();
@@ -185,6 +205,67 @@ void main() {
     await tester.pumpAndSettle();
 
     verify(() => tagsRepository.updateTag(4, 'Fondue', 2)).called(1);
+  });
+
+  testWidgets(
+      'deleting a tag always asks about its events, keeping them by default',
+      (tester) async {
+    // Every event of the tag also carries another tag (exclusiveEvents 0):
+    // the choice must still be offered, since deleting removes them all.
+    when(() => tagsRepository.getTagUsage(4))
+        .thenAnswer((_) async => TagUsage(events: 2, exclusiveEvents: 0));
+    when(() => tagsRepository.deleteTag(any(),
+        deleteEvents: any(named: 'deleteEvents'))).thenAnswer((_) async {});
+
+    await tester.pumpWidget(wrap());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Others'));
+    await tester.pumpAndSettle();
+    await tester.longPress(find.text('Fondue'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete tag'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('2 events use this tag.'), findsOneWidget);
+    expect(find.text('Keep these events, remove the tag'), findsOneWidget);
+    expect(find.text('Delete these events'), findsOneWidget);
+    // No date-only warning when every event keeps another tag.
+    expect(find.textContaining('date only'), findsNothing);
+
+    // A hasty confirm keeps the events.
+    await tester.tap(find.text('Delete'));
+    await tester.pumpAndSettle();
+
+    verify(() => tagsRepository.deleteTag(4, deleteEvents: false)).called(1);
+  });
+
+  testWidgets('choosing to delete the events sends deleteEvents',
+      (tester) async {
+    when(() => tagsRepository.getTagUsage(4))
+        .thenAnswer((_) async => TagUsage(events: 3, exclusiveEvents: 1));
+    when(() => tagsRepository.deleteTag(any(),
+        deleteEvents: any(named: 'deleteEvents'))).thenAnswer((_) async {});
+
+    await tester.pumpWidget(wrap());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Others'));
+    await tester.pumpAndSettle();
+    await tester.longPress(find.text('Fondue'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete tag'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('1 of them will be left with its date only.'),
+        findsOneWidget);
+
+    await tester.tap(find.text('Delete these events'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete'));
+    await tester.pumpAndSettle();
+
+    verify(() => tagsRepository.deleteTag(4, deleteEvents: true)).called(1);
   });
 
   testWidgets('date tags stay read-only', (tester) async {

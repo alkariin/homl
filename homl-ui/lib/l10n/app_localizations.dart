@@ -781,7 +781,7 @@ abstract class AppLocalizations {
   /// No description provided for @categories_deleteMoveTags.
   ///
   /// In en, this message translates to:
-  /// **'Move the tags to the Other category'**
+  /// **'Move the tags to the Others category'**
   String get categories_deleteMoveTags;
 
   /// No description provided for @categories_categoryName.
@@ -789,6 +789,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Name'**
   String get categories_categoryName;
+
+  /// No description provided for @categories_defaultDates.
+  ///
+  /// In en, this message translates to:
+  /// **'Dates'**
+  String get categories_defaultDates;
+
+  /// No description provided for @categories_defaultPersons.
+  ///
+  /// In en, this message translates to:
+  /// **'Persons'**
+  String get categories_defaultPersons;
+
+  /// No description provided for @categories_defaultOthers.
+  ///
+  /// In en, this message translates to:
+  /// **'Others'**
+  String get categories_defaultOthers;
 
   /// No description provided for @categories_color.
   ///
@@ -889,13 +907,13 @@ abstract class AppLocalizations {
   /// No description provided for @categories_deleteTagExclusiveEvents.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =1{1 event has no other tag:} other{{count} events have no other tag:}}'**
+  /// **'{count, plural, =1{1 of them will be left with its date only.} other{{count} of them will be left with their date only.}}'**
   String categories_deleteTagExclusiveEvents(int count);
 
   /// No description provided for @categories_deleteTagKeepEvents.
   ///
   /// In en, this message translates to:
-  /// **'Keep these events (date only)'**
+  /// **'Keep these events, remove the tag'**
   String get categories_deleteTagKeepEvents;
 
   /// No description provided for @categories_deleteTagDeleteEvents.
@@ -931,7 +949,7 @@ abstract class AppLocalizations {
   /// No description provided for @categories_deleteCategoryDeleteAllDetail.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =1{1 event only uses tags from this category and will be deleted.} other{{count} events only use tags from this category and will be deleted.}}'**
+  /// **'{count, plural, =1{1 event uses these tags and will be deleted.} other{{count} events use these tags and will be deleted.}}'**
   String categories_deleteCategoryDeleteAllDetail(int count);
 }
 

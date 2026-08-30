@@ -61,8 +61,8 @@ func (c *CategoriesRepository) UpdateTag(ctx context.Context, tagNameEncrypt str
 // tagged with it consistent:
 //   - deleting a synonym repoints its EventsTags rows to the parent tag;
 //   - deleting a main tag deletes its whole synonym group; deleteEvents
-//     decides whether the events left without any non-date tag are deleted
-//     too or preserved with their date tags only.
+//     decides whether every event tagged with the group is deleted too or
+//     preserved (only the tag is removed from them).
 func (c *CategoriesRepository) DeleteTag(ctx context.Context, idTag uint, idUser uint64, deleteEvents bool) error {
 	tx, err := c.DB.BeginTxx(ctx, nil)
 	if err != nil {
@@ -107,16 +107,22 @@ func (c *CategoriesRepository) DeleteTag(ctx context.Context, idTag uint, idUser
 			return err
 		}
 	} else if deleteEvents {
-		// Main tag: delete the events whose only non-date tags belong to the
-		// group before the cascade removes their EventsTags rows. The derived
-		// table keeps MySQL from selecting the target table of the DELETE.
+		// Main tag: delete every event tagged with the group (whatever other
+		// tags it carries) before the cascade removes their EventsTags rows.
+		// The derived table keeps MySQL from selecting the target table of
+		// the DELETE.
 		_, err = tx.ExecContext(ctx, `
 			DELETE FROM Events
 			WHERE idUser = ?
 			AND id IN (
-				SELECT id FROM (`+exclusiveTagGroupEventsQuery+`) AS doomed
+				SELECT idEvent FROM (
+					SELECT DISTINCT et.idEvent
+					FROM EventsTags et
+					INNER JOIN Tags t ON t.id = et.idTag
+					WHERE COALESCE(t.idParentTag, t.id) = ?
+				) AS doomed
 			)
-		`, idUser, idTag, idTag)
+		`, idUser, idTag)
 		if err != nil {
 			return err
 		}
@@ -139,7 +145,8 @@ func (c *CategoriesRepository) DeleteTag(ctx context.Context, idTag uint, idUser
 
 // exclusiveTagGroupEventsQuery selects the events linked to a tag's synonym
 // group (root = COALESCE(idParentTag, id)) that have no other non-date tag
-// outside the group. Args: idTag (group root), idTag again.
+// outside the group — the ones a deletion that keeps the events would leave
+// date-only. Args: idTag (group root), idTag again.
 const exclusiveTagGroupEventsQuery = `
 	SELECT e.id FROM Events e
 	WHERE EXISTS (
@@ -159,7 +166,7 @@ const exclusiveTagGroupEventsQuery = `
 
 // GetTagUsage counts the events referencing the tag's synonym group and, out
 // of those, the ones that have no other non-date tag (the events a group
-// deletion would leave date-only).
+// deletion that keeps the events would leave date-only).
 func (c *CategoriesRepository) GetTagUsage(ctx context.Context, idTag uint, idUser uint64) (*category.TagUsage, error) {
 	var usage category.TagUsage
 
