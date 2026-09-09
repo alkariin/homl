@@ -257,8 +257,11 @@ Destructive actions confirm with the counts served by `GET /tags/:id/usage` /
   events (those left without another non-date tag keep their date only), or
   delete them together with **every** event tagged from the category —
   whatever other tags it carries. The last option is hidden when no event uses
-  the category. The three outcomes are pinned end to end, from the dialog down
-  to the SQL: see [../homl-web/TESTING.md](../homl-web/TESTING.md).
+  the category. Moving is refused (`409 TAG_NAME_CONFLICT`, nothing deleted)
+  when Others already holds one of the names, since tag names are unique per
+  category: the toast then says to rename the tag or delete the tags instead
+  of moving them. The three outcomes are pinned end to end, from the dialog
+  down to the SQL: see [../homl-web/TESTING.md](../homl-web/TESTING.md).
 
 The "#" logo next to the tag inputs is a button:
 
