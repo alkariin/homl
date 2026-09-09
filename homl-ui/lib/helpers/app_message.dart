@@ -17,6 +17,7 @@ enum AppMessage {
   e2eeDisabled,
   e2eeError,
   accountDeleteError,
+  categoryTagNameConflict,
 }
 
 extension AppMessageLocalization on AppMessage {
@@ -44,6 +45,8 @@ extension AppMessageLocalization on AppMessage {
         return localization.account_e2eeError;
       case AppMessage.accountDeleteError:
         return localization.account_deleteAccountError;
+      case AppMessage.categoryTagNameConflict:
+        return localization.categories_deleteTagNameConflict;
     }
   }
 }

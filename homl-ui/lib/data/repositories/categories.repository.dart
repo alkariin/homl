@@ -14,6 +14,11 @@ class CategoriesRequestFailure implements Exception {}
 /// Exception thrown when the categories payload is empty
 class CategoriesNotFoundFailure implements Exception {}
 
+/// Exception thrown when moving a category's tags to Others is refused
+/// because one of the names is already taken there (tag names are unique per
+/// category). The other two delete options remain available.
+class CategoryTagNameConflictFailure implements Exception {}
+
 class CategoriesRepository {
   final Api? _injectedApi;
   late final Api apiInstance = _injectedApi ?? Api();
@@ -132,7 +137,13 @@ class CategoriesRepository {
         'moveTags': moveTags,
         'deleteEvents': deleteEvents,
       });
-    } on DioException catch (_) {
+    } on DioException catch (err) {
+      // Keyed off the code, never the message string: the backend refuses a
+      // move whose tag name is already taken in Others, and nothing was
+      // deleted (the whole delete is one transaction).
+      if (err.response?.data?['error']?['code'] == 'TAG_NAME_CONFLICT') {
+        throw CategoryTagNameConflictFailure();
+      }
       throw CategoriesRequestFailure();
     }
   }

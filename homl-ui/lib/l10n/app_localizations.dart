@@ -951,6 +951,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =1{1 event uses these tags and will be deleted.} other{{count} events use these tags and will be deleted.}}'**
   String categories_deleteCategoryDeleteAllDetail(int count);
+
+  /// No description provided for @categories_deleteTagNameConflict.
+  ///
+  /// In en, this message translates to:
+  /// **'One of these tags already exists in Others. Rename it, or delete the tags instead of moving them.'**
+  String get categories_deleteTagNameConflict;
 }
 
 class _AppLocalizationsDelegate

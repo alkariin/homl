@@ -233,5 +233,6 @@
     "placeholders": {
       "count": { "type": "int" }
     }
-  }
+  },
+  "categories_deleteTagNameConflict": "One of these tags already exists in Others. Rename it, or delete the tags instead of moving them."
 }

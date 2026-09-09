@@ -10,9 +10,10 @@ import 'package:homl/data/repositories/categories.repository.dart';
 /// what was sent so the wire contract of the three delete options can be
 /// asserted.
 class _CategoriesAdapter implements HttpClientAdapter {
-  _CategoriesAdapter({this.deleteStatus = 204, this.usage});
+  _CategoriesAdapter({this.deleteStatus = 204, this.deleteCode, this.usage});
 
   final int deleteStatus;
+  final String? deleteCode;
   final Map<String, dynamic>? usage;
   final deleteBodies = <Map<String, dynamic>>[];
   String? lastMethod;
@@ -40,7 +41,10 @@ class _CategoriesAdapter implements HttpClientAdapter {
       }
       return ResponseBody.fromString(
         jsonEncode({
-          'error': {'message': 'Forbidden'}
+          'error': {
+            'message': 'refused',
+            if (deleteCode != null) 'code': deleteCode,
+          }
         }),
         deleteStatus,
         headers: {
@@ -60,11 +64,13 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   ({_CategoriesAdapter adapter, CategoriesRepository repository}) build(
-      {int deleteStatus = 204, Map<String, dynamic>? usage}) {
+      {int deleteStatus = 204,
+      String? deleteCode,
+      Map<String, dynamic>? usage}) {
     final api = Api.internal(
         baseUrlOverride: 'https://api.test', initFromStorage: false);
-    final adapter =
-        _CategoriesAdapter(deleteStatus: deleteStatus, usage: usage);
+    final adapter = _CategoriesAdapter(
+        deleteStatus: deleteStatus, deleteCode: deleteCode, usage: usage);
     api.api.httpClientAdapter = adapter;
     api.accessToken = 'an-access-token';
     return (adapter: adapter, repository: CategoriesRepository(api: api));
@@ -110,6 +116,32 @@ void main() {
 
       // A caller that forgets both flags must not delete any event.
       expect(t.adapter.deleteBodies.single['deleteEvents'], false);
+    });
+  });
+
+  // Moving the tags is refused when Others already holds one of the names:
+  // the app must recognise that case to explain it, so it is keyed off the
+  // machine-readable code rather than the message string.
+  group('a taken tag name is told apart from any other failure', () {
+    test('the coded 409 becomes a conflict failure', () async {
+      final t = build(deleteStatus: 409, deleteCode: 'TAG_NAME_CONFLICT');
+
+      await expectLater(t.repository.deleteCategory(7, moveTags: true),
+          throwsA(isA<CategoryTagNameConflictFailure>()));
+    });
+
+    test('a 409 without the code stays a generic failure', () async {
+      final t = build(deleteStatus: 409);
+
+      await expectLater(t.repository.deleteCategory(7, moveTags: true),
+          throwsA(isA<CategoriesRequestFailure>()));
+    });
+
+    test('another code stays a generic failure', () async {
+      final t = build(deleteStatus: 409, deleteCode: 'SOMETHING_ELSE');
+
+      await expectLater(t.repository.deleteCategory(7, moveTags: true),
+          throwsA(isA<CategoriesRequestFailure>()));
     });
   });
 

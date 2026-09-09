@@ -471,6 +471,55 @@ func TestCategoryDeleteOptions(t *testing.T) {
 		}
 	})
 
+	t.Run("a tag name already taken in Others is a conflict", func(t *testing.T) {
+		idCategory, _ := c.newCategoryWithEvent("Cinema", "Dune", "e2e-clash")
+		// The same name in Others is legal: tag names are unique per
+		// category, which is exactly what makes the move impossible.
+		c.mustDo(http.MethodPost, "/tags", map[string]interface{}{
+			"tag": "Dune", "idCategory": other.Id,
+		}, http.StatusCreated)
+
+		status, body := c.do(http.MethodDelete, fmt.Sprintf("/categories/%d", idCategory),
+			map[string]bool{"moveTags": true})
+		if status != http.StatusConflict {
+			t.Fatalf("DELETE with a taken tag name: expected 409, got %d, body %s", status, body)
+		}
+
+		var envelope struct {
+			Error struct {
+				Code    string `json:"code"`
+				Message string `json:"message"`
+			} `json:"error"`
+		}
+		if err := json.Unmarshal(body, &envelope); err != nil {
+			t.Fatalf("decode error body: %v", err)
+		}
+		if envelope.Error.Code != "TAG_NAME_CONFLICT" {
+			t.Fatalf("expected the TAG_NAME_CONFLICT code, got %q (body %s)", envelope.Error.Code, body)
+		}
+		if envelope.Error.Message == "" {
+			t.Fatal("the conflict must carry a message for the client to fall back on")
+		}
+
+		// Nothing was moved and the event is untouched: the user can retry
+		// with either of the two other options.
+		found := false
+		for _, cat := range c.categories() {
+			if cat.Id == idCategory {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatal("the category must survive a refused move")
+		}
+		if c.findEvent("e2e-clash") == nil {
+			t.Fatal("the event must survive a refused move")
+		}
+
+		c.mustDo(http.MethodDelete, fmt.Sprintf("/categories/%d", idCategory),
+			map[string]bool{"moveTags": false, "deleteEvents": false}, http.StatusNoContent)
+	})
+
 	t.Run("the locked categories are refused", func(t *testing.T) {
 		for _, kind := range []string{"date", "other"} {
 			locked := c.categoryOfKind(kind)
