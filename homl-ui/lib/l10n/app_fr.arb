@@ -149,8 +149,11 @@
   "categories_newCategory": "Nouvelle catégorie",
   "categories_editCategory": "Modifier la catégorie",
   "categories_deleteCategory": "Supprimer la catégorie ?",
-  "categories_deleteMoveTags": "Déplacer les tags vers la catégorie Other",
+  "categories_deleteMoveTags": "Déplacer les tags vers la catégorie Autres",
   "categories_categoryName": "Nom",
+  "categories_defaultDates": "Dates",
+  "categories_defaultPersons": "Personnes",
+  "categories_defaultOthers": "Autres",
   "categories_color": "Couleur",
   "categories_tagCount": "{count, plural, =0{Aucun tag} =1{1 tag} other{{count} tags}}",
   "@categories_tagCount": {
@@ -172,12 +175,12 @@
   "categories_deleteTagTitle": "Supprimer \"{tag}\" ?",
   "categories_deleteTagEvents": "{count, plural, =0{Aucun événement n'utilise ce tag.} =1{1 événement utilise ce tag.} other{{count} événements utilisent ce tag.}}",
   "categories_deleteTagSynonyms": "{count, plural, =1{Son synonyme sera aussi supprimé.} other{Ses {count} synonymes seront aussi supprimés.}}",
-  "categories_deleteTagExclusiveEvents": "{count, plural, =1{1 événement n'a aucun autre tag :} other{{count} événements n'ont aucun autre tag :}}",
-  "categories_deleteTagKeepEvents": "Conserver ces événements (date uniquement)",
+  "categories_deleteTagExclusiveEvents": "{count, plural, =1{1 d'entre eux ne gardera que sa date.} other{{count} d'entre eux ne garderont que leur date.}}",
+  "categories_deleteTagKeepEvents": "Conserver ces événements, retirer le tag",
   "categories_deleteTagDeleteEvents": "Supprimer ces événements",
   "categories_deleteCategoryTags": "{count, plural, =0{Cette catégorie n'a aucun tag.} =1{Cette catégorie a 1 tag.} other{Cette catégorie a {count} tags.}}",
   "categories_deleteCategoryEvents": "{count, plural, =0{Aucun événement ne les utilise.} =1{1 événement les utilise.} other{{count} événements les utilisent.}}",
   "categories_deleteCategoryDeleteTags": "Supprimer les tags, conserver les événements",
   "categories_deleteCategoryDeleteAll": "Supprimer les tags et leurs événements",
-  "categories_deleteCategoryDeleteAllDetail": "{count, plural, =1{1 événement n'utilise que des tags de cette catégorie et sera supprimé.} other{{count} événements n'utilisent que des tags de cette catégorie et seront supprimés.}}"
+  "categories_deleteCategoryDeleteAllDetail": "{count, plural, =1{1 événement utilise ces tags et sera supprimé.} other{{count} événements utilisent ces tags et seront supprimés.}}"
 }

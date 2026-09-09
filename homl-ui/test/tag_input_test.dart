@@ -5,10 +5,10 @@ import 'package:homl/components/logo.dart';
 import 'package:homl/components/tag_input.dart';
 import 'package:homl/helpers/colors.dart';
 
-const football =
-    TagChipData(id: 1, name: 'Football', color: '#f28b82', highlightColor: '#f28b82');
-const info =
-    TagChipData(id: 2, name: 'Info', color: '#aecbfa', highlightColor: '#aecbfa');
+const football = TagChipData(
+    id: 1, name: 'Football', color: '#f28b82', highlightColor: '#f28b82');
+const info = TagChipData(
+    id: 2, name: 'Info', color: '#aecbfa', highlightColor: '#aecbfa');
 
 /// A free-typed tag of the Others category: suggested, but never highlighted.
 const other = TagChipData(id: 3, name: 'Fondue', color: '#f2e5c2');
@@ -22,8 +22,7 @@ const july = TagChipData(
     highlightColor: '#ffff60');
 
 Widget wrap(
-    {List<TagChipData> tags = const [],
-    void Function(String name)? onAddTag}) {
+    {List<TagChipData> tags = const [], void Function(String name)? onAddTag}) {
   return MaterialApp(
     home: Scaffold(
       body: TagInput(
@@ -73,7 +72,8 @@ void main() {
     expect(enabledBorderColor(tester), expected);
   });
 
-  testWidgets('keeps the default styling when the top suggestion is an Others tag',
+  testWidgets(
+      'keeps the default styling when the top suggestion is an Others tag',
       (tester) async {
     await tester.pumpWidget(wrap());
     await tester.enterText(find.byType(TextField), 'fond');
@@ -86,8 +86,7 @@ void main() {
     expect(enabledBorderColor(tester), isNull);
   });
 
-  testWidgets('clears the highlight when the field is emptied',
-      (tester) async {
+  testWidgets('clears the highlight when the field is emptied', (tester) async {
     await tester.pumpWidget(wrap());
     await tester.enterText(find.byType(TextField), 'foot');
     await tester.pumpAndSettle();
@@ -125,6 +124,31 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(added, ['July']);
+  });
+
+  testWidgets('picking a suggestion leaves no stale dropdown on refocus',
+      (tester) async {
+    // Regression: RawAutocomplete ignores a synchronous clear made during its
+    // onSelected (its _selecting guard), so its cached options stayed
+    // non-empty and the dropdown reappeared over the emptied field when the
+    // focus came back (e.g. after closing an event's detail sheet).
+    await tester.pumpWidget(wrap());
+    await tester.enterText(find.byType(TextField), 'foot');
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ListTile, 'Football'));
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        isEmpty);
+
+    // Focus leaves the field (the event detail opens)…
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pumpAndSettle();
+    // …and comes back to it (the detail is closed).
+    tester.widget<TextField>(find.byType(TextField)).focusNode!.requestFocus();
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ListTile), findsNothing);
   });
 
   testWidgets('ignores suggestions already added as filters', (tester) async {

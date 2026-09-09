@@ -96,11 +96,15 @@ func TestTagDeleteLifecycle(t *testing.T) {
 		assert.Equal(t, 1, n, "e2 must now be linked to the main tag")
 	})
 
-	t.Run("deleting a main tag with deleteEvents removes exclusive events only", func(t *testing.T) {
+	t.Run("deleting a main tag with deleteEvents removes every event of the group", func(t *testing.T) {
+		// e4 is not tagged with the group at all: it must survive.
+		e4 := newEvent(t, r, alice, []uint{gamma, dateTag})
+
 		require.NoError(t, r.cats.DeleteTag(ctx, alpha, alice, true))
 
-		assert.False(t, eventExists(t, r, e1), "e1 had no other non-date tag: deleted")
-		assert.True(t, eventExists(t, r, e2), "e2 still has Gamma: preserved")
+		assert.False(t, eventExists(t, r, e1), "e1 carried the group: deleted")
+		assert.False(t, eventExists(t, r, e2), "e2 carried the group (through the synonym) next to Gamma: deleted too")
+		assert.True(t, eventExists(t, r, e4), "e4 never carried the group: preserved")
 	})
 
 	t.Run("deleting a main tag without deleteEvents preserves the events", func(t *testing.T) {
@@ -180,18 +184,20 @@ func TestCategoryDeleteLifecycle(t *testing.T) {
 		assert.Equal(t, zeta, *movedSyn.IdParentTag, "synonym links survive the move")
 	})
 
-	t.Run("deleteEvents removes the events exclusive to the category", func(t *testing.T) {
+	t.Run("deleteEvents removes every event tagged from the category", func(t *testing.T) {
 		catB := newCustomCategory(t, r, alice, r.enc(t, "Doomed2", alice))
 		zeta, err := r.cats.CreateTag(ctx, r.enc(t, "Zeta2", alice), nil, catB, nil)
 		require.NoError(t, err)
 
 		e1 := newEvent(t, r, alice, []uint{zeta, dateTag})
 		e2 := newEvent(t, r, alice, []uint{zeta, gamma})
+		e3 := newEvent(t, r, alice, []uint{gamma, dateTag})
 
 		require.NoError(t, r.cats.Delete(ctx, catB, alice, false, true))
 
-		assert.False(t, eventExists(t, r, e1), "e1 had no non-date tag outside the category: deleted")
-		assert.True(t, eventExists(t, r, e2), "e2 still has Gamma: preserved")
+		assert.False(t, eventExists(t, r, e1), "e1 carried a tag of the category: deleted")
+		assert.False(t, eventExists(t, r, e2), "e2 carried one next to Gamma: deleted too")
+		assert.True(t, eventExists(t, r, e3), "e3 never carried one: preserved")
 	})
 
 	t.Run("without deleteEvents the events are preserved", func(t *testing.T) {

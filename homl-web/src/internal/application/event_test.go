@@ -62,6 +62,42 @@ func TestGetEvents(t *testing.T) {
 		assert.NoError(t, err)
 		eventsRepo.AssertExpectations(t)
 	})
+
+	t.Run("Returns the events newest first, latest created first on the same day", func(t *testing.T) {
+		eventsRepo := new(mocks.MockEventsRepo)
+		svc := application.NewEventsService(&application.ESConfig{
+			EventsRepository: eventsRepo,
+			Crypto:           testCrypto,
+		})
+
+		day := func(d int) time.Time {
+			return time.Date(2026, time.August, d, 0, 0, 0, 0, time.UTC)
+		}
+		encrypted := func(s string) string {
+			enc, err := testCrypto.Encrypt(s, 1)
+			assert.NoError(t, err)
+			return enc
+		}
+		// Ids follow the creation order, which does not match the dates: an
+		// event created later for a past day (id 3) and an event whose date
+		// was edited forward (id 1) must both move to their date's slot,
+		// most recent date first.
+		eventsRepo.On("FindEventsWithTags", mock.Anything, uint64(1)).Return(map[uint]event.Event{
+			1: {Id: 1, Description: encrypted("moved forward"), Date: day(20)},
+			2: {Id: 2, Description: encrypted("same day, created first"), Date: day(10)},
+			3: {Id: 3, Description: encrypted("backdated"), Date: day(5)},
+			4: {Id: 4, Description: encrypted("same day, created second"), Date: day(10)},
+		}, map[uint][]category.Tag{}, nil)
+
+		res, err := svc.GetEvents(context.Background(), 1, nil)
+
+		assert.NoError(t, err)
+		ids := make([]uint, 0, len(res))
+		for _, r := range res {
+			ids = append(ids, r.Id)
+		}
+		assert.Equal(t, []uint{1, 4, 2, 3}, ids)
+	})
 }
 
 func TestCreateEvent(t *testing.T) {

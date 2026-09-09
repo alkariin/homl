@@ -81,15 +81,22 @@ func (e *eventsService) GetEvents(ctx context.Context, idUser uint64, tags []str
 		return nil, err
 	}
 
-	keys := make([]int, 0)
-	for k, _ := range resEvents {
-		keys = append(keys, int(k))
+	// The list is a timeline: most recent event first, latest created first
+	// on the same day. The repository hands back a map, so the order is
+	// (re)established here, whatever the SQL returned.
+	sorted := make([]event.Event, 0, len(resEvents))
+	for _, evt := range resEvents {
+		sorted = append(sorted, evt)
 	}
-	sort.Ints(keys)
+	sort.Slice(sorted, func(i, j int) bool {
+		if !sorted[i].Date.Equal(sorted[j].Date) {
+			return sorted[i].Date.After(sorted[j].Date)
+		}
+		return sorted[i].Id > sorted[j].Id
+	})
 
-	var responses = make([]event.GetEventsResponse, 0)
-	for _, k := range keys {
-		evt := resEvents[uint(k)]
+	var responses = make([]event.GetEventsResponse, 0, len(sorted))
+	for _, evt := range sorted {
 		// E2EE descriptions are opaque blobs returned verbatim; only the
 		// client can decrypt them.
 		decDescription := evt.Description

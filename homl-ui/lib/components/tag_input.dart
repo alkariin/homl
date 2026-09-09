@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
@@ -109,14 +111,30 @@ class _TagInputState extends State<TagInput> {
     // a French user typing "juillet" adds the "July" date tag instead of
     // creating a second, untranslated tag.
     final name = _suggestionFor(trimmed)?.name ?? trimmed;
-    if (widget.tags.any((tag) => tag.name.toLowerCase() == name.toLowerCase())) {
-      _controller.clear();
+    if (widget.tags
+        .any((tag) => tag.name.toLowerCase() == name.toLowerCase())) {
+      _clearField();
       return;
     }
 
     widget.onAddTag(name);
-    _controller.clear();
+    _clearField();
     _focusNode.requestFocus();
+  }
+
+  /// Clears the field on the next microtask, not synchronously. When [_submit]
+  /// runs from RawAutocomplete's onSelected (a tap on a suggestion), the
+  /// autocomplete is still inside its `_selecting` guard: a synchronous clear
+  /// is swallowed by its controller listener, which leaves its cached options
+  /// list non-empty — and the dropdown pops back over the emptied field on the
+  /// next focus gain (e.g. coming back from an event's detail sheet), with no
+  /// way to dismiss it. Deferring the clear lets the autocomplete finish
+  /// selecting first, so it recomputes its options for the empty text and
+  /// stays closed.
+  void _clearField() {
+    scheduleMicrotask(() {
+      if (mounted) _controller.clear();
+    });
   }
 
   /// Suggestion whose stored name or displayed label is exactly [text].
@@ -217,8 +235,7 @@ class _TagInputState extends State<TagInput> {
                     shape: const CircleBorder(),
                     child: InkWell(
                       customBorder: const CircleBorder(),
-                      onTap: () =>
-                          widget.onLogoTap!(_controller.text.trim()),
+                      onTap: () => widget.onLogoTap!(_controller.text.trim()),
                       child: Stack(
                         clipBehavior: Clip.none,
                         children: [

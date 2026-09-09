@@ -149,8 +149,11 @@
   "categories_newCategory": "Neue Kategorie",
   "categories_editCategory": "Kategorie bearbeiten",
   "categories_deleteCategory": "Kategorie löschen?",
-  "categories_deleteMoveTags": "Tags in die Kategorie Other verschieben",
+  "categories_deleteMoveTags": "Tags in die Kategorie Sonstiges verschieben",
   "categories_categoryName": "Name",
+  "categories_defaultDates": "Daten",
+  "categories_defaultPersons": "Personen",
+  "categories_defaultOthers": "Sonstiges",
   "categories_color": "Farbe",
   "categories_tagCount": "{count, plural, =0{Keine Tags} =1{1 Tag} other{{count} Tags}}",
   "@categories_tagCount": {
@@ -172,12 +175,12 @@
   "categories_deleteTagTitle": "\"{tag}\" löschen?",
   "categories_deleteTagEvents": "{count, plural, =0{Kein Ereignis verwendet diesen Tag.} =1{1 Ereignis verwendet diesen Tag.} other{{count} Ereignisse verwenden diesen Tag.}}",
   "categories_deleteTagSynonyms": "{count, plural, =1{Sein Synonym wird ebenfalls gelöscht.} other{Seine {count} Synonyme werden ebenfalls gelöscht.}}",
-  "categories_deleteTagExclusiveEvents": "{count, plural, =1{1 Ereignis hat keinen anderen Tag:} other{{count} Ereignisse haben keinen anderen Tag:}}",
-  "categories_deleteTagKeepEvents": "Diese Ereignisse behalten (nur Datum)",
+  "categories_deleteTagExclusiveEvents": "{count, plural, =1{1 davon behält nur sein Datum.} other{{count} davon behalten nur ihr Datum.}}",
+  "categories_deleteTagKeepEvents": "Diese Ereignisse behalten, Tag entfernen",
   "categories_deleteTagDeleteEvents": "Diese Ereignisse löschen",
   "categories_deleteCategoryTags": "{count, plural, =0{Diese Kategorie hat keine Tags.} =1{Diese Kategorie hat 1 Tag.} other{Diese Kategorie hat {count} Tags.}}",
   "categories_deleteCategoryEvents": "{count, plural, =0{Kein Ereignis verwendet sie.} =1{1 Ereignis verwendet sie.} other{{count} Ereignisse verwenden sie.}}",
   "categories_deleteCategoryDeleteTags": "Tags löschen, Ereignisse behalten",
   "categories_deleteCategoryDeleteAll": "Tags und ihre Ereignisse löschen",
-  "categories_deleteCategoryDeleteAllDetail": "{count, plural, =1{1 Ereignis verwendet nur Tags aus dieser Kategorie und wird gelöscht.} other{{count} Ereignisse verwenden nur Tags aus dieser Kategorie und werden gelöscht.}}"
+  "categories_deleteCategoryDeleteAllDetail": "{count, plural, =1{1 Ereignis verwendet diese Tags und wird gelöscht.} other{{count} Ereignisse verwenden diese Tags und werden gelöscht.}}"
 }
