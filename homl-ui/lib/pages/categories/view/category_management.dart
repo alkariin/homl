@@ -6,6 +6,7 @@ import 'package:homl/l10n/app_localizations.dart';
 import 'package:homl/components/tag.dart' as components;
 import 'package:homl/data/models/category.dart';
 import 'package:homl/data/models/tag.dart';
+import 'package:homl/helpers/category_labels.dart';
 import 'package:homl/helpers/colors.dart';
 import 'package:homl/helpers/date_tags.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
@@ -152,7 +153,7 @@ class _CategoryTileState extends State<_CategoryTile> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            category.category,
+                            localizedCategoryName(category, localization),
                             style: const TextStyle(
                                 fontSize: 15.5, fontWeight: FontWeight.w600),
                           ),
@@ -175,7 +176,8 @@ class _CategoryTileState extends State<_CategoryTile> {
                             categoryDialog(
                               context,
                               title: localization.categories_editCategory,
-                              initialName: category.category,
+                              initialName:
+                                  localizedCategoryName(category, localization),
                               initialColor: category.color,
                               onSubmit: (name, color) => homeCubit
                                   .updateCategory(category.id, name, color),
@@ -538,7 +540,8 @@ void pickCategoryDialog(BuildContext context,
                       ),
                     ),
                     const SizedBox(width: 12),
-                    Text(category.category),
+                    Text(localizedCategoryName(
+                        category, AppLocalizations.of(dialogContext)!)),
                   ],
                 ),
                 onPressed: () {
@@ -578,6 +581,8 @@ Future<void> _deleteTagDialog(
     return;
   }
 
+  // Keeping the events is preselected: a hasty confirm must never delete
+  // them.
   bool deleteEvents = false;
   await showDialog<void>(
     context: context,
@@ -591,10 +596,11 @@ Future<void> _deleteTagDialog(
             Text(localization.categories_deleteTagEvents(usage.events)),
             if (synonyms.isNotEmpty)
               Text(localization.categories_deleteTagSynonyms(synonyms.length)),
-            if (usage.exclusiveEvents > 0) ...[
+            // As soon as an event uses the tag, ask what to do with them
+            // all: keep them (the tag is simply removed; the ones that had
+            // no other tag are left with their date only) or delete them.
+            if (usage.events > 0) ...[
               const SizedBox(height: 10),
-              Text(localization
-                  .categories_deleteTagExclusiveEvents(usage.exclusiveEvents)),
               RadioGroup<bool>(
                 groupValue: deleteEvents,
                 onChanged: (value) =>
@@ -606,6 +612,11 @@ Future<void> _deleteTagDialog(
                       value: false,
                       dense: true,
                       title: Text(localization.categories_deleteTagKeepEvents),
+                      subtitle: usage.exclusiveEvents > 0
+                          ? Text(
+                              localization.categories_deleteTagExclusiveEvents(
+                                  usage.exclusiveEvents))
+                          : null,
                     ),
                     RadioListTile<bool>(
                       value: true,
@@ -640,8 +651,8 @@ Future<void> _deleteTagDialog(
 enum _CategoryDeleteChoice { moveTags, deleteTags, deleteAll }
 
 /// Confirms a category deletion: move its tags to the Others category
-/// (default), delete them while keeping the events, or delete them together
-/// with the events that only use tags from this category.
+/// (default, so a hasty confirm never loses anything), delete them while
+/// keeping the events, or delete them together with every event they tag.
 Future<void> _deleteCategoryDialog(
     BuildContext context, Category category) async {
   var localization = AppLocalizations.of(context)!;
@@ -683,7 +694,7 @@ Future<void> _deleteCategoryDialog(
                       title: Text(
                           localization.categories_deleteCategoryDeleteTags),
                     ),
-                    if (usage.exclusiveEvents > 0)
+                    if (usage.events > 0)
                       RadioListTile<_CategoryDeleteChoice>(
                         value: _CategoryDeleteChoice.deleteAll,
                         dense: true,
@@ -691,7 +702,7 @@ Future<void> _deleteCategoryDialog(
                             localization.categories_deleteCategoryDeleteAll),
                         subtitle: Text(localization
                             .categories_deleteCategoryDeleteAllDetail(
-                                usage.exclusiveEvents)),
+                                usage.events)),
                       ),
                   ],
                 ),

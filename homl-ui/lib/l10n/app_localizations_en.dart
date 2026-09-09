@@ -384,10 +384,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get categories_deleteCategory => 'Delete category?';
 
   @override
-  String get categories_deleteMoveTags => 'Move the tags to the Other category';
+  String get categories_deleteMoveTags =>
+      'Move the tags to the Others category';
 
   @override
   String get categories_categoryName => 'Name';
+
+  @override
+  String get categories_defaultDates => 'Dates';
+
+  @override
+  String get categories_defaultPersons => 'Persons';
+
+  @override
+  String get categories_defaultOthers => 'Others';
 
   @override
   String get categories_color => 'Color';
@@ -474,14 +484,15 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count events have no other tag:',
-      one: '1 event has no other tag:',
+      other: '$count of them will be left with their date only.',
+      one: '1 of them will be left with its date only.',
     );
     return '$_temp0';
   }
 
   @override
-  String get categories_deleteTagKeepEvents => 'Keep these events (date only)';
+  String get categories_deleteTagKeepEvents =>
+      'Keep these events, remove the tag';
 
   @override
   String get categories_deleteTagDeleteEvents => 'Delete these events';
@@ -523,9 +534,8 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other:
-          '$count events only use tags from this category and will be deleted.',
-      one: '1 event only uses tags from this category and will be deleted.',
+      other: '$count events use these tags and will be deleted.',
+      one: '1 event uses these tags and will be deleted.',
     );
     return '$_temp0';
   }

@@ -154,8 +154,11 @@
   "categories_newCategory": "New category",
   "categories_editCategory": "Edit category",
   "categories_deleteCategory": "Delete category?",
-  "categories_deleteMoveTags": "Move the tags to the Other category",
+  "categories_deleteMoveTags": "Move the tags to the Others category",
   "categories_categoryName": "Name",
+  "categories_defaultDates": "Dates",
+  "categories_defaultPersons": "Persons",
+  "categories_defaultOthers": "Others",
   "categories_color": "Color",
   "categories_tagCount": "{count, plural, =0{No tags} =1{1 tag} other{{count} tags}}",
   "@categories_tagCount": {
@@ -203,13 +206,13 @@
       "count": { "type": "int" }
     }
   },
-  "categories_deleteTagExclusiveEvents": "{count, plural, =1{1 event has no other tag:} other{{count} events have no other tag:}}",
+  "categories_deleteTagExclusiveEvents": "{count, plural, =1{1 of them will be left with its date only.} other{{count} of them will be left with their date only.}}",
   "@categories_deleteTagExclusiveEvents": {
     "placeholders": {
       "count": { "type": "int" }
     }
   },
-  "categories_deleteTagKeepEvents": "Keep these events (date only)",
+  "categories_deleteTagKeepEvents": "Keep these events, remove the tag",
   "categories_deleteTagDeleteEvents": "Delete these events",
   "categories_deleteCategoryTags": "{count, plural, =0{This category has no tags.} =1{This category has 1 tag.} other{This category has {count} tags.}}",
   "@categories_deleteCategoryTags": {
@@ -225,7 +228,7 @@
   },
   "categories_deleteCategoryDeleteTags": "Delete the tags, keep the events",
   "categories_deleteCategoryDeleteAll": "Delete the tags and their events",
-  "categories_deleteCategoryDeleteAllDetail": "{count, plural, =1{1 event only uses tags from this category and will be deleted.} other{{count} events only use tags from this category and will be deleted.}}",
+  "categories_deleteCategoryDeleteAllDetail": "{count, plural, =1{1 event uses these tags and will be deleted.} other{{count} events use these tags and will be deleted.}}",
   "@categories_deleteCategoryDeleteAllDetail": {
     "placeholders": {
       "count": { "type": "int" }

@@ -210,8 +210,9 @@ All endpoints require auth. A category groups tags; locked categories
 `DELETE` with `"moveTags": true` moves the category's tags (synonym links
 intact) to the user's Other category instead of deleting them. With
 `"moveTags": false` the tags are deleted, and `"deleteEvents": true` also
-deletes the events whose only non-date tags lived in this category; without
-it those events are preserved with their date tags only.
+deletes every event tagged with one of them, whatever other tags it carries;
+without it those events are preserved, only the tags are removed from them
+(the ones that had no other non-date tag are left date-only).
 
 `GET /categories/:id/usage` returns the counts the client shows in its delete
 confirmation dialog:
@@ -221,8 +222,9 @@ confirmation dialog:
 ```
 
 `tags` counts the category's tags (synonyms included), `events` the events
-referencing them, and `exclusiveEvents` the events that have no other
-non-date tag — the ones a plain deletion would leave date-only.
+referencing them (the ones `deleteEvents` would delete), and
+`exclusiveEvents` the events that have no other non-date tag — the ones a
+deletion that keeps the events would leave date-only.
 
 ## Tags
 
@@ -251,9 +253,10 @@ Moving a main tag to another category through `PATCH` relocates its synonyms
 with it (a synonym always lives in its main tag's category).
 
 `DELETE` on a synonym repoints its events to the main tag. `DELETE` on a main
-tag deletes its whole synonym group; `"deleteEvents": true` also deletes the
-events whose only non-date tags belonged to the group, otherwise they are
-preserved with their date tags only (the body may be omitted entirely).
+tag deletes its whole synonym group; `"deleteEvents": true` also deletes every
+event tagged with the group, whatever other tags it carries, otherwise those
+events are preserved and only the tag is removed from them (the body may be
+omitted entirely).
 
 `GET /tags/:id/usage` returns the counts the client shows in its delete
 confirmation dialog:
@@ -262,8 +265,10 @@ confirmation dialog:
 { "events": 7, "exclusiveEvents": 3 }
 ```
 
-`events` counts the events tagged with the tag's synonym group,
-`exclusiveEvents` the ones that have no other non-date tag.
+`events` counts the events tagged with the tag's synonym group (the ones
+`deleteEvents` would delete), `exclusiveEvents` the ones that have no other
+non-date tag — the ones a deletion that keeps the events would leave
+date-only.
 
 ## Events
 
@@ -285,7 +290,10 @@ client creates and attaches its own.
 | PATCH | `/events/:id` | `{description?, date, tagsId: uint[]}` | `204` |
 | DELETE | `/events/:id` | — | `204` |
 
-`GET /events` returns:
+`GET /events` returns the events newest first (by `date` descending, most
+recently created first for the same day), so an event created for a past day
+or whose date was edited lands at its chronological slot, not at its creation
+slot:
 
 ```json
 [
@@ -293,6 +301,13 @@ client creates and attaches its own.
     "tags": [ { "id": 3, "tag": "…", "idCategory": 2, "idParentTag": null } ] }
 ]
 ```
+
+`date` is a calendar day, not an instant: the column is a MySQL `DATE`, so
+the time part of the RFC 3339 value is truncated (`2026-08-31T22:00:00Z` is
+stored as `2026-08-31`). Clients must send the picked day as UTC midnight
+(`YYYY-MM-DDT00:00:00Z`, the same shape `GET /events` returns) and must not
+convert a local-midnight date to UTC — east of UTC that lands on the previous
+day. The month/year date tags are derived from that stored day.
 
 Tags carry only `idCategory` (no category join): the client already holds the
 categories from `GET /categories`. `idParentTag` lets the client resolve a

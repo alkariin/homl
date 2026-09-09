@@ -391,10 +391,19 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get categories_deleteMoveTags =>
-      'Tags in die Kategorie Other verschieben';
+      'Tags in die Kategorie Sonstiges verschieben';
 
   @override
   String get categories_categoryName => 'Name';
+
+  @override
+  String get categories_defaultDates => 'Daten';
+
+  @override
+  String get categories_defaultPersons => 'Personen';
+
+  @override
+  String get categories_defaultOthers => 'Sonstiges';
 
   @override
   String get categories_color => 'Farbe';
@@ -481,15 +490,15 @@ class AppLocalizationsDe extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count Ereignisse haben keinen anderen Tag:',
-      one: '1 Ereignis hat keinen anderen Tag:',
+      other: '$count davon behalten nur ihr Datum.',
+      one: '1 davon behält nur sein Datum.',
     );
     return '$_temp0';
   }
 
   @override
   String get categories_deleteTagKeepEvents =>
-      'Diese Ereignisse behalten (nur Datum)';
+      'Diese Ereignisse behalten, Tag entfernen';
 
   @override
   String get categories_deleteTagDeleteEvents => 'Diese Ereignisse löschen';
@@ -531,10 +540,8 @@ class AppLocalizationsDe extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other:
-          '$count Ereignisse verwenden nur Tags aus dieser Kategorie und werden gelöscht.',
-      one:
-          '1 Ereignis verwendet nur Tags aus dieser Kategorie und wird gelöscht.',
+      other: '$count Ereignisse verwenden diese Tags und werden gelöscht.',
+      one: '1 Ereignis verwendet diese Tags und wird gelöscht.',
     );
     return '$_temp0';
   }
