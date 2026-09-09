@@ -12,6 +12,7 @@ import 'package:homl/data/repositories/categories.repository.dart';
 import 'package:homl/data/repositories/events.repository.dart';
 import 'package:homl/data/repositories/settings.repository.dart';
 import 'package:homl/data/repositories/tags.repository.dart';
+import 'package:homl/helpers/app_message.dart';
 import 'package:homl/l10n/app_localizations.dart';
 import 'package:homl/pages/categories/view/category_management.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
@@ -266,6 +267,175 @@ void main() {
     await tester.pumpAndSettle();
 
     verify(() => tagsRepository.deleteTag(4, deleteEvents: true)).called(1);
+  });
+
+  /* --------------------------- Deleting a category ------------------------ */
+
+  // The dialog offers three mutually exclusive outcomes, each sending its own
+  // pair of flags. Getting the pair wrong destroys data the user asked to
+  // keep, so every option is pinned here.
+  group('deleting a category', () {
+    void stubUsage({int tags = 2, int events = 3, int exclusiveEvents = 1}) {
+      when(() => categoriesRepository.getCategoryUsage(2)).thenAnswer(
+          (_) async => CategoryUsage(
+              tags: tags, events: events, exclusiveEvents: exclusiveEvents));
+      when(() => categoriesRepository.deleteCategory(any(),
+              moveTags: any(named: 'moveTags'),
+              deleteEvents: any(named: 'deleteEvents')))
+          .thenAnswer((_) async {});
+    }
+
+    /// Opens the delete dialog of the Hobbies category through its ⋮ menu.
+    Future<void> openDialog(WidgetTester tester) async {
+      await tester.pumpWidget(wrap());
+      await tester.pumpAndSettle();
+
+      // Only the unlocked Hobbies category carries a menu.
+      await tester.tap(find.byType(PopupMenuButton<String>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Delete'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('shows the tag and event counts with the three options',
+        (tester) async {
+      stubUsage();
+      await openDialog(tester);
+
+      expect(find.text('Delete category?'), findsOneWidget);
+      expect(find.text('This category has 2 tags.'), findsOneWidget);
+      expect(find.text('3 events use them.'), findsOneWidget);
+      expect(find.text('Move the tags to the Others category'), findsOneWidget);
+      expect(find.text('Delete the tags, keep the events'), findsOneWidget);
+      expect(find.text('Delete the tags and their events'), findsOneWidget);
+      expect(find.text('3 events use these tags and will be deleted.'),
+          findsOneWidget);
+    });
+
+    testWidgets('a hasty confirm moves the tags instead of deleting anything',
+        (tester) async {
+      stubUsage();
+      await openDialog(tester);
+
+      // No option touched: the default must be the one that loses nothing.
+      await tester.tap(find.text('Delete'));
+      await tester.pumpAndSettle();
+
+      verify(() => categoriesRepository.deleteCategory(2,
+          moveTags: true, deleteEvents: false)).called(1);
+    });
+
+    testWidgets('keeping the events deletes the tags alone', (tester) async {
+      stubUsage();
+      await openDialog(tester);
+
+      await tester.tap(find.text('Delete the tags, keep the events'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Delete'));
+      await tester.pumpAndSettle();
+
+      verify(() => categoriesRepository.deleteCategory(2,
+          moveTags: false, deleteEvents: false)).called(1);
+    });
+
+    testWidgets('choosing to delete the events sends deleteEvents',
+        (tester) async {
+      stubUsage();
+      await openDialog(tester);
+
+      await tester.tap(find.text('Delete the tags and their events'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Delete'));
+      await tester.pumpAndSettle();
+
+      verify(() => categoriesRepository.deleteCategory(2,
+          moveTags: false, deleteEvents: true)).called(1);
+    });
+
+    testWidgets('an option picked then changed back sends the last choice',
+        (tester) async {
+      stubUsage();
+      await openDialog(tester);
+
+      await tester.tap(find.text('Delete the tags and their events'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Move the tags to the Others category'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Delete'));
+      await tester.pumpAndSettle();
+
+      verify(() => categoriesRepository.deleteCategory(2,
+          moveTags: true, deleteEvents: false)).called(1);
+    });
+
+    testWidgets('the destructive option is hidden when no event is affected',
+        (tester) async {
+      stubUsage(tags: 2, events: 0, exclusiveEvents: 0);
+      await openDialog(tester);
+
+      expect(find.text('No event uses them.'), findsOneWidget);
+      expect(find.text('Move the tags to the Others category'), findsOneWidget);
+      expect(find.text('Delete the tags, keep the events'), findsOneWidget);
+      // Nothing to delete: the option must not be offered at all.
+      expect(find.text('Delete the tags and their events'), findsNothing);
+    });
+
+    testWidgets('an empty category is deleted without asking anything',
+        (tester) async {
+      stubUsage(tags: 0, events: 0, exclusiveEvents: 0);
+      await openDialog(tester);
+
+      expect(find.text('This category has no tags.'), findsOneWidget);
+      // Nothing to move, nothing to lose: no option is offered.
+      expect(find.text('Move the tags to the Others category'), findsNothing);
+      expect(find.text('Delete the tags, keep the events'), findsNothing);
+      expect(find.text('Delete the tags and their events'), findsNothing);
+
+      await tester.tap(find.text('Delete'));
+      await tester.pumpAndSettle();
+
+      verify(() => categoriesRepository.deleteCategory(2,
+          moveTags: true, deleteEvents: false)).called(1);
+    });
+
+    testWidgets('cancelling deletes nothing', (tester) async {
+      stubUsage();
+      await openDialog(tester);
+
+      await tester.tap(find.text('Delete the tags and their events'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Delete category?'), findsNothing);
+      verifyNever(() => categoriesRepository.deleteCategory(any(),
+          moveTags: any(named: 'moveTags'),
+          deleteEvents: any(named: 'deleteEvents')));
+    });
+
+    testWidgets('a failing usage request opens no dialog', (tester) async {
+      // Without the counts the options would be a guess: better no dialog
+      // than one offering to delete an unknown number of events.
+      when(() => categoriesRepository.getCategoryUsage(2))
+          .thenThrow(CategoriesRequestFailure());
+
+      await openDialog(tester);
+
+      expect(find.text('Delete category?'), findsNothing);
+      expect(cubit.state.modal, AppMessage.unexpectedError);
+      verifyNever(() => categoriesRepository.deleteCategory(any(),
+          moveTags: any(named: 'moveTags'),
+          deleteEvents: any(named: 'deleteEvents')));
+    });
+
+    testWidgets('the locked categories offer no delete affordance',
+        (tester) async {
+      await tester.pumpWidget(wrap());
+      await tester.pumpAndSettle();
+
+      // Dates and Others are locked: only Hobbies may be renamed or deleted.
+      expect(find.byType(PopupMenuButton<String>), findsOneWidget);
+    });
   });
 
   testWidgets('date tags stay read-only', (tester) async {
