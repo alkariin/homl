@@ -3,12 +3,14 @@ package persistence
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"strconv"
 
 	"github.com/alkariin/homl/homl-web/internal/apperror"
 	"github.com/alkariin/homl/homl-web/internal/application"
 	"github.com/alkariin/homl/homl-web/internal/domain/category"
 	"github.com/alkariin/homl/homl-web/internal/domain/e2ee"
+	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -135,6 +137,7 @@ func (c *CategoriesRepository) Update(ctx context.Context, category *category.Ca
 // intact) to the user's Other category; otherwise the tags are cascade-
 // deleted and deleteEvents decides whether every event tagged with one of
 // them is deleted too or preserved (only the tags are removed from them).
+// A move whose tag name is already taken in Other is refused as a conflict.
 func (c *CategoriesRepository) Delete(ctx context.Context, idCategory uint, idUser uint64, moveTags bool, deleteEvents bool) error {
 	tx, err := c.DB.BeginTxx(ctx, nil)
 	if err != nil {
@@ -169,6 +172,16 @@ func (c *CategoriesRepository) Delete(ctx context.Context, idCategory uint, idUs
 		// No affected-rows check: deleting an empty category is a legal no-op.
 		_, err := tx.ExecContext(ctx, `UPDATE Tags SET idCategory = ? WHERE idCategory = ?;`, idCategoryOther, idCategory)
 		if err != nil {
+			// Tag names are unique per category: a tag being moved whose
+			// name already exists in Other violates the key. Report it as a
+			// conflict the user can act on instead of a raw 500 — the
+			// transaction rolls back, so the category is still there and the
+			// other two options remain available.
+			var mysqlErr *mysql.MySQLError
+			if errors.As(err, &mysqlErr) && mysqlErr.Number == mysqlDuplicateEntry {
+				return apperror.NewTagNameConflict(
+					"A tag of this category already exists in the Other category")
+			}
 			return err
 		}
 	} else if deleteEvents {

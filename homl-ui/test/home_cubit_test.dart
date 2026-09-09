@@ -62,8 +62,8 @@ void main() {
         .thenThrow(CategoriesRequestFailure());
 
     final cubit = buildCubit();
-    await expectLater(cubit.stream,
-        emitsThrough(predicate<HomeState>((s) => s.initialized)));
+    await expectLater(
+        cubit.stream, emitsThrough(predicate<HomeState>((s) => s.initialized)));
 
     // Offline with a cache: usable data, no error modal.
     expect(cubit.state.events, cachedEvents);
@@ -75,7 +75,8 @@ void main() {
   });
 
   test('surfaces an error when there is no cache and no network', () async {
-    when(() => eventsRepository.getCachedEvents()).thenAnswer((_) async => null);
+    when(() => eventsRepository.getCachedEvents())
+        .thenAnswer((_) async => null);
     when(() => categoriesRepository.getCachedCategories())
         .thenAnswer((_) async => null);
     when(() => eventsRepository.getEvents()).thenThrow(EventsRequestFailure());
@@ -106,8 +107,8 @@ void main() {
     when(() => eventsRepository.deleteEvent(1)).thenAnswer((_) async {});
 
     final cubit = buildCubit();
-    await expectLater(cubit.stream,
-        emitsThrough(predicate<HomeState>((s) => s.initialized)));
+    await expectLater(
+        cubit.stream, emitsThrough(predicate<HomeState>((s) => s.initialized)));
     await cubit.deleteEvent(1);
 
     // The refresh itself rides on the repository changes stream.
@@ -130,8 +131,8 @@ void main() {
         .thenThrow(EventsRequestFailure());
 
     final cubit = buildCubit();
-    await expectLater(cubit.stream,
-        emitsThrough(predicate<HomeState>((s) => s.initialized)));
+    await expectLater(
+        cubit.stream, emitsThrough(predicate<HomeState>((s) => s.initialized)));
     await cubit.deleteEvent(1);
 
     expect(cubit.state.modal, AppMessage.unexpectedError);
@@ -156,17 +157,17 @@ void main() {
     when(() => categoriesRepository.getCategories())
         .thenAnswer((_) async => cachedCategories);
     when(() => categoriesRepository.deleteCategory(any(),
-            moveTags: any(named: 'moveTags'),
-            deleteEvents: any(named: 'deleteEvents')))
-        .thenAnswer((_) async {});
+        moveTags: any(named: 'moveTags'),
+        deleteEvents: any(named: 'deleteEvents'))).thenAnswer((_) async {});
 
     final cubit = buildCubit();
-    await expectLater(cubit.stream,
-        emitsThrough(predicate<HomeState>((s) => s.initialized)));
+    await expectLater(
+        cubit.stream, emitsThrough(predicate<HomeState>((s) => s.initialized)));
 
     // The category is gone on the backend: both lists come back changed.
     when(() => eventsRepository.getEvents()).thenAnswer((_) async => leftovers);
-    when(() => categoriesRepository.getCategories()).thenAnswer((_) async => []);
+    when(() => categoriesRepository.getCategories())
+        .thenAnswer((_) async => []);
 
     await cubit.deleteCategory(2, moveTags: false, deleteEvents: true);
 
@@ -176,6 +177,35 @@ void main() {
     expect(cubit.state.categories, isEmpty);
     expect(cubit.state.allTagsMap, isEmpty);
     expect(cubit.state.modal, isNull);
+
+    await cubit.close();
+  });
+
+  // A move refused because Others already holds one of the tag names deleted
+  // nothing: the user gets told why instead of a generic failure.
+  test('deleteCategory explains a taken tag name', () async {
+    when(() => eventsRepository.getCachedEvents())
+        .thenAnswer((_) async => cachedEvents);
+    when(() => categoriesRepository.getCachedCategories())
+        .thenAnswer((_) async => cachedCategories);
+    when(() => eventsRepository.getEvents())
+        .thenAnswer((_) async => cachedEvents);
+    when(() => categoriesRepository.getCategories())
+        .thenAnswer((_) async => cachedCategories);
+    when(() => categoriesRepository.deleteCategory(any(),
+            moveTags: any(named: 'moveTags'),
+            deleteEvents: any(named: 'deleteEvents')))
+        .thenThrow(CategoryTagNameConflictFailure());
+
+    final cubit = buildCubit();
+    await expectLater(
+        cubit.stream, emitsThrough(predicate<HomeState>((s) => s.initialized)));
+    await cubit.deleteCategory(2, moveTags: true);
+
+    expect(cubit.state.modal, AppMessage.categoryTagNameConflict);
+    // Nothing was deleted, so the screen keeps what it had.
+    expect(cubit.state.categories, cachedCategories);
+    expect(cubit.state.events, cachedEvents);
 
     await cubit.close();
   });
@@ -196,8 +226,8 @@ void main() {
         .thenThrow(CategoriesRequestFailure());
 
     final cubit = buildCubit();
-    await expectLater(cubit.stream,
-        emitsThrough(predicate<HomeState>((s) => s.initialized)));
+    await expectLater(
+        cubit.stream, emitsThrough(predicate<HomeState>((s) => s.initialized)));
     await cubit.deleteCategory(2, moveTags: true);
 
     expect(cubit.state.modal, AppMessage.unexpectedError);
@@ -225,10 +255,8 @@ void main() {
         .thenAnswer((_) async => cachedCategories);
 
     final cubit = buildCubit();
-    await expectLater(
-        cubit.stream,
-        emitsThrough(
-            predicate<HomeState>((s) => s.events == freshEvents)));
+    await expectLater(cubit.stream,
+        emitsThrough(predicate<HomeState>((s) => s.events == freshEvents)));
 
     expect(cubit.state.modal, isNull);
 

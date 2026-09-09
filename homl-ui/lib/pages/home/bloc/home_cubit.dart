@@ -248,6 +248,10 @@ class HomeCubit extends Cubit<HomeState> {
       // The events changed too: deleted, or stripped of the removed tags.
       await refreshEvents();
       await _refreshCategories();
+    } on CategoryTagNameConflictFailure {
+      // Nothing was deleted: say why, so the user can rename the tag or pick
+      // one of the two other options instead of retrying blindly.
+      emit(state.copyWith(modal: AppMessage.categoryTagNameConflict));
     } catch (_) {
       emit(state.copyWith(modal: AppMessage.unexpectedError));
     }
