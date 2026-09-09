@@ -3,8 +3,10 @@ package application_test
 import (
 	"context"
 	"errors"
+	"net/http"
 	"testing"
 
+	"github.com/alkariin/homl/homl-web/internal/apperror"
 	"github.com/alkariin/homl/homl-web/internal/application"
 	"github.com/alkariin/homl/homl-web/internal/domain/category"
 	"github.com/alkariin/homl/homl-web/test/mocks"
@@ -138,15 +140,44 @@ func TestGetCategories(t *testing.T) {
 }
 
 func TestDeleteCategory(t *testing.T) {
-	t.Run("Forwards arguments to the repository", func(t *testing.T) {
+	// The dialog of the category screen offers three outcomes, each a pair of
+	// flags the service must hand over untouched: mixing them up would move
+	// tags the user asked to delete, or delete events he asked to keep.
+	options := []struct {
+		name         string
+		moveTags     bool
+		deleteEvents bool
+	}{
+		{"Move the tags to the Other category", true, false},
+		{"Delete the tags, keep the events", false, false},
+		{"Delete the tags and their events", false, true},
+		{"deleteEvents alongside moveTags is forwarded as-is", true, true},
+	}
+
+	for _, o := range options {
+		t.Run(o.name, func(t *testing.T) {
+			mockRepo := new(mocks.MockCategoriesRepo)
+			svc := application.NewCategoriesService(&application.CSConfig{CategoriesRepository: mockRepo, Crypto: testCrypto})
+
+			mockRepo.On("Delete", uint(3), uint64(9), o.moveTags, o.deleteEvents).Return(nil)
+
+			err := svc.DeleteCategory(context.Background(), 3, 9, o.moveTags, o.deleteEvents)
+
+			assert.NoError(t, err)
+			mockRepo.AssertExpectations(t)
+		})
+	}
+
+	t.Run("Propagates the repository refusal of a locked category", func(t *testing.T) {
 		mockRepo := new(mocks.MockCategoriesRepo)
 		svc := application.NewCategoriesService(&application.CSConfig{CategoriesRepository: mockRepo, Crypto: testCrypto})
 
-		mockRepo.On("Delete", uint(3), uint64(9), true, false).Return(nil)
+		mockRepo.On("Delete", uint(3), uint64(9), false, false).Return(apperror.NewStatusForbidden())
 
-		err := svc.DeleteCategory(context.Background(), 3, 9, true, false)
+		err := svc.DeleteCategory(context.Background(), 3, 9, false, false)
 
-		assert.NoError(t, err)
+		assert.Error(t, err)
+		assert.Equal(t, http.StatusForbidden, apperror.Status(err))
 		mockRepo.AssertExpectations(t)
 	})
 }

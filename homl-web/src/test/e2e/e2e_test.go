@@ -131,6 +131,11 @@ type categoryResponse struct {
 	Category string `json:"category"`
 	Color    string `json:"color"`
 	IsLocked bool   `json:"isLocked"`
+	Kind     string `json:"kind"`
+	Tags     []struct {
+		Id  uint   `json:"id"`
+		Tag string `json:"tag"`
+	} `json:"tags"`
 }
 
 // TestCategoryLifecycle creates a category, verifies it shows up in the list,
@@ -252,4 +257,236 @@ func TestAccountDeletion(t *testing.T) {
 	if status, _ := fresh.do(http.MethodPost, "/login", map[string]string{"username": email, "password": pass}); status != http.StatusUnauthorized {
 		t.Fatalf("POST /login with deleted credentials: expected 401, got %d", status)
 	}
+}
+
+/* -------------------- Deleting a category, all options ------------------- */
+
+type usageResponse struct {
+	Tags            int `json:"tags"`
+	Events          int `json:"events"`
+	ExclusiveEvents int `json:"exclusiveEvents"`
+}
+
+type eventResponse struct {
+	Id          uint   `json:"id"`
+	Description string `json:"description"`
+	Tags        []struct {
+		Id         uint `json:"id"`
+		IdCategory uint `json:"idCategory"`
+	} `json:"tags"`
+}
+
+// mustDo performs a request and fails the test unless it returns want.
+func (c *client) mustDo(method, path string, body interface{}, want int) []byte {
+	c.t.Helper()
+	status, out := c.do(method, path, body)
+	if status != want {
+		c.t.Fatalf("%s %s: expected %d, got %d, body %s", method, path, want, status, out)
+	}
+	return out
+}
+
+func (c *client) categories() []categoryResponse {
+	c.t.Helper()
+	body := c.mustDo(http.MethodGet, "/categories", nil, http.StatusOK)
+	var out []categoryResponse
+	if err := json.Unmarshal(body, &out); err != nil {
+		c.t.Fatalf("decode categories: %v", err)
+	}
+	return out
+}
+
+func (c *client) categoryOfKind(kind string) categoryResponse {
+	c.t.Helper()
+	for _, cat := range c.categories() {
+		if cat.Kind == kind {
+			return cat
+		}
+	}
+	c.t.Fatalf("no %q category on the account", kind)
+	return categoryResponse{}
+}
+
+func (c *client) events() []eventResponse {
+	c.t.Helper()
+	body := c.mustDo(http.MethodGet, "/events", nil, http.StatusOK)
+	var out []eventResponse
+	if err := json.Unmarshal(body, &out); err != nil {
+		c.t.Fatalf("decode events: %v", err)
+	}
+	return out
+}
+
+func (c *client) findEvent(description string) *eventResponse {
+	c.t.Helper()
+	for i, e := range c.events() {
+		if e.Description == description {
+			return &c.events()[i]
+		}
+	}
+	return nil
+}
+
+// newCategoryWithEvent creates a category holding one tag, and one event
+// carrying that tag — the smallest fixture the three options differ on. The
+// backend adds the month/year date tags to the event on its own.
+func (c *client) newCategoryWithEvent(name, tagName, description string) (idCategory, idTag uint) {
+	c.t.Helper()
+	c.mustDo(http.MethodPost, "/categories", map[string]string{
+		"category": name,
+		"color":    "#abcdef",
+	}, http.StatusCreated)
+
+	for _, cat := range c.categories() {
+		if cat.Category == name {
+			idCategory = cat.Id
+		}
+	}
+	if idCategory == 0 {
+		c.t.Fatalf("category %q not found after its creation", name)
+	}
+
+	body := c.mustDo(http.MethodPost, "/tags", map[string]interface{}{
+		"tag": tagName, "idCategory": idCategory,
+	}, http.StatusCreated)
+	var created struct {
+		Id uint `json:"id"`
+	}
+	if err := json.Unmarshal(body, &created); err != nil {
+		c.t.Fatalf("decode tag: %v", err)
+	}
+	idTag = created.Id
+
+	c.mustDo(http.MethodPost, "/events", map[string]interface{}{
+		"description": description,
+		"date":        "2026-07-05T00:00:00Z",
+		"tagsId":      []uint{idTag},
+	}, http.StatusCreated)
+
+	return idCategory, idTag
+}
+
+// TestCategoryDeleteOptions walks the three outcomes of the delete dialog over
+// real HTTP: move the tags to Others, delete them keeping the events, or
+// delete them with their events. It runs on a throwaway account, so the demo
+// user never risks losing events and everything it creates dies with it.
+//
+// It adds one registration and one account deletion to the per-IP /login
+// budget (10/min), which the rest of the suite leaves room for.
+func TestCategoryDeleteOptions(t *testing.T) {
+	email := fmt.Sprintf("e2e-catdel-%d@homl.local", time.Now().UnixNano())
+	const pass = "Category1234!"
+
+	c := newClient(t)
+	c.register(email, pass)
+	t.Cleanup(func() {
+		c.do(http.MethodDelete, "/account", map[string]string{"password": pass})
+	})
+
+	other := c.categoryOfKind("other")
+
+	t.Run("moving the tags keeps every tag and event", func(t *testing.T) {
+		idCategory, idTag := c.newCategoryWithEvent("Hobbies", "Football", "e2e-move")
+
+		var usage usageResponse
+		body := c.mustDo(http.MethodGet, fmt.Sprintf("/categories/%d/usage", idCategory), nil, http.StatusOK)
+		if err := json.Unmarshal(body, &usage); err != nil {
+			t.Fatalf("decode usage: %v", err)
+		}
+		if usage.Tags != 1 || usage.Events != 1 || usage.ExclusiveEvents != 1 {
+			t.Fatalf("usage before the deletion: %+v, want 1/1/1", usage)
+		}
+
+		c.mustDo(http.MethodDelete, fmt.Sprintf("/categories/%d", idCategory),
+			map[string]bool{"moveTags": true}, http.StatusNoContent)
+
+		for _, cat := range c.categories() {
+			if cat.Id == idCategory {
+				t.Fatal("the category survived its deletion")
+			}
+		}
+
+		moved := false
+		for _, tag := range c.categoryOfKind("other").Tags {
+			if tag.Id == idTag {
+				moved = true
+			}
+		}
+		if !moved {
+			t.Fatalf("tag %d was not moved to the Others category (%d)", idTag, other.Id)
+		}
+
+		event := c.findEvent("e2e-move")
+		if event == nil {
+			t.Fatal("the event must survive a move")
+		}
+		kept := false
+		for _, tag := range event.Tags {
+			if tag.Id == idTag {
+				kept = true
+			}
+		}
+		if !kept {
+			t.Fatal("the event must keep the moved tag")
+		}
+	})
+
+	t.Run("deleting the tags leaves the events with their date", func(t *testing.T) {
+		idCategory, idTag := c.newCategoryWithEvent("Music", "Guitar", "e2e-keep")
+
+		c.mustDo(http.MethodDelete, fmt.Sprintf("/categories/%d", idCategory),
+			map[string]bool{"moveTags": false, "deleteEvents": false}, http.StatusNoContent)
+
+		event := c.findEvent("e2e-keep")
+		if event == nil {
+			t.Fatal("the event must survive when the user chooses to keep it")
+		}
+		for _, tag := range event.Tags {
+			if tag.Id == idTag {
+				t.Fatal("the deleted tag is still on the event")
+			}
+		}
+		if len(event.Tags) == 0 {
+			t.Fatal("the event lost its date tags too")
+		}
+	})
+
+	t.Run("deleting the tags with their events removes both", func(t *testing.T) {
+		idCategory, _ := c.newCategoryWithEvent("Travel", "Japan", "e2e-delete")
+		// A second event without any tag of the category must survive.
+		c.mustDo(http.MethodPost, "/events", map[string]interface{}{
+			"description": "e2e-untouched",
+			"date":        "2026-07-05T00:00:00Z",
+			"tagsId":      []uint{},
+		}, http.StatusCreated)
+
+		c.mustDo(http.MethodDelete, fmt.Sprintf("/categories/%d", idCategory),
+			map[string]bool{"moveTags": false, "deleteEvents": true}, http.StatusNoContent)
+
+		if c.findEvent("e2e-delete") != nil {
+			t.Fatal("the event tagged from the category must be gone")
+		}
+		if c.findEvent("e2e-untouched") == nil {
+			t.Fatal("an event of another category must survive")
+		}
+	})
+
+	t.Run("the locked categories are refused", func(t *testing.T) {
+		for _, kind := range []string{"date", "other"} {
+			locked := c.categoryOfKind(kind)
+			status, body := c.do(http.MethodDelete, fmt.Sprintf("/categories/%d", locked.Id),
+				map[string]bool{"moveTags": false})
+			if status != http.StatusForbidden {
+				t.Fatalf("DELETE the %s category: expected 403, got %d, body %s", kind, status, body)
+			}
+		}
+	})
+
+	t.Run("someone else's category is not found", func(t *testing.T) {
+		status, _ := c.do(http.MethodDelete, "/categories/999999999",
+			map[string]bool{"moveTags": false})
+		if status != http.StatusNotFound {
+			t.Fatalf("DELETE an unknown category: expected 404, got %d", status)
+		}
+	})
 }

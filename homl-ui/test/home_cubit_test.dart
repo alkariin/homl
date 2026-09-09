@@ -139,6 +139,74 @@ void main() {
     await cubit.close();
   });
 
+  // Deleting a category changes the events too — they are deleted, or merely
+  // stripped of the removed tags — so the cubit must refresh both lists, not
+  // just the categories.
+  test('deleteCategory refreshes the events as well as the categories',
+      () async {
+    final leftovers = [
+      Event(id: 1, description: 'cached', date: DateTime(2026), tags: []),
+    ];
+    when(() => eventsRepository.getCachedEvents())
+        .thenAnswer((_) async => cachedEvents);
+    when(() => categoriesRepository.getCachedCategories())
+        .thenAnswer((_) async => cachedCategories);
+    when(() => eventsRepository.getEvents())
+        .thenAnswer((_) async => cachedEvents);
+    when(() => categoriesRepository.getCategories())
+        .thenAnswer((_) async => cachedCategories);
+    when(() => categoriesRepository.deleteCategory(any(),
+            moveTags: any(named: 'moveTags'),
+            deleteEvents: any(named: 'deleteEvents')))
+        .thenAnswer((_) async {});
+
+    final cubit = buildCubit();
+    await expectLater(cubit.stream,
+        emitsThrough(predicate<HomeState>((s) => s.initialized)));
+
+    // The category is gone on the backend: both lists come back changed.
+    when(() => eventsRepository.getEvents()).thenAnswer((_) async => leftovers);
+    when(() => categoriesRepository.getCategories()).thenAnswer((_) async => []);
+
+    await cubit.deleteCategory(2, moveTags: false, deleteEvents: true);
+
+    verify(() => categoriesRepository.deleteCategory(2,
+        moveTags: false, deleteEvents: true)).called(1);
+    expect(cubit.state.events, leftovers);
+    expect(cubit.state.categories, isEmpty);
+    expect(cubit.state.allTagsMap, isEmpty);
+    expect(cubit.state.modal, isNull);
+
+    await cubit.close();
+  });
+
+  test('deleteCategory surfaces an error modal when the request fails',
+      () async {
+    when(() => eventsRepository.getCachedEvents())
+        .thenAnswer((_) async => cachedEvents);
+    when(() => categoriesRepository.getCachedCategories())
+        .thenAnswer((_) async => cachedCategories);
+    when(() => eventsRepository.getEvents())
+        .thenAnswer((_) async => cachedEvents);
+    when(() => categoriesRepository.getCategories())
+        .thenAnswer((_) async => cachedCategories);
+    when(() => categoriesRepository.deleteCategory(any(),
+            moveTags: any(named: 'moveTags'),
+            deleteEvents: any(named: 'deleteEvents')))
+        .thenThrow(CategoriesRequestFailure());
+
+    final cubit = buildCubit();
+    await expectLater(cubit.stream,
+        emitsThrough(predicate<HomeState>((s) => s.initialized)));
+    await cubit.deleteCategory(2, moveTags: true);
+
+    expect(cubit.state.modal, AppMessage.unexpectedError);
+    // The screen keeps showing what it had: nothing was refreshed.
+    expect(cubit.state.categories, cachedCategories);
+
+    await cubit.close();
+  });
+
   test('refreshes the cached snapshot from the network when it lands',
       () async {
     final freshEvents = [
