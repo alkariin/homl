@@ -1,6 +1,6 @@
 # Event periods — Design
 
-Status: **backend implemented (PR 1) — client pending (PR 2)**
+Status: **implemented — backend in PR 1, Flutter client in PR 2**
 
 Every open question is settled; nothing here is waiting on a decision. The
 ones that were genuinely open, and their outcome: the card badge **rescales
@@ -16,9 +16,15 @@ three screens — because the event date is not just displayed: the backend
 (`application/event.go:buildDateTags`), and those tags are the only way to
 search by date today.
 
-When this ships, fold this document into `homl-web/docs/event-periods.md` and
-add it to the README documentation table, the way
-[e2ee.md](homl-web/docs/e2ee.md) went from spec to reference doc.
+Where the pieces live, now that it is built: migration
+`db/migrations/000007_event_periods`; `event.DateTagNames` and
+`application.validatePeriod` on the backend; `lib/helpers/event_period.dart`
+and `periodDateTagNames` (`lib/helpers/date_tags.dart`) on the client, the
+form in `lib/pages/insert/`, the badge in `lib/components/event_card.dart`,
+the sheet in `lib/pages/list/view/event_detail_sheet.dart`. The routes are in
+[api.md](api.md); what covers it at each layer is in
+[TESTING.md](../TESTING.md). Written as a design before the code and kept as
+its reference afterwards, the way [e2ee.md](e2ee.md) was.
 
 ---
 
@@ -44,7 +50,7 @@ add it to the README documentation table, the way
 
 - A server-side date-range filter (`GET /events?from=&to=`). It is the proper
   fix for the open-period tag gap of §5.3 and the reason `Events.date` is
-  deliberately cleartext ([e2ee.md](homl-web/docs/e2ee.md) §1) — but it is a
+  deliberately cleartext ([e2ee.md](e2ee.md) §1) — but it is a
   feature of its own, with its own filter UI. Phase 2.
 - A calendar or timeline view with period bands. That is where periods really
   pay off, but nothing of the sort exists yet. Phase 3.
@@ -279,7 +285,7 @@ an end of `+infinity`.
 
 This expansion is written **twice**: in Go for normal accounts, and in Dart
 for E2EE accounts, which build their own date tags client-side
-([e2ee.md](homl-web/docs/e2ee.md) §4). The precedent exists — `dateTagMonths`
+([e2ee.md](e2ee.md) §4). The precedent exists — `dateTagMonths`
 and `normalizeTagName` are already mirrored — but two implementations that
 must agree exactly is the highest-risk part of this change. Both test suites
 implement this same table:
@@ -415,8 +421,14 @@ showing the start date unchanged** and gains a small badge next to it:
 | Closed period | the duration: `16 days` |
 | Open period | `ongoing` |
 
-Layout: a centred `Row` with a `Flexible` date `Text` and the badge after it.
-The date keeps ellipsizing, the badge is short enough to always survive.
+Layout — corrected during PR 2: the badge sits **under** the date, centred,
+not beside it. The draft had a `Row` with the badge after a `Flexible` date,
+"the date keeps ellipsizing"; measured against a phone-width cell (about
+141px of content) the date alone takes some 105px at 16px bold, so a pill
+beside it would have truncated the date on *every* period card. The extra
+line is taken from the tag rows, which are sized from the room left — on a
+short card with a description that is one row instead of two — never from
+the description.
 
 The badge must **not** reuse `components.Tag` — that would read as a tag and
 muddle the tag semantics. It wants its own quieter pill: muted fill, smaller
@@ -454,9 +466,11 @@ anyway, it costs nothing. Dividing days by 30.44 would be shorter to write
 but drifts against what a human calls "3 months", and the badge is read, not
 computed with. Both units floor.
 
-Edge cases the unit test must pin: 1 Jan → 31 Dec = `1 year`; 1 → 31 March =
-`1 month`; 1 → 30 March = `30 days`; 1 March 2024 → 28 February 2026 =
-`2 years`.
+Edge cases the unit test pins: 1 Jan → 31 Dec = `12 months` (eleven on the
+inclusive end — and twelve, not `1 year`, because years only take over at 24
+months, the threshold agreed above; `yearsFromMonths` is one constant if that
+ever reads wrong); 1 → 31 March = `1 month`; 1 → 30 March = `30 days`;
+1 March 2024 → 28 February 2026 = `2 years`.
 
 Accepted trade-off of choosing the badge over a collapsed range: the end date
 itself is not on the card, only how long the period lasted. The full dates are
@@ -501,22 +515,28 @@ A single-day event keeps its current single line.
 
 ### 7.3 Form — three explicit states
 
-`pages/insert/insert.dart` has one `showDatePicker` today. Add a
-`SegmentedButton` with the three states; the end-date field appears only for
-"period". A segmented control is worth the extra widget over an
-"end date + ongoing checkbox" pair because it makes the invalid combination
-of §2.1 **unreachable** — you cannot set an end date and "ongoing" at once.
+The form has no date *field*: the date is two fixed chips in front of the tag
+input — the start month and year — which are exactly the date tags the event
+gets filed under (they open the picker). The period keeps that metaphor
+rather than adding a field: a `SegmentedButton` with the three states sits
+under the tag input, and the chips follow — a closed period adds a third chip
+with its end (`→ 5 Jul 2026`, tap to change it), an open one the `Ongoing`
+chip, the very tag it will be filed under, translated like the months. Only
+the start month is chipped for a closed period, although it is filed under
+every month it covers: a long one would flood the field. A segmented control
+is worth the widget over an "end date + ongoing checkbox" pair because it
+makes the invalid combination of §2.1 **unreachable** — you cannot set an end
+date and "ongoing" at once.
 
 "Legal-by-construction" has a hole if the flow is naive: a user who selects
 "period" and submits before picking an end sends `endDate == null` with
 `isOngoing == false` — a perfectly valid **single day**, silently, when they
-meant a period. So:
-
-- Selecting "period" **opens the end-date picker immediately**. Cancelling
-  the picker reverts the segment to "single day" — the form never rests in a
-  "period without an end" state.
-- A defensive guard on submit still refuses `period && endDate == null`, for
-  whatever path reaches it later.
+meant a period. The fix is structural: the shape is **derived** from the
+state (`InsertState.shape`, from `endDate` and `isOngoing`), never stored, so
+"a period without an end" is not representable at all — no guard on submit
+needed. Selecting "period" **opens the end-date picker immediately** and only
+becomes the selected shape once a day is picked; cancelling leaves the
+previous shape in place, whatever it was.
 
 Three details that bite in practice:
 
@@ -532,13 +552,20 @@ Three details that bite in practice:
 
 New keys in `app_en.arb`, `app_fr.arb`, `app_de.arb`, then regenerate:
 
-`event_durationDays`, `event_durationMonths`, `event_durationYears` (all
+`event_durationDays`, `event_durationMonths`, `event_durationYears` and
+`event_sinceDays`, `event_sinceMonths`, `event_sinceYears` (all
 `{count, plural, ...}` — the pattern already exists in
-`categories_tagCount`), `event_ongoing`, `event_since`,
-`insert_periodSingleDay`, `insert_periodClosed`, `insert_periodOngoing`.
+`categories_tagCount`), `event_ongoing`, `insert_periodSingleDay`,
+`insert_periodClosed`, `insert_periodOngoing`.
+
+The elapsed part of an open period ("for 2 years", "depuis 2 ans", "seit 2
+Jahren") is one plural key **per unit** rather than a composed
+`since {duration}` string, because German declines the noun after *seit*
+(`Jahren`, `Monaten`, `Tagen`) — a composition would have been wrong in one
+of the three languages.
 
 `event_ongoing` does double duty: the badge text, and the display name of the
-`Ongoing` tag (§5.6) in the filter suggestions.
+`Ongoing` tag (§5.6) in the filter suggestions and the form chip.
 
 Dart's `intl` has no equivalent of ICU's `DateIntervalFormat`, so the
 duration and range formatting is a hand-written helper —
@@ -563,7 +590,7 @@ list.
 ## 9. E2EE
 
 `endDate` and `isOngoing` stay cleartext, like `date`, for the same reason
-already recorded in [e2ee.md](homl-web/docs/e2ee.md) §1: the server keeps
+already recorded in [e2ee.md](e2ee.md) §1: the server keeps
 sorting, and the phase-2 range filter needs them readable. The non-goals list
 in that document has to be widened from `Events.date` to the period columns —
 today it names one column and would be quietly wrong.
@@ -690,5 +717,6 @@ compilable and testable on its own before the next starts.
    clamp, date tags hidden (§7.2).
 8. `homl-ui/README.md` (§11).
 
-Once both are merged: move this file to `homl-web/docs/event-periods.md`,
-flip its status to *implemented*, and add it to the README table.
+Both are in. This file moved from the repository root to
+`homl-web/docs/event-periods.md` with the client PR and is listed in the
+README documentation table.
