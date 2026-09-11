@@ -461,6 +461,77 @@ func TestCategoryUsageRejectsAnotherUsersCategory(t *testing.T) {
 	sm.categories.AssertExpectations(t)
 }
 
+/* -------------------------------- Tags ---------------------------------- */
+
+func TestCreateTagEndpoint(t *testing.T) {
+	router, sm := newTestServer()
+
+	sm.tags.On("CreateTag", testUserID, mock.AnythingOfType("*category.Tag")).Return(uint(12), nil)
+
+	rec := doRequest(router, http.MethodPost, "/tags",
+		`{"tag":"Football","idCategory":2}`, authHeader())
+
+	assert.Equal(t, http.StatusCreated, rec.Code)
+	assert.Equal(t, float64(12), decodeJSON(t, rec)["id"])
+	sm.tags.AssertExpectations(t)
+}
+
+func TestUpdateTagEndpoint(t *testing.T) {
+	router, sm := newTestServer()
+
+	sm.tags.On("UpdateTag", testUserID, mock.AnythingOfType("*category.Tag")).Return(nil)
+
+	rec := doRequest(router, http.MethodPatch, "/tags/12",
+		`{"tag":"Football","idCategory":2}`, authHeader())
+
+	assert.Equal(t, http.StatusNoContent, rec.Code)
+	sm.tags.AssertExpectations(t)
+}
+
+// Tag names are unique per category, so creating or moving one onto a taken
+// name is refused. It must reach the client as a 409 carrying its code: the
+// app keys its message off the code, never off the message string.
+func TestTagEndpointsReportTheNameConflict(t *testing.T) {
+	cases := []struct {
+		name   string
+		method string
+		path   string
+		on     func(sm *serverMocks)
+	}{
+		{
+			"creating a tag whose name is taken", http.MethodPost, "/tags",
+			func(sm *serverMocks) {
+				sm.tags.On("CreateTag", testUserID, mock.AnythingOfType("*category.Tag")).
+					Return(uint(0), apperror.NewTagNameConflict("A tag with this name already exists in this category"))
+			},
+		},
+		{
+			"renaming or moving onto a taken name", http.MethodPatch, "/tags/12",
+			func(sm *serverMocks) {
+				sm.tags.On("UpdateTag", testUserID, mock.AnythingOfType("*category.Tag")).
+					Return(apperror.NewTagNameConflict("A tag with this name already exists in the target category"))
+			},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			router, sm := newTestServer()
+			c.on(sm)
+
+			rec := doRequest(router, c.method, c.path, `{"tag":"Football","idCategory":2}`, authHeader())
+
+			assert.Equal(t, http.StatusConflict, rec.Code)
+			body := decodeJSON(t, rec)
+			errBody, ok := body["error"].(map[string]interface{})
+			assert.True(t, ok, "the error envelope must be an object, got %v", body["error"])
+			assert.Equal(t, apperror.CodeTagNameConflict, errBody["code"])
+			assert.NotEmpty(t, errBody["message"])
+			sm.tags.AssertExpectations(t)
+		})
+	}
+}
+
 /* ------------------------------- Events --------------------------------- */
 
 func TestGetEventsEndpoint(t *testing.T) {
