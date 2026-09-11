@@ -53,6 +53,7 @@ App icons and native splash screens are generated from the logo — see
 | [homl-web/docs/deployment.md](homl-web/docs/deployment.md) | Self-hosting: secrets, TLS, reverse proxy, email, backups, upgrades |
 | [homl-web/docs/default-categories.md](homl-web/docs/default-categories.md) | The three seeded categories and their rules |
 | [homl-web/docs/tag-synonyms.md](homl-web/docs/tag-synonyms.md) | Synonyms: rules, lifecycle, client-side matching |
+| [homl-web/docs/event-periods.md](homl-web/docs/event-periods.md) | Event periods: single day, closed or open period; date tags over the period and the `Ongoing` tag; the card badge, the sheet and the form |
 | [homl-web/TESTING.md](homl-web/TESTING.md) | Backend test layers and how to run them |
 | [homl-ui/README.md](homl-ui/README.md) | Flutter setup, device builds, and the UI behaviours worth knowing |
 
