@@ -30,6 +30,7 @@ const (
 	CodePinIncorrect     = "PIN_INCORRECT"
 	CodePinLocked        = "PIN_LOCKED"
 	CodeResetCodeInvalid = "RESET_CODE_INVALID"
+	CodeTagNameConflict  = "TAG_NAME_CONFLICT"
 )
 
 // Error holds a custom error for the application
@@ -148,6 +149,18 @@ func NewConflict(name string, value string) *Error {
 	return &Error{
 		Type:    Conflict,
 		Message: fmt.Sprintf("Resource: %v with value: %v already exists", name, value),
+	}
+}
+
+// NewTagNameConflict to create a 409 when an operation would put two tags of
+// the same name in one category (tag names are unique per category). reason
+// says which operation could not be completed, so the client can show
+// something better than a generic failure.
+func NewTagNameConflict(reason string) *Error {
+	return &Error{
+		Type:    Conflict,
+		Message: reason,
+		Code:    CodeTagNameConflict,
 	}
 }
 

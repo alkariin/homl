@@ -70,7 +70,9 @@ type Repository interface {
 	// Delete removes a category. moveTags moves its tags (synonym links
 	// intact) to the user's Other category; otherwise the tags are deleted
 	// and deleteEvents decides whether the events left without any non-date
-	// tag are deleted too or preserved with their date only.
+	// tag are deleted too or preserved with their date only. A move is
+	// refused with a conflict when one of the names is already taken in the
+	// Other category.
 	Delete(ctx context.Context, idCategory uint, idUser uint64, moveTags bool, deleteEvents bool) error
 	// GetCategoryUsage counts the tags of a category and the events that
 	// reference them.

@@ -155,8 +155,9 @@ func (c *categoriesService) storedCategoryValue(ctx context.Context, newCategory
 }
 
 // DeleteCategory removes a category: moveTags relocates its tags to the Other
-// category, otherwise deleteEvents decides whether the events whose only
-// non-date tags lived here are deleted too or preserved date-only.
+// category (refused with a conflict when a name is already taken there),
+// otherwise deleteEvents decides whether the events whose only non-date tags
+// lived here are deleted too or preserved date-only.
 func (c *categoriesService) DeleteCategory(ctx context.Context, idCategory uint, idUser uint64, moveTags bool, deleteEvents bool) error {
 	return c.CategoriesRepository.Delete(ctx, idCategory, idUser, moveTags, deleteEvents)
 }
