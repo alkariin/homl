@@ -57,6 +57,51 @@ func TestCreateTag(t *testing.T) {
 		catRepo.AssertNotCalled(t, "CreateTag", mock.Anything, mock.Anything, mock.Anything)
 	})
 
+	t.Run("Rejects a four-digit name (a year tag)", func(t *testing.T) {
+		catRepo := new(mocks.MockCategoriesRepo)
+		svc := application.NewTagsService(&application.TSConfig{CategoriesRepository: catRepo, Crypto: testCrypto})
+
+		catRepo.On("FindByIdForUser", uint(2), uint64(1)).
+			Return(&category.Category{Id: 2, Kind: category.KindCustom}, nil)
+
+		// Years are date tags the backend derives from the event periods.
+		// Every four-digit name is refused, "1984" included: the accepted
+		// cost of never colliding with one.
+		_, err := svc.CreateTag(ctx, 1, &category.Tag{Tag: "1984", IdCategory: 2})
+
+		assert.Error(t, err)
+		catRepo.AssertNotCalled(t, "CreateTag", mock.Anything, mock.Anything, mock.Anything)
+	})
+
+	t.Run("Rejects the Ongoing name (the open-period tag)", func(t *testing.T) {
+		catRepo := new(mocks.MockCategoriesRepo)
+		svc := application.NewTagsService(&application.TSConfig{CategoriesRepository: catRepo, Crypto: testCrypto})
+
+		catRepo.On("FindByIdForUser", uint(2), uint64(1)).
+			Return(&category.Category{Id: 2, Kind: category.KindCustom}, nil)
+
+		// "ongoing" -> title-cased "Ongoing" is in BLACKLIST_TAGS.
+		_, err := svc.CreateTag(ctx, 1, &category.Tag{Tag: "ongoing", IdCategory: 2})
+
+		assert.Error(t, err)
+		catRepo.AssertNotCalled(t, "CreateTag", mock.Anything, mock.Anything, mock.Anything)
+	})
+
+	t.Run("Accepts a number that is not exactly four digits", func(t *testing.T) {
+		catRepo := new(mocks.MockCategoriesRepo)
+		svc := application.NewTagsService(&application.TSConfig{CategoriesRepository: catRepo, Crypto: testCrypto})
+
+		catRepo.On("FindByIdForUser", uint(4), uint64(1)).
+			Return(&category.Category{Id: 4, Kind: category.KindPerson}, nil)
+		catRepo.On("CreateTag", mock.Anything, (*string)(nil), uint(4), (*uint)(nil)).Return(uint(1), nil)
+
+		// The rule is "looks like a year", not "is numeric".
+		_, err := svc.CreateTag(ctx, 1, &category.Tag{Tag: "12345", IdCategory: 4})
+
+		assert.NoError(t, err)
+		catRepo.AssertExpectations(t)
+	})
+
 	t.Run("Creates a valid tag (encrypted, title-cased)", func(t *testing.T) {
 		catRepo := new(mocks.MockCategoriesRepo)
 		svc := application.NewTagsService(&application.TSConfig{CategoriesRepository: catRepo, Crypto: testCrypto})
@@ -208,6 +253,24 @@ func TestUpdateTag(t *testing.T) {
 			Return(&category.Category{Id: 1, Kind: category.KindDate}, nil)
 
 		err := svc.UpdateTag(ctx, 1, &category.Tag{Id: idTag, Tag: "renamed", IdCategory: 2})
+
+		assert.Error(t, err)
+		catRepo.AssertNotCalled(t, "UpdateTag", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	})
+
+	t.Run("Rejects renaming a tag to a four-digit name", func(t *testing.T) {
+		catRepo := new(mocks.MockCategoriesRepo)
+		svc := application.NewTagsService(&application.TSConfig{CategoriesRepository: catRepo, Crypto: testCrypto})
+
+		idTag := uint(7)
+
+		catRepo.On("FindTagForUser", idTag, uint64(1)).
+			Return(&category.Tag{Id: idTag, IdCategory: 2}, nil)
+		catRepo.On("FindByIdForUser", uint(2), uint64(1)).
+			Return(&category.Category{Id: 2, Kind: category.KindCustom}, nil)
+
+		// The rename goes through the same name checks as a creation.
+		err := svc.UpdateTag(ctx, 1, &category.Tag{Id: idTag, Tag: "2026", IdCategory: 2})
 
 		assert.Error(t, err)
 		catRepo.AssertNotCalled(t, "UpdateTag", mock.Anything, mock.Anything, mock.Anything, mock.Anything)

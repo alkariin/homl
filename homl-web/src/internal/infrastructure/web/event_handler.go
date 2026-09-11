@@ -11,12 +11,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type Event struct {
-	Id          uint      `json:"id"`
-	Description string    `json:"description"`
-	Date        time.Time `json:"date"` // type date doesn't exist in go
-}
-
 /**
  * Send only the idCategory of each tag so that it doesn't require a joining with categories table.
  * The FE knows the categories because it does the GET Categories during the initialization.
@@ -32,6 +26,8 @@ type Event struct {
  *     id: uint,
  *     description: string,
  *     date: string,
+ *     endDate: string | null,
+ *     isOngoing: bool,
  *     tags: [
  *       {
  *         id: uint,
@@ -62,21 +58,29 @@ func (h *EventHandler) GetEvents(c *gin.Context) {
 }
 
 /**
- * The tag of the date are set by the BE (from the 'date') to avoid the FE to curl a request without dates.
+ * The tag of the date are set by the BE (from the period) to avoid the FE to curl a request without dates.
  * It is allowed to create an event with an empty tagsId array (the BE will just add the date tags).
+ *
+ * An event is a single day (no endDate, isOngoing false), a closed period
+ * (endDate on or after date, inclusive) or an open period (isOngoing true, no
+ * endDate). Any other combination is a 400 (see application.validatePeriod).
  *
  * input:
  * {
  *   description?: string,
  *   date: time,
+ *   endDate?: time | null,
+ *   isOngoing?: bool,
  *   tagsId: []uint
  * }
  */
 func (h *EventHandler) CreateEvent(c *gin.Context) {
 	type bodyRequest struct {
-		Description string    `json:"description"`
-		Date        time.Time `json:"date" validate:"required"`
-		TagsId      []uint    `json:"tagsId" validate:"required"`
+		Description string     `json:"description"`
+		Date        time.Time  `json:"date" validate:"required"`
+		EndDate     *time.Time `json:"endDate"`
+		IsOngoing   bool       `json:"isOngoing"`
+		TagsId      []uint     `json:"tagsId" validate:"required"`
 	}
 
 	var body *bodyRequest
@@ -95,6 +99,8 @@ func (h *EventHandler) CreateEvent(c *gin.Context) {
 	event := &event.Event{
 		Description: body.Description,
 		Date:        body.Date,
+		EndDate:     body.EndDate,
+		IsOngoing:   body.IsOngoing,
 	}
 
 	idUser, err := UserIDFromContext(c)
@@ -113,19 +119,27 @@ func (h *EventHandler) CreateEvent(c *gin.Context) {
 }
 
 /**
+ * Full-state update: an omitted endDate clears it and an omitted isOngoing
+ * resets it, exactly like the description. Closing an open period is a PATCH
+ * with endDate set and isOngoing false.
+ *
  * input:
  * id: uint
  * {
  *   description?: string,
  *   date: time,
+ *   endDate?: time | null,
+ *   isOngoing?: bool,
  *   tagsId: []uint
  * }
  */
 func (h *EventHandler) UpdateEvent(c *gin.Context) {
 	type bodyRequest struct {
-		Description string    `json:"description"`
-		Date        time.Time `json:"date" validate:"required"`
-		TagsId      []uint    `json:"tagsId" validate:"required"`
+		Description string     `json:"description"`
+		Date        time.Time  `json:"date" validate:"required"`
+		EndDate     *time.Time `json:"endDate"`
+		IsOngoing   bool       `json:"isOngoing"`
+		TagsId      []uint     `json:"tagsId" validate:"required"`
 	}
 
 	idParam, err := strconv.ParseUint(c.Param("id"), 10, 32)
@@ -151,6 +165,8 @@ func (h *EventHandler) UpdateEvent(c *gin.Context) {
 		Id:          uint(idParam),
 		Description: body.Description,
 		Date:        body.Date,
+		EndDate:     body.EndDate,
+		IsOngoing:   body.IsOngoing,
 	}
 
 	idUser, err := UserIDFromContext(c)

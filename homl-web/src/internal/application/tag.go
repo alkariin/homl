@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"regexp"
 
 	"github.com/alkariin/homl/homl-web/internal/apperror"
 	"github.com/alkariin/homl/homl-web/internal/domain/category"
@@ -33,6 +34,12 @@ func NewTagsService(c *TSConfig) TagsService {
 		Crypto:               c.Crypto,
 	}
 }
+
+// yearTagName matches the year tags the backend derives from event dates
+// (event.DateTagNames). Refusing every four-digit name, whatever the
+// category, is deliberate: "1984" or "2001" as a user tag is the accepted
+// cost of never colliding with a year.
+var yearTagName = regexp.MustCompile(`^[0-9]{4}$`)
 
 // validateTag runs the checks shared by CreateTag and UpdateTag and returns
 // the tag name ready to be stored (title-cased plaintext to encrypt, or the
@@ -67,7 +74,10 @@ func (t *tagsService) validateTag(ctx context.Context, idUser uint64, tag *categ
 		return "", apperror.NewBadRequest("The given idCategory is not valid")
 	}
 
-	// Check that the tag is not blacklisted
+	// Check that the tag is not blacklisted: the month names and Ongoing
+	// (masterdata), plus any four-digit name, which could collide with a year
+	// tag. The backend derives all of these from event dates, and the client
+	// matches a filter through every category carrying the name.
 	blacklistTags := masterdata.BlacklistedTags()
 
 	uTag := titleCase(tag.Tag)
@@ -76,6 +86,9 @@ func (t *tagsService) validateTag(ctx context.Context, idUser uint64, tag *categ
 		if e == uTag {
 			return "", apperror.NewBadRequest("The given tag is not accepted")
 		}
+	}
+	if yearTagName.MatchString(uTag) {
+		return "", apperror.NewBadRequest("The given tag is not accepted")
 	}
 
 	if err := t.validateParent(ctx, idUser, tag); err != nil {
