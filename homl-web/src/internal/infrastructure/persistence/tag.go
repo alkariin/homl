@@ -3,20 +3,34 @@ package persistence
 import (
 	"context"
 	"database/sql"
+	"errors"
 
 	"github.com/alkariin/homl/homl-web/internal/apperror"
 	"github.com/alkariin/homl/homl-web/internal/application"
 	"github.com/alkariin/homl/homl-web/internal/domain/category"
+	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 )
 
 // Tags belong to the Category aggregate, so their persistence operations are
 // methods of CategoriesRepository.
 
+// tagNameConflict turns a MySQL duplicate-entry error on the Tags unique key
+// (idCategory, tag) into a conflict the client can explain — names are unique
+// per category, and the at-rest encryption being deterministic, two identical
+// names of the same user always collide. Any other error is returned as-is.
+func tagNameConflict(err error, reason string) error {
+	var mysqlErr *mysql.MySQLError
+	if errors.As(err, &mysqlErr) && mysqlErr.Number == mysqlDuplicateEntry {
+		return apperror.NewTagNameConflict(reason)
+	}
+	return err
+}
+
 func (c *CategoriesRepository) CreateTag(ctx context.Context, tagNameEncrypt string, tagIndex *string, idCategory uint, idParentTag *uint) (uint, error) {
 	res, err := c.DB.ExecContext(ctx, "INSERT INTO Tags (tag, tagIndex, idCategory, idParentTag) VALUES (?, ?, ?, ?)", tagNameEncrypt, tagIndex, idCategory, idParentTag)
 	if err != nil {
-		return 0, err
+		return 0, tagNameConflict(err, "A tag with this name already exists in this category")
 	}
 
 	idTag, err := res.LastInsertId()
@@ -37,7 +51,10 @@ func (c *CategoriesRepository) UpdateTag(ctx context.Context, tagNameEncrypt str
 	res, err := tx.ExecContext(ctx, "UPDATE Tags SET tag = ?, tagIndex = ?, idCategory = ?, idParentTag = ? WHERE id = ?", tagNameEncrypt, tagIndex, idCategory, idParentTag, idTag)
 
 	if err != nil {
-		return err
+		// Renaming onto a name already used in the category, or moving into
+		// a category that already has one, hits the unique key. Nothing is
+		// written: the transaction rolls back.
+		return tagNameConflict(err, "A tag with this name already exists in the target category")
 	}
 
 	rowsAffected, err := res.RowsAffected()
@@ -50,7 +67,8 @@ func (c *CategoriesRepository) UpdateTag(ctx context.Context, tagNameEncrypt str
 	if idParentTag == nil {
 		_, err = tx.ExecContext(ctx, "UPDATE Tags SET idCategory = ? WHERE idParentTag = ?", idCategory, idTag)
 		if err != nil {
-			return err
+			// A synonym following its main tag can collide just the same.
+			return tagNameConflict(err, "A synonym of this tag already exists in the target category")
 		}
 	}
 

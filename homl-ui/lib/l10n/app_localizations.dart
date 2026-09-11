@@ -957,6 +957,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'One of these tags already exists in Others. Rename it, or delete the tags instead of moving them.'**
   String get categories_deleteTagNameConflict;
+
+  /// No description provided for @categories_tagNameConflict.
+  ///
+  /// In en, this message translates to:
+  /// **'This category already has a tag with that name. Pick another one.'**
+  String get categories_tagNameConflict;
 }
 
 class _AppLocalizationsDelegate
