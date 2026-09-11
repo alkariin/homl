@@ -36,8 +36,10 @@ current behavior unchanged; both modes coexist.
 
 **Non-goals (phase 1)**
 
-- Encrypting `Events.date` (stays cleartext; the server keeps sorting and
-  date-range filtering). Revisit in phase 2.
+- Encrypting the period columns `Events.date`, `Events.endDate` and
+  `Events.isOngoing` (they stay cleartext; the server keeps sorting, validates
+  the period for every account and will filter on date ranges). Revisit in
+  phase 2.
 - Hiding metadata: row counts, tag↔event graph, categories `kind`/`color`,
   timestamps, user activity patterns remain visible to the server.
 - Multi-device sync of the key (the recovery phrase is the manual bridge).
@@ -115,7 +117,7 @@ authenticated user):
 | Encrypt/decrypt via `Encryptor` on every read/write | Pass-through: store and return blobs verbatim |
 | `titleCase` normalization on write & search | Skipped (client normalizes before hashing/encrypting) |
 | Blacklist check on tag names (`application/tag.go`) | Skipped server-side; enforced client-side before encryption |
-| `buildDateTags` derives + encrypts Month/Year tags from `event.date` | Skipped; the client creates/references date tags itself |
+| `buildDateTags` derives + encrypts the date tags of the event's period — every Month/Year it covers, plus `Ongoing` for an open period (`event.DateTagNames`) | Skipped; the client creates/references the same date tags itself, from the same period rules |
 | Tag search: encrypt query, match `tag IN (?)` | Match `tagIndex IN (?)` (same synonym-group + `HAVING COUNT` SQL, different column) |
 | Tag dedup via deterministic ciphertext equality | Via `tagIndex` equality |
 
@@ -131,8 +133,12 @@ API surface changes:
   are unchanged (token pair only); the client reads the settings right after
   authenticating.
 - `POST /events`, `PATCH /events/:id`: unchanged shape; `description` carries
-  a blob. The client is responsible for creating the Month/Year date tags
-  (English names, §6) via `POST /tags` and including their ids in `tagsId`.
+  a blob, while `endDate` and `isOngoing` are cleartext and validated
+  server-side for E2EE accounts too (the checks run before the E2EE
+  short-circuit of the tag building). The client is responsible for creating
+  the date tags of the whole period — every Month/Year it covers, plus
+  `Ongoing` for an open period, from the start month only (English names,
+  §6) — via `POST /tags` and including their ids in `tagsId`.
 
 ---
 

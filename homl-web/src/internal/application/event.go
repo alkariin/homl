@@ -3,7 +3,6 @@ package application
 import (
 	"context"
 	"sort"
-	"strconv"
 	"time"
 
 	"github.com/alkariin/homl/homl-web/internal/apperror"
@@ -107,11 +106,11 @@ func (e *eventsService) GetEvents(ctx context.Context, idUser uint64, tags []str
 			}
 		}
 
-		var response event.GetEventsResponse
-		response.Id = evt.Id
+		// The whole event is copied, not field by field: a field added to
+		// Event (the period ones were) must reach the wire without anyone
+		// having to remember this loop.
+		response := event.GetEventsResponse{Event: evt, Tags: resTags[evt.Id]}
 		response.Description = decDescription
-		response.Date = evt.Date
-		response.Tags = resTags[evt.Id]
 		responses = append(responses, response)
 	}
 
@@ -119,6 +118,10 @@ func (e *eventsService) GetEvents(ctx context.Context, idUser uint64, tags []str
 }
 
 func (e *eventsService) CreateEvent(ctx context.Context, idUser uint64, event *event.Event, tagsId []uint) error {
+	if err := validatePeriod(event); err != nil {
+		return err
+	}
+
 	// The tag ids come straight from the client: refuse any that live in
 	// another user's categories.
 	if err := e.CategoriesRepository.CheckTagsBelongToUser(ctx, tagsId, idUser); err != nil {
@@ -134,6 +137,10 @@ func (e *eventsService) CreateEvent(ctx context.Context, idUser uint64, event *e
 }
 
 func (e *eventsService) UpdateEvent(ctx context.Context, idUser uint64, event *event.Event, tagsId []uint) error {
+	if err := validatePeriod(event); err != nil {
+		return err
+	}
+
 	if err := e.CategoriesRepository.CheckTagsBelongToUser(ctx, tagsId, idUser); err != nil {
 		return err
 	}
@@ -144,6 +151,53 @@ func (e *eventsService) UpdateEvent(ctx context.Context, idUser uint64, event *e
 	}
 
 	return e.EventsRepository.UpdateEventWithTags(ctx, tags, tagsId, event, idUser)
+}
+
+// maxPeriodYears bounds a closed period. Nothing legitimate spans more, and
+// it keeps the date-tag expansion (event.DateTagNames) finite against a
+// pathological write.
+const maxPeriodYears = 100
+
+// validatePeriod enforces the period invariants and normalizes the event in
+// place. It runs before prepareEvent on purpose: prepareEvent returns early
+// for E2EE accounts, and the period columns are cleartext in every mode, so
+// the server validates them for everyone.
+//
+//	endDate      isOngoing  outcome
+//	nil          false      single day
+//	after date   false      closed period
+//	same day     false      normalized to nil — one representation of a one-day event
+//	before date  false      400
+//	nil          true       open period
+//	set          true       400
+func validatePeriod(event *event.Event) error {
+	if event.EndDate == nil {
+		return nil
+	}
+	if event.IsOngoing {
+		return apperror.NewBadRequest("An ongoing period cannot have an end date")
+	}
+
+	// Compare calendar days: the column is a MySQL DATE, so the time part of
+	// either value is dropped on write anyway.
+	start := dayOf(event.Date)
+	end := dayOf(*event.EndDate)
+	switch {
+	case end.Before(start):
+		return apperror.NewBadRequest("The end date cannot precede the start date")
+	case end.Equal(start):
+		event.EndDate = nil
+	case end.After(start.AddDate(maxPeriodYears, 0, 0)):
+		return apperror.NewBadRequest("The period cannot span more than 100 years")
+	}
+
+	return nil
+}
+
+// dayOf truncates an instant to its calendar day, in UTC.
+func dayOf(t time.Time) time.Time {
+	y, m, d := t.UTC().Date()
+	return time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
 }
 
 // prepareEvent runs the mode-specific write checks shared by CreateEvent and
@@ -158,22 +212,21 @@ func (e *eventsService) prepareEvent(ctx context.Context, idUser uint64, event *
 		return nil, nil
 	}
 
-	return e.buildDateTags(ctx, idUser, event.Date)
+	return e.buildDateTags(ctx, idUser, event)
 }
 
-// buildDateTags returns the month and year tags of the event's date, reusing
-// the existing tag ids when the user already has them in his date category.
-func (e *eventsService) buildDateTags(ctx context.Context, idUser uint64, date time.Time) ([]category.Tag, error) {
+// buildDateTags returns the date tags of the event's period (the months and
+// years it covers, plus Ongoing for an open period — see event.DateTagNames),
+// reusing the existing tag ids when the user already has them in his date
+// category.
+func (e *eventsService) buildDateTags(ctx context.Context, idUser uint64, evt *event.Event) ([]category.Tag, error) {
 	idCategoryDate, err := e.CategoriesRepository.FindIdByKind(ctx, idUser, category.KindDate)
 	if err != nil {
 		return nil, err
 	}
 
-	month := date.Month().String()
-	year := strconv.Itoa(date.Year())
-
 	var tags []category.Tag
-	for _, name := range []string{month, year} {
+	for _, name := range evt.DateTagNames() {
 		encName, err := e.Crypto.Encrypt(name, idUser)
 		if err != nil {
 			return nil, err

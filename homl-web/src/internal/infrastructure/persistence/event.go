@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"strconv"
+	"time"
 
 	"github.com/alkariin/homl/homl-web/internal/apperror"
 	"github.com/alkariin/homl/homl-web/internal/application"
@@ -19,6 +20,15 @@ func nullStringToString(ns sql.NullString) string {
 		return ns.String
 	}
 	return ""
+}
+
+// nullTimeToPtr converts a sql.NullTime to a *time.Time (nil when NULL).
+func nullTimeToPtr(nt sql.NullTime) *time.Time {
+	if nt.Valid {
+		t := nt.Time
+		return &t
+	}
+	return nil
 }
 
 type EventsRepository struct {
@@ -68,7 +78,7 @@ func (e *EventsRepository) FindEventsWithTags(ctx context.Context, encTags []str
 				)`
 	}
 	query := `
-		SELECT Events.id, Events.description, Events.date, Tags.id, Tags.tag, Tags.idCategory, Tags.idParentTag
+		SELECT Events.id, Events.description, Events.date, Events.endDate, Events.isOngoing, Tags.id, Tags.tag, Tags.idCategory, Tags.idParentTag
 			FROM Tags INNER JOIN Events INNER JOIN
 			(
 				SELECT DISTINCT idTag, idEvent
@@ -101,11 +111,13 @@ func (e *EventsRepository) FindEventsWithTags(ctx context.Context, encTags []str
 		var tag category.Tag
 		var event event.Event
 		var description sql.NullString
-		err = results.Scan(&event.Id, &description, &event.Date, &tag.Id, &tag.Tag, &tag.IdCategory, &tag.IdParentTag)
+		var endDate sql.NullTime
+		err = results.Scan(&event.Id, &description, &event.Date, &endDate, &event.IsOngoing, &tag.Id, &tag.Tag, &tag.IdCategory, &tag.IdParentTag)
 		if err != nil {
 			return nil, nil, err
 		}
 		event.Description = nullStringToString(description)
+		event.EndDate = nullTimeToPtr(endDate)
 
 		// E2EE tag names are opaque blobs returned verbatim.
 		if !isE2ee {
@@ -144,7 +156,8 @@ func (e *EventsRepository) CreateEventWithTags(ctx context.Context, tags []categ
 		return err
 	}
 
-	res, err := tx.ExecContext(ctx, "INSERT INTO Events (description, date, idUser) VALUES (?, ?, ?);", encDescription, event.Date, idUser)
+	// A nil EndDate binds as NULL (the driver dereferences non-nil pointers).
+	res, err := tx.ExecContext(ctx, "INSERT INTO Events (description, date, endDate, isOngoing, idUser) VALUES (?, ?, ?, ?, ?);", encDescription, event.Date, event.EndDate, event.IsOngoing, idUser)
 	if err != nil {
 		return err
 	}
@@ -194,7 +207,7 @@ func (e *EventsRepository) UpdateEventWithTags(ctx context.Context, tags []categ
 		return err
 	}
 
-	_, err = tx.ExecContext(ctx, "UPDATE Events SET description = ?, date = ? WHERE id = ? AND idUser = ?", encDescription, event.Date, event.Id, idUser)
+	_, err = tx.ExecContext(ctx, "UPDATE Events SET description = ?, date = ?, endDate = ?, isOngoing = ? WHERE id = ? AND idUser = ?", encDescription, event.Date, event.EndDate, event.IsOngoing, event.Id, idUser)
 	if err != nil {
 		return err
 	}

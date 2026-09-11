@@ -76,6 +76,8 @@ classDiagram
         +uint Id
         +string Description
         +time.Time Date
+        +*time.Time EndDate
+        +bool IsOngoing
     }
 
     %% Masterdata
@@ -149,13 +151,21 @@ classDiagram
 
 - An event is a dated description linked to any number of tags through the
   `EventsTags` join table (scoped by user).
+- Its date is a period: a single day (`EndDate` nil), a closed period
+  (`EndDate` set, inclusive) or an open one (`IsOngoing`, no end yet). The
+  combinations are enforced by the application layer (`validatePeriod`);
+  `Event.DateTagNames()` derives the backend-managed date tags — the months
+  and years the period covers, plus `OngoingTag` for an open period — and is
+  the reference the E2EE client mirrors.
 
 ### Masterdata (`domain/masterdata`)
 
 - Static reference data embedded in the binary at build time
   (`constants.json`): the default categories seeded for every new user (the
   first one is the "Dates" category) and the blacklisted tag names users are
-  not allowed to create.
+  not allowed to create — the twelve month names and `Ongoing`. The other
+  reserved names, the four-digit year-like ones, are an open-ended set and
+  are refused by a rule in `application/tag.go` rather than listed here.
 
 ## Persistence ports
 
