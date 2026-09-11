@@ -243,10 +243,17 @@ deletion that keeps the events would leave date-only.
 
 ## Tags
 
-All endpoints require auth. Tag names on the masterdata blacklist are
-rejected, and the date category is off-limits: it cannot be the target of a
+All endpoints require auth. Reserved tag names are rejected: the twelve
+English month names and `Ongoing` (the masterdata blacklist), plus **any
+four-digit name**, which would collide with a year tag — years are an
+open-ended set, so that one is a rule rather than a list entry. `1984` and
+`2001` are refused with them, the accepted cost of never clashing with a date
+tag. A rename goes through the same check, so a tag named like a year that
+predates the rule can still be deleted but no longer edited.
+
+The date category is off-limits too: it cannot be the target of a
 create/update, and its tags cannot be updated or deleted (they are managed by
-the backend from the event dates).
+the backend from the event periods).
 
 **E2EE users** (see [e2ee.md](e2ee.md)): `tag` must be an `e2ee:v1:` blob and
 `tagIndex` (32-char lowercase hex blind index) is required; blacklist,
@@ -316,7 +323,10 @@ client creates and attaches its own.
 `GET /events` returns the events newest first (by `date` descending, most
 recently created first for the same day), so an event created for a past day
 or whose date was edited lands at its chronological slot, not at its creation
-slot:
+slot. A period sorts on its start like anything else — one running from June
+to December sits *before* a one-day event in September, because it began
+earlier — and an open period stays at its start date rather than floating to
+the top:
 
 ```json
 [
