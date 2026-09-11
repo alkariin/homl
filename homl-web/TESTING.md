@@ -122,6 +122,32 @@ mix-up destroys data the user asked to keep:
   option each radio sends, and that a hasty confirm moves the tags instead of
   deleting anything.
 
+## Tag name conflicts
+
+`Tags` is unique on `(idCategory, tag)` and the at-rest encryption is
+deterministic, so two identical names of one user always collide. Every write
+that could produce one answers `409 TAG_NAME_CONFLICT` and writes nothing;
+clients switch on the code, never on the message:
+
+| Write | Colliding case |
+|---|---|
+| `POST /tags` | the name already exists in that category |
+| `PATCH /tags/:id` | the rename, the move, or a synonym following a moved main tag |
+| `DELETE /categories/:id` `{"moveTags": true}` | a tag being moved is already in Other |
+
+- `src/test/dbtest/tag_lifecycle_test.go` (`TestTagNameConflicts`) — every
+  case against the real unique key, plus the two that must stay legal (the
+  same name in another category, and another user's identical name), each
+  checked to have rolled back.
+- `src/test/dbtest/category_delete_test.go` — the same for the move of a
+  whole category.
+- `src/internal/infrastructure/web/router_test.go` — the 409 reaching the
+  client with its `code` and `message`.
+- `homl-ui/test/tags_repository_conflict_test.dart`,
+  `categories_repository_delete_test.dart` — the coded 409 told apart from a
+  bare 409 or any other failure; `home_cubit_test.dart` — the message the user
+  actually gets.
+
 ## Frontend tests
 
 The Flutter side has its own suites — `flutter test` (unit + widget, mocked

@@ -79,7 +79,9 @@ type Repository interface {
 	GetCategoryUsage(ctx context.Context, idCategory uint, idUser uint64) (*CategoryUsage, error)
 
 	// CreateTag / UpdateTag store an encrypted tag name; tagIndex is the
-	// client-side blind index of E2EE users (nil otherwise).
+	// client-side blind index of E2EE users (nil otherwise). Both are
+	// refused with a conflict when the name is already taken in the target
+	// category, synonyms following a moved main tag included.
 	CreateTag(ctx context.Context, tagNameEncrypt string, tagIndex *string, idCategory uint, idParentTag *uint) (uint, error)
 	UpdateTag(ctx context.Context, tagNameEncrypt string, tagIndex *string, idCategory uint, idTag uint, idParentTag *uint) error
 	// DeleteTag removes a tag. Deleting a synonym repoints its events to the
