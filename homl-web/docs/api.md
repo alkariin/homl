@@ -208,11 +208,19 @@ All endpoints require auth. A category groups tags; locked categories
 [tag-synonyms.md](tag-synonyms.md)).
 
 `DELETE` with `"moveTags": true` moves the category's tags (synonym links
-intact) to the user's Other category instead of deleting them. With
+intact) to the user's Other category instead of deleting them, and
+`deleteEvents` is then ignored — a move never deletes anything. With
 `"moveTags": false` the tags are deleted, and `"deleteEvents": true` also
 deletes every event tagged with one of them, whatever other tags it carries;
 without it those events are preserved, only the tags are removed from them
-(the ones that had no other non-date tag are left date-only).
+(the ones that had no other non-date tag are left date-only). Both flags
+default to `false`, the option that destroys the least.
+
+The whole deletion is one transaction, so a failure leaves the category, its
+tags and its events untouched. One case still fails: tag names are unique per
+category, so `"moveTags": true` is refused with a `500` when the Other
+category already holds a tag of the same name — the other two options remain
+available.
 
 `GET /categories/:id/usage` returns the counts the client shows in its delete
 confirmation dialog:

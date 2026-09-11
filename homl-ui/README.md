@@ -253,8 +253,12 @@ Destructive actions confirm with the counts served by `GET /tags/:id/usage` /
 - a synonym (tap or long press on its chip) can be renamed, detached or
   deleted — deletion confirms that its events are repointed to the main tag;
 - deleting a category offers to move its tags to the Others category
-  (default), delete them while keeping the events, or delete them together
-  with the events that only use tags from this category.
+  (default, so a hasty confirm loses nothing), delete them while keeping the
+  events (those left without another non-date tag keep their date only), or
+  delete them together with **every** event tagged from the category —
+  whatever other tags it carries. The last option is hidden when no event uses
+  the category. The three outcomes are pinned end to end, from the dialog down
+  to the SQL: see [../homl-web/TESTING.md](../homl-web/TESTING.md).
 
 The "#" logo next to the tag inputs is a button:
 
