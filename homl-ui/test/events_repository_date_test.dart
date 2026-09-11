@@ -78,4 +78,37 @@ void main() {
     expect(adapter.bodies.single['date'], '2026-09-01T00:00:00.000Z');
     expect(adapter.bodies.single['description'], '');
   });
+
+  group('period fields', () {
+    test('a single day sends an explicit null end and a false flag', () async {
+      await repository.createEvent(date: DateTime(2026, 8, 31), tagsId: [1]);
+
+      // Always sent: the backend PATCH treats an omitted field as cleared,
+      // and an explicit value says what was meant.
+      final body = adapter.bodies.single;
+      expect(body.containsKey('endDate'), isTrue);
+      expect(body['endDate'], isNull);
+      expect(body['isOngoing'], isFalse);
+    });
+
+    test('a closed period sends its end as a UTC midnight day too', () async {
+      // Same timezone trap as the start date: a local-midnight end must not
+      // slide to the previous day.
+      await repository.createEvent(
+          date: DateTime(2026, 8, 28),
+          endDate: DateTime(2026, 9, 5),
+          tagsId: [1]);
+
+      expect(adapter.bodies.single['endDate'], '2026-09-05T00:00:00.000Z');
+      expect(adapter.bodies.single['isOngoing'], isFalse);
+    });
+
+    test('an open period sends the flag, on update as on create', () async {
+      await repository.updateEvent(
+          id: 7, date: DateTime(2026, 8, 31), isOngoing: true, tagsId: [1]);
+
+      expect(adapter.bodies.single['isOngoing'], isTrue);
+      expect(adapter.bodies.single['endDate'], isNull);
+    });
+  });
 }

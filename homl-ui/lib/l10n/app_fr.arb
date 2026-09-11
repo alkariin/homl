@@ -138,6 +138,9 @@
   "insert_submit": "Créer l'événement",
   "insert_eventCreated": "Événement créé",
   "insert_noTagsError": "Ajouter au moins un tag",
+  "insert_periodSingleDay": "Un jour",
+  "insert_periodClosed": "Période",
+  "insert_periodOngoing": "En cours",
 
   "list_filterLabel": "Filtrer par tag",
   "list_noEvents": "Aucun événement trouvé",
@@ -145,6 +148,14 @@
   "list_deleteEventTitle": "Supprimer l'événement ?",
   "list_deleteEventInfo": "Cet événement et sa description seront définitivement supprimés.",
   "list_eventUpdated": "Événement mis à jour",
+
+  "event_ongoing": "En cours",
+  "event_durationDays": "{count, plural, =1{1 jour} other{{count} jours}}",
+  "event_durationMonths": "{count, plural, =1{1 mois} other{{count} mois}}",
+  "event_durationYears": "{count, plural, =1{1 an} other{{count} ans}}",
+  "event_sinceDays": "{count, plural, =1{depuis 1 jour} other{depuis {count} jours}}",
+  "event_sinceMonths": "{count, plural, =1{depuis 1 mois} other{depuis {count} mois}}",
+  "event_sinceYears": "{count, plural, =1{depuis 1 an} other{depuis {count} ans}}",
 
   "categories_newCategory": "Nouvelle catégorie",
   "categories_editCategory": "Modifier la catégorie",

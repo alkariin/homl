@@ -55,6 +55,7 @@ final event = Event(
     id: 1,
     description: 'match',
     date: DateTime(2026, 7, 12),
+    isOngoing: false,
     tags: [julyTag, yearTag, footballTag]);
 
 void main() {
@@ -77,6 +78,17 @@ void main() {
       expect(monthOfTagName('  december '), 12);
       expect(monthOfTagName('Juillet'), isNull);
     });
+
+    test('translates the Ongoing tag through the app strings', () {
+      // No intl formatter for it, unlike the months: the label is the one
+      // the card badge shows, in the language part of the locale.
+      expect(localizedTagName('Ongoing', 'fr'), 'En cours');
+      expect(localizedTagName('Ongoing', 'de'), 'Laufend');
+      expect(localizedTagName('Ongoing', 'en'), 'Ongoing');
+      expect(localizedTagName('ongoing', 'en_US'), 'Ongoing');
+      expect(isOngoingTagName(' ONGOING '), isTrue);
+      expect(isOngoingTagName('Ongoingness'), isFalse);
+    });
   });
 
   group('date chips and localized month tags', () {
@@ -98,8 +110,7 @@ void main() {
           .thenAnswer((_) => const Stream<void>.empty());
       when(() => eventsRepository.getCachedEvents())
           .thenAnswer((_) async => [event]);
-      when(() => eventsRepository.getEvents())
-          .thenAnswer((_) async => [event]);
+      when(() => eventsRepository.getEvents()).thenAnswer((_) async => [event]);
       when(() => categoriesRepository.getCachedCategories())
           .thenAnswer((_) async => categories);
       when(() => categoriesRepository.getCategories())

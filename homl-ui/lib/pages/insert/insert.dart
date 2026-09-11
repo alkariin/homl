@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
 import 'package:homl/l10n/app_localizations.dart';
 
 import 'package:homl/components/bubbles_background.dart';
@@ -226,6 +227,22 @@ class _InsertViewState extends State<InsertView> {
             }
           }
 
+          // The end picker starts from the end already picked or, on a first
+          // pick, from the start day; earlier days are simply not offered.
+          // initialDate has to sit inside [firstDate, lastDate] or the dialog
+          // asserts — hence the fallback on the start, never "today".
+          Future<void> pickEndDate() async {
+            final picked = await showDatePicker(
+              context: context,
+              initialDate: state.endDate ?? state.date,
+              firstDate: state.date,
+              lastDate: DateTime(2100),
+            );
+            if (picked != null) {
+              insertCubit.updateEndDate(picked);
+            }
+          }
+
           // The decorative background is shared by the tabs (parallax in
           // the home page); the edit route wraps this view with its own.
           return SingleChildScrollView(
@@ -274,10 +291,13 @@ class _InsertViewState extends State<InsertView> {
                     onRemoveTag: (tag) =>
                         context.read<InsertCubit>().removeTag(tag.name),
                     // The date chips are always there and cannot be removed.
-                    // They mirror the month/year date tags the event is filed
-                    // under (translated for display, stored in English), and
-                    // both open the date picker: changing the date updates
-                    // the two of them.
+                    // They mirror the date tags the event is filed under
+                    // (translated for display, stored in English): the start
+                    // month and year, both opening the date picker, then the
+                    // end of a closed period (tap to change it) or the
+                    // Ongoing tag of an open one. A closed period is filed
+                    // under every month it covers, but only its start is
+                    // chipped — a long one would flood the field.
                     leading: [
                       Tag(
                         id: -1,
@@ -293,9 +313,59 @@ class _InsertViewState extends State<InsertView> {
                         large: true,
                         onTap: pickDate,
                       ),
+                      if (state.endDate != null)
+                        Tag(
+                          id: -1,
+                          text:
+                              '→ ${DateFormat.yMMMd(locale).format(state.endDate!)}',
+                          isDate: true,
+                          large: true,
+                          onTap: pickEndDate,
+                        ),
+                      if (state.isOngoing)
+                        Tag(
+                          id: -1,
+                          text: localizedTagName(dateTagOngoing, locale),
+                          isDate: true,
+                          large: true,
+                        ),
                     ],
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 14),
+                  // One day, a closed period or an open one. "Period" opens
+                  // the end picker straight away and only becomes the selected
+                  // shape once a day is picked — the selection is derived from
+                  // the state — so cancelling leaves the previous shape in
+                  // place and the form never rests on "a period without an
+                  // end".
+                  SegmentedButton<PeriodShape>(
+                    showSelectedIcon: false,
+                    style:
+                        const ButtonStyle(visualDensity: VisualDensity.compact),
+                    segments: [
+                      ButtonSegment(
+                          value: PeriodShape.singleDay,
+                          label: Text(localization.insert_periodSingleDay)),
+                      ButtonSegment(
+                          value: PeriodShape.closed,
+                          label: Text(localization.insert_periodClosed)),
+                      ButtonSegment(
+                          value: PeriodShape.ongoing,
+                          label: Text(localization.insert_periodOngoing)),
+                    ],
+                    selected: {state.shape},
+                    onSelectionChanged: (selection) {
+                      switch (selection.single) {
+                        case PeriodShape.singleDay:
+                          insertCubit.setSingleDay();
+                        case PeriodShape.closed:
+                          pickEndDate();
+                        case PeriodShape.ongoing:
+                          insertCubit.setOngoing();
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 22),
                   Input(
                     labelText: localization.insert_descriptionLabel,
                     controller: _descriptionController,

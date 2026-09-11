@@ -138,6 +138,9 @@
   "insert_submit": "Ereignis erstellen",
   "insert_eventCreated": "Ereignis erstellt",
   "insert_noTagsError": "Mindestens einen Tag hinzufügen",
+  "insert_periodSingleDay": "Ein Tag",
+  "insert_periodClosed": "Zeitraum",
+  "insert_periodOngoing": "Laufend",
 
   "list_filterLabel": "Nach Tag filtern",
   "list_noEvents": "Keine Ereignisse gefunden",
@@ -145,6 +148,14 @@
   "list_deleteEventTitle": "Ereignis löschen?",
   "list_deleteEventInfo": "Dieses Ereignis und seine Beschreibung werden endgültig gelöscht.",
   "list_eventUpdated": "Ereignis aktualisiert",
+
+  "event_ongoing": "Laufend",
+  "event_durationDays": "{count, plural, =1{1 Tag} other{{count} Tage}}",
+  "event_durationMonths": "{count, plural, =1{1 Monat} other{{count} Monate}}",
+  "event_durationYears": "{count, plural, =1{1 Jahr} other{{count} Jahre}}",
+  "event_sinceDays": "{count, plural, =1{seit 1 Tag} other{seit {count} Tagen}}",
+  "event_sinceMonths": "{count, plural, =1{seit 1 Monat} other{seit {count} Monaten}}",
+  "event_sinceYears": "{count, plural, =1{seit 1 Jahr} other{seit {count} Jahren}}",
 
   "categories_newCategory": "Neue Kategorie",
   "categories_editCategory": "Kategorie bearbeiten",

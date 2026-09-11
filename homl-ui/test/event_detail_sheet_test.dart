@@ -47,14 +47,21 @@ final categories = [
       tags: [Tag(id: 2, tag: 'Football', idCategory: 2)]),
 ];
 
-final event = Event(
-    id: 1,
-    description: description,
-    date: DateTime(2026, 3, 15),
-    tags: [
-      Tag(id: 10, tag: 'MonthTag', idCategory: 1),
-      Tag(id: 2, tag: 'Football', idCategory: 2),
-    ]);
+/// One date tag (category 1) and one regular tag. [endDate] makes a closed
+/// period, [isOngoing] an open one, [date] moves the start.
+Event eventWith({DateTime? date, DateTime? endDate, bool isOngoing = false}) =>
+    Event(
+        id: 1,
+        description: description,
+        date: date ?? DateTime(2026, 3, 15),
+        endDate: endDate,
+        isOngoing: isOngoing,
+        tags: [
+          Tag(id: 10, tag: 'MonthTag', idCategory: 1),
+          Tag(id: 2, tag: 'Football', idCategory: 2),
+        ]);
+
+final event = eventWith();
 
 void main() {
   late MockEventsRepository eventsRepository;
@@ -87,6 +94,17 @@ void main() {
 
   tearDown(() => homeCubit.close());
 
+  /// Swaps the event the list shows for [shown]; the cubit is rebuilt so it
+  /// loads it (the one from setUp already holds the default event).
+  Future<void> showEvent(Event shown) async {
+    await homeCubit.close();
+    when(() => eventsRepository.getCachedEvents())
+        .thenAnswer((_) async => [shown]);
+    when(() => eventsRepository.getEvents()).thenAnswer((_) async => [shown]);
+    homeCubit = HomeCubit(settingsRepository, eventsRepository,
+        categoriesRepository, tagsRepository, 'user');
+  }
+
   Widget wrap() {
     return MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -116,14 +134,49 @@ void main() {
     await openSheet(tester);
 
     expect(find.byType(BottomSheet), findsOneWidget);
-    // Full description (card + sheet) and every tag, date ones included.
+    // Full description (card + sheet) and the regular tags. The date tags
+    // are left out, as on the card: the header already carries the period,
+    // and a long one would put a dozen month chips under it.
     expect(find.text(description), findsNWidgets(2));
-    expect(find.descendant(
+    expect(
+        find.descendant(
             of: find.byType(BottomSheet), matching: find.text('Football')),
         findsOneWidget);
-    expect(find.descendant(
+    expect(
+        find.descendant(
             of: find.byType(BottomSheet), matching: find.text('MonthTag')),
+        findsNothing);
+    expect(find.text('Sunday, March 15, 2026'), findsOneWidget);
+    expect(find.textContaining('→'), findsNothing);
+  });
+
+  testWidgets('a closed period shows both dates and its length',
+      (tester) async {
+    await showEvent(eventWith(endDate: DateTime(2026, 3, 30)));
+    await openSheet(tester);
+
+    // 15 → 30 March, inclusive: 16 days.
+    expect(find.text('Sunday, March 15, 2026'), findsOneWidget);
+    expect(find.text('→ Monday, March 30, 2026 · 16 days'), findsOneWidget);
+  });
+
+  testWidgets('an open period reads as ongoing, with the time elapsed',
+      (tester) async {
+    await showEvent(eventWith(isOngoing: true));
+    await openSheet(tester);
+
+    // Started in March 2026; whenever this runs, months or years have gone by.
+    expect(find.textContaining(RegExp(r'^→ Ongoing · for \d+ (months|years)$')),
         findsOneWidget);
+  });
+
+  testWidgets('an open period starting in the future has nothing elapsed',
+      (tester) async {
+    await showEvent(eventWith(date: DateTime(2100, 1, 1), isOngoing: true));
+    await openSheet(tester);
+
+    // No negative duration: just the flag, until the period has started.
+    expect(find.text('→ Ongoing'), findsOneWidget);
   });
 
   testWidgets('the trash action asks for confirmation before deleting',
@@ -175,14 +228,15 @@ void main() {
         id: any(named: 'id'),
         description: any(named: 'description'),
         date: any(named: 'date'),
+        endDate: any(named: 'endDate'),
+        isOngoing: any(named: 'isOngoing'),
         tagsId: any(named: 'tagsId'))).thenAnswer((_) async {});
 
     await openSheet(tester);
     await tester.tap(faIcon(FontAwesomeIcons.pen));
     await tester.pumpAndSettle();
 
-    await tester.enterText(
-        find.widgetWithText(TextFormField, description), '');
+    await tester.enterText(find.widgetWithText(TextFormField, description), '');
     await tester.pumpAndSettle();
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
@@ -191,6 +245,8 @@ void main() {
         id: 1,
         description: '',
         date: any(named: 'date'),
+        endDate: null,
+        isOngoing: false,
         tagsId: any(named: 'tagsId'))).called(1);
 
     // Exactly one route is popped: losing the focus made the emptied field

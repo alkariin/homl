@@ -14,8 +14,12 @@ class MockHomeCubit extends MockCubit<HomeState> implements HomeCubit {}
 Tag tag(int id, String name, {int? parent}) =>
     Tag(id: id, tag: name, idCategory: 1, idParentTag: parent);
 
-Event event(int id, List<Tag> tags) =>
-    Event(id: id, description: 'event $id', date: DateTime(2026), tags: tags);
+Event event(int id, List<Tag> tags) => Event(
+    id: id,
+    description: 'event $id',
+    date: DateTime(2026),
+    isOngoing: false,
+    tags: tags);
 
 void main() {
   final categories = [
@@ -101,8 +105,8 @@ void main() {
     controller.add(loadedState());
     await expectLater(
       cubit.stream,
-      emitsThrough(predicate<ListState>(
-          (s) => !s.loading && s.events.length == 2)),
+      emitsThrough(
+          predicate<ListState>((s) => !s.loading && s.events.length == 2)),
     );
 
     await cubit.close();

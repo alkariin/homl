@@ -9,6 +9,7 @@ import 'package:homl/data/repositories/tags.repository.dart';
 import 'package:homl/helpers/app_message.dart';
 import 'package:homl/helpers/date_tags.dart';
 import 'package:homl/helpers/e2ee.dart';
+import 'package:homl/helpers/event_period.dart' show dayOf;
 import 'package:homl/pages/home/bloc/home_cubit.dart' show TagView;
 
 part 'insert_state.dart';
@@ -47,18 +48,20 @@ class InsertCubit extends Cubit<InsertState> {
     return null;
   }
 
-  /// Builds the month/year date tags of [date] for E2EE users, mirroring the
-  /// backend buildDateTags (English month name + year). Existing tags of the
-  /// date category are reused; missing ones are created with the blacklist
-  /// lifted (they ARE the reserved month names).
-  Future<List<int>> _buildDateTags(
-      List<Category> categories, DateTime date) async {
+  /// Builds the date tags of the event's period for E2EE users, mirroring the
+  /// backend buildDateTags: the English month name and the year of every
+  /// month it covers, plus Ongoing for an open period (see
+  /// [periodDateTagNames]). Existing tags of the date category are reused;
+  /// missing ones are created with the blacklist lifted (they ARE the
+  /// reserved names).
+  Future<List<int>> _buildDateTags(List<Category> categories) async {
     final dateCategory = categories.cast<Category?>().firstWhere(
         (category) => category?.kind == CategoryKind.date,
         orElse: () => null);
     if (dateCategory == null) return const [];
 
-    final names = [dateTagMonths[date.month - 1], date.year.toString()];
+    final names = periodDateTagNames(
+        date: state.date, endDate: state.endDate, isOngoing: state.isOngoing);
 
     final ids = <int>[];
     for (final name in names) {
@@ -99,7 +102,29 @@ class InsertCubit extends Cubit<InsertState> {
   }
 
   void updateDate(DateTime date) {
+    // A start moved past the end leaves no valid end: the event falls back to
+    // a single day rather than resting on an invalid pair until submit.
+    final end = state.endDate;
+    if (end != null && dayOf(date).isAfter(dayOf(end))) {
+      emit(state.copyWith(date: date, clearEndDate: true));
+      return;
+    }
     emit(state.copyWith(date: date));
+  }
+
+  /// Closed period ending on [endDate] (inclusive); also closes an open one.
+  /// The picker only offers days from the start on, so no check here.
+  void updateEndDate(DateTime endDate) {
+    emit(state.copyWith(endDate: endDate, isOngoing: false));
+  }
+
+  void setSingleDay() {
+    emit(state.copyWith(clearEndDate: true, isOngoing: false));
+  }
+
+  /// Open period: started on the date, no end yet.
+  void setOngoing() {
+    emit(state.copyWith(clearEndDate: true, isOngoing: true));
   }
 
   void updateDescription(String text) {
@@ -133,11 +158,11 @@ class InsertCubit extends Cubit<InsertState> {
         tagsId.add(await tagsRepository.createTag(name, idCategory));
       }
 
-      // Under E2EE the backend can no longer derive the month/year date tags
-      // from the (encrypted) event, so the client builds them itself,
-      // mirroring the backend's English month names.
+      // Under E2EE the backend can no longer derive the date tags from the
+      // (encrypted) event, so the client builds them itself, mirroring the
+      // backend's English names over the whole period.
       if (E2ee().enabled) {
-        tagsId.addAll(await _buildDateTags(categories, state.date));
+        tagsId.addAll(await _buildDateTags(categories));
       }
 
       // The repository notifies its change stream, which refreshes the
@@ -147,6 +172,8 @@ class InsertCubit extends Cubit<InsertState> {
             id: state.editingEventId!,
             description: state.description,
             date: state.date,
+            endDate: state.endDate,
+            isOngoing: state.isOngoing,
             tagsId: tagsId);
 
         // Keep the edited state (editingEventId included) so the view knows
@@ -156,6 +183,8 @@ class InsertCubit extends Cubit<InsertState> {
         await eventsRepository.createEvent(
             description: state.description,
             date: state.date,
+            endDate: state.endDate,
+            isOngoing: state.isOngoing,
             tagsId: tagsId);
 
         // Reset the form
