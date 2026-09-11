@@ -6,8 +6,8 @@
 |---|---|---|---|
 | **Unit** | `src/internal/application/*_test.go`, `src/internal/apperror/*_test.go`, `src/internal/domain/e2ee/*_test.go`, `src/internal/infrastructure/{auth,config,crypto,mail}/*_test.go` | Business logic with mocked repositories; JWT, field encryption, config validation, the mailers and the error helpers | none |
 | **HTTP / integration** | `src/internal/infrastructure/web/router_test.go` | The real Gin router (routing, JWT middleware, JSON binding, validation, status codes & response bodies) with mocked services | none |
-| **DB-backed** | `src/test/dbtest/*_test.go` (build tag `dbtest`) | The real SQL of the persistence layer: cross-tenant isolation, tag/synonym lifecycle, the atomic E2EE migration and purge | `make db-up` + `make migrateup` |
-| **End-to-end** | `src/test/e2e/e2e_test.go` (build tag `e2e`) | Full flow over real HTTP against a running stack (API + MySQL + Redis) | `make dev` |
+| **DB-backed** | `src/test/dbtest/*_test.go` (build tag `dbtest`) | The real SQL of the persistence layer: cross-tenant isolation, tag/synonym lifecycle, the three category-deletion options, the atomic E2EE migration and purge | `make db-up` + `make migrateup` |
+| **End-to-end** | `src/test/e2e/e2e_test.go` (build tag `e2e`) | Full flow over real HTTP against a running stack (API + MySQL + Redis): auth, category CRUD and deletion options, account deletion | `make dev` |
 
 The first two layers are in-process and deterministic — no database, no network —
 so they run on every commit; each HTTP test fires a real request and asserts the
@@ -90,6 +90,37 @@ They are configurable via environment variables (defaults match `make dev`):
 - Crypto secrets needed by the code are set up per package in `setup_test.go` /
   `TestMain`. The reference data (`constants.json`) is embedded in the binary
   via `internal/domain/masterdata`, so tests no longer need a copy of the file.
+- Tests that need an account of their own **register a throwaway one** rather
+  than working on the seeded demo user: the DB-backed ones drop it at cleanup
+  (everything else follows through `ON DELETE CASCADE`), the end-to-end ones
+  call `DELETE /account`. Registration, login and account deletion share a
+  10/min per-IP budget, so an e2e test that needs an account documents what it
+  spends of it.
+
+## Deleting a category or a tag
+
+Both deletions ask the user what to do with what they hold, and each answer is
+a different pair of flags on the wire. They are covered at every layer, since a
+mix-up destroys data the user asked to keep:
+
+| Option | Request | Outcome |
+|---|---|---|
+| Move the tags | `{"moveTags": true}` | the tags (synonym links intact) land in the Other category, every event keeps them |
+| Delete the tags | `{"moveTags": false, "deleteEvents": false}` | the tags go, the events stay — the ones left without another non-date tag keep their date only |
+| Delete everything | `{"moveTags": false, "deleteEvents": true}` | the tags go, and so does every event tagged with one of them |
+
+- `src/test/dbtest/category_delete_test.go` — the real SQL of the three
+  options, the refusals (locked categories, another user's id) and the counts
+  `GET /categories/:id/usage` feeds the dialog with.
+- `src/test/dbtest/tag_lifecycle_test.go` — the same for a single tag and its
+  synonym group.
+- `src/internal/infrastructure/web/router_test.go` — the wire contract: which
+  body maps to which service call, and the status of every refusal.
+- `src/test/e2e/e2e_test.go` — the three options walked over real HTTP on a
+  throwaway account.
+- `homl-ui/test/category_management_test.dart` — the dialog itself: which
+  option each radio sends, and that a hasty confirm moves the tags instead of
+  deleting anything.
 
 ## Frontend tests
 

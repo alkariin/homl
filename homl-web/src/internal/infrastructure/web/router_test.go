@@ -314,16 +314,99 @@ func TestUpdateCategoryEndpoint(t *testing.T) {
 	sm.categories.AssertExpectations(t)
 }
 
+// TestDeleteCategoryEndpoint pins the wire contract of the three options of
+// the delete dialog: which body the client sends, and which flags the service
+// must receive for it.
 func TestDeleteCategoryEndpoint(t *testing.T) {
+	cases := []struct {
+		name         string
+		body         string
+		moveTags     bool
+		deleteEvents bool
+	}{
+		{"move the tags to the Other category", `{"moveTags":true,"deleteEvents":false}`, true, false},
+		{"delete the tags, keep the events", `{"moveTags":false,"deleteEvents":false}`, false, false},
+		{"delete the tags and their events", `{"moveTags":false,"deleteEvents":true}`, false, true},
+		// Older clients omit the flag they do not use: both default to false,
+		// the option that destroys the least.
+		{"an omitted deleteEvents defaults to false", `{"moveTags":true}`, true, false},
+		{"an empty body deletes the tags and keeps the events", `{}`, false, false},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			router, sm := newTestServer()
+
+			sm.categories.On("DeleteCategory", uint(5), testUserID, c.moveTags, c.deleteEvents).Return(nil)
+
+			rec := doRequest(router, http.MethodDelete, "/categories/5", c.body, authHeader())
+
+			assert.Equal(t, http.StatusNoContent, rec.Code)
+			sm.categories.AssertExpectations(t)
+		})
+	}
+}
+
+func TestDeleteCategoryRejectsMalformedRequests(t *testing.T) {
+	cases := []struct {
+		name string
+		path string
+		body string
+	}{
+		{"a broken body", "/categories/5", `{"moveTags":`},
+		{"a non-boolean flag", "/categories/5", `{"moveTags":"yes"}`},
+		{"a missing body", "/categories/5", ``},
+		{"a non-numeric id", "/categories/abc", `{"moveTags":true}`},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			router, sm := newTestServer()
+
+			rec := doRequest(router, http.MethodDelete, c.path, c.body, authHeader())
+
+			assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
+			// Nothing may reach the service: a malformed request must never
+			// delete anything.
+			sm.categories.AssertNotCalled(t, "DeleteCategory")
+		})
+	}
+}
+
+func TestDeleteCategoryRequiresToken(t *testing.T) {
 	router, sm := newTestServer()
 
-	sm.categories.On("DeleteCategory", uint(5), testUserID, false, true).Return(nil)
+	rec := doRequest(router, http.MethodDelete, "/categories/5", `{"moveTags":true}`, "")
 
-	rec := doRequest(router, http.MethodDelete, "/categories/5",
-		`{"moveTags":false,"deleteEvents":true}`, authHeader())
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	sm.categories.AssertNotCalled(t, "DeleteCategory")
+}
 
-	assert.Equal(t, http.StatusNoContent, rec.Code)
-	sm.categories.AssertExpectations(t)
+// TestDeleteCategoryPropagatesServiceErrors checks that the refusals of the
+// persistence layer keep their status through the handler: a locked category
+// must not read as a server error, nor someone else's id as forbidden.
+func TestDeleteCategoryPropagatesServiceErrors(t *testing.T) {
+	cases := []struct {
+		name   string
+		err    error
+		status int
+	}{
+		{"a locked category is forbidden", apperror.NewStatusForbidden(), http.StatusForbidden},
+		{"an unknown category is not found", apperror.NewNotFound("category", "5"), http.StatusNotFound},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			router, sm := newTestServer()
+
+			sm.categories.On("DeleteCategory", uint(5), testUserID, false, false).Return(c.err)
+
+			rec := doRequest(router, http.MethodDelete, "/categories/5", `{"moveTags":false}`, authHeader())
+
+			assert.Equal(t, c.status, rec.Code)
+			sm.categories.AssertExpectations(t)
+		})
+	}
 }
 
 func TestCategoryUsageEndpoint(t *testing.T) {
@@ -340,6 +423,20 @@ func TestCategoryUsageEndpoint(t *testing.T) {
 	assert.Equal(t, 3, out.Tags)
 	assert.Equal(t, 8, out.Events)
 	assert.Equal(t, 2, out.ExclusiveEvents)
+	sm.categories.AssertExpectations(t)
+}
+
+// The dialog is built from these counts, so a category the user does not own
+// must fail the lookup instead of leaking someone else's numbers.
+func TestCategoryUsageRejectsAnotherUsersCategory(t *testing.T) {
+	router, sm := newTestServer()
+
+	sm.categories.On("GetCategoryUsage", uint(5), testUserID).
+		Return(nil, apperror.NewNotFound("category", "5"))
+
+	rec := doRequest(router, http.MethodGet, "/categories/5/usage", "", authHeader())
+
+	assert.Equal(t, http.StatusNotFound, rec.Code)
 	sm.categories.AssertExpectations(t)
 }
 

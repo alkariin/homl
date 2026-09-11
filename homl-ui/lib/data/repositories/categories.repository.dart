@@ -15,7 +15,10 @@ class CategoriesRequestFailure implements Exception {}
 class CategoriesNotFoundFailure implements Exception {}
 
 class CategoriesRepository {
-  final apiInstance = Api();
+  final Api? _injectedApi;
+  late final Api apiInstance = _injectedApi ?? Api();
+
+  CategoriesRepository({Api? api}) : _injectedApi = api;
 
   /// Returns the user's categories with their tags. Each successful payload
   /// is cached in the secure storage (encrypted at rest) so the app keeps
