@@ -634,10 +634,10 @@ implementations drifting.
   (§7.2).
 - `test/event_detail_sheet_test.dart` — the stacked two-date layout, and the
   date-category tags (months, years, `Ongoing`) **not** rendered as chips.
-- `test/insert_cubit_test.dart` — the three states in `InsertState`,
-  `clearEndDate`, the submit guard refusing `period && endDate == null`; plus
-  a widget test on `insert.dart` for the open-picker-on-select flow and its
-  revert on cancel (§7.3).
+- `test/insert_cubit_test.dart` — the derived shape, `clearEndDate`, an end
+  date and `isOngoing` excluding each other, a start moved past the end
+  dropping it; plus `test/insert_period_test.dart` on `insert.dart` for the
+  open-picker-on-select flow, its revert on cancel and the end chip (§7.3).
 - `test/date_tags_test.dart` — `Ongoing` translates through `event_ongoing`,
   month names still translate through `intl` (§5.6).
 - `test/e2ee_test.dart` — `isBlacklistedTag('2026')` is true, and a year tag
@@ -711,12 +711,16 @@ compilable and testable on its own before the next starts.
    formula and its four edge cases (§7.1); `localizedTagName` gains
    `Ongoing` (§5.6).
 5. Localization keys in the three `.arb` files, regenerate (§7.4).
-6. Form: `InsertState` fields and `clearEndDate`, the segmented control, the
-   open-picker-on-select flow, the `initialDate` fix, the submit guard (§7.3).
+6. Form: `InsertState` fields and `clearEndDate`, the derived shape, the
+   segmented control, the open-picker-on-select flow, the `initialDate` fix
+   (§7.3).
 7. Card badge (§7.1), then the sheet: stacked dates, "since" with its future
    clamp, date tags hidden (§7.2).
 8. `homl-ui/README.md` (§11).
 
-Both are in. This file moved from the repository root to
-`homl-web/docs/event-periods.md` with the client PR and is listed in the
-README documentation table.
+Both are in. This document was written before either, lived at the repository
+root while they were being built, and landed here with the client PR — the
+backend one carries only the reference docs it changed
+([api.md](api.md), [domain-model.md](domain-model.md), [e2ee.md](e2ee.md),
+[default-categories.md](default-categories.md), [TESTING.md](../TESTING.md)),
+each of which stands on its own without this file.

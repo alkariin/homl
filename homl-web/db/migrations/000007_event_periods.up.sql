@@ -1,4 +1,4 @@
--- Event periods (see docs/event-periods.md).
+-- Event periods (see docs/api.md, Events > Periods).
 -- endDate: inclusive last day of a closed period; NULL for a single day and
 -- for an open period. isOngoing: the period has started and has no end yet,
 -- never set together with endDate. Existing rows need no backfill — NULL + 0
