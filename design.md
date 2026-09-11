@@ -3,8 +3,10 @@
 Status: **agreed — not implemented**
 
 Every open question is settled; nothing here is waiting on a decision. The
-two that were genuinely open, and their outcome: the card badge **rescales
-its unit** (§7.1), and **years join the tag blacklist** (§5.5).
+ones that were genuinely open, and their outcome: the card badge **rescales
+its unit** (§7.1), **years join the tag blacklist** (§5.5), open periods
+carry an **`Ongoing` tag** (§5.6), and the detail sheet **hides the date
+tags** like the card does (§7.2). §13 gives the implementation order.
 
 Today an event is a single calendar day (`Events.date`). This design adds a
 period: an event may span several days, and may still be running. It touches
@@ -34,6 +36,9 @@ add it to the README documentation table, the way
 - Year tags stop colliding with user tags: four-digit names join the
   blacklist (§5.5), which the multiplication of year tags makes worth
   closing.
+- Open periods stay reachable from the present: a backend-managed `Ongoing`
+  tag (§5.6) surfaces "what is going on right now" through the filter the
+  user already has.
 
 **Non-goals (phase 1)**
 
@@ -196,6 +201,13 @@ existing behaviour, not a new rule, but it has to be stated in `api.md`
 because a client that patches a partial body will silently reopen or
 truncate a period.
 
+The realistic way that happens is not a buggy request but **version skew**:
+an app build older than this feature does not know the two fields, so every
+edit it makes to a period flattens it to a single day. Deploy the client
+with, or after, the server — never a new server under an old app that is
+still editing events. (Shipping the backend first is fine on its own: no
+period exists until a client can create one.)
+
 While in the file: `web.Event` (`event_handler.go:14`) is dead code —
 declared, referenced nowhere, and a duplicate of the domain struct. **Delete
 it in the same PR** rather than dutifully adding the two new fields to it and
@@ -211,9 +223,12 @@ derives the Month and Year tags from the *whole known* period.
 ### 5.1 Expansion
 
 Walk month by month from the start to the effective end, collecting month
-names and years into an **ordered set, first-seen wins**. That traversal order
-is the natural implementation in both languages and makes the expected tag
-list deterministic for the tests of §5.4.
+names and years into a **set**. Order is deliberately unspecified:
+`EventsTags` has no order column and `FindEventsWithTags` sorts by `Tags.id`,
+so the traversal order never reaches anything — and pinning it would only
+manufacture a class of false test failures between the two implementations
+(the "over a year" vector of §5.4 starts in March, so a calendar-ordered
+assertion and a traversal-ordered one disagree). **Tests compare as sets.**
 
 The set is naturally bounded: at most 12 distinct month names, plus one year
 tag per calendar year spanned.
@@ -244,9 +259,10 @@ An open period has no known end, and the two alternatives are both worse:
 
 So: the tags cover what is *known*. The consequence, stated plainly as a
 limitation — "living in Zurich, since 2019" will **not** appear when filtering
-by `2026`. That gap is what the phase-2 range filter closes properly, with an
-interval-overlap predicate where an open period is simply an end of
-`+infinity`.
+by `2026`. The `Ongoing` tag of §5.6 narrows the gap (that event *is* one
+filter away, under `Ongoing`), and the phase-2 range filter closes it
+properly, with an interval-overlap predicate where an open period is simply
+an end of `+infinity`.
 
 ### 5.4 Shared test vectors
 
@@ -264,7 +280,7 @@ implement this same table:
 | closed, two months | 2026-06-28 | 2026-07-05 | false | `June`, `July`, `2026` |
 | closed, year boundary | 2025-12-28 | 2026-01-05 | false | `December`, `January`, `2025`, `2026` |
 | closed, over a year | 2024-03-01 | 2026-08-31 | false | all 12 months, `2024`, `2025`, `2026` |
-| open | 2024-06-03 | — | true | `June`, `2024` |
+| open | 2024-06-03 | — | true | `June`, `2024`, `Ongoing` (§5.6) |
 
 Month names stay English in storage for every user, translated for display
 only (`homl-ui/lib/helpers/date_tags.dart`) — unchanged by this design.
@@ -302,8 +318,50 @@ Two consequences worth knowing before implementing:
   their own year tags and made this decision unimplementable — it is worth a
   test pinning it.
 
-Existing user tags named like a year are left alone: the rule guards
-creation and rename, it does not sweep the table.
+Existing user tags named like a year are left alone in the table: the rule
+does not sweep it. But `validateTag` is shared by `CreateTag` and `UpdateTag`
+(`application/tag.go:117` and `:170`) and re-checks the name on every
+update, so a pre-existing `1984` becomes **frozen** — it can be deleted, but
+giving it a synonym or moving it to another category now returns `400`
+because its own name fails validation. A consequence of the decision, stated
+so nobody files it as a bug later. If it ever matters, the fix is to skip the
+name check when the name is unchanged, not to relax the rule.
+
+### 5.6 The `Ongoing` tag
+
+With §5.3 and §8 as written, an open period is **invisible from the
+present**: it is not tagged with the current year, and the timeline files it
+under its start date — "living in Zurich, since 2019" sits deep in 2019. That
+is one of the most alive facts in a life journal, and nothing surfaces it.
+
+So the Dates category gains a third backend-managed tag, **`Ongoing`**,
+attached to every open period next to its start month and year, and dropped
+by the rebuild the moment the period is closed (a `PATCH` with `endDate`) —
+the same mechanism that already reshapes the month tags. Filtering `Ongoing`
+answers "what is going on in my life right now?" with the tool the user
+already has.
+
+Every rule is a mirror of what month tags already do:
+
+- Stored as the English word `Ongoing` for every user — a key shared with the
+  client, like the month names.
+- Reserved: `Ongoing` joins `BLACKLIST_TAGS` in `constants.json` (a list
+  entry, unlike the year rule of §5.5) and the Dart blacklist mirror.
+- Created through the same bypass as the month tags: server-side in
+  `buildDateTagsForPeriod`, client-side in `InsertCubit._buildDateTags` with
+  `isDateTag: true` for E2EE accounts. `InsertState.fromEvent` already
+  excludes date-category tags from the prefill, so it is never resubmitted as
+  a regular tag.
+- Hidden on the card (the badge already says `ongoing`) and in the sheet
+  (§7.2). It is purely a filter affordance.
+- Translated for display like months. `localizedTagName` only knows month
+  names today, through `DateFormat.MMMM`; it gains a case for `Ongoing`
+  rendered with the `event_ongoing` string. The helper is a pure
+  `(name, locale)` function with no `BuildContext`, so it reaches the string
+  through the generated `lookupAppLocalizations(Locale(locale))`
+  (`app_localizations.dart:973`), not `AppLocalizations.of(context)`.
+- Ignored by the deletion counters: `exclusiveEvents` already skips the whole
+  date category by `kind`, so it needs no change.
 
 ---
 
@@ -311,10 +369,18 @@ creation and rename, it does not sweep the table.
 
 - `data/models/event.dart`: `DateTime? endDate`, `bool isOngoing`
   (`@JsonKey(defaultValue: false)` so a cached payload written before this
-  change still parses). Regenerate `event.g.dart`.
+  change still parses). Regenerate `event.g.dart`. Declare `isOngoing` as a
+  **`required` constructor parameter, no default** — every field of `Event`
+  already is, and this is what turns the next bullet from a silent bug into a
+  compile error.
 - `data/repositories/events.repository.dart`: send both fields through the
   existing `serializeDate` helper, which already handles the timezone trap
-  fixed in #47 — **never** `toUtc()` on a picked date.
+  fixed in #47 — **never** `toUtc()` on a picked date. And **`_decryptEvents`
+  must pass the two new fields through**: it rebuilds each `Event(id:,
+  description:, date:, tags:)` field by field, so an implementer who forgets
+  them ships an app where every E2EE user reads their periods back as single
+  days. `required isOngoing` makes the compiler catch that one; `endDate` is
+  nullable and escapes it, so a round-trip test on `_decryptEvents` pins it.
 - Offline cache: nothing to do. A payload that no longer parses is dropped
   cleanly (`catch (_) → remove`).
 - `pages/insert/bloc/insert_state.dart`: `DateTime? endDate` and
@@ -354,19 +420,32 @@ stays readable — `847 days` is noise:
 | under 24 calendar months | months |
 | 24 calendar months and over | years |
 
-Months are counted on the **calendar**, not on an average day length:
+Months are counted on the **calendar**, not on an average day length, and —
+this is the part that is easy to get wrong — on the **exclusive** end
+`E = endDate + 1 day`, so that the month count agrees with the inclusive day
+count:
 
 ```
-months = (y2 - y1) * 12 + (m2 - m1)
-if d2 < d1 then months = months - 1
+E = endDate + 1 day
+months = (E.year - start.year) * 12 + (E.month - start.month)
+if E.day < start.day then months = months - 1
 years  = months / 12            (integer division)
 ```
 
-So 1 March → 28 April is one month, not two, and 1 March 2024 → 1 March 2026
-is exactly two years. Dividing days by 30.44 would be shorter to write but
-drifts against what a human calls "3 months", and the badge is read, not
-computed with. Both units floor, with a minimum of 1 — a span that reaches
-the 31-day threshold always shows at least `1 month`.
+Why the `+ 1 day`: 1 January → 31 December inclusive is a full year, 365
+days. Run the formula on `endDate` itself and it yields 11 months; run it on
+`E = 1 January next year` and it yields 12. Likewise 1 → 31 March is exactly
+one month, not zero. With the exclusive end, the "months" branch can never
+produce 0 for a span that reached the 31-day threshold (a same-month span is
+at most 30 days inclusive; a next-month span with `E.day < start.day` is
+shorter than a month), so no clamp is needed — keep a defensive `max(1, …)`
+anyway, it costs nothing. Dividing days by 30.44 would be shorter to write
+but drifts against what a human calls "3 months", and the badge is read, not
+computed with. Both units floor.
+
+Edge cases the unit test must pin: 1 Jan → 31 Dec = `1 year`; 1 → 31 March =
+`1 month`; 1 → 30 March = `30 days`; 1 March 2024 → 28 February 2026 =
+`2 years`.
 
 Accepted trade-off of choosing the badge over a collapsed range: the end date
 itself is not on the card, only how long the period lasted. The full dates are
@@ -397,6 +476,16 @@ validation — but a duration counted to today would be negative, and
 `since -14 days` is a bug on screen. Clamp at zero: no "since" until the
 period has actually started.
 
+**The sheet stops showing the date tags.** It renders every tag today
+(`event_detail_sheet.dart:114`), where the card already filters them out
+through `isDateTag`. That was tolerable with two chips; a three-year period
+would put twelve month chips and three year chips — fifteen chips of noise —
+right under a header that already prints the full range. Apply the card's
+`isDateTag` predicate to the sheet (the `HomeCubit` it receives has the
+`dateCategoryIds` to build it). The date tags remain what they always were —
+search keys — and the place to see them is the filter suggestions, not the
+event.
+
 A single-day event keeps its current single line.
 
 ### 7.3 Form — three explicit states
@@ -407,10 +496,24 @@ A single-day event keeps its current single line.
 "end date + ongoing checkbox" pair because it makes the invalid combination
 of §2.1 **unreachable** — you cannot set an end date and "ongoing" at once.
 
-Two details that bite in practice:
+"Legal-by-construction" has a hole if the flow is naive: a user who selects
+"period" and submits before picking an end sends `endDate == null` with
+`isOngoing == false` — a perfectly valid **single day**, silently, when they
+meant a period. So:
+
+- Selecting "period" **opens the end-date picker immediately**. Cancelling
+  the picker reverts the segment to "single day" — the form never rests in a
+  "period without an end" state.
+- A defensive guard on submit still refuses `period && endDate == null`, for
+  whatever path reaches it later.
+
+Three details that bite in practice:
 
 - `firstDate: state.date` on the end picker, so an end before the start is
   simply unpickable rather than an error message after the fact.
+- `initialDate: state.endDate ?? state.date` on that same picker. Flutter
+  asserts `initialDate` within `[firstDate, lastDate]`; an `initialDate` of
+  `DateTime.now()` with a start date in the future is a crash on first open.
 - Moving the start date past an already-picked end clears the end date.
   Silently keeping an invalid pair until submit is worse.
 
@@ -422,6 +525,9 @@ New keys in `app_en.arb`, `app_fr.arb`, `app_de.arb`, then regenerate:
 `{count, plural, ...}` — the pattern already exists in
 `categories_tagCount`), `event_ongoing`, `event_since`,
 `insert_periodSingleDay`, `insert_periodClosed`, `insert_periodOngoing`.
+
+`event_ongoing` does double duty: the badge text, and the display name of the
+`Ongoing` tag (§5.6) in the filter suggestions.
 
 Dart's `intl` has no equivalent of ICU's `DateIntervalFormat`, so the
 duration and range formatting is a hand-written helper —
@@ -469,20 +575,30 @@ implementations drifting.
   (§5.5), next to the existing month-name cases.
 - `test/dbtest/` — round-trip of all three states, including `NULL` handling.
 - `test/e2e/e2e_test.go` — create a closed period, close an open one via
-  `PATCH`, assert the date tags attached.
+  `PATCH`, assert the date tags attached — including that `Ongoing` is there
+  while the period is open and **gone once it is closed** (§5.6).
 - `internal/infrastructure/web/router_test.go` — payload shape, `400` on the
   two invalid combinations.
 
 **Dart**
 
-- `test/event_period_test.dart` (new) — the duration rescaling thresholds of
-  §7.1 and the §5.4 expansion vectors.
+- `test/event_period_test.dart` (new) — the duration thresholds of §7.1
+  with its four named edge cases (1 Jan → 31 Dec is `1 year`, 1 → 31 March is
+  `1 month`), and the §5.4 expansion vectors compared as sets.
 - `test/events_repository_date_test.dart` — a null `endDate` serializes to
-  null, not to an epoch.
+  null, not to an epoch; and a `_decryptEvents` round-trip keeps `endDate`
+  and `isOngoing` (§6).
 - `test/event_card_test.dart` — badge present for a period, **absent** for a
   single day, `ongoing` for an open one, and no "since" on a future start
   (§7.2).
-- `test/event_detail_sheet_test.dart` — the stacked two-date layout.
+- `test/event_detail_sheet_test.dart` — the stacked two-date layout, and the
+  date-category tags (months, years, `Ongoing`) **not** rendered as chips.
+- `test/insert_cubit_test.dart` — the three states in `InsertState`,
+  `clearEndDate`, the submit guard refusing `period && endDate == null`; plus
+  a widget test on `insert.dart` for the open-picker-on-select flow and its
+  revert on cancel (§7.3).
+- `test/date_tags_test.dart` — `Ongoing` translates through `event_ongoing`,
+  month names still translate through `intl` (§5.6).
 - `test/e2ee_test.dart` — `isBlacklistedTag('2026')` is true, and a year tag
   still goes through when created as a date tag (§5.5) — the bypass this
   decision rests on.
@@ -496,7 +612,7 @@ implementations drifting.
 | `homl-web/docs/api.md` | *Events*: `endDate` / `isOngoing` in the bodies and the `GET` response, the two `400`s, the full-state `PATCH` warning. *Tags*: "names on the masterdata blacklist are rejected" is no longer the whole story — four-digit names are refused by rule |
 | `homl-web/docs/domain-model.md` | the `Event` class in the mermaid diagram; and the masterdata note — `constants.json` no longer holds the whole blacklist, the year rule lives in code |
 | `homl-web/docs/e2ee.md` | §1 non-goals widened to the period columns; §4 client-built date tags now span a period |
-| `homl-web/docs/default-categories.md` | "tags are the month and year of the event" becomes "of the months and years the event's period covers", plus the open-period rule; and the blacklist line now covers four-digit names, not only the 12 months |
+| `homl-web/docs/default-categories.md` | "tags are the month and year of the event" becomes "of the months and years the event's period covers", plus the open-period rule and the `Ongoing` tag as the third backend-managed name; the blacklist line now covers `Ongoing` and four-digit names, not only the 12 months |
 | `homl-ui/README.md` | the duration badge, the three-state form |
 
 ---
@@ -504,8 +620,59 @@ implementations drifting.
 ## 12. Phasing
 
 1. **This document** — the three states end to end: migration, domain, API,
-   validation, tag expansion in Go *and* Dart, card badge, detail sheet, form.
+   validation, tag expansion in Go *and* Dart, `Ongoing` tag, card badge,
+   detail sheet, form.
 2. **Server-side range filter** `GET /events?from=&to=` with interval-overlap
    semantics. Closes the §5.3 open-period gap and is the reason the period
    columns are cleartext.
 3. **Calendar / timeline view** with period bands.
+
+---
+
+## 13. Implementation order
+
+Two pull requests, backend first. The backend can ship alone — no period
+exists until a client can create one (§4) — and the split keeps each review
+readable. Within each, the order below is the one where every step is
+compilable and testable on its own before the next starts.
+
+**PR 1 — `homl-web`**
+
+1. Migration `000007_event_periods` (§3.1). Run it against the dev database
+   before touching Go, so the persistence tests have the columns.
+2. Domain: the two fields on `event.Event` (§3.2). Compiles; nothing reads
+   them yet.
+3. Persistence: `SELECT` + `sql.NullTime` scan, `INSERT`, `UPDATE` (§3.3).
+   `dbtest` round-trip of the three states.
+4. Application, in this order: the validation matrix in `CreateEvent` /
+   `UpdateEvent` **before** `prepareEvent` (§2.1), with its test run twice,
+   E2EE off and on; then `buildDateTags` → `buildDateTagsForPeriod` with the
+   §5.4 vectors as set comparisons and the `Ongoing` tag (§5.6).
+5. Blacklist: `Ongoing` into `constants.json`; the four-digit predicate into
+   `validateTag` (§5.5); `tag_test.go` cases for both.
+6. Handler: the two body fields on `POST` / `PATCH`; delete `web.Event`
+   (§4). `router_test.go` for the shape and the two `400`s; `e2e_test.go` for
+   the open → closed transition.
+7. Docs from §11 — `api.md`, `domain-model.md`, `e2ee.md`,
+   `default-categories.md` — in the same PR, per the repo rule.
+
+**PR 2 — `homl-ui`**
+
+1. Model: fields + `required isOngoing` + codegen (§6). `_decryptEvents`
+   passes them through; its round-trip test.
+2. Repository: both fields through `serializeDate` on create and update.
+3. Blacklist mirror and date tags: `isBlacklistedTag` gains `Ongoing` and the
+   four-digit rule; `InsertCubit._buildDateTags` expands over the period and
+   adds `Ongoing` (§5.1, §5.6), with the §5.4 vectors as set comparisons.
+4. Helper `lib/helpers/event_period.dart`: duration with the exclusive-end
+   formula and its four edge cases (§7.1); `localizedTagName` gains
+   `Ongoing` (§5.6).
+5. Localization keys in the three `.arb` files, regenerate (§7.4).
+6. Form: `InsertState` fields and `clearEndDate`, the segmented control, the
+   open-picker-on-select flow, the `initialDate` fix, the submit guard (§7.3).
+7. Card badge (§7.1), then the sheet: stacked dates, "since" with its future
+   clamp, date tags hidden (§7.2).
+8. `homl-ui/README.md` (§11).
+
+Once both are merged: move this file to `homl-web/docs/event-periods.md`,
+flip its status to *implemented*, and add it to the README table.
