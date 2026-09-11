@@ -1,6 +1,10 @@
 # Event periods — Design
 
-Status: **draft — not implemented**
+Status: **agreed — not implemented**
+
+Every open question is settled; nothing here is waiting on a decision. The
+two that were genuinely open, and their outcome: the card badge **rescales
+its unit** (§7.1), and **years join the tag blacklist** (§5.5).
 
 Today an event is a single calendar day (`Events.date`). This design adds a
 period: an event may span several days, and may still be running. It touches
@@ -27,6 +31,9 @@ add it to the README documentation table, the way
 - Existing events keep their exact current meaning, with no backfill.
 - The three states are legal-by-construction in the form: the UI cannot
   produce an invalid combination.
+- Year tags stop colliding with user tags: four-digit names join the
+  blacklist (§5.5), which the multiplication of year tags makes worth
+  closing.
 
 **Non-goals (phase 1)**
 
@@ -62,6 +69,25 @@ and it is what the duration count of §7.1 assumes.
 
 Enforced in the application layer (a domain invariant, not a payload shape),
 via `apperror.NewBadRequest`:
+
+**Where exactly: in `CreateEvent` and `UpdateEvent`, before they call
+`prepareEvent`.** This is not a detail. `prepareEvent` short-circuits for
+E2EE accounts:
+
+```go
+if e2ee.Enabled(ctx) {
+    // ... description shape check
+    return nil, nil          // ← returns before buildDateTags
+}
+return e.buildDateTags(...)
+```
+
+The intuitive home for period checks is next to `buildDateTags`, since both
+read the dates — and that is exactly the wrong place: **every E2EE account
+would bypass the validation entirely** and could store `endDate` before
+`date`, or `endDate` together with `isOngoing`. The period columns are
+cleartext in both modes (§9), so the server can and must validate them for
+everyone.
 
 | `endDate` | `isOngoing` | Outcome |
 |---|---|---|
@@ -170,6 +196,11 @@ existing behaviour, not a new rule, but it has to be stated in `api.md`
 because a client that patches a partial body will silently reopen or
 truncate a period.
 
+While in the file: `web.Event` (`event_handler.go:14`) is dead code —
+declared, referenced nowhere, and a duplicate of the domain struct. **Delete
+it in the same PR** rather than dutifully adding the two new fields to it and
+leaving a second, phantom source of truth behind.
+
 ---
 
 ## 5. Date tags
@@ -238,6 +269,42 @@ implement this same table:
 Month names stay English in storage for every user, translated for display
 only (`homl-ui/lib/helpers/date_tags.dart`) — unchanged by this design.
 
+### 5.5 Years join the tag blacklist
+
+`BLACKLIST_TAGS` holds the 12 English month names today
+(`domain/masterdata/constants.json`), so a user cannot create a tag that
+collides with a backend-generated month. Years were never covered: a user can
+create `2026` in another category, and `event_search.dart` matches a name
+through *every* category carrying it, so filtering `2026` returns both sets.
+The expansion of §5.1 multiplies year tags — an event spanning 2024→2026
+creates three — so the collision stops being a curiosity.
+
+**Decision: years are blacklisted.** A tag name made of exactly four digits
+is refused, whatever the category.
+
+This is a deliberate trade, not a free win: `1984`, `2001` and `1789` become
+impossible as user tag names. That cost was weighed and accepted; the rule is
+one predicate in one place on each side, so it is cheap to revisit.
+
+Two consequences worth knowing before implementing:
+
+- `BLACKLIST_TAGS` stops being expressible as a JSON array. The 12 month
+  names stay in `constants.json`, but the year rule is a **predicate in
+  code** — `application/tag.go` gains a four-digit check next to the existing
+  list comparison, and `E2ee.isBlacklistedTag`
+  (`homl-ui/lib/helpers/e2ee.dart:250`) gains the same one. Third pair of
+  mirrored implementations in this feature, after §5.4.
+- **The backend-generated tags are not affected.** The server skips the
+  blacklist on its own date tags, and the client already lifts it through the
+  `isDateTag: true` path in `_outgoingTag`
+  (`homl-ui/lib/data/repositories/tags.repository.dart`). Without that
+  existing bypass the rule would have blocked E2EE clients from creating
+  their own year tags and made this decision unimplementable — it is worth a
+  test pinning it.
+
+Existing user tags named like a year are left alone: the rule guards
+creation and rename, it does not sweep the table.
+
 ---
 
 ## 6. Client plumbing
@@ -281,11 +348,25 @@ font, no category colour.
 Duration is an inclusive day count (`end - start + 1`), rescaled so the badge
 stays readable — `847 days` is noise:
 
-| Span | Unit |
+| Span | Unit shown |
 |---|---|
 | under 31 days | days |
-| under 24 months | months (floored, minimum 1) |
-| 24 months and over | years (floored) |
+| under 24 calendar months | months |
+| 24 calendar months and over | years |
+
+Months are counted on the **calendar**, not on an average day length:
+
+```
+months = (y2 - y1) * 12 + (m2 - m1)
+if d2 < d1 then months = months - 1
+years  = months / 12            (integer division)
+```
+
+So 1 March → 28 April is one month, not two, and 1 March 2024 → 1 March 2026
+is exactly two years. Dividing days by 30.44 would be shorter to write but
+drifts against what a human calls "3 months", and the badge is read, not
+computed with. Both units floor, with a minimum of 1 — a span that reaches
+the 31-day threshold always shows at least `1 month`.
 
 Accepted trade-off of choosing the badge over a collapsed range: the end date
 itself is not on the card, only how long the period lasted. The full dates are
@@ -308,6 +389,13 @@ and never stored, so it cannot go stale:
 Monday 3 June 2026
 → ongoing · since 2 years
 ```
+
+**A start date in the future drops the "since" part** and shows a bare
+`ongoing`, on the card as in the sheet. "I move to Berlin on 1 October, and
+it is meant to last" is a legitimate entry, so it is not rejected at
+validation — but a duration counted to today would be negative, and
+`since -14 days` is a bug on screen. Clamp at zero: no "since" until the
+period has actually started.
 
 A single-day event keeps its current single line.
 
@@ -374,7 +462,11 @@ implementations drifting.
 **Go**
 
 - `internal/application/event_test.go` — the §2.1 validation matrix, the
-  `endDate == date` normalization, the §5.4 expansion vectors.
+  `endDate == date` normalization, the §5.4 expansion vectors, **and the same
+  matrix run with E2EE enabled** — that last one is what fails today if the
+  checks drift back behind the `prepareEvent` short-circuit (§2.1).
+- `internal/application/tag_test.go` — a four-digit tag name is refused
+  (§5.5), next to the existing month-name cases.
 - `test/dbtest/` — round-trip of all three states, including `NULL` handling.
 - `test/e2e/e2e_test.go` — create a closed period, close an open one via
   `PATCH`, assert the date tags attached.
@@ -388,8 +480,12 @@ implementations drifting.
 - `test/events_repository_date_test.dart` — a null `endDate` serializes to
   null, not to an epoch.
 - `test/event_card_test.dart` — badge present for a period, **absent** for a
-  single day, `ongoing` for an open one.
+  single day, `ongoing` for an open one, and no "since" on a future start
+  (§7.2).
 - `test/event_detail_sheet_test.dart` — the stacked two-date layout.
+- `test/e2ee_test.dart` — `isBlacklistedTag('2026')` is true, and a year tag
+  still goes through when created as a date tag (§5.5) — the bypass this
+  decision rests on.
 
 ---
 
@@ -397,10 +493,10 @@ implementations drifting.
 
 | Document | Change |
 |---|---|
-| `homl-web/docs/api.md` | `endDate` / `isOngoing` in the bodies and the `GET` response, the two `400`s, the full-state `PATCH` warning |
-| `homl-web/docs/domain-model.md` | the `Event` class in the mermaid diagram |
+| `homl-web/docs/api.md` | *Events*: `endDate` / `isOngoing` in the bodies and the `GET` response, the two `400`s, the full-state `PATCH` warning. *Tags*: "names on the masterdata blacklist are rejected" is no longer the whole story — four-digit names are refused by rule |
+| `homl-web/docs/domain-model.md` | the `Event` class in the mermaid diagram; and the masterdata note — `constants.json` no longer holds the whole blacklist, the year rule lives in code |
 | `homl-web/docs/e2ee.md` | §1 non-goals widened to the period columns; §4 client-built date tags now span a period |
-| `homl-web/docs/default-categories.md` | "tags are the month and year of the event" becomes "of the months and years the event's period covers", plus the open-period rule |
+| `homl-web/docs/default-categories.md` | "tags are the month and year of the event" becomes "of the months and years the event's period covers", plus the open-period rule; and the blacklist line now covers four-digit names, not only the 12 months |
 | `homl-ui/README.md` | the duration badge, the three-state form |
 
 ---
