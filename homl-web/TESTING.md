@@ -6,8 +6,8 @@
 |---|---|---|---|
 | **Unit** | `src/internal/application/*_test.go`, `src/internal/apperror/*_test.go`, `src/internal/domain/e2ee/*_test.go`, `src/internal/infrastructure/{auth,config,crypto,mail}/*_test.go` | Business logic with mocked repositories; JWT, field encryption, config validation, the mailers and the error helpers | none |
 | **HTTP / integration** | `src/internal/infrastructure/web/router_test.go` | The real Gin router (routing, JWT middleware, JSON binding, validation, status codes & response bodies) with mocked services | none |
-| **DB-backed** | `src/test/dbtest/*_test.go` (build tag `dbtest`) | The real SQL of the persistence layer: cross-tenant isolation, tag/synonym lifecycle, the three category-deletion options, the atomic E2EE migration and purge | `make db-up` + `make migrateup` |
-| **End-to-end** | `src/test/e2e/e2e_test.go` (build tag `e2e`) | Full flow over real HTTP against a running stack (API + MySQL + Redis): auth, category CRUD and deletion options, account deletion | `make dev` |
+| **DB-backed** | `src/test/dbtest/*_test.go` (build tag `dbtest`) | The real SQL of the persistence layer: cross-tenant isolation, tag/synonym lifecycle, the three category-deletion options, event periods, the atomic E2EE migration and purge | `make db-up` + `make migrateup` |
+| **End-to-end** | `src/test/e2e/e2e_test.go` (build tag `e2e`) | Full flow over real HTTP against a running stack (API + MySQL + Redis): auth, category CRUD and deletion options, event periods, account deletion | `make dev` |
 
 The first two layers are in-process and deterministic — no database, no network —
 so they run on every commit; each HTTP test fires a real request and asserts the
@@ -147,6 +147,33 @@ clients switch on the code, never on the message:
   `categories_repository_delete_test.dart` — the coded 409 told apart from a
   bare 409 or any other failure; `home_cubit_test.dart` — the message the user
   actually gets.
+
+## Event periods
+
+An event is a single day, a closed period (`endDate`, inclusive) or an open
+one (`isOngoing`). The backend derives the date tags from the whole known
+period and validates the combinations for every account — including E2EE
+ones, whose date tags are client-built. Two implementations have to agree
+(Go here, Dart in the app), so the derivation has a shared vector table.
+Covered at every layer:
+
+- `src/internal/domain/event/event_test.go` — `DateTagNames`, the shared
+  vectors the Flutter client must reproduce, compared as sets.
+- `src/internal/application/event_test.go` — the validation matrix, run with
+  E2EE off *and* on: the checks sit before `prepareEvent`'s E2EE
+  short-circuit, and this is what fails if they ever drift behind it. Plus
+  the same-day normalization and the tags attached per shape.
+  `tag_test.go` — the year-like and `Ongoing` names refused on create and
+  rename.
+- `src/test/dbtest/event_period_test.go` — the three shapes round-tripped
+  through the real columns (a `NULL` end comes back nil, `isOngoing` survives
+  the `tinyint`), and an update clearing either field.
+- `src/internal/infrastructure/web/router_test.go` — the fields parsed and
+  forwarded on `POST` and `PATCH` (`null` and omitted `endDate` alike), a
+  service `400` relayed with its message.
+- `src/test/e2e/e2e_test.go` (`TestEventPeriods`) — the whole thing over real
+  HTTP on a throwaway account: month expansion, `Ongoing` until a `PATCH`
+  closes the period, the single-day normalization, the two refusals.
 
 ## Frontend tests
 

@@ -562,6 +562,84 @@ func TestCreateEventEndpoint(t *testing.T) {
 	sm.events.AssertExpectations(t)
 }
 
+// The period fields reach the service as parsed: a closed period keeps its
+// end date, an open one its flag.
+func TestCreateEventEndpointForwardsThePeriod(t *testing.T) {
+	end := time.Date(2026, time.July, 5, 0, 0, 0, 0, time.UTC)
+
+	t.Run("closed period", func(t *testing.T) {
+		router, sm := newTestServer()
+		sm.events.On("CreateEvent", testUserID, mock.MatchedBy(func(evt *event.Event) bool {
+			return evt.EndDate != nil && evt.EndDate.Equal(end) && !evt.IsOngoing
+		}), []uint{1}).Return(nil)
+
+		rec := doRequest(router, http.MethodPost, "/events",
+			`{"date":"2026-06-28T00:00:00Z","endDate":"2026-07-05T00:00:00Z","tagsId":[1]}`, authHeader())
+
+		assert.Equal(t, http.StatusCreated, rec.Code)
+		sm.events.AssertExpectations(t)
+	})
+
+	t.Run("open period", func(t *testing.T) {
+		router, sm := newTestServer()
+		sm.events.On("CreateEvent", testUserID, mock.MatchedBy(func(evt *event.Event) bool {
+			return evt.EndDate == nil && evt.IsOngoing
+		}), []uint{}).Return(nil)
+
+		rec := doRequest(router, http.MethodPost, "/events",
+			`{"date":"2024-06-03T00:00:00Z","isOngoing":true,"tagsId":[]}`, authHeader())
+
+		assert.Equal(t, http.StatusCreated, rec.Code)
+		sm.events.AssertExpectations(t)
+	})
+
+	// An explicit null and an omitted endDate mean the same thing on the wire.
+	t.Run("null end date", func(t *testing.T) {
+		router, sm := newTestServer()
+		sm.events.On("CreateEvent", testUserID, mock.MatchedBy(func(evt *event.Event) bool {
+			return evt.EndDate == nil && !evt.IsOngoing
+		}), []uint{}).Return(nil)
+
+		rec := doRequest(router, http.MethodPost, "/events",
+			`{"date":"2026-06-03T00:00:00Z","endDate":null,"tagsId":[]}`, authHeader())
+
+		assert.Equal(t, http.StatusCreated, rec.Code)
+		sm.events.AssertExpectations(t)
+	})
+}
+
+func TestUpdateEventEndpointForwardsThePeriod(t *testing.T) {
+	router, sm := newTestServer()
+
+	end := time.Date(2026, time.August, 31, 0, 0, 0, 0, time.UTC)
+	sm.events.On("UpdateEvent", testUserID, mock.MatchedBy(func(evt *event.Event) bool {
+		return evt.Id == 9 && evt.EndDate != nil && evt.EndDate.Equal(end) && !evt.IsOngoing
+	}), []uint{1}).Return(nil)
+
+	// Closing an open period: the full-state PATCH carries the end date and
+	// leaves isOngoing out, which resets it.
+	rec := doRequest(router, http.MethodPatch, "/events/9",
+		`{"description":"job","date":"2024-06-03T00:00:00Z","endDate":"2026-08-31T00:00:00Z","tagsId":[1]}`, authHeader())
+
+	assert.Equal(t, http.StatusNoContent, rec.Code)
+	sm.events.AssertExpectations(t)
+}
+
+// The period invariants live in the service (application.validatePeriod); its
+// 400 has to reach the client as one, message included.
+func TestCreateEventEndpointRelaysAPeriodError(t *testing.T) {
+	router, sm := newTestServer()
+
+	sm.events.On("CreateEvent", testUserID, mock.Anything, mock.Anything).
+		Return(apperror.NewBadRequest("The end date cannot precede the start date"))
+
+	rec := doRequest(router, http.MethodPost, "/events",
+		`{"date":"2026-06-18T00:00:00Z","endDate":"2026-06-03T00:00:00Z","tagsId":[]}`, authHeader())
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Contains(t, rec.Body.String(), "end date cannot precede")
+}
+
 func TestCreateEventRejectsMissingDate(t *testing.T) {
 	router, sm := newTestServer()
 

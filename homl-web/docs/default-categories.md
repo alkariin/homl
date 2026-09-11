@@ -22,21 +22,31 @@ own name once renamed. Requests always carry the stored name.
 ## Dates — mandatory, fully read-only
 
 - The category and its tags are managed by the backend only.
-- Tags are the month and year of the user's events: they are created
+- Tags are the months and years covered by the user's events' periods, plus
+  `Ongoing` for an open period (started, no end yet): they are created
   automatically when an event is created or updated
-  (`eventsService.buildDateTags`), never by the client.
+  (`eventsService.buildDateTags`, from `event.DateTagNames`), never by the
+  client. A closed period gets every month and year from its start to its
+  (inclusive) end; an open one is tagged from its start month only, since it
+  has no known end and expanding to "today" at write time would go stale the
+  next day. Closing it drops `Ongoing` and attaches the months up to the end.
 - Enforcement (`application/tag.go`, `application/category.go`):
   - `POST /tags` and `PATCH /tags/:id` reject the date category as target;
   - `PATCH /tags/:id` and `DELETE /tags/:id` reject a tag currently living in
     the date category;
   - `PATCH /categories/:id` and `DELETE /categories/:id` are forbidden on any
     locked category.
-- Month names are additionally blacklisted as user tag names
-  (`BLACKLIST_TAGS`) so free tags cannot collide with date tags.
-- Month tags are stored in English for every user — they are keys shared with
-  the client, which has to rebuild the very same names under E2EE. The app
-  translates them for display only (`homl-ui/lib/helpers/date_tags.dart`) and
-  keeps filtering and creating on the stored English name.
+- Month names and `Ongoing` are additionally blacklisted as user tag names
+  (`BLACKLIST_TAGS`), and so is any four-digit name — years are open-ended,
+  so that one is a rule in `application/tag.go` rather than a list entry —
+  so free tags can never collide with a date tag. The cost is deliberate:
+  `1984` or `2001` cannot be user tags, and a pre-existing tag named like a
+  year can be deleted but no longer edited (its name is re-validated).
+- Month tags and `Ongoing` are stored in English for every user — they are
+  keys shared with the client, which has to rebuild the very same names under
+  E2EE. The app translates them for display only
+  (`homl-ui/lib/helpers/date_tags.dart`) and keeps filtering and creating on
+  the stored English name.
 
 ## Persons — a default suggestion, not mandatory
 
