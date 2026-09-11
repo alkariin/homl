@@ -37,6 +37,7 @@ void main() {
       id: 7,
       description: 'a long description',
       date: DateTime(2026, 3, 15),
+      isOngoing: false,
       tags: [
         Tag(id: 10, tag: 'March', idCategory: 1),
         Tag(id: 2, tag: 'Football', idCategory: 2),
@@ -72,6 +73,8 @@ void main() {
         id: 7,
         description: 'a long description',
         date: DateTime(2026, 3, 15),
+        endDate: null,
+        isOngoing: false,
         tagsId: [2])).thenAnswer((_) async {});
 
     final cubit = InsertCubit(eventsRepository, tagsRepository,
@@ -82,10 +85,14 @@ void main() {
         id: 7,
         description: 'a long description',
         date: DateTime(2026, 3, 15),
+        endDate: null,
+        isOngoing: false,
         tagsId: [2])).called(1);
     verifyNever(() => eventsRepository.createEvent(
         description: any(named: 'description'),
         date: any(named: 'date'),
+        endDate: any(named: 'endDate'),
+        isOngoing: any(named: 'isOngoing'),
         tagsId: any(named: 'tagsId')));
 
     // The view pops on success in edit mode, keyed by the id kept in state.
@@ -98,6 +105,8 @@ void main() {
     when(() => eventsRepository.createEvent(
         description: any(named: 'description'),
         date: any(named: 'date'),
+        endDate: any(named: 'endDate'),
+        isOngoing: any(named: 'isOngoing'),
         tagsId: any(named: 'tagsId'))).thenAnswer((_) async {});
 
     final cubit = InsertCubit(eventsRepository, tagsRepository);
@@ -108,11 +117,15 @@ void main() {
     verify(() => eventsRepository.createEvent(
         description: 'created',
         date: any(named: 'date'),
+        endDate: null,
+        isOngoing: false,
         tagsId: [2])).called(1);
     verifyNever(() => eventsRepository.updateEvent(
         id: any(named: 'id'),
         description: any(named: 'description'),
         date: any(named: 'date'),
+        endDate: any(named: 'endDate'),
+        isOngoing: any(named: 'isOngoing'),
         tagsId: any(named: 'tagsId')));
 
     // The form resets for the next event.
@@ -120,5 +133,114 @@ void main() {
     expect(cubit.state.editingEventId, isNull);
     expect(cubit.state.tagNames, isEmpty);
     expect(cubit.state.description, isEmpty);
+  });
+
+  group('period', () {
+    final end = DateTime(2026, 3, 30);
+
+    test('edit mode seeds the period', () {
+      final closed = InsertCubit(eventsRepository, tagsRepository,
+          editing: Event(
+              id: 7,
+              description: '',
+              date: DateTime(2026, 3, 15),
+              endDate: end,
+              isOngoing: false,
+              tags: []),
+          dateCategoryIds: {1});
+      expect(closed.state.endDate, end);
+      expect(closed.state.shape, PeriodShape.closed);
+
+      final open = InsertCubit(eventsRepository, tagsRepository,
+          editing: Event(
+              id: 8,
+              description: '',
+              date: DateTime(2026, 3, 15),
+              isOngoing: true,
+              tags: []),
+          dateCategoryIds: {1});
+      expect(open.state.endDate, isNull);
+      expect(open.state.shape, PeriodShape.ongoing);
+    });
+
+    test('the shape is derived from the end date and the flag', () {
+      final cubit = InsertCubit(eventsRepository, tagsRepository,
+          editing: editedEvent, dateCategoryIds: {1});
+      expect(cubit.state.shape, PeriodShape.singleDay);
+
+      cubit.updateEndDate(end);
+      expect(cubit.state.shape, PeriodShape.closed);
+      expect(cubit.state.endDate, end);
+      expect(cubit.state.isOngoing, isFalse);
+
+      // Ongoing and an end date exclude each other.
+      cubit.setOngoing();
+      expect(cubit.state.shape, PeriodShape.ongoing);
+      expect(cubit.state.endDate, isNull);
+
+      cubit.updateEndDate(end);
+      expect(cubit.state.shape, PeriodShape.closed);
+      expect(cubit.state.isOngoing, isFalse);
+
+      cubit.setSingleDay();
+      expect(cubit.state.shape, PeriodShape.singleDay);
+      expect(cubit.state.endDate, isNull);
+      expect(cubit.state.isOngoing, isFalse);
+    });
+
+    test('moving the start past the end drops the end', () {
+      final cubit = InsertCubit(eventsRepository, tagsRepository,
+          editing: editedEvent, dateCategoryIds: {1});
+      cubit.updateEndDate(end);
+
+      // An earlier start keeps the end...
+      cubit.updateDate(DateTime(2026, 3, 10));
+      expect(cubit.state.endDate, end);
+
+      // ...a start on the end day too (a one-day period, normalized by the
+      // backend)...
+      cubit.updateDate(DateTime(2026, 3, 30));
+      expect(cubit.state.endDate, end);
+
+      // ...but a start after it leaves no valid end: back to a single day
+      // rather than an invalid pair waiting for submit.
+      cubit.updateDate(DateTime(2026, 4, 2));
+      expect(cubit.state.endDate, isNull);
+      expect(cubit.state.shape, PeriodShape.singleDay);
+    });
+
+    test('submitEvent sends the period', () async {
+      when(() => eventsRepository.updateEvent(
+          id: any(named: 'id'),
+          description: any(named: 'description'),
+          date: any(named: 'date'),
+          endDate: any(named: 'endDate'),
+          isOngoing: any(named: 'isOngoing'),
+          tagsId: any(named: 'tagsId'))).thenAnswer((_) async {});
+
+      final cubit = InsertCubit(eventsRepository, tagsRepository,
+          editing: editedEvent, dateCategoryIds: {1});
+      cubit.updateEndDate(end);
+      await cubit.submitEvent(categories, knownTags);
+
+      verify(() => eventsRepository.updateEvent(
+          id: 7,
+          description: 'a long description',
+          date: DateTime(2026, 3, 15),
+          endDate: end,
+          isOngoing: false,
+          tagsId: [2])).called(1);
+
+      cubit.setOngoing();
+      await cubit.submitEvent(categories, knownTags);
+
+      verify(() => eventsRepository.updateEvent(
+          id: 7,
+          description: 'a long description',
+          date: DateTime(2026, 3, 15),
+          endDate: null,
+          isOngoing: true,
+          tagsId: [2])).called(1);
+    });
   });
 }

@@ -362,6 +362,15 @@ class AppLocalizationsDe extends AppLocalizations {
   String get insert_noTagsError => 'Mindestens einen Tag hinzufügen';
 
   @override
+  String get insert_periodSingleDay => 'Ein Tag';
+
+  @override
+  String get insert_periodClosed => 'Zeitraum';
+
+  @override
+  String get insert_periodOngoing => 'Laufend';
+
+  @override
   String get list_filterLabel => 'Nach Tag filtern';
 
   @override
@@ -379,6 +388,75 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get list_eventUpdated => 'Ereignis aktualisiert';
+
+  @override
+  String get event_ongoing => 'Laufend';
+
+  @override
+  String event_durationDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Tage',
+      one: '1 Tag',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String event_durationMonths(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Monate',
+      one: '1 Monat',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String event_durationYears(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Jahre',
+      one: '1 Jahr',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String event_sinceDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'seit $count Tagen',
+      one: 'seit 1 Tag',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String event_sinceMonths(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'seit $count Monaten',
+      one: 'seit 1 Monat',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String event_sinceYears(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'seit $count Jahren',
+      one: 'seit 1 Jahr',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get categories_newCategory => 'Neue Kategorie';

@@ -361,6 +361,15 @@ class AppLocalizationsFr extends AppLocalizations {
   String get insert_noTagsError => 'Ajouter au moins un tag';
 
   @override
+  String get insert_periodSingleDay => 'Un jour';
+
+  @override
+  String get insert_periodClosed => 'Période';
+
+  @override
+  String get insert_periodOngoing => 'En cours';
+
+  @override
   String get list_filterLabel => 'Filtrer par tag';
 
   @override
@@ -378,6 +387,75 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get list_eventUpdated => 'Événement mis à jour';
+
+  @override
+  String get event_ongoing => 'En cours';
+
+  @override
+  String event_durationDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count jours',
+      one: '1 jour',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String event_durationMonths(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count mois',
+      one: '1 mois',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String event_durationYears(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ans',
+      one: '1 an',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String event_sinceDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'depuis $count jours',
+      one: 'depuis 1 jour',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String event_sinceMonths(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'depuis $count mois',
+      one: 'depuis 1 mois',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String event_sinceYears(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'depuis $count ans',
+      one: 'depuis 1 an',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get categories_newCategory => 'Nouvelle catégorie';

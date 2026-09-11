@@ -724,6 +724,24 @@ abstract class AppLocalizations {
   /// **'Add at least one tag'**
   String get insert_noTagsError;
 
+  /// No description provided for @insert_periodSingleDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Single day'**
+  String get insert_periodSingleDay;
+
+  /// No description provided for @insert_periodClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'Period'**
+  String get insert_periodClosed;
+
+  /// No description provided for @insert_periodOngoing.
+  ///
+  /// In en, this message translates to:
+  /// **'Ongoing'**
+  String get insert_periodOngoing;
+
   /// No description provided for @list_filterLabel.
   ///
   /// In en, this message translates to:
@@ -759,6 +777,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Event updated'**
   String get list_eventUpdated;
+
+  /// No description provided for @event_ongoing.
+  ///
+  /// In en, this message translates to:
+  /// **'Ongoing'**
+  String get event_ongoing;
+
+  /// No description provided for @event_durationDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 day} other{{count} days}}'**
+  String event_durationDays(int count);
+
+  /// No description provided for @event_durationMonths.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 month} other{{count} months}}'**
+  String event_durationMonths(int count);
+
+  /// No description provided for @event_durationYears.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 year} other{{count} years}}'**
+  String event_durationYears(int count);
+
+  /// Elapsed length of an open period; one key per unit because German declines the noun after 'seit'.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{for 1 day} other{for {count} days}}'**
+  String event_sinceDays(int count);
+
+  /// No description provided for @event_sinceMonths.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{for 1 month} other{for {count} months}}'**
+  String event_sinceMonths(int count);
+
+  /// No description provided for @event_sinceYears.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{for 1 year} other{for {count} years}}'**
+  String event_sinceYears(int count);
 
   /// No description provided for @categories_newCategory.
   ///

@@ -143,6 +143,9 @@
   "insert_submit": "Create event",
   "insert_eventCreated": "Event created",
   "insert_noTagsError": "Add at least one tag",
+  "insert_periodSingleDay": "Single day",
+  "insert_periodClosed": "Period",
+  "insert_periodOngoing": "Ongoing",
 
   "list_filterLabel": "Filter by tag",
   "list_noEvents": "No events found",
@@ -150,6 +153,45 @@
   "list_deleteEventTitle": "Delete event?",
   "list_deleteEventInfo": "This event and its description will be permanently deleted.",
   "list_eventUpdated": "Event updated",
+
+  "event_ongoing": "Ongoing",
+  "event_durationDays": "{count, plural, =1{1 day} other{{count} days}}",
+  "@event_durationDays": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "event_durationMonths": "{count, plural, =1{1 month} other{{count} months}}",
+  "@event_durationMonths": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "event_durationYears": "{count, plural, =1{1 year} other{{count} years}}",
+  "@event_durationYears": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "event_sinceDays": "{count, plural, =1{for 1 day} other{for {count} days}}",
+  "@event_sinceDays": {
+    "description": "Elapsed length of an open period; one key per unit because German declines the noun after 'seit'.",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "event_sinceMonths": "{count, plural, =1{for 1 month} other{for {count} months}}",
+  "@event_sinceMonths": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "event_sinceYears": "{count, plural, =1{for 1 year} other{for {count} years}}",
+  "@event_sinceYears": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
 
   "categories_newCategory": "New category",
   "categories_editCategory": "Edit category",
