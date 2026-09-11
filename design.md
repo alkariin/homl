@@ -1,6 +1,6 @@
 # Event periods — Design
 
-Status: **agreed — not implemented**
+Status: **backend implemented (PR 1) — client pending (PR 2)**
 
 Every open question is settled; nothing here is waiting on a decision. The
 ones that were genuinely open, and their outcome: the card badge **rescales
@@ -162,6 +162,14 @@ class Event {
 inside the `Event` struct — so `test/mocks/events_repo.go` needs no signature
 update.
 
+One trap on the read path, found by the e2e test during PR 1: `GetEvents`
+rebuilt its `GetEventsResponse` **field by field** (`response.Id = …`,
+`response.Date = …`), so the two new columns were written and read back by
+the repository and then silently dropped on the way to the wire — the exact
+failure §6 warns about for the client's `_decryptEvents`. It now copies the
+embedded `Event` whole and only overrides the decrypted description, and a
+unit test pins the period fields on the response.
+
 ### 3.3 Persistence
 
 `persistence/event.go`:
@@ -217,8 +225,11 @@ leaving a second, phantom source of truth behind.
 
 ## 5. Date tags
 
-The interesting part. `buildDateTags` becomes `buildDateTagsForPeriod` and
-derives the Month and Year tags from the *whole known* period.
+The interesting part. `buildDateTags` keeps its name — it is referenced from
+four places, two of them in the client — but derives the Month and Year tags
+from the *whole known* period, through `event.DateTagNames()`: a pure method
+on the aggregate, unit-tested without a mock, and the reference the Dart
+mirror is written against.
 
 ### 5.1 Expansion
 
@@ -577,8 +588,11 @@ implementations drifting.
 - `test/e2e/e2e_test.go` — create a closed period, close an open one via
   `PATCH`, assert the date tags attached — including that `Ongoing` is there
   while the period is open and **gone once it is closed** (§5.6).
-- `internal/infrastructure/web/router_test.go` — payload shape, `400` on the
-  two invalid combinations.
+- `internal/infrastructure/web/router_test.go` — the two fields parsed and
+  forwarded on `POST` and `PATCH` (`null` and omitted `endDate` alike), and a
+  service `400` relayed to the client with its message. The invariants
+  themselves belong to the application layer and are tested there — the
+  router tests run against mocked services.
 
 **Dart**
 
@@ -613,6 +627,7 @@ implementations drifting.
 | `homl-web/docs/domain-model.md` | the `Event` class in the mermaid diagram; and the masterdata note — `constants.json` no longer holds the whole blacklist, the year rule lives in code |
 | `homl-web/docs/e2ee.md` | §1 non-goals widened to the period columns; §4 client-built date tags now span a period |
 | `homl-web/docs/default-categories.md` | "tags are the month and year of the event" becomes "of the months and years the event's period covers", plus the open-period rule and the `Ongoing` tag as the third backend-managed name; the blacklist line now covers `Ongoing` and four-digit names, not only the 12 months |
+| `homl-web/TESTING.md` | an *Event periods* section, the way every feature lists what covers it at each layer |
 | `homl-ui/README.md` | the duration badge, the three-state form |
 
 ---
@@ -646,15 +661,16 @@ compilable and testable on its own before the next starts.
    `dbtest` round-trip of the three states.
 4. Application, in this order: the validation matrix in `CreateEvent` /
    `UpdateEvent` **before** `prepareEvent` (§2.1), with its test run twice,
-   E2EE off and on; then `buildDateTags` → `buildDateTagsForPeriod` with the
-   §5.4 vectors as set comparisons and the `Ongoing` tag (§5.6).
+   E2EE off and on; then `event.DateTagNames()` on the aggregate with the
+   §5.4 vectors as set comparisons and the `Ongoing` tag (§5.6), and
+   `buildDateTags` reading it.
 5. Blacklist: `Ongoing` into `constants.json`; the four-digit predicate into
    `validateTag` (§5.5); `tag_test.go` cases for both.
 6. Handler: the two body fields on `POST` / `PATCH`; delete `web.Event`
    (§4). `router_test.go` for the shape and the two `400`s; `e2e_test.go` for
    the open → closed transition.
 7. Docs from §11 — `api.md`, `domain-model.md`, `e2ee.md`,
-   `default-categories.md` — in the same PR, per the repo rule.
+   `default-categories.md`, `TESTING.md` — in the same PR, per the repo rule.
 
 **PR 2 — `homl-ui`**
 

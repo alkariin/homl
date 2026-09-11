@@ -293,8 +293,10 @@ date-only.
 
 ## Events
 
-All endpoints require auth. Date tags are added by the backend from `date`;
-`tagsId` may be empty. `GET /events` accepts an optional `tags` query filter,
+All endpoints require auth. Date tags are added by the backend from the
+event's period — every month and year it covers, plus `Ongoing` for an open
+period (see *Periods* below); `tagsId` may be empty. `GET /events` accepts an
+optional `tags` query filter,
 repeated once per tag name (`?tags=2024&tags=July`). The Flutter app no
 longer uses this filter — its Search tab filters the cached full list locally
 (see homl-ui/README.md) — but the parameter stays supported for API clients.
@@ -307,8 +309,8 @@ client creates and attaches its own.
 | Method | Path | Body / query | Response |
 | --- | --- | --- | --- |
 | GET | `/events` | `?tags=<name>&tags=<name>` (optional) | `200` list below |
-| POST | `/events` | `{description?, date, tagsId: uint[]}` | `201` |
-| PATCH | `/events/:id` | `{description?, date, tagsId: uint[]}` | `204` |
+| POST | `/events` | `{description?, date, endDate?, isOngoing?, tagsId: uint[]}` | `201`, `400` on an invalid period |
+| PATCH | `/events/:id` | `{description?, date, endDate?, isOngoing?, tagsId: uint[]}` | `204`, `400` on an invalid period |
 | DELETE | `/events/:id` | — | `204` |
 
 `GET /events` returns the events newest first (by `date` descending, most
@@ -319,6 +321,7 @@ slot:
 ```json
 [
   { "id": 1, "description": "…", "date": "2026-07-05T00:00:00Z",
+    "endDate": null, "isOngoing": false,
     "tags": [ { "id": 3, "tag": "…", "idCategory": 2, "idParentTag": null } ] }
 ]
 ```
@@ -328,7 +331,30 @@ the time part of the RFC 3339 value is truncated (`2026-08-31T22:00:00Z` is
 stored as `2026-08-31`). Clients must send the picked day as UTC midnight
 (`YYYY-MM-DDT00:00:00Z`, the same shape `GET /events` returns) and must not
 convert a local-midnight date to UTC — east of UTC that lands on the previous
-day. The month/year date tags are derived from that stored day.
+day. `endDate` follows the same rules. The date tags are derived from the
+stored days.
+
+**Periods.** An event is one of three things; `date` is always the start:
+
+| Shape | `endDate` | `isOngoing` | Date tags added |
+| --- | --- | --- | --- |
+| single day | absent / `null` | `false` | its month and year |
+| closed period | on or after `date`, **inclusive** | `false` | every month and year from `date` to `endDate` |
+| open period ("still ongoing") | absent / `null` | `true` | its start month and year, plus `Ongoing` |
+
+An `endDate` on the same day as `date` is stored as a single day (`endDate`
+comes back `null`), so a one-day event has a single representation. An open
+period is tagged from its start only: it has no known end, and expanding to
+"today" at write time would go stale the next day. Two combinations are
+refused with `400`: an `endDate` before `date`, and an `endDate` together with
+`isOngoing: true`. A period longer than 100 years is refused too.
+
+`PATCH` is full-state, for the period fields as for `description`: an omitted
+`endDate` clears it and an omitted `isOngoing` resets it. Closing an open
+period is therefore a `PATCH` carrying the `endDate` and no `isOngoing`; the
+`Ongoing` tag is dropped and the months up to the end are attached. A client
+built before these fields existed flattens every period it edits to a single
+day — deploy the app with, or after, the server.
 
 Tags carry only `idCategory` (no category join): the client already holds the
 categories from `GET /categories`. `idParentTag` lets the client resolve a
