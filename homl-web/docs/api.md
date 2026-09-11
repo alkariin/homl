@@ -217,10 +217,17 @@ without it those events are preserved, only the tags are removed from them
 default to `false`, the option that destroys the least.
 
 The whole deletion is one transaction, so a failure leaves the category, its
-tags and its events untouched. One case still fails: tag names are unique per
-category, so `"moveTags": true` is refused with a `500` when the Other
-category already holds a tag of the same name — the other two options remain
-available.
+tags and its events untouched. Tag names being unique per category,
+`"moveTags": true` is refused with a `409` when the Other category already
+holds a tag of the same name:
+
+```json
+{ "error": { "type": "CONFLICT", "code": "TAG_NAME_CONFLICT",
+             "message": "A tag of this category already exists in the Other category" } }
+```
+
+Nothing is deleted, so the user can rename the tag or retry with either of
+the two other options. Clients switch on `code`, never on `message`.
 
 `GET /categories/:id/usage` returns the counts the client shows in its delete
 confirmation dialog:

@@ -182,5 +182,6 @@
   "categories_deleteCategoryEvents": "{count, plural, =0{Aucun événement ne les utilise.} =1{1 événement les utilise.} other{{count} événements les utilisent.}}",
   "categories_deleteCategoryDeleteTags": "Supprimer les tags, conserver les événements",
   "categories_deleteCategoryDeleteAll": "Supprimer les tags et leurs événements",
-  "categories_deleteCategoryDeleteAllDetail": "{count, plural, =1{1 événement utilise ces tags et sera supprimé.} other{{count} événements utilisent ces tags et seront supprimés.}}"
+  "categories_deleteCategoryDeleteAllDetail": "{count, plural, =1{1 événement utilise ces tags et sera supprimé.} other{{count} événements utilisent ces tags et seront supprimés.}}",
+  "categories_deleteTagNameConflict": "Un de ces tags existe déjà dans Autres. Renomme-le, ou supprime les tags au lieu de les déplacer."
 }

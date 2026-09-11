@@ -300,15 +300,13 @@ func TestCategoryDeleteRefusals(t *testing.T) {
 	})
 }
 
-// TestCategoryDeleteMoveTagsNameClash documents the one way a move can fail:
-// Tags is unique on (idCategory, tag) and the at-rest encryption is
-// deterministic, so moving a tag into Other while Other already holds the same
-// name hits the unique key. What matters here is that the whole delete is one
-// transaction: the failure must leave the category, its tags and its events
-// exactly as they were, never half-moved.
-//
-// The client offers no way to rename on conflict yet, so the user sees a plain
-// 500 and can still fall back to the other two options.
+// TestCategoryDeleteMoveTagsNameClash covers the one way a move can fail: Tags
+// is unique on (idCategory, tag) and the at-rest encryption is deterministic,
+// so moving a tag into Other while Other already holds the same name hits the
+// unique key. It must surface as a 409 the user can act on — not as the raw
+// driver error behind a 500 — and the whole delete being one transaction, the
+// failure must leave the category, its tags and its events exactly as they
+// were, never half-moved.
 func TestCategoryDeleteMoveTagsNameClash(t *testing.T) {
 	r := setup(t)
 	ctx := context.Background()
@@ -321,6 +319,13 @@ func TestCategoryDeleteMoveTagsNameClash(t *testing.T) {
 
 	err = r.cats.Delete(ctx, f.doomed, f.user, true, false)
 	require.Error(t, err, "the unique key on (idCategory, tag) rejects the move")
+	assert.Equal(t, http.StatusConflict, apperror.Status(err))
+
+	var appErr *apperror.Error
+	require.ErrorAs(t, err, &appErr)
+	assert.Equal(t, apperror.CodeTagNameConflict, appErr.Code,
+		"the client keys its message off the code, not the message string")
+	assert.NotEmpty(t, appErr.Message)
 
 	assert.True(t, categoryExists(t, r, f.doomed), "the category is kept")
 	assert.True(t, tagExists(t, r, f.main))

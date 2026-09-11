@@ -539,4 +539,8 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get categories_deleteTagNameConflict =>
+      'One of these tags already exists in Others. Rename it, or delete the tags instead of moving them.';
 }

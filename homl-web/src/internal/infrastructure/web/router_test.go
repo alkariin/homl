@@ -393,6 +393,7 @@ func TestDeleteCategoryPropagatesServiceErrors(t *testing.T) {
 	}{
 		{"a locked category is forbidden", apperror.NewStatusForbidden(), http.StatusForbidden},
 		{"an unknown category is not found", apperror.NewNotFound("category", "5"), http.StatusNotFound},
+		{"a taken tag name is a conflict", apperror.NewTagNameConflict("taken"), http.StatusConflict},
 	}
 
 	for _, c := range cases {
@@ -407,6 +408,26 @@ func TestDeleteCategoryPropagatesServiceErrors(t *testing.T) {
 			sm.categories.AssertExpectations(t)
 		})
 	}
+}
+
+// A move refused because a tag name is already taken in Other must reach the
+// client as a 409 carrying its code: the app keys its message off the code,
+// never off the message string.
+func TestDeleteCategoryReportsTheTagNameConflict(t *testing.T) {
+	router, sm := newTestServer()
+
+	sm.categories.On("DeleteCategory", uint(5), testUserID, true, false).
+		Return(apperror.NewTagNameConflict("A tag of this category already exists in the Other category"))
+
+	rec := doRequest(router, http.MethodDelete, "/categories/5", `{"moveTags":true}`, authHeader())
+
+	assert.Equal(t, http.StatusConflict, rec.Code)
+	body := decodeJSON(t, rec)
+	errBody, ok := body["error"].(map[string]interface{})
+	assert.True(t, ok, "the error envelope must be an object, got %v", body["error"])
+	assert.Equal(t, apperror.CodeTagNameConflict, errBody["code"])
+	assert.NotEmpty(t, errBody["message"])
+	sm.categories.AssertExpectations(t)
 }
 
 func TestCategoryUsageEndpoint(t *testing.T) {
