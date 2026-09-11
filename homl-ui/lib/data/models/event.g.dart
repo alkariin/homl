@@ -10,6 +10,10 @@ Event _$EventFromJson(Map<String, dynamic> json) => Event(
       id: (json['id'] as num).toInt(),
       description: json['description'] as String,
       date: DateTime.parse(json['date'] as String),
+      endDate: json['endDate'] == null
+          ? null
+          : DateTime.parse(json['endDate'] as String),
+      isOngoing: json['isOngoing'] as bool? ?? false,
       tags: (json['tags'] as List<dynamic>)
           .map((e) => Tag.fromJson(e as Map<String, dynamic>))
           .toList(),
@@ -19,5 +23,7 @@ Map<String, dynamic> _$EventToJson(Event instance) => <String, dynamic>{
       'id': instance.id,
       'description': instance.description,
       'date': instance.date.toIso8601String(),
+      'endDate': instance.endDate?.toIso8601String(),
+      'isOngoing': instance.isOngoing,
       'tags': instance.tags,
     };

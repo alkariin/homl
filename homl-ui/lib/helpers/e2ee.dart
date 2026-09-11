@@ -77,9 +77,7 @@ class E2ee {
         nonce: salt,
         info: utf8.encode(_contentInfo));
     _indexKey = await hkdf.deriveKey(
-        secretKey: SecretKey(seed),
-        nonce: salt,
-        info: utf8.encode(_indexInfo));
+        secretKey: SecretKey(seed), nonce: salt, info: utf8.encode(_indexInfo));
   }
 
   /// Resolves the E2EE state after authentication. Returns false when the
@@ -231,8 +229,7 @@ class E2ee {
   /// normalized name, lowercase hex. Deterministic, so the server can enforce
   /// uniqueness and search by equality without learning the name.
   Future<String> tagIndex(String tagName) async {
-    final mac = await _hmac.calculateMac(
-        utf8.encode(normalizeTagName(tagName)),
+    final mac = await _hmac.calculateMac(utf8.encode(normalizeTagName(tagName)),
         secretKey: _requireKey(_indexKey));
     return _hex(mac.bytes.sublist(0, 16));
   }
@@ -245,10 +242,21 @@ class E2ee {
     return _hex(mac.bytes);
   }
 
-  /// Whether creating [tagName] is forbidden (mirror of the backend
-  /// masterdata blacklist, which the server skips for E2EE users).
-  bool isBlacklistedTag(String tagName) =>
-      dateTagMonths.contains(normalizeTagName(tagName));
+  /// What a year tag looks like; the backend refuses any four-digit name with
+  /// the same rule (application/tag.go).
+  static final _yearTagName = RegExp(r'^[0-9]{4}$');
+
+  /// Whether creating [tagName] is forbidden — the mirror of the backend
+  /// blacklist, which the server skips for E2EE users: the English month
+  /// names and Ongoing (masterdata BLACKLIST_TAGS), plus any four-digit name,
+  /// a year tag the backend derives from the event periods. "1984" as a user
+  /// tag is the accepted cost of never colliding with one.
+  bool isBlacklistedTag(String tagName) {
+    final normalized = normalizeTagName(tagName);
+    return dateTagMonths.contains(normalized) ||
+        isOngoingTagName(normalized) ||
+        _yearTagName.hasMatch(normalized);
+  }
 
   Future<List<int>?> _readStoredSeed() async {
     final stored =

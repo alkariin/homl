@@ -4,6 +4,9 @@ import 'package:intl/intl.dart';
 import 'package:homl/components/tag.dart' as components;
 import 'package:homl/data/models/event.dart';
 import 'package:homl/data/models/tag.dart';
+import 'package:homl/helpers/colors.dart' as palette;
+import 'package:homl/helpers/event_period.dart';
+import 'package:homl/l10n/app_localizations.dart';
 
 /// Event card: white, radius 16, hairline border and soft shadow. Sized by
 /// its parent (grid cell); the tags take the rows they can get and the
@@ -43,6 +46,7 @@ class EventCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final locale = Localizations.localeOf(context).toString();
+    final badge = _badgeText(AppLocalizations.of(context)!);
 
     return Container(
       decoration: BoxDecoration(
@@ -67,19 +71,37 @@ class EventCard extends StatelessWidget {
           onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.all(12),
-            child: _content(locale),
+            child: _content(locale, badge),
           ),
         ),
       ),
     );
   }
 
-  Widget _content(String locale) {
+  /// Text of the period pill next to the date: how long a closed period
+  /// lasted, "ongoing" for an open one, nothing for a single day — the
+  /// majority of events keep looking exactly as they did.
+  String? _badgeText(AppLocalizations l10n) {
+    final end = event.endDate;
+    if (end != null) {
+      return periodLengthLabel(l10n, periodLength(event.date, end));
+    }
+    if (event.isOngoing) return l10n.event_ongoing;
+    return null;
+  }
+
+  Widget _content(String locale, String? badge) {
     final tags = event.tags.where((tag) => !isDateTag(tag)).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // The header is the start date. A period adds a quiet pill under it
+        // rather than a range the line has no room for — and under, not next
+        // to it: on a phone-width cell the date alone takes most of the line,
+        // so a pill beside it would truncate the date on every period card.
+        // The rows below are sized from the height actually left, so the
+        // extra line costs at most a tag row on a short card.
         Center(
           child: Text(
             DateFormat.yMMMd(locale).format(event.date),
@@ -88,6 +110,10 @@ class EventCard extends StatelessWidget {
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
           ),
         ),
+        if (badge != null) ...[
+          const SizedBox(height: 4),
+          Center(child: _PeriodBadge(badge)),
+        ],
         const SizedBox(height: 10),
         // The tag rows are sized against the height actually left under the
         // date, hence the LayoutBuilder.
@@ -172,5 +198,35 @@ class EventCard extends StatelessWidget {
     final rows = ((free + _tagSpacing) / (rowHeight + _tagSpacing)).floor();
 
     return rows < 1 ? rowHeight : rows * rowHeight + (rows - 1) * _tagSpacing;
+  }
+}
+
+/// The period pill of the card header. Deliberately not a [components.Tag]:
+/// it is not a tag and must not read as one — no category colour, no
+/// calendar icon, a muted capsule in the ink of the text.
+class _PeriodBadge extends StatelessWidget {
+  final String text;
+
+  const _PeriodBadge(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(
+        color: palette.ink.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        text,
+        maxLines: 1,
+        softWrap: false,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: palette.ink.withValues(alpha: 0.6),
+        ),
+      ),
+    );
   }
 }
