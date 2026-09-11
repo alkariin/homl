@@ -183,5 +183,6 @@
   "categories_deleteCategoryDeleteTags": "Tags löschen, Ereignisse behalten",
   "categories_deleteCategoryDeleteAll": "Tags und ihre Ereignisse löschen",
   "categories_deleteCategoryDeleteAllDetail": "{count, plural, =1{1 Ereignis verwendet diese Tags und wird gelöscht.} other{{count} Ereignisse verwenden diese Tags und werden gelöscht.}}",
-  "categories_deleteTagNameConflict": "Einer dieser Tags existiert bereits in Sonstiges. Benenne ihn um oder lösche die Tags, statt sie zu verschieben."
+  "categories_deleteTagNameConflict": "Einer dieser Tags existiert bereits in Sonstiges. Benenne ihn um oder lösche die Tags, statt sie zu verschieben.",
+  "categories_tagNameConflict": "Diese Kategorie hat bereits einen Tag mit diesem Namen. Wähle einen anderen."
 }

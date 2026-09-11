@@ -13,8 +13,15 @@ class TagsNotFoundFailure implements Exception {}
 /// mode mirror of the backend masterdata blacklist).
 class TagsBlacklistedFailure implements Exception {}
 
+/// Exception thrown when a write would put two tags of the same name in one
+/// category (names are unique per category). Nothing was written.
+class TagNameConflictFailure implements Exception {}
+
 class TagsRepository {
-  final apiInstance = Api();
+  final Api? _injectedApi;
+  late final Api apiInstance = _injectedApi ?? Api();
+
+  TagsRepository({Api? api}) : _injectedApi = api;
 
   /// Returns the id of the created tag. Pass [idParentTag] to create the tag
   /// as a synonym of an existing main tag of the same category. In E2EE mode
@@ -34,8 +41,8 @@ class TagsRepository {
       if (response.data == null) {
         throw TagsNotFoundFailure();
       }
-    } on DioException catch (_) {
-      throw TagsRequestFailure();
+    } on DioException catch (err) {
+      throw _tagFailure(err);
     }
 
     return response.data!['id'] as int;
@@ -51,9 +58,18 @@ class TagsRepository {
         'idCategory': idCategory,
         if (idParentTag != null) 'idParentTag': idParentTag,
       });
-    } on DioException catch (_) {
-      throw TagsRequestFailure();
+    } on DioException catch (err) {
+      throw _tagFailure(err);
     }
+  }
+
+  /// Tells a taken tag name apart from any other failure. Keyed off the
+  /// machine-readable code, never the message string.
+  Exception _tagFailure(DioException err) {
+    if (err.response?.data?['error']?['code'] == 'TAG_NAME_CONFLICT') {
+      return TagNameConflictFailure();
+    }
+    return TagsRequestFailure();
   }
 
   /// Builds the tag fields of a write payload. Plaintext name as-is for

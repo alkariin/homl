@@ -153,6 +153,11 @@ class HomeCubit extends Cubit<HomeState> {
           idParentTag: idParentTag);
       await _refreshCategories();
       return true;
+    } on TagNameConflictFailure {
+      // The name is already taken in that category and nothing was created:
+      // say so, so the user renames instead of retrying the same name.
+      emit(state.copyWith(modal: AppMessage.tagNameConflict));
+      return false;
     } catch (_) {
       emit(state.copyWith(modal: AppMessage.unexpectedError));
       return false;
@@ -165,6 +170,10 @@ class HomeCubit extends Cubit<HomeState> {
       await tagsRepository.updateTag(id, text, idCategory,
           idParentTag: idParentTag);
       await _refreshCategories();
+    } on TagNameConflictFailure {
+      // Renaming onto a taken name, or moving into a category that already
+      // has one: nothing changed, the tag is still where it was.
+      emit(state.copyWith(modal: AppMessage.tagNameConflict));
     } catch (_) {
       emit(state.copyWith(modal: AppMessage.unexpectedError));
     }

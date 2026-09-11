@@ -37,11 +37,13 @@ void main() {
   late MockEventsRepository eventsRepository;
   late MockCategoriesRepository categoriesRepository;
   late MockSettingsRepository settingsRepository;
+  late MockTagsRepository tagsRepository;
 
   setUp(() {
     eventsRepository = MockEventsRepository();
     categoriesRepository = MockCategoriesRepository();
     settingsRepository = MockSettingsRepository();
+    tagsRepository = MockTagsRepository();
 
     when(() => settingsRepository.settingsStream)
         .thenAnswer((_) => const Stream<Settings>.empty());
@@ -50,7 +52,19 @@ void main() {
   });
 
   HomeCubit buildCubit() => HomeCubit(settingsRepository, eventsRepository,
-      categoriesRepository, MockTagsRepository(), 'user');
+      categoriesRepository, tagsRepository, 'user');
+
+  /// Stubs the initial load so the cubit reaches its initialized state.
+  void stubInitialLoad() {
+    when(() => eventsRepository.getCachedEvents())
+        .thenAnswer((_) async => cachedEvents);
+    when(() => categoriesRepository.getCachedCategories())
+        .thenAnswer((_) async => cachedCategories);
+    when(() => eventsRepository.getEvents())
+        .thenAnswer((_) async => cachedEvents);
+    when(() => categoriesRepository.getCategories())
+        .thenAnswer((_) async => cachedCategories);
+  }
 
   test('serves the cached snapshot when the network is unavailable', () async {
     when(() => eventsRepository.getCachedEvents())
@@ -233,6 +247,61 @@ void main() {
     expect(cubit.state.modal, AppMessage.unexpectedError);
     // The screen keeps showing what it had: nothing was refreshed.
     expect(cubit.state.categories, cachedCategories);
+
+    await cubit.close();
+  });
+
+  // Tag names are unique per category: a write that would duplicate one is
+  // refused and nothing is stored, so the user is told to pick another name
+  // rather than left with a generic failure.
+  test('createTag explains a taken tag name', () async {
+    stubInitialLoad();
+    when(() => tagsRepository.createTag(any(), any(),
+            idParentTag: any(named: 'idParentTag')))
+        .thenThrow(TagNameConflictFailure());
+
+    final cubit = buildCubit();
+    await expectLater(
+        cubit.stream, emitsThrough(predicate<HomeState>((s) => s.initialized)));
+    final created = await cubit.createTag('Football', 2);
+
+    expect(created, isFalse,
+        reason: 'callers chaining on the creation must not proceed');
+    expect(cubit.state.modal, AppMessage.tagNameConflict);
+
+    await cubit.close();
+  });
+
+  test('updateTag explains a taken tag name', () async {
+    stubInitialLoad();
+    when(() => tagsRepository.updateTag(any(), any(), any(),
+            idParentTag: any(named: 'idParentTag')))
+        .thenThrow(TagNameConflictFailure());
+
+    final cubit = buildCubit();
+    await expectLater(
+        cubit.stream, emitsThrough(predicate<HomeState>((s) => s.initialized)));
+    await cubit.updateTag(12, 'Football', 2);
+
+    expect(cubit.state.modal, AppMessage.tagNameConflict);
+    // Nothing moved: the categories on screen are untouched.
+    expect(cubit.state.categories, cachedCategories);
+
+    await cubit.close();
+  });
+
+  test('any other tag failure stays the generic error', () async {
+    stubInitialLoad();
+    when(() => tagsRepository.updateTag(any(), any(), any(),
+            idParentTag: any(named: 'idParentTag')))
+        .thenThrow(TagsRequestFailure());
+
+    final cubit = buildCubit();
+    await expectLater(
+        cubit.stream, emitsThrough(predicate<HomeState>((s) => s.initialized)));
+    await cubit.updateTag(12, 'Football', 2);
+
+    expect(cubit.state.modal, AppMessage.unexpectedError);
 
     await cubit.close();
   });

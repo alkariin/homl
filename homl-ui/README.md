@@ -249,7 +249,10 @@ Destructive actions confirm with the counts served by `GET /tags/:id/usage` /
   (its synonyms follow) or deleted — the delete dialog says how many events
   use the tag and, as soon as there is one, asks whether to keep them (only
   the tag is removed; it says how many would be left with their date only) or
-  delete them all (`deleteEvents` on `DELETE /tags/:id`);
+  delete them all (`deleteEvents` on `DELETE /tags/:id`). Creating, renaming
+  or moving onto a name the target category already holds is refused
+  (`409 TAG_NAME_CONFLICT`, nothing written) and the toast asks for another
+  name — tag names are unique per category;
 - a synonym (tap or long press on its chip) can be renamed, detached or
   deleted — deletion confirms that its events are repointed to the main tag;
 - deleting a category offers to move its tags to the Others category

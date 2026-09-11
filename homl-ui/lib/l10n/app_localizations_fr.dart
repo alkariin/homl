@@ -548,4 +548,8 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get categories_deleteTagNameConflict =>
       'Un de ces tags existe déjà dans Autres. Renomme-le, ou supprime les tags au lieu de les déplacer.';
+
+  @override
+  String get categories_tagNameConflict =>
+      'Cette catégorie a déjà un tag portant ce nom. Choisis-en un autre.';
 }
