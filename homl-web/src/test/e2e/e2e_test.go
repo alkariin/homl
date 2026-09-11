@@ -268,12 +268,28 @@ type usageResponse struct {
 }
 
 type eventResponse struct {
-	Id          uint   `json:"id"`
-	Description string `json:"description"`
+	Id          uint    `json:"id"`
+	Description string  `json:"description"`
+	Date        string  `json:"date"`
+	EndDate     *string `json:"endDate"`
+	IsOngoing   bool    `json:"isOngoing"`
 	Tags        []struct {
-		Id         uint `json:"id"`
-		IdCategory uint `json:"idCategory"`
+		Id         uint   `json:"id"`
+		Tag        string `json:"tag"`
+		IdCategory uint   `json:"idCategory"`
 	} `json:"tags"`
+}
+
+// hasTag reports whether the event carries a tag of that name. Tag names come
+// back decrypted for a regular account, so the backend-built date tags can be
+// checked by name.
+func (e *eventResponse) hasTag(name string) bool {
+	for _, tag := range e.Tags {
+		if tag.Tag == name {
+			return true
+		}
+	}
+	return false
 }
 
 // mustDo performs a request and fails the test unless it returns want.
@@ -364,6 +380,134 @@ func (c *client) newCategoryWithEvent(name, tagName, description string) (idCate
 	}, http.StatusCreated)
 
 	return idCategory, idTag
+}
+
+// TestEventPeriods walks the three shapes of an event over real HTTP on a
+// throwaway account: a closed period is tagged with every month it covers, an
+// open one carries Ongoing until a PATCH closes it, a period ending on its
+// start day is stored as a single day, and the invalid combinations are
+// refused.
+//
+// It adds one registration and one account deletion to the per-IP /login
+// budget (10/min), which the rest of the suite leaves room for.
+func TestEventPeriods(t *testing.T) {
+	email := fmt.Sprintf("e2e-period-%d@homl.local", time.Now().UnixNano())
+	const pass = "Period1234!"
+
+	c := newClient(t)
+	c.register(email, pass)
+	t.Cleanup(func() {
+		c.do(http.MethodDelete, "/account", map[string]string{"password": pass})
+	})
+
+	mustFind := func(t *testing.T, description string) *eventResponse {
+		t.Helper()
+		e := c.findEvent(description)
+		if e == nil {
+			t.Fatalf("event %q not found after its creation", description)
+		}
+		return e
+	}
+	mustHaveTags := func(t *testing.T, e *eventResponse, names ...string) {
+		t.Helper()
+		for _, name := range names {
+			if !e.hasTag(name) {
+				t.Errorf("event %q lacks the %q tag, has %+v", e.Description, name, e.Tags)
+			}
+		}
+	}
+
+	t.Run("a closed period is tagged with every month it covers", func(t *testing.T) {
+		c.mustDo(http.MethodPost, "/events", map[string]interface{}{
+			"description": "e2e-trip",
+			"date":        "2026-06-28T00:00:00Z",
+			"endDate":     "2026-07-05T00:00:00Z",
+			"tagsId":      []uint{},
+		}, http.StatusCreated)
+
+		e := mustFind(t, "e2e-trip")
+		if e.EndDate == nil || *e.EndDate != "2026-07-05T00:00:00Z" {
+			t.Fatalf("endDate read back as %v", e.EndDate)
+		}
+		if e.IsOngoing {
+			t.Fatal("a closed period is not ongoing")
+		}
+		mustHaveTags(t, e, "June", "July", "2026")
+		if e.hasTag("Ongoing") {
+			t.Fatal("a closed period must not carry the Ongoing tag")
+		}
+	})
+
+	t.Run("an open period carries Ongoing until it is closed", func(t *testing.T) {
+		c.mustDo(http.MethodPost, "/events", map[string]interface{}{
+			"description": "e2e-job",
+			"date":        "2024-06-03T00:00:00Z",
+			"isOngoing":   true,
+			"tagsId":      []uint{},
+		}, http.StatusCreated)
+
+		e := mustFind(t, "e2e-job")
+		if !e.IsOngoing || e.EndDate != nil {
+			t.Fatalf("open period read back as isOngoing=%v endDate=%v", e.IsOngoing, e.EndDate)
+		}
+		// Tagged from its start only: no known end, so no later year.
+		mustHaveTags(t, e, "June", "2024", "Ongoing")
+		if e.hasTag("2026") {
+			t.Fatal("an open period must not be expanded to the current year")
+		}
+
+		c.mustDo(http.MethodPatch, fmt.Sprintf("/events/%d", e.Id), map[string]interface{}{
+			"description": "e2e-job",
+			"date":        "2024-06-03T00:00:00Z",
+			"endDate":     "2026-08-31T00:00:00Z",
+			"tagsId":      []uint{},
+		}, http.StatusNoContent)
+
+		e = mustFind(t, "e2e-job")
+		if e.IsOngoing || e.EndDate == nil || *e.EndDate != "2026-08-31T00:00:00Z" {
+			t.Fatalf("closed period read back as isOngoing=%v endDate=%v", e.IsOngoing, e.EndDate)
+		}
+		if e.hasTag("Ongoing") {
+			t.Fatal("closing the period must drop the Ongoing tag")
+		}
+		// The rebuild now covers the whole known span.
+		mustHaveTags(t, e, "June", "2024", "2025", "2026", "August")
+	})
+
+	t.Run("a period ending on its start day is stored as a single day", func(t *testing.T) {
+		c.mustDo(http.MethodPost, "/events", map[string]interface{}{
+			"description": "e2e-day",
+			"date":        "2026-06-03T00:00:00Z",
+			"endDate":     "2026-06-03T00:00:00Z",
+			"tagsId":      []uint{},
+		}, http.StatusCreated)
+
+		e := mustFind(t, "e2e-day")
+		if e.EndDate != nil {
+			t.Fatalf("a one-day period must be normalized to a single day, got endDate %q", *e.EndDate)
+		}
+	})
+
+	t.Run("the invalid combinations are refused", func(t *testing.T) {
+		status, body := c.do(http.MethodPost, "/events", map[string]interface{}{
+			"date":    "2026-06-18T00:00:00Z",
+			"endDate": "2026-06-03T00:00:00Z",
+			"tagsId":  []uint{},
+		})
+		if status != http.StatusBadRequest {
+			t.Fatalf("end before start: expected 400, got %d, body %s", status, body)
+		}
+
+		status, body = c.do(http.MethodPost, "/events", map[string]interface{}{
+			"date":      "2026-06-03T00:00:00Z",
+			"endDate":   "2026-06-18T00:00:00Z",
+			"isOngoing": true,
+			"tagsId":    []uint{},
+		})
+		if status != http.StatusBadRequest {
+			t.Fatalf("end date on an ongoing period: expected 400, got %d, body %s", status, body)
+		}
+	})
 }
 
 // TestCategoryDeleteOptions walks the three outcomes of the delete dialog over
