@@ -356,6 +356,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get insert_noTagsError => 'Add at least one tag';
 
   @override
+  String get insert_periodSingleDay => 'Single day';
+
+  @override
+  String get insert_periodClosed => 'Period';
+
+  @override
+  String get insert_periodOngoing => 'Ongoing';
+
+  @override
   String get list_filterLabel => 'Filter by tag';
 
   @override
@@ -373,6 +382,75 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get list_eventUpdated => 'Event updated';
+
+  @override
+  String get event_ongoing => 'Ongoing';
+
+  @override
+  String event_durationDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count days',
+      one: '1 day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String event_durationMonths(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count months',
+      one: '1 month',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String event_durationYears(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count years',
+      one: '1 year',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String event_sinceDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'for $count days',
+      one: 'for 1 day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String event_sinceMonths(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'for $count months',
+      one: 'for 1 month',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String event_sinceYears(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'for $count years',
+      one: 'for 1 year',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get categories_newCategory => 'New category';

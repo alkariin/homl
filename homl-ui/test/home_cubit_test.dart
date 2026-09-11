@@ -24,9 +24,14 @@ class MockSettingsRepository extends Mock implements SettingsRepository {}
 
 void main() {
   final cachedEvents = [
-    Event(id: 1, description: 'cached', date: DateTime(2026), tags: [
-      Tag(id: 1, tag: 'Football', idCategory: 1),
-    ]),
+    Event(
+        id: 1,
+        description: 'cached',
+        date: DateTime(2026),
+        isOngoing: false,
+        tags: [
+          Tag(id: 1, tag: 'Football', idCategory: 1),
+        ]),
   ];
   final cachedCategories = [
     Category(id: 1, category: 'Others', color: '#fff', isLocked: true, tags: [
@@ -160,7 +165,12 @@ void main() {
   test('deleteCategory refreshes the events as well as the categories',
       () async {
     final leftovers = [
-      Event(id: 1, description: 'cached', date: DateTime(2026), tags: []),
+      Event(
+          id: 1,
+          description: 'cached',
+          date: DateTime(2026),
+          isOngoing: false,
+          tags: []),
     ];
     when(() => eventsRepository.getCachedEvents())
         .thenAnswer((_) async => cachedEvents);
@@ -309,9 +319,14 @@ void main() {
   test('refreshes the cached snapshot from the network when it lands',
       () async {
     final freshEvents = [
-      Event(id: 2, description: 'fresh', date: DateTime(2026), tags: [
-        Tag(id: 1, tag: 'Football', idCategory: 1),
-      ]),
+      Event(
+          id: 2,
+          description: 'fresh',
+          date: DateTime(2026),
+          isOngoing: false,
+          tags: [
+            Tag(id: 1, tag: 'Football', idCategory: 1),
+          ]),
     ];
 
     when(() => eventsRepository.getCachedEvents())

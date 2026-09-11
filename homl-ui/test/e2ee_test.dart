@@ -8,8 +8,7 @@ import 'package:homl/helpers/language.dart';
 /// other cubit tests use.
 void _mockSecureStorage() {
   final store = <String, String>{};
-  const channel =
-      MethodChannel('plugins.it_nomads.com/flutter_secure_storage');
+  const channel = MethodChannel('plugins.it_nomads.com/flutter_secure_storage');
   TestWidgetsFlutterBinding.ensureInitialized();
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
       .setMockMethodCallHandler(channel, (call) async {
@@ -65,8 +64,7 @@ void main() {
   });
 
   group('E2ee crypto', () {
-    test('encrypt/decrypt round-trips and produces a versioned blob',
-        () async {
+    test('encrypt/decrypt round-trips and produces a versioned blob', () async {
       final e2ee = E2ee();
       await e2ee.prepareEnable();
       await e2ee.commitEnable();
@@ -116,10 +114,17 @@ void main() {
       expect(RegExp(r'^[0-9a-f]+$').hasMatch(check), isTrue);
     });
 
-    test('blacklist mirrors the English month names', () {
+    test('blacklist mirrors the backend: months, Ongoing, year-like names', () {
       final e2ee = E2ee();
       expect(e2ee.isBlacklistedTag('july'), isTrue);
       expect(e2ee.isBlacklistedTag('DECEMBER'), isTrue);
+      expect(e2ee.isBlacklistedTag('ongoing'), isTrue);
+      // Any four digits look like a year tag — "1984" included, the accepted
+      // cost of never colliding with one. Other numbers are fine.
+      expect(e2ee.isBlacklistedTag('2026'), isTrue);
+      expect(e2ee.isBlacklistedTag('1984'), isTrue);
+      expect(e2ee.isBlacklistedTag('12345'), isFalse);
+      expect(e2ee.isBlacklistedTag('202'), isFalse);
       expect(e2ee.isBlacklistedTag('Cinema'), isFalse);
     });
   });

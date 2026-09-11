@@ -295,6 +295,20 @@ under E2EE), so what the form shows is what the Dates category will hold and
 what the search can filter on. Both chips open the date picker, and both
 follow the picked date (`leading` of `TagInput` takes a list of widgets).
 
+An event is a single day, a closed period or an open one ("still ongoing"),
+picked with the segmented control under the tag input. The chips follow: a
+closed period adds a third chip with its end (`→ 5 Jul 2026`, tap it to change
+the end), an open one the **Ongoing** chip — the very date tag the event is
+filed under, translated like the months. Only the start month is chipped for
+a closed period, although the event is filed under every month it covers: a
+long one would flood the field. The shape is *derived* from the state
+(`InsertState.shape`, from `endDate` and `isOngoing`), never stored: "period"
+opens the end picker straight away and only becomes the selected shape once a
+day is picked, so cancelling leaves the previous shape, and the form can never
+rest on "a period without an end". The end picker starts on the start day and
+offers nothing before it; moving the start past an already-picked end drops
+the end (back to a single day).
+
 The date tags are stored in **English** for every user: they are keys shared
 with the backend, and under E2EE the client must be able to rebuild the exact
 same names. Translating them is therefore a display-only concern, handled by
@@ -310,9 +324,15 @@ same names. Translating them is therefore a display-only concern, handled by
   "juillet" (or picking it in the suggestions) filters on `July`, which is
   what the tag names in the events actually are.
 
-`dateTagMonths` (same file) is the single source of the English month names:
-the client builds the date tags from it under E2EE and enforces the tag-name
-blacklist with it (`E2ee.isBlacklistedTag`).
+`dateTagMonths` (same file) is the single source of the English month names.
+`periodDateTagNames` builds the date tags of a whole period from it — every
+month and year covered, plus `Ongoing` for an open period, which is tagged
+from its start month only — as the mirror of the backend `event.DateTagNames`
+(the two share the vector table of `test/event_period_test.dart`); the client
+uses it under E2EE, where the server cannot derive the tags itself.
+`E2ee.isBlacklistedTag` mirrors the backend blacklist: the month names,
+`Ongoing`, and any four-digit name (a year tag — `1984` as a user tag is the
+accepted cost of never colliding with one).
 
 ## Search tab: the event cards
 
@@ -327,6 +347,14 @@ fits:
   category carried by a cached event) and compares it to
   `dateCategoryIds(...)` (`lib/helpers/categories.dart`, shared with the edit
   page);
+- a period adds a small pill under the date: how long it lasted (`16 days`,
+  `3 months`, `2 years` — inclusive days, then calendar months from 31 days,
+  then years from 24 months, see `lib/helpers/event_period.dart`) or
+  `Ongoing`. Under the date, not beside it: on a phone-width cell the date
+  alone takes most of the line. The pill is deliberately not a `Tag` and must
+  not read as one; the rows below are sized from the room left, so it costs
+  at most a tag row on a short card. A single day shows no pill — most
+  events look exactly as they always did;
 - a tag longer than the card is truncated with an ellipsis (`Tag` makes its
   label flexible), so a single very long tag still reads;
 - with a description, the tags get every whole row that fits once the
@@ -340,17 +368,25 @@ fits:
 ## Search tab: event detail, edit & delete
 
 Tapping an event card opens a bottom sheet
-(`lib/pages/list/view/event_detail_sheet.dart`) with the full date, all the
-tags and the whole description (scrollable), plus two actions:
+(`lib/pages/list/view/event_detail_sheet.dart`) with the full period, the
+regular tags and the whole description (scrollable), plus two actions. The
+header is the start date and, for a period, a second line: the end and the
+length (`→ Thursday, June 18, 2026 · 16 days`) or, for an open one,
+`→ Ongoing · for 2 years` — counted to today at render time, never stored,
+and left out until a full day has passed so a start still in the future never
+reads as a negative duration. The date tags (months, years, `Ongoing`) are not
+chipped, as on the card: the header already carries the period, and a long
+one would put a dozen month chips under it.
 
 - **edit** pushes `EditEventPage` (`lib/pages/insert/insert.dart`), which
   reuses `InsertView`/`InsertCubit` in edit mode: `InsertState.fromEvent`
-  prefills the form but excludes the month/year date tags — the backend
-  rebuilds them from the date on every update, so sending them back in
-  `tagsId` would duplicate them as regular tags. Saving calls
+  prefills the form, period included, but excludes the date tags — the
+  backend rebuilds them from the period on every update, so sending them back
+  in `tagsId` would duplicate them as regular tags. Saving calls
   `PATCH /events/:id` (full state: the description is always sent, even
-  empty, which is how it gets erased), pops back and confirms with a
-  snackbar.
+  empty, which is how it gets erased, and so are `endDate` and `isOngoing`,
+  which is how a period turns back into a single day), pops back and
+  confirms with a snackbar.
 - **delete** asks for confirmation, then calls `DELETE /events/:id`.
 
 Neither action refreshes the list by hand: both repository calls emit on

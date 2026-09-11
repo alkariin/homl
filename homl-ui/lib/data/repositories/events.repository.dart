@@ -65,10 +65,14 @@ class EventsRepository {
     final e2ee = E2ee();
     if (!e2ee.enabled) return events;
 
+    // Every field is carried over by hand here: a new one on Event has to be
+    // added, or E2EE users read it back empty (the period fields once did).
     return Future.wait(events.map((event) async => Event(
           id: event.id,
           description: await e2ee.decrypt(event.description),
           date: event.date,
+          endDate: event.endDate,
+          isOngoing: event.isOngoing,
           tags: await Future.wait(event.tags.map((tag) async => Tag(
                 id: tag.id,
                 tag: await e2ee.decrypt(tag.tag),
@@ -98,9 +102,15 @@ class EventsRepository {
     }
   }
 
+  /// [endDate] (inclusive) makes a closed period, [isOngoing] an open one;
+  /// neither makes a single day. The pair is always sent, `null` included: the
+  /// backend treats an omitted field as cleared, and an explicit value keeps
+  /// the two sides honest about what was meant.
   Future<void> createEvent({
     String? description,
     required DateTime date,
+    DateTime? endDate,
+    bool isOngoing = false,
     required List<int> tagsId,
   }) async {
     try {
@@ -108,6 +118,8 @@ class EventsRepository {
         if (description != null && description.isNotEmpty)
           'description': await _outgoingDescription(description),
         'date': serializeDate(date),
+        'endDate': endDate == null ? null : serializeDate(endDate),
+        'isOngoing': isOngoing,
         'tagsId': tagsId,
       });
     } on DioException catch (_) {
@@ -136,18 +148,24 @@ class EventsRepository {
   }
 
   /// The backend PATCH is full-state: the description is always sent (an
-  /// empty string clears it) and the month/year date tags are rebuilt from
-  /// [date] server-side, so [tagsId] must only carry the regular tags.
+  /// empty string clears it), so are the period fields (a null [endDate] and
+  /// a false [isOngoing] turn a period back into a single day), and the date
+  /// tags are rebuilt from the period server-side, so [tagsId] must only
+  /// carry the regular tags.
   Future<void> updateEvent({
     required int id,
     String? description,
     required DateTime date,
+    DateTime? endDate,
+    bool isOngoing = false,
     required List<int> tagsId,
   }) async {
     try {
       await apiInstance.api.patch<void>('/events/$id', data: {
         'description': await _outgoingDescription(description ?? ''),
         'date': serializeDate(date),
+        'endDate': endDate == null ? null : serializeDate(endDate),
+        'isOngoing': isOngoing,
         'tagsId': tagsId,
       });
     } on DioException catch (_) {

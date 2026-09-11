@@ -8,11 +8,19 @@ import 'package:homl/helpers/event_search.dart';
 Tag tag(int id, String name, {int? parent}) =>
     Tag(id: id, tag: name, idCategory: 1, idParentTag: parent);
 
-Event event(int id, List<Tag> tags) =>
-    Event(id: id, description: 'event $id', date: DateTime(2026), tags: tags);
+Event event(int id, List<Tag> tags) => Event(
+    id: id,
+    description: 'event $id',
+    date: DateTime(2026),
+    isOngoing: false,
+    tags: tags);
 
 Category cat(int id, List<Tag> tags) => Category(
-    id: id, category: 'Category $id', color: '#fff', isLocked: false, tags: tags);
+    id: id,
+    category: 'Category $id',
+    color: '#fff',
+    isLocked: false,
+    tags: tags);
 
 void main() {
   group('normalizeTagName', () {
