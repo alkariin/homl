@@ -243,7 +243,10 @@ modes: the management view of the Categories tab (tap or long-press a tag →
 its actions menu), and a read-only picker (`showTagPickerSheet`, opened from
 the browse button of the tag inputs, and titled "Choose a tag" since the
 button no longer says what it opens) where tapping a tag hands it to the
-caller.
+caller. The picker's `showDates` says whether the Dates category is listed:
+true on the Search tab (filtering on a month or a year is fair game), false
+on the Insert tab, where an event's date tags come from its period and
+picking one by hand would either do nothing or fight that derivation.
 Destructive actions confirm with the counts served by `GET /tags/:id/usage` /
 `GET /categories/:id/usage`:
 
@@ -271,7 +274,8 @@ Destructive actions confirm with the counts served by `GET /tags/:id/usage` /
 Both tag inputs carry a **browse button** next to the field (a tonal square
 the height of the field, wearing the Categories tab's tag icon): it opens the
 picker sheet on the Search tab, where tapping a tag inserts it as a search
-filter, and on the Insert tab, where it adds the tag to the event. It replaced
+filter, and on the Insert tab, where it adds the tag to the event (without
+the Dates category, as above). It replaced
 the "#" logo button that used to sit there: a logo is not an affordance, and
 the mark it showed now lives in the app bar (see below).
 
