@@ -223,6 +223,12 @@ class _InsertViewState extends State<InsertView> {
         }
       },
       child: BlocBuilder<HomeCubit, HomeState>(builder: (context, homeState) {
+        // Printed next to each suggestion, translated like the Categories tab.
+        final categoryLabels = {
+          for (final category in homeState.categories)
+            category.id: localizedCategoryName(category, localization),
+        };
+
         // A free tag not created yet lands in the Others category on submit:
         // its chip already wears that category's grey.
         String? otherCategoryColor;
@@ -312,6 +318,7 @@ class _InsertViewState extends State<InsertView> {
                             displayName:
                                 localizedTagName(tagView.tagName, locale),
                             color: tagView.color,
+                            category: categoryLabels[tagView.idCategory],
                             highlightColor:
                                 homeState.markAccentFor(tagView.tagName)))
                         .toList(),

@@ -465,7 +465,9 @@ offline. The matching replicates the backend one (`FindEventsWithTags`):
 - multiple filters use AND semantics.
 
 While typing, the field autocompletes on the existing tags (prefix matches
-first, then substring matches). The input border takes the category color of
+first, then substring matches); each suggestion is drawn as the chip it would
+become, with its category named on the right, so the colors explain
+themselves. The input border takes the category color of
 the top suggestion — except for tags of the Others category, which keep the
 default styling (`lib/components/tag_input.dart`, `highlightColor` on
 `TagChipData`) — and the app bar mark follows the same suggestion by name

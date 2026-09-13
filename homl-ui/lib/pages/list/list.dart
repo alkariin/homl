@@ -6,6 +6,7 @@ import 'package:homl/components/event_card.dart';
 import 'package:homl/components/tag_input.dart';
 import 'package:homl/data/models/category.dart';
 import 'package:homl/helpers/categories.dart';
+import 'package:homl/helpers/category_labels.dart';
 import 'package:homl/helpers/date_tags.dart';
 import 'package:homl/pages/categories/view/category_management.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
@@ -40,6 +41,12 @@ class ListPage extends StatelessWidget {
 
       final dateIds = dateCategoryIds(homeState.categories);
 
+      // Printed next to each suggestion, translated like the Categories tab.
+      final categoryLabels = {
+        for (final category in homeState.categories)
+          category.id: localizedCategoryName(category, localization),
+      };
+
       return BlocBuilder<ListCubit, ListState>(builder: (context, listState) {
         // The decorative background is shared by the tabs (parallax in the
         // home page).
@@ -62,6 +69,7 @@ class ListPage extends StatelessWidget {
                       name: tagView.tagName,
                       displayName: localizedTagName(tagView.tagName, locale),
                       color: tagView.color,
+                      category: categoryLabels[tagView.idCategory],
                       highlightColor:
                           otherCategoryIds.contains(tagView.idCategory)
                               ? null
