@@ -183,6 +183,24 @@ void main() {
     expect(find.byIcon(Icons.add), findsNothing);
   });
 
+  testWidgets('the picker can leave the Dates category out', (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: BlocProvider.value(
+        value: cubit,
+        child: Scaffold(
+            body: CategoryManagementBody(
+                showDates: false, onTagSelected: (_) {})),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Dates'), findsNothing);
+    expect(find.text('Hobbies'), findsOneWidget);
+    expect(find.text('Others'), findsOneWidget);
+  });
+
   testWidgets('tags of the Others category are manageable and movable',
       (tester) async {
     when(() => tagsRepository.updateTag(any(), any(), any(),

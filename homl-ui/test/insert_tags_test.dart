@@ -184,6 +184,10 @@ void main() {
 
     expect(find.byType(BottomSheet), findsOneWidget);
     expect(find.text('Choose a tag'), findsOneWidget);
+    // The Dates category is not offered here: the event is filed under the
+    // date tags the backend derives from its period, so there is nothing to
+    // pick.
+    expect(find.text('Dates'), findsNothing);
     await tester.tap(find.text('Hobbies'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Football'));

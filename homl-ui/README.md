@@ -243,7 +243,10 @@ modes: the management view of the Categories tab (tap or long-press a tag →
 its actions menu), and a read-only picker (`showTagPickerSheet`, opened from
 the browse button of the tag inputs, and titled "Choose a tag" since the
 button no longer says what it opens) where tapping a tag hands it to the
-caller.
+caller. The picker's `showDates` says whether the Dates category is listed:
+true on the Search tab (filtering on a month or a year is fair game), false
+on the Insert tab, where an event's date tags come from its period and
+picking one by hand would either do nothing or fight that derivation.
 Destructive actions confirm with the counts served by `GET /tags/:id/usage` /
 `GET /categories/:id/usage`:
 
@@ -271,9 +274,10 @@ Destructive actions confirm with the counts served by `GET /tags/:id/usage` /
 Both tag inputs carry a **browse button** next to the field (a tonal square
 the height of the field, wearing the Categories tab's tag icon): it opens the
 picker sheet on the Search tab, where tapping a tag inserts it as a search
-filter, and on the Insert tab, where it adds the tag to the event. It replaced
-the "#" logo button that used to sit there: a logo is not an affordance, and
-the mark it showed now lives in the app bar (see below).
+filter, and on the Insert tab, where it adds the tag to the event (without the
+Dates category, as above). It replaced the "#" logo button that used to sit
+there: a logo is not an affordance, and the mark it showed now lives in the
+app bar (see below).
 
 On the **Insert tab**, a name none of the known tags matches opens a panel
 under the field with the categories it can be created in (Dates excluded — the
@@ -332,18 +336,21 @@ what the search can filter on. Both chips open the date picker, and both
 follow the picked date (`leading` of `TagInput` takes a list of widgets).
 
 An event is a single day, a closed period or an open one ("still ongoing"),
-picked with the segmented control under the tag input. The chips follow: a
-closed period adds a third chip with its end (`→ 5 Jul 2026`, tap it to change
-the end), an open one the **Ongoing** chip — the very date tag the event is
-filed under, translated like the months. Only the start month is chipped for
-a closed period, although the event is filed under every month it covers: a
-long one would flood the field. The shape is *derived* from the state
-(`InsertState.shape`, from `endDate` and `isOngoing`), never stored: "period"
-opens the end picker straight away and only becomes the selected shape once a
-day is picked, so cancelling leaves the previous shape, and the form can never
-rest on "a period without an end". The end picker starts on the start day and
-offers nothing before it; moving the start past an already-picked end drops
-the end (back to a single day).
+picked with the segmented control under the tag input. Its selected segment
+wears the palette's grey (`segmentedButtonTheme` in `lib/helpers/theme.dart`):
+Material 3 fills it with the scheme's `secondaryContainer`, which the black
+seed of `ColorScheme.fromSeed` turns into a washed red — the only warm surface
+in an otherwise monochrome app. The chips follow: a closed period adds a third
+chip with its end (`→ 5 Jul 2026`, tap it to change the end), an open one the
+**Ongoing** chip — the very date tag the event is filed under, translated like
+the months. Only the start month is chipped for a closed period, although the
+event is filed under every month it covers: a long one would flood the field.
+The shape is *derived* from the state (`InsertState.shape`, from `endDate` and
+`isOngoing`), never stored: "period" opens the end picker straight away and
+only becomes the selected shape once a day is picked, so cancelling leaves the
+previous shape, and the form can never rest on "a period without an end". The
+end picker starts on the start day and offers nothing before it; moving the
+start past an already-picked end drops the end (back to a single day).
 
 The date tags are stored in **English** for every user: they are keys shared
 with the backend, and under E2EE the client must be able to rebuild the exact
