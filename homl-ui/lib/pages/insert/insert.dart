@@ -296,9 +296,14 @@ class _InsertViewState extends State<InsertView> {
                     controller: _tagController,
                     // Browsing the categories adds an existing tag to the
                     // event; a name none of them holds opens the panel below.
+                    // The Dates category stays out of the sheet: the backend
+                    // files the event under its own date tags, derived from
+                    // the period picked below, so picking one here would
+                    // either be a no-op or fight that derivation.
                     browseLabel: localization.categories_browseTags,
                     onBrowse: () => showTagPickerSheet(
                       context,
+                      showDates: false,
                       onTagSelected: (tag) =>
                           context.read<InsertCubit>().addTag(tag.tagName),
                     ),
@@ -376,8 +381,7 @@ class _InsertViewState extends State<InsertView> {
                         // The Dates tags are the backend's: it derives them
                         // from the event period, nobody types them.
                         categories: homeState.categories
-                            .where((category) =>
-                                category.kind != CategoryKind.date)
+                            .where((category) => !isDateCategory(category))
                             .toList(),
                         onPicked: (category) =>
                             _createTagIn(context, name, category),

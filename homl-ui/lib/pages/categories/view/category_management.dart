@@ -11,6 +11,13 @@ import 'package:homl/helpers/colors.dart';
 import 'package:homl/helpers/date_tags.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
 
+/// True when [category] holds the date tags — the months, years and Ongoing
+/// the backend derives from the event periods. Older backends do not send the
+/// kind: fall back to the seeded name, like [localizedCategoryName].
+bool isDateCategory(Category category) =>
+    category.kind == CategoryKind.date ||
+    (category.kind == null && category.category == defaultDatesName);
+
 /// Categories list: every category with its tags and synonyms.
 ///
 /// Two modes, chosen by [onTagSelected]:
@@ -22,7 +29,13 @@ import 'package:homl/pages/home/bloc/home_cubit.dart';
 class CategoryManagementBody extends StatelessWidget {
   final void Function(TagView tag)? onTagSelected;
 
-  const CategoryManagementBody({this.onTagSelected, super.key});
+  /// Lists the Dates category too. False where picking one makes no sense:
+  /// an event's date tags come from its period, never from the picker (see
+  /// [showTagPickerSheet]). Searching by month or year stays fair game.
+  final bool showDates;
+
+  const CategoryManagementBody(
+      {this.onTagSelected, this.showDates = true, super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -35,6 +48,7 @@ class CategoryManagementBody extends StatelessWidget {
             // insert page, or tags moved on a category deletion).
             .where((category) =>
                 category.kind != CategoryKind.other || category.tags.isNotEmpty)
+            .where((category) => showDates || !isDateCategory(category))
             .map((category) =>
                 _CategoryTile(category: category, onTagSelected: onTagSelected))
             .toList(),
@@ -44,9 +58,12 @@ class CategoryManagementBody extends StatelessWidget {
 }
 
 /// Bottom sheet with the categories in picker mode: tapping a tag hands it
-/// to [onTagSelected] and closes the sheet.
+/// to [onTagSelected] and closes the sheet. [showDates] hides the Dates
+/// category when picking one would be meaningless — see
+/// [CategoryManagementBody.showDates].
 void showTagPickerSheet(BuildContext context,
-    {required void Function(TagView tag) onTagSelected}) {
+    {required void Function(TagView tag) onTagSelected,
+    bool showDates = true}) {
   final homeCubit = context.read<HomeCubit>();
 
   showModalBottomSheet<void>(
@@ -70,6 +87,7 @@ void showTagPickerSheet(BuildContext context,
           ),
           Flexible(
             child: CategoryManagementBody(
+              showDates: showDates,
               onTagSelected: (tag) {
                 Navigator.pop(sheetContext);
                 onTagSelected(tag);
