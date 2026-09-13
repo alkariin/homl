@@ -496,6 +496,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get categories_newTag => 'New tag';
 
   @override
+  String get categories_browseTags => 'Browse tags';
+
+  @override
+  String get categories_pickTag => 'Choose a tag';
+
+  @override
   String get categories_renameTag => 'Rename tag';
 
   @override

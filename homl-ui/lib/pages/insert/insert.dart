@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:homl/l10n/app_localizations.dart';
 
+import 'package:homl/components/app_bar_mark.dart';
 import 'package:homl/components/bubbles_background.dart';
 import 'package:homl/components/button.dart';
 import 'package:homl/components/input.dart';
@@ -10,41 +11,21 @@ import 'package:homl/components/tag.dart';
 import 'package:homl/components/tag_input.dart';
 import 'package:homl/data/models/category.dart';
 import 'package:homl/data/models/event.dart';
-import 'package:homl/data/repositories/events.repository.dart';
-import 'package:homl/data/repositories/tags.repository.dart';
 import 'package:homl/helpers/app_message.dart';
 import 'package:homl/helpers/categories.dart';
+import 'package:homl/helpers/category_labels.dart';
+import 'package:homl/helpers/colors.dart';
 import 'package:homl/helpers/date_tags.dart';
+import 'package:homl/helpers/e2ee.dart';
 import 'package:homl/helpers/toast.dart';
 import 'package:homl/pages/categories/view/category_management.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
 import 'package:homl/pages/insert/bloc/insert_cubit.dart';
 
-class InsertPage extends StatelessWidget {
-  /// Called after a successful creation (not edits): the home page uses it
-  /// to bring the user back to the Search tab.
-  final VoidCallback? onCreated;
-
-  const InsertPage({this.onCreated, super.key});
-
-  static Route<void> route() {
-    return MaterialPageRoute<void>(builder: (_) => const InsertPage());
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => InsertCubit(
-          context.read<EventsRepository>(), context.read<TagsRepository>()),
-      child: InsertView(onCreated: onCreated),
-    );
-  }
-}
-
 /// Edit form for an existing event, pushed from the event detail sheet. It
 /// reuses [InsertView] with an [InsertCubit] seeded from the event, so the
 /// tag resolution/creation logic stays in one place.
-class EditEventPage extends StatelessWidget {
+class EditEventPage extends StatefulWidget {
   /// The HomeCubit is passed through the route on purpose: this page lives in
   /// its own navigator route, outside the provider scope of the home page
   /// (see AccountPage for the same convention).
@@ -60,17 +41,33 @@ class EditEventPage extends StatelessWidget {
   }
 
   @override
+  State<EditEventPage> createState() => _EditEventPageState();
+}
+
+class _EditEventPageState extends State<EditEventPage> {
+  /// The tag being typed in the form. This route carries its own app bar,
+  /// hence its own notifier: the home one is a screen away.
+  final ValueNotifier<String?> _typedTag = ValueNotifier(null);
+
+  @override
+  void dispose() {
+    _typedTag.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     var localization = AppLocalizations.of(context)!;
 
     return MultiBlocProvider(
       providers: [
-        BlocProvider.value(value: homeCubit),
+        BlocProvider.value(value: widget.homeCubit),
         BlocProvider(
-            create: (_) => InsertCubit(
-                homeCubit.eventsRepository, homeCubit.tagsRepository,
-                editing: event,
-                dateCategoryIds: dateCategoryIds(homeCubit.state.categories))),
+            create: (_) => InsertCubit(widget.homeCubit.eventsRepository,
+                widget.homeCubit.tagsRepository,
+                editing: widget.event,
+                dateCategoryIds:
+                    dateCategoryIds(widget.homeCubit.state.categories))),
       ],
       child: Scaffold(
         appBar: AppBar(
@@ -81,20 +78,37 @@ class EditEventPage extends StatelessWidget {
               Navigator.pop(context);
             },
           ),
+          actions: [
+            BlocBuilder<HomeCubit, HomeState>(
+              builder: (context, home) => BlocBuilder<InsertCubit, InsertState>(
+                builder: (context, state) => AppBarMark(
+                    tagNames: state.tagNames,
+                    typedTag: _typedTag,
+                    accentColorOf: home.markAccentFor),
+              ),
+            ),
+            const SizedBox(width: 16),
+          ],
         ),
         // This route lives outside the home PageView: it carries its own
         // copy of the shared decorative background.
-        body: const BubblesBackground(child: InsertView()),
+        body: BubblesBackground(child: InsertView(typedTag: _typedTag)),
       ),
     );
   }
 }
 
 class InsertView extends StatefulWidget {
-  /// See [InsertPage.onCreated]; null in edit mode (the edit route pops).
+  /// Called after a successful creation (not edits): the home page uses it
+  /// to bring the user back to the Search tab. Null in edit mode (the edit
+  /// route pops instead).
   final VoidCallback? onCreated;
 
-  const InsertView({this.onCreated, super.key});
+  /// Reports the tag being typed to the app bar mark of the page holding the
+  /// form (see [AppBarMark]).
+  final ValueNotifier<String?>? typedTag;
+
+  const InsertView({this.onCreated, this.typedTag, super.key});
 
   @override
   State<InsertView> createState() => _InsertViewState();
@@ -103,9 +117,13 @@ class InsertView extends StatefulWidget {
 class _InsertViewState extends State<InsertView> {
   final TextEditingController _descriptionController = TextEditingController();
 
-  /// Owned here (handed to [TagInput]) so the logo flow below can read and
-  /// clear the pending tag text.
+  /// Owned here (handed to [TagInput]) so the new-tag panel below can read
+  /// and clear the pending tag text.
   final TextEditingController _tagController = TextEditingController();
+
+  /// Name typed in the tag field while no known tag matches it: the panel
+  /// under the field offers to create it in a category. Null hides it.
+  final ValueNotifier<String?> _newTagName = ValueNotifier(null);
 
   @override
   void initState() {
@@ -118,45 +136,48 @@ class _InsertViewState extends State<InsertView> {
   void dispose() {
     _descriptionController.dispose();
     _tagController.dispose();
+    _newTagName.dispose();
     super.dispose();
   }
 
-  /// "#" logo of the tag input:
-  /// - empty field: browse the categories and tap a tag to add it;
-  /// - a new tag typed: pick the category it belongs to, create it there and
-  ///   add it to the event;
-  /// - an existing tag typed: nothing to do, it already has a category (the
-  ///   autocomplete adds it to the event).
-  void _onLogoTap(BuildContext context, String pending, HomeState homeState) {
-    var localization = AppLocalizations.of(context)!;
+  /// Fed by the tag input on every change of the field: the top suggestion
+  /// goes to the app bar mark, and "no suggestion at all" is what opens the
+  /// new-tag panel — so it never fights the autocomplete dropdown for the
+  /// room under the field. A name that is already a tag (its suggestion is
+  /// hidden once it is chipped on the event) opens nothing, and neither does
+  /// a name reserved for the date tags — the backend would refuse to create
+  /// it, so it must not be offered.
+  void _onSuggestion(String? tagName) {
+    widget.typedTag?.value = tagName;
+
+    final pending = _tagController.text.trim();
+    final known = context
+        .read<HomeCubit>()
+        .state
+        .allTagsMap
+        .keys
+        .any((name) => name.toLowerCase() == pending.toLowerCase());
+
+    _newTagName.value = pending.isEmpty ||
+            tagName != null ||
+            known ||
+            E2ee().isBlacklistedTag(pending)
+        ? null
+        : pending;
+  }
+
+  /// Creates the typed tag in the picked category and chips it on the event,
+  /// instead of letting it fall into Others on submit.
+  Future<void> _createTagIn(
+      BuildContext context, String name, Category category) async {
     final insertCubit = context.read<InsertCubit>();
     final homeCubit = context.read<HomeCubit>();
 
-    if (pending.isEmpty) {
-      showTagPickerSheet(
-        context,
-        onTagSelected: (tag) => insertCubit.addTag(tag.tagName),
-      );
-      return;
+    final created = await homeCubit.createTag(name, category.id);
+    if (created) {
+      insertCubit.addTag(name);
+      _tagController.clear();
     }
-
-    final exists = homeState.allTagsMap.keys
-        .any((name) => name.toLowerCase() == pending.toLowerCase());
-    if (exists) {
-      return;
-    }
-
-    pickCategoryDialog(
-      context,
-      title: localization.insert_newTagCategoryTitle(pending),
-      onPicked: (category) async {
-        final created = await homeCubit.createTag(pending, category.id);
-        if (created) {
-          insertCubit.addTag(pending);
-          _tagController.clear();
-        }
-      },
-    );
   }
 
   @override
@@ -202,6 +223,12 @@ class _InsertViewState extends State<InsertView> {
         }
       },
       child: BlocBuilder<HomeCubit, HomeState>(builder: (context, homeState) {
+        // Printed next to each suggestion, translated like the Categories tab.
+        final categoryLabels = {
+          for (final category in homeState.categories)
+            category.id: localizedCategoryName(category, localization),
+        };
+
         // A free tag not created yet lands in the Others category on submit:
         // its chip already wears that category's grey.
         String? otherCategoryColor;
@@ -266,10 +293,16 @@ class _InsertViewState extends State<InsertView> {
                 children: [
                   TagInput(
                     labelText: localization.insert_tagInputLabel,
-                    showLogo: true,
                     controller: _tagController,
-                    onLogoTap: (pending) =>
-                        _onLogoTap(context, pending, homeState),
+                    // Browsing the categories adds an existing tag to the
+                    // event; a name none of them holds opens the panel below.
+                    browseLabel: localization.categories_browseTags,
+                    onBrowse: () => showTagPickerSheet(
+                      context,
+                      onTagSelected: (tag) =>
+                          context.read<InsertCubit>().addTag(tag.tagName),
+                    ),
+                    onSuggestionChanged: _onSuggestion,
                     tags: state.tagNames
                         .map((name) => TagChipData(
                             id: homeState.allTagsMap[name]?.id ?? -1,
@@ -284,7 +317,10 @@ class _InsertViewState extends State<InsertView> {
                             name: tagView.tagName,
                             displayName:
                                 localizedTagName(tagView.tagName, locale),
-                            color: tagView.color))
+                            color: tagView.color,
+                            category: categoryLabels[tagView.idCategory],
+                            highlightColor:
+                                homeState.markAccentFor(tagView.tagName)))
                         .toList(),
                     onAddTag: (name) =>
                         context.read<InsertCubit>().addTag(name),
@@ -330,6 +366,23 @@ class _InsertViewState extends State<InsertView> {
                           large: true,
                         ),
                     ],
+                  ),
+                  ValueListenableBuilder<String?>(
+                    valueListenable: _newTagName,
+                    builder: (context, name, _) {
+                      if (name == null) return const SizedBox.shrink();
+                      return _NewTagCategories(
+                        name: name,
+                        // The Dates tags are the backend's: it derives them
+                        // from the event period, nobody types them.
+                        categories: homeState.categories
+                            .where((category) =>
+                                category.kind != CategoryKind.date)
+                            .toList(),
+                        onPicked: (category) =>
+                            _createTagIn(context, name, category),
+                      );
+                    },
                   ),
                   const SizedBox(height: 14),
                   // One day, a closed period or an open one. "Period" opens
@@ -393,6 +446,104 @@ class _InsertViewState extends State<InsertView> {
           );
         });
       }),
+    );
+  }
+}
+
+/// Panel under the tag input: the categories the typed name can be created
+/// in, one tap each. It replaces the dialog the old "#" logo button opened —
+/// the choice is offered where the name was typed, and only when no known tag
+/// matches it. Ignoring it still works: submitting files the tag under
+/// Others, as it always did.
+class _NewTagCategories extends StatelessWidget {
+  final String name;
+  final List<Category> categories;
+  final void Function(Category category) onPicked;
+
+  const _NewTagCategories(
+      {required this.name, required this.categories, required this.onPicked});
+
+  @override
+  Widget build(BuildContext context) {
+    var localization = AppLocalizations.of(context)!;
+
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: ink.withValues(alpha: 0.03),
+        border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            localization.insert_newTagCategoryTitle(name),
+            style: TextStyle(fontSize: 13, color: ink.withValues(alpha: 0.6)),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: categories
+                .map((category) => _CategoryPill(
+                    category: category, onTap: () => onPicked(category)))
+                .toList(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One category of the panel: its color as a dot, its name, and the whole
+/// pill as the target.
+class _CategoryPill extends StatelessWidget {
+  final Category category;
+  final VoidCallback onTap;
+
+  const _CategoryPill({required this.category, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    var localization = AppLocalizations.of(context)!;
+    final base = colorFromHex(category.color);
+
+    return Material(
+      color: Colors.white,
+      shape: StadiumBorder(
+          side: BorderSide(color: Colors.black.withValues(alpha: 0.08))),
+      child: InkWell(
+        customBorder: const StadiumBorder(),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(10, 8, 14, 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 9,
+                height: 9,
+                decoration: BoxDecoration(
+                  color: base,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                      color: darken(base, .3).withValues(alpha: 0.5), width: 1),
+                ),
+              ),
+              const SizedBox(width: 7),
+              Text(
+                localizedCategoryName(category, localization),
+                style: TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w500,
+                    color: ink.withValues(alpha: 0.85)),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
