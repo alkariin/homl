@@ -1,16 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:homl/components/tag.dart';
 import 'package:homl/components/tag_input.dart';
 import 'package:homl/helpers/colors.dart';
 
 const football = TagChipData(
-    id: 1, name: 'Football', color: '#f28b82', highlightColor: '#f28b82');
+    id: 1,
+    name: 'Football',
+    color: '#f28b82',
+    highlightColor: '#f28b82',
+    category: 'Hobbies');
 const info = TagChipData(
-    id: 2, name: 'Info', color: '#aecbfa', highlightColor: '#aecbfa');
+    id: 2,
+    name: 'Info',
+    color: '#aecbfa',
+    highlightColor: '#aecbfa',
+    category: 'Work');
 
 /// A free-typed tag of the Others category: suggested, but never highlighted.
-const other = TagChipData(id: 3, name: 'Fondue', color: '#f2e5c2');
+const other =
+    TagChipData(id: 3, name: 'Fondue', color: '#f2e5c2', category: 'Others');
 
 /// A month date tag: stored in English, displayed in the app language.
 const july = TagChipData(
@@ -66,6 +76,21 @@ void main() {
     final info = tester.getTopLeft(find.text('Info'));
     expect(football.dy, lessThan(info.dy));
     expect(fondue.dy, lessThan(info.dy));
+  });
+
+  testWidgets('suggests each tag as its chip, with its category named',
+      (tester) async {
+    await tester.pumpWidget(wrap());
+    await tester.enterText(find.byType(TextField), 'foot');
+    await tester.pumpAndSettle();
+
+    final row = find.widgetWithText(ListTile, 'Football');
+    expect(row, findsOneWidget);
+    final chip = tester
+        .widget<Tag>(find.descendant(of: row, matching: find.byType(Tag)));
+    expect(chip.color, '#f28b82');
+    expect(find.descendant(of: row, matching: find.text('Hobbies')),
+        findsOneWidget);
   });
 
   testWidgets('tints the border with the top suggestion category',

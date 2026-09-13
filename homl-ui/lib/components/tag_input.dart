@@ -26,12 +26,17 @@ class TagChipData {
   /// so a translated month is searchable under its label too.
   final String? displayName;
 
+  /// Display name of the tag's category, printed next to its suggestion so
+  /// the color of the chip is explained; nothing is printed when null.
+  final String? category;
+
   const TagChipData(
       {required this.id,
       required this.name,
       this.color,
       this.highlightColor,
-      this.displayName});
+      this.displayName,
+      this.category});
 
   String get label => displayName ?? name;
 }
@@ -296,9 +301,19 @@ class _TagInputState extends State<TagInput> {
                           labelText: widget.labelText,
                           enabledBorder: border,
                           focusedBorder: focusedBorder,
+                          // FaIcon is a bare glyph (the Icon widget minus
+                          // its SizedBox and Center): handed the 48 px slot
+                          // of the prefix it would paint in its top-left
+                          // corner, so it is centered by hand.
                           prefixIcon: widget.showSearchIcon
-                              ? FaIcon(FontAwesomeIcons.magnifyingGlass,
-                                  size: 18, color: ink.withValues(alpha: 0.45))
+                              ? Center(
+                                  widthFactor: 1,
+                                  heightFactor: 1,
+                                  child: FaIcon(
+                                      FontAwesomeIcons.magnifyingGlass,
+                                      size: 18,
+                                      color: ink.withValues(alpha: 0.45)),
+                                )
                               : null,
                           suffixIcon: value.text.isEmpty
                               ? const SizedBox.shrink()
@@ -333,9 +348,29 @@ class _TagInputState extends State<TagInput> {
                           itemCount: options.length,
                           itemBuilder: (context, index) {
                             final option = options.elementAt(index);
+                            // The suggestion is the chip it would become,
+                            // with its category named on the right: the
+                            // color of the chip, the border and the app bar
+                            // mark then explain themselves.
                             return ListTile(
                               dense: true,
-                              title: Text(option.label),
+                              contentPadding:
+                                  const EdgeInsets.fromLTRB(12, 0, 14, 0),
+                              title: Align(
+                                alignment: AlignmentDirectional.centerStart,
+                                child: Tag(
+                                    id: option.id,
+                                    text: option.label,
+                                    color: option.color),
+                              ),
+                              trailing: option.category == null
+                                  ? null
+                                  : Text(
+                                      option.category!,
+                                      style: TextStyle(
+                                          fontSize: 12.5,
+                                          color: ink.withValues(alpha: 0.45)),
+                                    ),
                               onTap: () => onSelected(option),
                             );
                           },
