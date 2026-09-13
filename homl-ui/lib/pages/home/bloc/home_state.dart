@@ -62,6 +62,25 @@ class HomeState extends Equatable {
     );
   }
 
+  /// Category color ("#RRGGBB") tinting the app bar mark for [tagName], or
+  /// null when the mark must stay in its resting gold: an unknown tag, a date
+  /// tag (the mark already wears the gold of the Dates category) or an Others
+  /// tag (its grey never reads as a category — the same rule the input border
+  /// follows).
+  String? markAccentFor(String tagName) {
+    final tag = allTagsMap[tagName];
+    if (tag == null || dateCategoryIds(categories).contains(tag.idCategory)) {
+      return null;
+    }
+
+    for (final category in categories) {
+      if (category.id == tag.idCategory) {
+        return category.kind == CategoryKind.other ? null : tag.color;
+      }
+    }
+    return null;
+  }
+
   @override
   List<Object?> get props =>
       [username, events, categories, settings, allTagsMap, initialized, modal];

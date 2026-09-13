@@ -16,111 +16,163 @@ class _GoldTintMapper extends ColorMapper {
       color == yellow ? tint : color;
 }
 
+Widget _hash(Color? tint) => SvgPicture.asset(
+      'assets/images/logo.svg',
+      fit: BoxFit.contain,
+      colorMapper: tint == null ? null : _GoldTintMapper(tint),
+    );
+
 /// The homl "#" logo: the two-tone hash from the design export
-/// (assets/images/logo.svg) inside a white circle.
+/// (assets/images/logo.svg).
 ///
-/// [colorProgress] drives the gold reveal: at 0 the whole hash is black, at 1
-/// it shows the normal two-tone artwork. The reveal sweeps from the base of
-/// the gold strokes (bottom-left) to their tip (top-right).
-///
-/// [tint] recolors the gold strokes only — the black ones stay black — and
-/// the circle border (search bar: the category color of the top suggestion).
-/// Null keeps the normal artwork.
-///
-/// [circled] false drops the white circle, border and shadow and shows the
-/// bare hash (splash screen: the circle reads as a tappable button there).
+/// [tint] recolors the gold strokes only — the black ones stay black. Null
+/// keeps the normal two-tone artwork, which is the resting state of the mark.
 class HomlLogo extends StatelessWidget {
   final double size;
-  final double colorProgress;
   final Color? tint;
-  final bool circled;
 
-  /// Fraction of the diameter used as padding around the inner artwork.
-  /// Smaller values make the "#" larger inside the circle without changing
-  /// the circle's diameter.
-  final double insetFactor;
-
-  const HomlLogo(
-      {this.size = 51,
-      this.colorProgress = 1.0,
-      this.tint,
-      this.circled = true,
-      this.insetFactor = 0.2,
-      super.key});
+  const HomlLogo({this.size = 51, this.tint, super.key});
 
   @override
   Widget build(BuildContext context) {
-    if (!circled) {
-      return SizedBox(
-        width: size,
-        height: size,
-        child: colorProgress >= 1.0 ? _hash() : _revealingHash(),
-      );
-    }
-    return Container(
+    return SizedBox(width: size, height: size, child: _hash(tint));
+  }
+}
+
+/// The hash caught between two colorings: [from] underneath and [to] painted
+/// over it, revealed from the base of the gold strokes (bottom-left) to their
+/// tip (top-right) as [progress] goes from 0 to 1.
+///
+/// Both layers are stacked in the same tight box, so the artwork keeps the
+/// exact same size throughout the sweep (a loose Stack would render it
+/// smaller until the animation ends). At 1 only the [to] artwork is left.
+class HomlLogoSweep extends StatelessWidget {
+  final double size;
+  final Color? from;
+  final Color? to;
+  final double progress;
+
+  /// Softness of the reveal front, as a fraction of the sweep.
+  static const double _fade = 0.25;
+
+  const HomlLogoSweep(
+      {required this.progress, this.from, this.to, this.size = 51, super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    if (progress >= 1.0) return HomlLogo(size: size, tint: to);
+
+    final front = progress * (1 + _fade);
+    return SizedBox(
       width: size,
       height: size,
-      padding: EdgeInsets.all(size * insetFactor),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        shape: BoxShape.circle,
-        border: Border.all(
-            color: tint ?? yellow, width: tint == null ? 0.5 : 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.25),
-            blurRadius: 10,
-            spreadRadius: 1,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Positioned.fill(child: _hash(from)),
+          Positioned.fill(
+            child: ShaderMask(
+              blendMode: BlendMode.dstIn,
+              shaderCallback: (rect) => LinearGradient(
+                begin: Alignment.bottomLeft,
+                end: Alignment.topRight,
+                colors: [Colors.white, Colors.white.withValues(alpha: 0)],
+                stops: [
+                  (front - _fade).clamp(0.0, 1.0),
+                  front.clamp(0.0, 1.0),
+                ],
+              ).createShader(rect),
+              child: _hash(to),
+            ),
           ),
         ],
       ),
-      child: colorProgress >= 1.0 ? _hash() : _revealingHash(),
     );
   }
+}
 
-  /// The plain two-tone artwork stacked over an all-black copy of itself,
-  /// with the top layer masked by a gradient front at [colorProgress].
-  /// Black-over-black is invisible, so only the gold strokes appear to fill.
-  Widget _revealingHash() {
-    const fade = 0.25;
-    final front = colorProgress * (1 + fade);
-    // Both layers use Positioned.fill so they take the same tight box
-    // constraints as the final single [_hash], keeping the artwork the exact
-    // same size throughout the reveal (otherwise the Stack hands its children
-    // loose constraints and the hash renders smaller until the animation ends).
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        Positioned.fill(
-          child: ColorFiltered(
-            colorFilter: const ColorFilter.mode(ink, BlendMode.srcIn),
-            child: _hash(),
-          ),
-        ),
-        Positioned.fill(
-          child: ShaderMask(
-            blendMode: BlendMode.dstIn,
-            shaderCallback: (rect) => LinearGradient(
-              begin: Alignment.bottomLeft,
-              end: Alignment.topRight,
-              colors: [Colors.white, Colors.white.withValues(alpha: 0)],
-              stops: [
-                (front - fade).clamp(0.0, 1.0),
-                front.clamp(0.0, 1.0),
-              ],
-            ).createShader(rect),
-            child: _hash(),
-          ),
-        ),
-      ],
-    );
+/// The logo as it lives in the app bar: the artwork alone — no circle, no
+/// button — animating from one coloring to the next.
+///
+/// Taking a color on is the splash reveal (the gold strokes fill base to
+/// tip); every other change is a plain fade, since a second reveal on every
+/// keystroke would pull the eye away from the field. Null is the resting
+/// two-tone gold.
+class HomlMark extends StatefulWidget {
+  final double size;
+  final Color? tint;
+
+  const HomlMark({this.size = 30, this.tint, super.key});
+
+  @override
+  State<HomlMark> createState() => _HomlMarkState();
+}
+
+class _HomlMarkState extends State<HomlMark>
+    with SingleTickerProviderStateMixin {
+  static const _sweepDuration = Duration(milliseconds: 350);
+  static const _fadeDuration = Duration(milliseconds: 200);
+
+  /// Rests at 1: the mark is static until a new tint arrives.
+  late final AnimationController _controller =
+      AnimationController(vsync: this, duration: _sweepDuration, value: 1);
+
+  Color? _from;
+  late Color? _to = widget.tint;
+  bool _sweeping = false;
+
+  @override
+  void didUpdateWidget(covariant HomlMark oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.tint == _to) return;
+
+    // An interrupted animation restarts from the color it was heading to,
+    // which is what is (nearly) on screen.
+    _from = _to;
+    _to = widget.tint;
+    _sweeping = _from == null && _to != null;
+    _controller.duration = _sweeping ? _sweepDuration : _fadeDuration;
+    _controller.forward(from: 0);
   }
 
-  Widget _hash() {
-    return SvgPicture.asset(
-      'assets/images/logo.svg',
-      fit: BoxFit.contain,
-      colorMapper: tint == null ? null : _GoldTintMapper(tint!),
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Decorative and inert: it must not read as a control to a screen reader
+    // any more than to a finger.
+    return ExcludeSemantics(
+      child: IgnorePointer(
+        child: AnimatedBuilder(
+          animation: _controller,
+          builder: (context, _) {
+            final progress = _controller.value;
+            if (progress >= 1.0) {
+              return HomlLogo(size: widget.size, tint: _to);
+            }
+            if (_sweeping) {
+              return HomlLogoSweep(
+                  size: widget.size, from: _from, to: _to, progress: progress);
+            }
+            return SizedBox(
+              width: widget.size,
+              height: widget.size,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Positioned.fill(child: _hash(_from)),
+                  Positioned.fill(
+                      child: Opacity(opacity: progress, child: _hash(_to))),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 }

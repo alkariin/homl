@@ -8,8 +8,7 @@ void main() {
   testWidgets('splash page shows only the bare logo artwork', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: SplashPage()));
 
-    final logo = tester.widget<HomlLogo>(find.byType(HomlLogo));
-    expect(logo.circled, isFalse);
+    expect(find.byType(HomlLogoSweep), findsOneWidget);
     expect(find.text('HOML'), findsNothing);
     expect(find.byType(CircularProgressIndicator), findsNothing);
 
@@ -26,43 +25,25 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: SplashPage()));
 
     // Fully black at first: the reveal layers are stacked (2 pictures).
-    HomlLogo logo = tester.widget(find.byType(HomlLogo));
-    expect(logo.colorProgress, 0.0);
+    HomlLogoSweep logo = tester.widget(find.byType(HomlLogoSweep));
+    expect(logo.progress, 0.0);
     expect(find.byType(SvgPicture), findsNWidgets(2));
 
     // Still black during the short hold that covers the native splash fade.
     await tester.pump(const Duration(milliseconds: 200));
-    logo = tester.widget(find.byType(HomlLogo));
-    expect(logo.colorProgress, 0.0);
+    logo = tester.widget(find.byType(HomlLogoSweep));
+    expect(logo.progress, 0.0);
 
     // Mid-animation: partially revealed.
     await tester.pump(const Duration(milliseconds: 500));
-    logo = tester.widget(find.byType(HomlLogo));
-    expect(logo.colorProgress, greaterThan(0.0));
-    expect(logo.colorProgress, lessThan(1.0));
+    logo = tester.widget(find.byType(HomlLogoSweep));
+    expect(logo.progress, greaterThan(0.0));
+    expect(logo.progress, lessThan(1.0));
 
     // Done: back to the plain two-tone artwork (single picture).
     await tester.pump(const Duration(seconds: 1));
-    logo = tester.widget(find.byType(HomlLogo));
-    expect(logo.colorProgress, 1.0);
+    logo = tester.widget(find.byType(HomlLogoSweep));
+    expect(logo.progress, 1.0);
     expect(find.byType(SvgPicture), findsOneWidget);
-  });
-
-  testWidgets('logo keeps its circle by default and drops it when uncircled',
-      (tester) async {
-    bool hasCircleDecoration() =>
-        tester.widgetList<Container>(find.byType(Container)).any((container) {
-          final decoration = container.decoration;
-          return decoration is BoxDecoration &&
-              decoration.shape == BoxShape.circle;
-        });
-
-    await tester.pumpWidget(
-        const MaterialApp(home: Scaffold(body: HomlLogo())));
-    expect(hasCircleDecoration(), isTrue);
-
-    await tester.pumpWidget(
-        const MaterialApp(home: Scaffold(body: HomlLogo(circled: false))));
-    expect(hasCircleDecoration(), isFalse);
   });
 }
