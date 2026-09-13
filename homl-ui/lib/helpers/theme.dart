@@ -91,6 +91,31 @@ ThemeData homlTheme() {
         fontWeight: FontWeight.w600,
       ),
     ),
+    // Period picker of the insert form. Material 3 fills the selected segment
+    // with the scheme's secondaryContainer, which the black seed turns into a
+    // washed red — the only warm surface in the app. Back to the monochrome
+    // ink of the other controls: the grey of the switch track, under a label
+    // the weight sets apart.
+    segmentedButtonTheme: SegmentedButtonThemeData(
+      style: ButtonStyle(
+        backgroundColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected)
+                ? const Color(0xFFE9E9E7)
+                : Colors.transparent),
+        foregroundColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected)
+                ? ink
+                : ink.withValues(alpha: 0.55)),
+        overlayColor: WidgetStatePropertyAll(ink.withValues(alpha: 0.06)),
+        side: WidgetStatePropertyAll(
+            BorderSide(color: Colors.black.withValues(alpha: 0.12))),
+        textStyle: const WidgetStatePropertyAll(TextStyle(
+          fontFamily: fontFamily,
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        )),
+      ),
+    ),
     dialogTheme: DialogThemeData(
       backgroundColor: Colors.white,
       surfaceTintColor: Colors.transparent,
