@@ -5,6 +5,7 @@ import 'package:homl/l10n/app_localizations.dart';
 import 'package:homl/data/repositories/categories.repository.dart';
 import 'package:homl/data/repositories/events.repository.dart';
 
+import 'package:homl/components/app_bar_mark.dart';
 import 'package:homl/components/bubbles_background.dart';
 import 'package:homl/components/logo.dart';
 import 'package:homl/data/repositories/settings.repository.dart';
@@ -15,6 +16,7 @@ import 'package:homl/helpers/toast.dart';
 import 'package:homl/pages/settings/view/settings.dart';
 import 'package:homl/pages/categories/categories.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
+import 'package:homl/pages/insert/bloc/insert_cubit.dart';
 import 'package:homl/pages/insert/insert.dart';
 import 'package:homl/pages/list/bloc/list_cubit.dart';
 import 'package:homl/pages/list/list.dart';
@@ -67,6 +69,13 @@ class _HomePageState extends State<HomePage> {
               BlocProvider(
                   create: (BuildContext context) =>
                       ListCubit(context.read<HomeCubit>())),
+              // Provided here rather than by the Add tab: the app bar mark
+              // lives above the PageView and follows the tags of the event
+              // being written. The edit route, outside this scope, still
+              // creates its own (seeded from the event).
+              BlocProvider(
+                  create: (BuildContext context) =>
+                      InsertCubit(_eventsRepository, _tagsRepository)),
             ],
             child: BlocBuilder<HomeCubit, HomeState>(builder: (context, state) {
               return HomeView(state.settings.defaultScreen);
@@ -98,6 +107,11 @@ class _HomeViewState extends State<HomeView>
   /// showed.
   bool _ownPageChange = false;
 
+  /// Stored name of the tag being typed in the visible tab's field, watched
+  /// by the app bar mark. Cleared on a tab change: the mark then falls back
+  /// to the tags chosen in the tab the user lands on.
+  final ValueNotifier<String?> _typedTag = ValueNotifier(null);
+
   @override
   void initState() {
     super.initState();
@@ -127,7 +141,33 @@ class _HomeViewState extends State<HomeView>
   @override
   void dispose() {
     _pageController.dispose();
+    _typedTag.dispose();
     super.dispose();
+  }
+
+  /// The app bar mark, fed by the tags of the visible tab: the search
+  /// filters, the tags of the event being written, or nothing on the
+  /// Categories tab, which has no tag field.
+  Widget _mark() {
+    return BlocBuilder<HomeCubit, HomeState>(builder: (context, home) {
+      switch (_currentIndex) {
+        case 1:
+          return BlocBuilder<ListCubit, ListState>(
+              builder: (context, state) => AppBarMark(
+                  tagNames: state.filters,
+                  typedTag: _typedTag,
+                  accentColorOf: home.markAccentFor));
+        case 2:
+          return BlocBuilder<InsertCubit, InsertState>(
+              builder: (context, state) => AppBarMark(
+                  tagNames: state.tagNames,
+                  typedTag: _typedTag,
+                  accentColorOf: home.markAccentFor));
+        default:
+          return AppBarMark(
+              tagNames: const [], accentColorOf: home.markAccentFor);
+      }
+    });
   }
 
   @override
@@ -167,7 +207,7 @@ class _HomeViewState extends State<HomeView>
               Row(
                 children: [
                   // The bare two-tone hash, as large as the tag-input button.
-                  const HomlLogo(size: 51, circled: false),
+                  const HomlLogo(size: 51),
                   const SizedBox(width: 12),
                   const Text(
                     'HOML',
@@ -191,8 +231,8 @@ class _HomeViewState extends State<HomeView>
                   email,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style:
-                      TextStyle(fontSize: 13, color: ink.withValues(alpha: 0.5)),
+                  style: TextStyle(
+                      fontSize: 13, color: ink.withValues(alpha: 0.5)),
                 ),
               ),
             ],
@@ -237,6 +277,7 @@ class _HomeViewState extends State<HomeView>
             ),
           ),
           title: Text(tabTitles[_currentIndex]),
+          actions: [_mark(), const SizedBox(width: 16)],
         ),
         body: Stack(
           children: [
@@ -257,9 +298,10 @@ class _HomeViewState extends State<HomeView>
               controller: _pageController,
               children: [
                 const CategoriesPage(),
-                const ListPage(),
+                ListPage(typedTag: _typedTag),
                 // A created event brings the user back to the list.
-                InsertPage(
+                InsertView(
+                  typedTag: _typedTag,
                   onCreated: () {
                     _ownPageChange = true;
                     _pageController.animateToPage(1,
@@ -278,6 +320,9 @@ class _HomeViewState extends State<HomeView>
                 } else {
                   dismissToasts(context);
                 }
+                // The field of the tab being left keeps its text; its
+                // suggestion is not what the mark must show here.
+                _typedTag.value = null;
                 setState(() {
                   if (index != _currentIndex) _userNavigated = true;
                   _currentIndex = index;

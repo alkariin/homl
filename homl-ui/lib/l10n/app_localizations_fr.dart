@@ -501,6 +501,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get categories_newTag => 'Nouveau tag';
 
   @override
+  String get categories_browseTags => 'Parcourir les tags';
+
+  @override
+  String get categories_pickTag => 'Choisir un tag';
+
+  @override
   String get categories_renameTag => 'Renommer le tag';
 
   @override

@@ -55,11 +55,28 @@ void showTagPickerSheet(BuildContext context,
     clipBehavior: Clip.antiAlias,
     builder: (sheetContext) => BlocProvider.value(
       value: homeCubit,
-      child: CategoryManagementBody(
-        onTagSelected: (tag) {
-          Navigator.pop(sheetContext);
-          onTagSelected(tag);
-        },
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // The sheet is reached from a button that no longer says what it
+          // opens, so it says it itself.
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
+            child: Text(
+              AppLocalizations.of(sheetContext)!.categories_pickTag,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+          ),
+          Flexible(
+            child: CategoryManagementBody(
+              onTagSelected: (tag) {
+                Navigator.pop(sheetContext);
+                onTagSelected(tag);
+              },
+            ),
+          ),
+        ],
       ),
     ),
   );

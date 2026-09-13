@@ -209,6 +209,8 @@
     }
   },
   "categories_newTag": "New tag",
+  "categories_browseTags": "Browse tags",
+  "categories_pickTag": "Choose a tag",
   "categories_renameTag": "Rename tag",
   "categories_deleteTag": "Delete tag",
   "categories_addSynonym": "Add a synonym",

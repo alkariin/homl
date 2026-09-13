@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
-import 'package:homl/components/logo.dart';
 import 'package:homl/components/tag.dart';
 import 'package:homl/helpers/colors.dart';
 
@@ -27,12 +26,17 @@ class TagChipData {
   /// so a translated month is searchable under its label too.
   final String? displayName;
 
+  /// Display name of the tag's category, printed next to its suggestion so
+  /// the color of the chip is explained; nothing is printed when null.
+  final String? category;
+
   const TagChipData(
       {required this.id,
       required this.name,
       this.color,
       this.highlightColor,
-      this.displayName});
+      this.displayName,
+      this.category});
 
   String get label => displayName ?? name;
 }
@@ -56,16 +60,20 @@ class TagInput extends StatefulWidget {
   /// date chips of the insert form).
   final List<Widget> leading;
 
-  /// Rendered after the text field (e.g. the categories management button).
-  final Widget? trailing;
+  /// Shows a magnifier in front of the field (the search page).
+  final bool showSearchIcon;
 
-  /// Shows the homl "#" logo on the left of the field (search page).
-  final bool showLogo;
+  /// Opens the tag picker. Renders the browse button next to the field when
+  /// set, nothing when null.
+  final VoidCallback? onBrowse;
 
-  /// Called when the logo is tapped, with the trimmed text currently typed
-  /// in the field (empty when the field is empty). Leaves the logo inert
-  /// when null.
-  final void Function(String pendingText)? onLogoTap;
+  /// Tooltip and accessible name of that button.
+  final String? browseLabel;
+
+  /// Reports the stored name of the tag being typed — the top suggestion of
+  /// the autocomplete — on every change of the field, and null when it is
+  /// empty or nothing matches it. The app bar mark follows it.
+  final void Function(String? tagName)? onSuggestionChanged;
 
   /// Text controller of the field. Owned by the parent when provided (so it
   /// can read or clear the pending text), otherwise the input creates and
@@ -79,9 +87,10 @@ class TagInput extends StatefulWidget {
       required this.onAddTag,
       this.onRemoveTag,
       this.leading = const [],
-      this.trailing,
-      this.showLogo = false,
-      this.onLogoTap,
+      this.showSearchIcon = false,
+      this.onBrowse,
+      this.browseLabel,
+      this.onSuggestionChanged,
       this.controller,
       super.key});
 
@@ -90,12 +99,34 @@ class TagInput extends StatefulWidget {
 }
 
 class _TagInputState extends State<TagInput> {
+  /// Side of the browse button: the height a filled field takes under the
+  /// theme's content padding, so the two sit flush.
+  static const double _browseButtonSize = 52;
+
   late final TextEditingController _controller =
       widget.controller ?? TextEditingController();
   final FocusNode _focusNode = FocusNode();
 
   @override
+  void initState() {
+    super.initState();
+    // Registered once, and never during a build: the field notifies from the
+    // user's keystrokes and from the deferred clear below.
+    _controller.addListener(_reportSuggestion);
+  }
+
+  /// Hands the top suggestion to the parent (see [TagInput.onSuggestionChanged]).
+  void _reportSuggestion() {
+    final report = widget.onSuggestionChanged;
+    if (report == null) return;
+
+    final suggestions = _filterSuggestions(_controller.value);
+    report(suggestions.isEmpty ? null : suggestions.first.name);
+  }
+
+  @override
   void dispose() {
+    _controller.removeListener(_reportSuggestion);
     if (widget.controller == null) {
       _controller.dispose();
     }
@@ -184,6 +215,23 @@ class _TagInputState extends State<TagInput> {
     return highlightColor == null ? null : darken(colorFromHex(highlightColor));
   }
 
+  /// Opens the tag picker: a tonal square matching the height of the field,
+  /// wearing the same icon as the Categories tab.
+  Widget _browseButton() {
+    return IconButton(
+      onPressed: widget.onBrowse,
+      tooltip: widget.browseLabel,
+      icon: const FaIcon(FontAwesomeIcons.tags, size: 20),
+      style: IconButton.styleFrom(
+        backgroundColor: ink.withValues(alpha: 0.06),
+        foregroundColor: ink,
+        padding: EdgeInsets.zero,
+        fixedSize: const Size.square(_browseButtonSize),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -215,55 +263,6 @@ class _TagInputState extends State<TagInput> {
         ],
         Row(
           children: [
-            if (widget.showLogo) ...[
-              ValueListenableBuilder<TextEditingValue>(
-                valueListenable: _controller,
-                builder: (context, value, _) {
-                  final highlight = _highlightFor(value);
-                  // Ink by default (the gold strokes only light up in a
-                  // category color while a suggestion highlights them), and
-                  // a small inset so the hash fills the circle.
-                  final logo =
-                      HomlLogo(tint: highlight ?? ink, insetFactor: 0.08);
-                  if (widget.onLogoTap == null) return logo;
-
-                  // Button affordance: circular ripple on the logo plus a
-                  // small chevron badge (tinted like the input border when a
-                  // suggestion highlights it) telling it opens the picker.
-                  return Material(
-                    color: Colors.transparent,
-                    shape: const CircleBorder(),
-                    child: InkWell(
-                      customBorder: const CircleBorder(),
-                      onTap: () => widget.onLogoTap!(_controller.text.trim()),
-                      child: Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          logo,
-                          Positioned(
-                            right: -3,
-                            bottom: -3,
-                            child: Container(
-                              width: 20,
-                              height: 20,
-                              decoration: BoxDecoration(
-                                color: highlight ?? ink,
-                                shape: BoxShape.circle,
-                                border:
-                                    Border.all(color: Colors.white, width: 1.5),
-                              ),
-                              child: const Icon(Icons.expand_more,
-                                  size: 14, color: Colors.white),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(width: 12),
-            ],
             Expanded(
               child: RawAutocomplete<TagChipData>(
                 textEditingController: _controller,
@@ -302,6 +301,20 @@ class _TagInputState extends State<TagInput> {
                           labelText: widget.labelText,
                           enabledBorder: border,
                           focusedBorder: focusedBorder,
+                          // FaIcon is a bare glyph (the Icon widget minus
+                          // its SizedBox and Center): handed the 48 px slot
+                          // of the prefix it would paint in its top-left
+                          // corner, so it is centered by hand.
+                          prefixIcon: widget.showSearchIcon
+                              ? Center(
+                                  widthFactor: 1,
+                                  heightFactor: 1,
+                                  child: FaIcon(
+                                      FontAwesomeIcons.magnifyingGlass,
+                                      size: 18,
+                                      color: ink.withValues(alpha: 0.45)),
+                                )
+                              : null,
                           suffixIcon: value.text.isEmpty
                               ? const SizedBox.shrink()
                               : IconButton(
@@ -335,9 +348,29 @@ class _TagInputState extends State<TagInput> {
                           itemCount: options.length,
                           itemBuilder: (context, index) {
                             final option = options.elementAt(index);
+                            // The suggestion is the chip it would become,
+                            // with its category named on the right: the
+                            // color of the chip, the border and the app bar
+                            // mark then explain themselves.
                             return ListTile(
                               dense: true,
-                              title: Text(option.label),
+                              contentPadding:
+                                  const EdgeInsets.fromLTRB(12, 0, 14, 0),
+                              title: Align(
+                                alignment: AlignmentDirectional.centerStart,
+                                child: Tag(
+                                    id: option.id,
+                                    text: option.label,
+                                    color: option.color),
+                              ),
+                              trailing: option.category == null
+                                  ? null
+                                  : Text(
+                                      option.category!,
+                                      style: TextStyle(
+                                          fontSize: 12.5,
+                                          color: ink.withValues(alpha: 0.45)),
+                                    ),
                               onTap: () => onSelected(option),
                             );
                           },
@@ -348,7 +381,10 @@ class _TagInputState extends State<TagInput> {
                 },
               ),
             ),
-            if (widget.trailing != null) widget.trailing!,
+            if (widget.onBrowse != null) ...[
+              const SizedBox(width: 10),
+              _browseButton(),
+            ],
           ],
         ),
       ],

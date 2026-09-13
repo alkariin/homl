@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:homl/components/logo.dart';
+import 'package:homl/helpers/colors.dart';
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
@@ -50,10 +51,10 @@ class _SplashPageState extends State<SplashPage>
       body: Center(
         child: AnimatedBuilder(
           animation: _colorProgress,
-          builder: (context, _) => HomlLogo(
+          builder: (context, _) => HomlLogoSweep(
             size: 174,
-            circled: false,
-            colorProgress: _colorProgress.value,
+            from: ink,
+            progress: _colorProgress.value,
           ),
         ),
       ),

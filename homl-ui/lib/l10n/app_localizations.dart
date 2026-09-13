@@ -886,6 +886,18 @@ abstract class AppLocalizations {
   /// **'New tag'**
   String get categories_newTag;
 
+  /// No description provided for @categories_browseTags.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse tags'**
+  String get categories_browseTags;
+
+  /// No description provided for @categories_pickTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a tag'**
+  String get categories_pickTag;
+
   /// No description provided for @categories_renameTag.
   ///
   /// In en, this message translates to:
