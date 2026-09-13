@@ -14,6 +14,7 @@ import 'package:homl/data/repositories/events.repository.dart';
 import 'package:homl/data/repositories/settings.repository.dart';
 import 'package:homl/data/repositories/tags.repository.dart';
 import 'package:homl/helpers/app_message.dart';
+import 'package:homl/helpers/categories.dart';
 import 'package:homl/helpers/colors.dart';
 
 part 'home_state.dart';

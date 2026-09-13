@@ -502,6 +502,12 @@ class AppLocalizationsDe extends AppLocalizations {
   String get categories_newTag => 'Neuer Tag';
 
   @override
+  String get categories_browseTags => 'Tags durchsuchen';
+
+  @override
+  String get categories_pickTag => 'Tag auswählen';
+
+  @override
   String get categories_renameTag => 'Tag umbenennen';
 
   @override

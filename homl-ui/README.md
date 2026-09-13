@@ -241,7 +241,9 @@ pill in the body; category edit/delete live in the header's "⋮" menu (hidden
 for locked categories and in picker mode). `CategoryManagementBody` has two
 modes: the management view of the Categories tab (tap or long-press a tag →
 its actions menu), and a read-only picker (`showTagPickerSheet`, opened from
-the "#" logo of the tag inputs) where tapping a tag hands it to the caller.
+the browse button of the tag inputs, and titled "Choose a tag" since the
+button no longer says what it opens) where tapping a tag hands it to the
+caller.
 Destructive actions confirm with the counts served by `GET /tags/:id/usage` /
 `GET /categories/:id/usage`:
 
@@ -266,17 +268,22 @@ Destructive actions confirm with the counts served by `GET /tags/:id/usage` /
   of moving them. The three outcomes are pinned end to end, from the dialog
   down to the SQL: see [../homl-web/TESTING.md](../homl-web/TESTING.md).
 
-The "#" logo next to the tag inputs is a button:
+Both tag inputs carry a **browse button** next to the field (a tonal square
+the height of the field, wearing the Categories tab's tag icon): it opens the
+picker sheet on the Search tab, where tapping a tag inserts it as a search
+filter, and on the Insert tab, where it adds the tag to the event. It replaced
+the "#" logo button that used to sit there: a logo is not an affordance, and
+the mark it showed now lives in the app bar (see below).
 
-- **Search tab**: opens the tag picker sheet; tapping a tag inserts it as a
-  search filter.
-- **Insert tab**: with an empty field it opens the same picker (tap a tag to
-  add it to the event); with a **new** tag typed it asks which category the
-  tag belongs to, creates it there and chips it on the event (instead of
-  letting it fall into Others on submit); with an existing tag typed it does
-  nothing.
+On the **Insert tab**, a name none of the known tags matches opens a panel
+under the field with the categories it can be created in (Dates excluded — the
+backend owns those); one tap creates the tag there and chips it on the event,
+instead of letting it fall into Others on submit. The panel only opens when
+the autocomplete has nothing to offer, so the two never fight for the room
+under the field, and ignoring it still works: submitting files the tag under
+Others, as it always did.
 
-Submitting a new event slides back to the Search tab (`InsertPage.onCreated`,
+Submitting a new event slides back to the Search tab (`InsertView.onCreated`,
 wired to the home PageView) — the created event is the natural next focus.
 Edits pop back to the list instead.
 
@@ -284,6 +291,35 @@ The dialogs owning a `TextEditingController` are `StatefulWidget`s so the
 controller is disposed with the route: disposing it from `showDialog`'s
 future crashes, the future completes on pop while the dialog is still
 animating out.
+
+## The app bar mark
+
+The "#" logo sits at the right of the app bar (`lib/components/app_bar_mark.dart`),
+shared by the three tabs and repeated by the edit route's own bar. It is
+**never a button** — `IgnorePointer` and `ExcludeSemantics`, no ripple, no
+tooltip — and its two gold strokes take the color of the tags in play, which
+is the whole point of keeping it on screen:
+
+- priority, highest first: the tag being typed (the top suggestion the input
+  reports through `onSuggestionChanged`), then the last chosen tag carrying a
+  category color, then the resting two-tone gold. **One color at a time**, so
+  a second filter replaces the first rather than splitting the mark;
+- a tag that carries no color — an Others tag (its grey never reads as a
+  category) or a date tag (the mark already wears the Dates gold) — falls
+  through to the chosen tags instead of dropping the mark back to rest in the
+  middle of a word. `HomeState.markAccentFor` is the single rule, shared by
+  the mark and the input border;
+- taking a color on replays the splash reveal (the strokes fill base to tip,
+  350 ms); every other change is a plain cross-fade (200 ms), since a second
+  reveal on every keystroke would pull the eye away from the field;
+- the Categories tab has no tag field, so the mark rests there.
+
+The tags come from the cubits the mark is fed by: `ListCubit.filters` on the
+Search tab and `InsertCubit.tagNames` on the Add tab — which is why the insert
+cubit is provided by `HomePage` rather than by the tab itself, the app bar
+living above the `PageView`. What is being typed travels the other way, from
+the input up to a `ValueNotifier<String?>` owned by the page holding the bar
+(cleared on a tab change: the field left behind is not what the mark shows).
 
 ## Insert tab: the date chips & the month tag language
 
@@ -429,16 +465,18 @@ offline. The matching replicates the backend one (`FindEventsWithTags`):
 - multiple filters use AND semantics.
 
 While typing, the field autocompletes on the existing tags (prefix matches
-first, then substring matches). The input border and the "#" logo take the
-category color of the top suggestion — except for tags of the Others
-category, which keep the default styling (`lib/components/tag_input.dart`,
-`highlightColor` on `TagChipData`). The logo is an SVG
-(`assets/images/logo.svg`) rendered with `flutter_svg`: a `ColorMapper`
-repaints only its gold strokes (drawn in the palette's `yellow`), the black
-ones stay black. In the tag inputs the logo button defaults to an all-ink
-hash (the gold strokes are tinted `ink` when no suggestion highlights them),
-matching the app's monochrome controls — buttons, focus borders and the
-selected nav item are ink, the gold stays in the logo and small accents.
+first, then substring matches). The input border takes the category color of
+the top suggestion — except for tags of the Others category, which keep the
+default styling (`lib/components/tag_input.dart`, `highlightColor` on
+`TagChipData`) — and the app bar mark follows the same suggestion by name
+(see above). Both tabs behave alike: the Add tab used to stay colorless,
+since it passed no `highlightColor` at all.
+
+The logo is an SVG (`assets/images/logo.svg`) rendered with `flutter_svg`: a
+`ColorMapper` repaints only its gold strokes (drawn in the palette's
+`yellow`), the black ones stay black. The rest of the app stays monochrome —
+buttons, focus borders and the selected nav item are ink, the gold stays in
+the logo and small accents.
 
 `EventsRepository.getEvents()` and `CategoriesRepository.getCategories()`
 cache each successful payload in `flutter_secure_storage` (encrypted at

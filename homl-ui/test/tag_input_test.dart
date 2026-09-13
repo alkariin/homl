@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:homl/components/logo.dart';
 import 'package:homl/components/tag_input.dart';
 import 'package:homl/helpers/colors.dart';
 
@@ -21,23 +20,31 @@ const july = TagChipData(
     color: '#ffff60',
     highlightColor: '#ffff60');
 
+/// Last value reported to [TagInput.onSuggestionChanged] — what the app bar
+/// mark follows.
+String? suggested;
+int browsed = 0;
+
 Widget wrap(
-    {List<TagChipData> tags = const [], void Function(String name)? onAddTag}) {
+    {List<TagChipData> tags = const [],
+    void Function(String name)? onAddTag,
+    bool browsable = true}) {
+  suggested = null;
+  browsed = 0;
   return MaterialApp(
     home: Scaffold(
       body: TagInput(
         labelText: 'Filter',
-        showLogo: true,
         tags: tags,
         suggestions: const [info, football, other, july],
         onAddTag: onAddTag ?? (_) {},
+        browseLabel: 'Browse tags',
+        onBrowse: browsable ? () => browsed++ : null,
+        onSuggestionChanged: (name) => suggested = name,
       ),
     ),
   );
 }
-
-Color? logoTint(WidgetTester tester) =>
-    tester.widget<HomlLogo>(find.byType(HomlLogo)).tint;
 
 Color? enabledBorderColor(WidgetTester tester) => tester
     .widget<TextField>(find.byType(TextField))
@@ -61,15 +68,15 @@ void main() {
     expect(fondue.dy, lessThan(info.dy));
   });
 
-  testWidgets('tints the logo and the border with the top suggestion category',
+  testWidgets('tints the border with the top suggestion category',
       (tester) async {
     await tester.pumpWidget(wrap());
     await tester.enterText(find.byType(TextField), 'foot');
     await tester.pumpAndSettle();
 
-    final expected = darken(colorFromHex('#f28b82'));
-    expect(logoTint(tester), expected);
-    expect(enabledBorderColor(tester), expected);
+    expect(enabledBorderColor(tester), darken(colorFromHex('#f28b82')));
+    // The app bar mark follows the same suggestion, by name.
+    expect(suggested, 'Football');
   });
 
   testWidgets(
@@ -80,22 +87,33 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Fondue'), findsOneWidget);
-    // Default styling: the logo falls back to its ink tint and the border
-    // to the theme.
-    expect(logoTint(tester), ink);
+    // Default styling: the border falls back to the theme. The tag is still
+    // reported — it is the mark that leaves an Others tag colorless.
     expect(enabledBorderColor(tester), isNull);
+    expect(suggested, 'Fondue');
   });
 
   testWidgets('clears the highlight when the field is emptied', (tester) async {
     await tester.pumpWidget(wrap());
     await tester.enterText(find.byType(TextField), 'foot');
     await tester.pumpAndSettle();
-    expect(logoTint(tester), isNot(ink));
+    expect(enabledBorderColor(tester), isNotNull);
 
     await tester.enterText(find.byType(TextField), '');
     await tester.pumpAndSettle();
-    expect(logoTint(tester), ink);
     expect(enabledBorderColor(tester), isNull);
+    expect(suggested, isNull);
+  });
+
+  testWidgets('the browse button is optional and reports its taps',
+      (tester) async {
+    await tester.pumpWidget(wrap(browsable: false));
+    expect(find.byType(IconButton), findsNothing);
+
+    await tester.pumpWidget(wrap());
+    await tester.tap(find.byTooltip('Browse tags'));
+    await tester.pumpAndSettle();
+    expect(browsed, 1);
   });
 
   testWidgets('suggests a translated label but reports the stored name',
@@ -159,6 +177,6 @@ void main() {
     // The chip in the Wrap still shows "Football": only the suggestion list
     // must not offer it again.
     expect(find.widgetWithText(ListTile, 'Football'), findsNothing);
-    expect(logoTint(tester), ink);
+    expect(suggested, isNull);
   });
 }

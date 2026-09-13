@@ -13,7 +13,11 @@ import 'package:homl/pages/list/bloc/list_cubit.dart';
 import 'package:homl/pages/list/view/event_detail_sheet.dart';
 
 class ListPage extends StatelessWidget {
-  const ListPage({super.key});
+  /// Reports the tag being typed to the app bar mark (see [AppBarMark]);
+  /// null when the page is shown without one.
+  final ValueNotifier<String?>? typedTag;
+
+  const ListPage({this.typedTag, super.key});
 
   static Route<void> route() {
     return MaterialPageRoute<void>(builder: (_) => const ListPage());
@@ -44,7 +48,7 @@ class ListPage extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
             child: TagInput(
               labelText: localization.list_filterLabel,
-              showLogo: true,
+              showSearchIcon: true,
               tags: listState.filters
                   .map((name) => TagChipData(
                       id: homeState.allTagsMap[name]?.id ?? -1,
@@ -66,13 +70,17 @@ class ListPage extends StatelessWidget {
               onAddTag: (name) => context.read<ListCubit>().addFilterTag(name),
               onRemoveTag: (tag) =>
                   context.read<ListCubit>().removeFilterTag(tag.name),
-              // The "#" logo browses the categories; a tap on a tag
-              // inserts it as a search filter.
-              onLogoTap: (_) => showTagPickerSheet(
+              // The button next to the field browses the categories; a
+              // tap on a tag inserts it as a search filter.
+              browseLabel: localization.categories_browseTags,
+              onBrowse: () => showTagPickerSheet(
                 context,
                 onTagSelected: (tag) =>
                     context.read<ListCubit>().addFilterTag(tag.tagName),
               ),
+              // The app bar mark follows the tag being typed, then the
+              // filters already chosen.
+              onSuggestionChanged: (name) => typedTag?.value = name,
             ),
           ),
           Expanded(

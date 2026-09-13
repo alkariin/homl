@@ -173,6 +173,8 @@
     }
   },
   "categories_newTag": "Neuer Tag",
+  "categories_browseTags": "Tags durchsuchen",
+  "categories_pickTag": "Tag auswählen",
   "categories_renameTag": "Tag umbenennen",
   "categories_deleteTag": "Tag löschen",
   "categories_addSynonym": "Synonym hinzufügen",
