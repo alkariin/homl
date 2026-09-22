@@ -53,3 +53,40 @@ func TestCreateReturnsTheStoredId(t *testing.T) {
 		assert.Equal(t, tag, tags[id][0].Id)
 	})
 }
+
+// PATCH /tags is full-state, so a client that is unsure whether its PATCH
+// landed (the connection dropped before the answer) sends it again. MySQL
+// counts changed rows, not matched ones, so the replay affects no row: that
+// must read as success, not as a failure.
+func TestUpdateTagReplayIsANoOp(t *testing.T) {
+	r := setup(t)
+	ctx := context.Background()
+	u := newUser(t, r)
+
+	other, err := r.cats.FindIdByKind(ctx, u, category.KindOther)
+	require.NoError(t, err)
+	beach, err := r.cats.CreateTag(ctx, r.enc(t, "Beach", u), nil, other, nil)
+	require.NoError(t, err)
+	shore, err := r.cats.CreateTag(ctx, r.enc(t, "Shore", u), nil, other, &beach)
+	require.NoError(t, err)
+
+	t.Run("a main tag, renamed then renamed again to the same name", func(t *testing.T) {
+		for attempt := 1; attempt <= 2; attempt++ {
+			require.NoError(t, r.cats.UpdateTag(ctx, r.enc(t, "Sea", u), nil, other, beach, nil), "attempt %d", attempt)
+		}
+
+		stored, err := r.cats.FindTagForUser(ctx, beach, u)
+		require.NoError(t, err)
+		assert.Equal(t, r.enc(t, "Sea", u), stored.Tag)
+		assert.Equal(t, other, stored.IdCategory)
+	})
+
+	t.Run("a synonym left exactly as it is", func(t *testing.T) {
+		require.NoError(t, r.cats.UpdateTag(ctx, r.enc(t, "Shore", u), nil, other, shore, &beach))
+
+		stored, err := r.cats.FindTagForUser(ctx, shore, u)
+		require.NoError(t, err)
+		require.NotNil(t, stored.IdParentTag)
+		assert.Equal(t, beach, *stored.IdParentTag)
+	})
+}

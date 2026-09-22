@@ -139,7 +139,8 @@ type categoryResponse struct {
 }
 
 // TestCategoryLifecycle creates a category, verifies it shows up in the list,
-// then deletes it — a self-cleaning CRUD round-trip against the real DB.
+// renames a tag of it twice over (a replayed PATCH), then deletes it — a
+// self-cleaning CRUD round-trip against the real DB.
 func TestCategoryLifecycle(t *testing.T) {
 	c := newClient(t)
 	c.login()
@@ -166,6 +167,22 @@ func TestCategoryLifecycle(t *testing.T) {
 		t.Fatalf("POST /categories answered id %d, GET /categories lists %d", id, created.Id)
 	}
 
+	// PATCH /tags is full-state: replaying one that already landed (its answer
+	// was lost, say) changes no row and must still answer 204, not 500.
+	idTag := decodeID(t, c.mustDo(http.MethodPost, "/tags", map[string]interface{}{
+		"tag": "Snorkel", "idCategory": created.Id,
+	}, http.StatusCreated))
+	rename := map[string]interface{}{"tag": "Diving", "idCategory": created.Id}
+	for attempt := 1; attempt <= 2; attempt++ {
+		c.mustDo(http.MethodPatch, fmt.Sprintf("/tags/%d", idTag), rename, http.StatusNoContent)
+	}
+	// Skipping the affected-rows check must not let a PATCH through to a tag
+	// the user does not own.
+	if status, body := c.do(http.MethodPatch, "/tags/999999999", rename); status != http.StatusBadRequest {
+		t.Fatalf("PATCH an unknown tag: expected 400, got %d, body %s", status, body)
+	}
+
+	// Without moveTags, the tag goes with the category.
 	if status, body := c.do(http.MethodDelete, fmt.Sprintf("/categories/%d", created.Id),
 		map[string]bool{"moveTags": false}); status != http.StatusNoContent {
 		t.Fatalf("delete category: status %d, body %s", status, body)

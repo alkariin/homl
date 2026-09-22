@@ -278,6 +278,10 @@ category (one level deep, any category except dates — see
 Moving a main tag to another category through `PATCH` relocates its synonyms
 with it (a synonym always lives in its main tag's category).
 
+`PATCH` is full-state, so sending the same body again is harmless: the replay
+changes nothing and answers `204` like the first one. A client that lost the
+answer can simply resend.
+
 Tag names are unique per category, so `POST` and `PATCH` are refused with a
 `409` `TAG_NAME_CONFLICT` (same envelope as the category deletion above) when
 the name is already taken in the target category — a synonym following its

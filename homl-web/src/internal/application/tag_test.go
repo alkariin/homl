@@ -2,8 +2,11 @@ package application_test
 
 import (
 	"context"
+	"database/sql"
+	"net/http"
 	"testing"
 
+	"github.com/alkariin/homl/homl-web/internal/apperror"
 	"github.com/alkariin/homl/homl-web/internal/application"
 	"github.com/alkariin/homl/homl-web/internal/domain/category"
 	"github.com/alkariin/homl/homl-web/test/mocks"
@@ -201,6 +204,21 @@ func TestCreateTag(t *testing.T) {
 func TestUpdateTag(t *testing.T) {
 	ctx := context.Background()
 
+	// The repository UPDATE no longer checks the affected-rows count (a
+	// replayed PATCH changes nothing and must still succeed), so this scoped
+	// load is the one thing standing between a PATCH and another user's tag.
+	t.Run("Rejects a tag the user does not own before writing anything", func(t *testing.T) {
+		catRepo := new(mocks.MockCategoriesRepo)
+		svc := application.NewTagsService(&application.TSConfig{CategoriesRepository: catRepo, Crypto: testCrypto})
+
+		catRepo.On("FindTagForUser", uint(7), uint64(1)).Return(nil, sql.ErrNoRows)
+
+		err := svc.UpdateTag(ctx, 1, &category.Tag{Id: 7, Tag: "cinema", IdCategory: 2})
+
+		assert.Equal(t, http.StatusBadRequest, apperror.Status(err))
+		catRepo.AssertNotCalled(t, "UpdateTag", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	})
+
 	t.Run("Rejects a tag being its own synonym", func(t *testing.T) {
 		catRepo := new(mocks.MockCategoriesRepo)
 		svc := application.NewTagsService(&application.TSConfig{CategoriesRepository: catRepo, Crypto: testCrypto})
@@ -217,7 +235,7 @@ func TestUpdateTag(t *testing.T) {
 		err := svc.UpdateTag(ctx, 1, &category.Tag{Id: idTag, Tag: "cinema", IdCategory: 2, IdParentTag: &idTag})
 
 		assert.Error(t, err)
-		catRepo.AssertNotCalled(t, "UpdateTag", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+		catRepo.AssertNotCalled(t, "UpdateTag", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	})
 
 	t.Run("Rejects turning a tag that has synonyms into a synonym", func(t *testing.T) {
@@ -237,7 +255,7 @@ func TestUpdateTag(t *testing.T) {
 		err := svc.UpdateTag(ctx, 1, &category.Tag{Id: idTag, Tag: "cinema", IdCategory: 2, IdParentTag: &idParent})
 
 		assert.Error(t, err)
-		catRepo.AssertNotCalled(t, "UpdateTag", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+		catRepo.AssertNotCalled(t, "UpdateTag", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	})
 
 	t.Run("Rejects updating a tag living in the Dates category", func(t *testing.T) {
@@ -255,7 +273,7 @@ func TestUpdateTag(t *testing.T) {
 		err := svc.UpdateTag(ctx, 1, &category.Tag{Id: idTag, Tag: "renamed", IdCategory: 2})
 
 		assert.Error(t, err)
-		catRepo.AssertNotCalled(t, "UpdateTag", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+		catRepo.AssertNotCalled(t, "UpdateTag", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	})
 
 	t.Run("Rejects renaming a tag to a four-digit name", func(t *testing.T) {
@@ -273,7 +291,7 @@ func TestUpdateTag(t *testing.T) {
 		err := svc.UpdateTag(ctx, 1, &category.Tag{Id: idTag, Tag: "2026", IdCategory: 2})
 
 		assert.Error(t, err)
-		catRepo.AssertNotCalled(t, "UpdateTag", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+		catRepo.AssertNotCalled(t, "UpdateTag", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	})
 
 	t.Run("Updates a valid tag (encrypted, title-cased)", func(t *testing.T) {
