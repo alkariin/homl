@@ -148,6 +148,91 @@ Details worth knowing:
 - Refresh rotation deletes the old `refresh_uuid` first; if that uuid is
   already gone (token reuse), the refresh is rejected.
 
+## Client session: the second factor, and a server out of reach
+
+How the Flutter client (`homl-ui/lib/data/repositories/api.dart`) drives the
+flows above. The server is often out of reach — a phone away from the home
+network cannot see a NAS on the LAN — and losing the connection must not cost
+the session, nor the data saved on the device.
+
+### What ends a session, and what does not
+
+Only a `401` on `/refresh` or `/challenge` is a verdict on the session:
+
+| Answer | Client |
+| --- | --- |
+| `401 Not authorized` (revoked, expired or reused refresh token) | ends the session: refresh token, cached data (events, categories, settings) and the offline PIN are removed; the PIN keypair and the E2EE seed stay, as on logout |
+| `401 PIN_LOCKED` | same, with the pin lockout message |
+| `401 PIN_INCORRECT` | stays on the pin dialog, `attemptsRemaining` shown |
+| `401 SECOND_FACTOR_REQUIRED` | answered with the session's factor (below); a factor this device cannot produce (enabled from another device) ends the session |
+| anything else: no network, a timeout, `502`/`503`/`504`, another `5xx`, `429`, a page that is not ours (captive portal) | keeps everything and goes **offline** |
+
+### The session's second factor
+
+The pin, or the fingerprint keypair released by the OS prompt, is asked once
+when the app opens and then **held in memory** for the life of the session
+(never persisted). Every later refresh sends it: each time the access token
+expires (10 minutes in PROD), and when the server comes back after an offline
+start. Without it, a pin or fingerprint account used to be refused with
+`Pin must be provided` on its first silent refresh, which the client took for
+a dead session: logged out, cached data wiped, ten minutes after unlocking.
+
+When the session does not hold the factor (enabled from the Security page in
+the meantime, or after a password login), a refresh the user is waiting on
+asks for it: the fingerprint prompt, or the pin dialog. A held pin the server
+refuses is dropped and asked again rather than spent on the lockout.
+
+### Offline unlock
+
+At app start the refresh token is still sent first; when the server cannot be
+reached, the session opens on the data saved on the device once the account's
+own factor has passed a local check:
+
+| Account | Server reachable | Server unreachable |
+| --- | --- | --- |
+| No second factor | `POST /refresh` | opens directly |
+| Fingerprint | the OS prompt releases the keypair, which signs a fresh challenge | the same prompt: releasing the keypair is the proof of presence |
+| Pin | pin + signature of a fresh challenge; the server checks the pin, 3-strike lockout | the pin is checked against a hash kept on the device, with its own 3-strike lockout |
+
+The offline pin check uses a PBKDF2-HMAC-SHA256 hash (600 000 iterations,
+random 16-byte salt) of the last pin the server accepted **on this device**,
+stored in the secure storage (`pinVerifier`) with a count of wrong offline
+tries (`pinOfflineFailures`). The third wrong pin ends the session exactly like
+`PIN_LOCKED`. The hash is written when the server accepts the pin (unlock or
+setup) and removed whenever the session ends, so a pin account that has not
+entered its pin online since its last login cannot unlock offline yet — the
+dialog says so.
+
+The trade-off, accepted on purpose so the pin setting keeps working offline:
+the server's lockout protects a 4-digit pin because every guess goes through
+it. Whoever can read the secure storage of the phone (not just hold the phone:
+break into it) can try the 10 000 pins against the stored hash on another
+machine, in minutes. They could read the cached data anyway; what they gain is
+the pin itself, which then passes the server's second factor with the stolen
+refresh token until the password is changed (which revokes every session).
+Password managers make the same trade-off for their "unlock with PIN". Someone
+merely holding the phone gets 3 tries, as online.
+
+There is no time limit on an offline session: the server decides at the next
+contact (a refresh token past its six months, or revoked by a password change
+elsewhere, ends the session then).
+
+### Reconnection
+
+- Connect timeout 5 s (the unreachable LAN address usually drops the packets
+  silently), receive timeout 30 s (2 minutes for the E2EE migration and purge).
+- For 10 s after a network failure, requests fail at once instead of each
+  waiting for its own timeout.
+- While offline and in the foreground, the client probes `GET /healthz`
+  (3 s timeout) with a 5 s → 2 min backoff, and at once when the app returns
+  to the foreground. Only a `200` with a JSON body counts.
+- When the server answers, the session reopens with a refresh carrying the
+  held factor; the screens then reload and the E2EE gate runs again on fresh
+  settings. A regular request answered in JSON (or `204`) also ends the
+  offline state.
+- Offline, the app is read-only: browsing and searching work on the cached
+  data, a write fails with "server unreachable" and keeps what was typed.
+
 ## Enabling pin / fingerprint (`PUT /secureAuth`)
 
 Authenticated endpoint that switches the second factor. Invariants enforced by
@@ -161,6 +246,11 @@ the service:
   low-entropy secret, protected primarily by the hard lockout.
 
 Response echoes the resulting `{isFingerprintEnabled, isPinEnabled}`.
+
+The client writes its own flags (the PIN keypair, the fingerprint flag) only
+once this call succeeded: they pick the factor the next app start sends, and a
+toggle that failed offline would otherwise get that refresh refused — and the
+session ended.
 
 ## Password reset
 
