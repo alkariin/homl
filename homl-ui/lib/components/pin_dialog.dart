@@ -47,6 +47,14 @@ class _PinDialogViewState extends State<PinDialogView> {
   bool showError = false;
   int? attemptsRemaining;
 
+  /// The server could not be reached and the PIN cannot be checked offline
+  /// on this device yet.
+  bool unreachable = false;
+
+  /// A check is running: it may wait for the server to time out before the
+  /// offline check takes over.
+  bool checking = false;
+
   @override
   void initState() {
     super.initState();
@@ -99,10 +107,13 @@ class _PinDialogViewState extends State<PinDialogView> {
                     defaultPinTheme: defaultPinTheme,
                     separatorBuilder: (index) => const SizedBox(width: 8),
                     hapticFeedbackType: HapticFeedbackType.lightImpact,
+                    readOnly: checking,
                     onCompleted: (value) async {
+                      setState(() => checking = true);
                       final result =
                           await widget.onChanged(pinController.text);
                       if (!mounted) return;
+                      setState(() => checking = false);
                       // On lockout the auth status stream drives the
                       // navigation away from this dialog: do nothing here.
                       if (!result.success && !result.locked) {
@@ -110,14 +121,17 @@ class _PinDialogViewState extends State<PinDialogView> {
                         setState(() {
                           showError = true;
                           attemptsRemaining = result.attemptsRemaining;
+                          unreachable = result.unreachable;
                         });
                       }
                     },
                     forceErrorState: showError,
-                    errorText: attemptsRemaining != null
-                        ? localization
-                            .account_pinAttemptsRemaining(attemptsRemaining!)
-                        : localization.account_pinIncorrect,
+                    errorText: unreachable
+                        ? localization.account_pinOfflineUnavailable
+                        : attemptsRemaining != null
+                            ? localization.account_pinAttemptsRemaining(
+                                attemptsRemaining!)
+                            : localization.account_pinIncorrect,
                     cursor: Column(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
@@ -147,6 +161,10 @@ class _PinDialogViewState extends State<PinDialogView> {
                     ),
                   ),
                 ),
+                if (checking)
+                  const Padding(
+                      padding: EdgeInsets.only(top: 16),
+                      child: LinearProgressIndicator()),
                 if (widget.returnToLogin != null)
                   Container(
                       margin: const EdgeInsets.only(top: 30, bottom: 10),

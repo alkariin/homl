@@ -22,7 +22,7 @@ class SettingsCubit extends Cubit<SettingsState> {
       log('Settings received from stream', name: 'SettingsCubit');
       emit(state.copyWith(settings: settings));
     }, onError: (error) {
-      errorModal(AppMessage.unexpectedError);
+      errorModal(AppMessage.requestFailed);
     });
     unawaited(loadVersions());
   }

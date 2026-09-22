@@ -12,6 +12,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get global_unexpectedError => 'Erreur inattendue';
 
   @override
+  String get global_serverUnreachable =>
+      'Serveur injoignable : cette action nécessite une connexion.';
+
+  @override
   String get account => 'Sécurité';
 
   @override
@@ -54,6 +58,10 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get account_pinIncorrect => 'Le code PIN est incorrect';
+
+  @override
+  String get account_pinOfflineUnavailable =>
+      'Serveur injoignable. Ton PIN fonctionnera hors ligne une fois que tu l\'auras saisi ici avec une connexion.';
 
   @override
   String get account_returnToLogin => 'Retour à la connexion';
@@ -106,6 +114,10 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get login_incorrectCredentials => 'Email ou mot de passe incorrect';
+
+  @override
+  String get login_serverUnreachable =>
+      'Serveur injoignable. Vérifie ta connexion et réessaie.';
 
   @override
   String get login_invalidEmail => 'L\'email n\'est pas valide';
@@ -636,4 +648,11 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get categories_tagNameConflict =>
       'Cette catégorie a déjà un tag portant ce nom. Choisis-en un autre.';
+
+  @override
+  String get offline_title => 'Hors ligne';
+
+  @override
+  String get offline_explanation =>
+      'Serveur injoignable. Tu consultes les données enregistrées sur cet appareil ; les modifications nécessitent une connexion. L\'app se reconnecte toute seule.';
 }

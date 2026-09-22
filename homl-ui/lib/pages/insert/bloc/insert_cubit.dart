@@ -192,7 +192,7 @@ class InsertCubit extends Cubit<InsertState> {
       }
     } catch (_) {
       emit(state.copyWith(
-          status: InsertStatus.editing, modal: AppMessage.unexpectedError));
+          status: InsertStatus.editing, modal: AppMessage.requestFailed));
     }
   }
 

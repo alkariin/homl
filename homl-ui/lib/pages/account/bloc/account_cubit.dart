@@ -113,7 +113,7 @@ class AccountCubit extends Cubit<AccountState> {
             : AppMessage.unexpectedError;
         emit(state.copyWith(modal: modal));
       } catch (e) {
-        emit(state.copyWith(modal: AppMessage.unexpectedError));
+        emit(state.copyWith(modal: AppMessage.requestFailed));
       }
     } else {
       try {
@@ -125,7 +125,7 @@ class AccountCubit extends Cubit<AccountState> {
         await _removeBiometricEntry();
         emit(state.copyWith(user: res));
       } catch (e) {
-        emit(state.copyWith(modal: AppMessage.unexpectedError));
+        emit(state.copyWith(modal: AppMessage.requestFailed));
       }
     }
   }
@@ -157,7 +157,7 @@ class AccountCubit extends Cubit<AccountState> {
         await LocalStorageManager.remove(LocalStorageKey.isFingerprintEnabled);
         emit(state.copyWith(user: res, modal: AppMessage.pinEnabled));
       } catch (e) {
-        emit(state.copyWith(modal: AppMessage.unexpectedError));
+        emit(state.copyWith(modal: AppMessage.requestFailed));
       }
     } else {
       try {
@@ -167,7 +167,7 @@ class AccountCubit extends Cubit<AccountState> {
         await LocalStorageManager.remove(LocalStorageKey.pinKeypair);
         emit(state.copyWith(user: res, modal: AppMessage.pinDisabled));
       } catch (e) {
-        emit(state.copyWith(modal: AppMessage.unexpectedError));
+        emit(state.copyWith(modal: AppMessage.requestFailed));
       }
     }
   }
