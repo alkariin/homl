@@ -35,6 +35,18 @@ the handlers next to it.
 
   Unexpected internal errors are replaced by a generic `INTERNAL` so nothing
   leaks; the original error is only logged.
+
+  Some errors also carry a machine-readable `code`, sometimes with an extra
+  field. Clients switch on the code, never on `message` (the messages of the
+  older codes are kept verbatim only for the clients that predate them):
+
+  | Code | Status | Extra field | Raised by |
+  | --- | --- | --- | --- |
+  | `SECOND_FACTOR_REQUIRED` | 401 | `factor`: `pin` or `fingerprint` | `POST /refresh` |
+  | `PIN_INCORRECT` | 401 | `attemptsRemaining` | `POST /refresh` |
+  | `PIN_LOCKED` | 401 | — | `POST /refresh` |
+  | `RESET_CODE_INVALID` | 401 | — | `POST /confirmResetPassword` |
+  | `TAG_NAME_CONFLICT` | 409 | — | `POST /tags`, `PATCH /tags/:id`, `DELETE /categories/:id` |
 - **Creations** — `POST /categories`, `POST /tags` and `POST /events` answer
   `201` with the id of the new row, `{ "id": 42 }`, so a client can address
   what it just created (an edit or a delete queued behind the creation, say)
@@ -97,8 +109,26 @@ accompanied by a `signature`.
 { "refresh_token": "...", "signature": "base64?", "pin": "1234?" }
 ```
 
-→ `201` token pair — `401` on invalid/rotated token, missing factor, bad
-signature or locked pin.
+→ `201` token pair — `400` for a `pin` without a `signature` — `401` otherwise:
+
+| `code` | Meaning | What the client does |
+| --- | --- | --- |
+| — (`Not authorized`) | the token is invalid, expired, rotated or revoked, or the signature does not verify against the registered key | log in again with the password |
+| `SECOND_FACTOR_REQUIRED` | the session is alive but the body lacks the account's factor, named by `factor` | ask for it, then retry **with the same refresh token** |
+| `PIN_INCORRECT` | wrong pin, `attemptsRemaining` tries left | ask again |
+| `PIN_LOCKED` | three wrong pins: even the right one is refused until a password login | log in with the password |
+
+A `SECOND_FACTOR_REQUIRED` refusal consumes nothing (no session, no
+challenge, no pin attempt):
+
+```json
+{ "error": { "type": "AUTHORIZATION", "code": "SECOND_FACTOR_REQUIRED",
+             "factor": "pin", "message": "Pin must be provided" } }
+```
+
+`factor` is `pin` (send `pin` and the `signature` of a fresh challenge) or
+`fingerprint` (send the `signature`). See
+[auth-flows.md](auth-flows.md#refresh-with-second-factor-pin--fingerprint).
 
 ### PUT /password
 

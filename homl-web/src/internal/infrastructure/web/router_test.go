@@ -190,6 +190,36 @@ func TestRefreshEndpoint(t *testing.T) {
 	sm.users.AssertExpectations(t)
 }
 
+// A refresh missing the account's second factor reaches the client as a 401
+// naming the factor, so it can prompt for it and retry instead of treating
+// the refusal as a dead session.
+func TestRefreshReportsTheMissingSecondFactor(t *testing.T) {
+	cases := []struct {
+		factor  string
+		message string
+	}{
+		{apperror.FactorPin, "Pin must be provided"},
+		{apperror.FactorFingerprint, "Signature must be provided"},
+	}
+
+	for _, c := range cases {
+		t.Run(c.factor, func(t *testing.T) {
+			router, sm := newTestServer()
+			sm.users.On("Refresh", mock.AnythingOfType("*user.RefreshInput")).
+				Return(nil, apperror.NewSecondFactorRequired(c.factor))
+
+			rec := doRequest(router, http.MethodPost, "/refresh",
+				`{"refresh_token":"some-refresh-token"}`, "")
+
+			assert.Equal(t, http.StatusUnauthorized, rec.Code)
+			assert.JSONEq(t,
+				`{"error":{"type":"AUTHORIZATION","message":"`+c.message+`","code":"SECOND_FACTOR_REQUIRED","factor":"`+c.factor+`"}}`,
+				rec.Body.String())
+			sm.users.AssertExpectations(t)
+		})
+	}
+}
+
 func TestLogoutEndpoint(t *testing.T) {
 	router, sm := newTestServer()
 

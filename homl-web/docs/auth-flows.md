@@ -122,6 +122,10 @@ sequenceDiagram
     S->>S: VerifyRefresh (HS256, refresh secret)
     S->>M: FindById (isPinEnabled / isFingerprintEnabled)
     Note over S: enforce the factor server-side:<br/>pin enabled ⇒ pin required,<br/>fingerprint enabled ⇒ signature required
+    opt the enabled factor is missing
+        S->>R: EXISTS refresh_uuid (read only)
+        S-->>C: 401 SECOND_FACTOR_REQUIRED {factor} if alive,<br/>plain 401 Not authorized otherwise
+    end
 
     opt signature provided
         S->>M: load pkey + challenge
@@ -140,6 +144,17 @@ sequenceDiagram
 
 Details worth knowing:
 
+- A refresh that lacks the account's factor is refused with
+  `401 SECOND_FACTOR_REQUIRED`, whose `factor` field says which one to ask
+  for (`pin` or `fingerprint`; the message stays the historical `Pin must be
+  provided` / `Signature must be provided`). Nothing is consumed by that
+  refusal — not the session, not a challenge, not a pin attempt — so the
+  client prompts for the factor and retries **with the same refresh token**
+  (fetching a fresh challenge first). The code is only given to a live
+  session: a revoked one gets the plain `401 Not authorized`, the answer that
+  tells the client to end the session rather than bother the user with a
+  prompt. Clients switch on the code; the message is only matched by the
+  ones that predate it.
 - The challenge is consumed *before* signature verification, so a captured
   challenge/signature pair can never be replayed, even after a failed attempt.
 - The pin lockout counter lives in MySQL (`pinTryCounter`); it is incremented
