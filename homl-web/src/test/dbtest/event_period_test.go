@@ -44,7 +44,8 @@ func TestEventPeriodRoundTrip(t *testing.T) {
 		{Description: "open", Date: start, IsOngoing: true},
 	}
 	for i := range shapes {
-		require.NoError(t, r.events.CreateEventWithTags(ctx, nil, []uint{tag}, &shapes[i], u))
+		_, err := r.events.CreateEventWithTags(ctx, nil, []uint{tag}, &shapes[i], u)
+		require.NoError(t, err)
 	}
 
 	// byDescription finds one of the events above in a fresh read.

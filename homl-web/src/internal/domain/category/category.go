@@ -65,7 +65,8 @@ type Repository interface {
 	// kind (date, person or other).
 	FindIdByKind(ctx context.Context, idUser uint64, kind Kind) (uint, error)
 	GetAllCategoriesWithTags(ctx context.Context, idUser uint64) (map[uint]Category, map[uint][]TagDTO, error)
-	Create(ctx context.Context, category *Category) error
+	// Create inserts a category and returns its id.
+	Create(ctx context.Context, category *Category) (uint, error)
 	Update(ctx context.Context, category *Category) error
 	// Delete removes a category. moveTags moves its tags (synonym links
 	// intact) to the user's Other category; otherwise the tags are deleted

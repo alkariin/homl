@@ -36,15 +36,20 @@ func (m *MockEventsRepo) FindEventsWithTags(ctx context.Context, encTags []strin
 	return r0, r1, r2
 }
 
-func (m *MockEventsRepo) CreateEventWithTags(ctx context.Context, tags []category.Tag, tagsId []uint, event *event.Event, idUser uint64) error {
+func (m *MockEventsRepo) CreateEventWithTags(ctx context.Context, tags []category.Tag, tagsId []uint, event *event.Event, idUser uint64) (uint, error) {
 	ret := m.Called(tags, tagsId, event, idUser)
 
-	var r0 error
+	var r0 uint
 	if ret.Get(0) != nil {
-		r0 = ret.Get(0).(error)
+		r0 = ret.Get(0).(uint)
 	}
 
-	return r0
+	var r1 error
+	if ret.Get(1) != nil {
+		r1 = ret.Get(1).(error)
+	}
+
+	return r0, r1
 }
 
 func (m *MockEventsRepo) UpdateEventWithTags(ctx context.Context, tags []category.Tag, tagsId []uint, event *event.Event, idUser uint64) error {

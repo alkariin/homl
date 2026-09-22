@@ -14,7 +14,8 @@ import (
 // EventsService is the use-case port of the Event aggregate.
 type EventsService interface {
 	GetEvents(ctx context.Context, idUser uint64, tags []string) ([]event.GetEventsResponse, error)
-	CreateEvent(ctx context.Context, idUser uint64, e *event.Event, tagsId []uint) error
+	// CreateEvent returns the id of the created event.
+	CreateEvent(ctx context.Context, idUser uint64, e *event.Event, tagsId []uint) (uint, error)
 	UpdateEvent(ctx context.Context, idUser uint64, e *event.Event, tagsId []uint) error
 	DeleteEvent(ctx context.Context, idEvent uint, idUser uint64) error
 }
@@ -117,20 +118,20 @@ func (e *eventsService) GetEvents(ctx context.Context, idUser uint64, tags []str
 	return responses, nil
 }
 
-func (e *eventsService) CreateEvent(ctx context.Context, idUser uint64, event *event.Event, tagsId []uint) error {
+func (e *eventsService) CreateEvent(ctx context.Context, idUser uint64, event *event.Event, tagsId []uint) (uint, error) {
 	if err := validatePeriod(event); err != nil {
-		return err
+		return 0, err
 	}
 
 	// The tag ids come straight from the client: refuse any that live in
 	// another user's categories.
 	if err := e.CategoriesRepository.CheckTagsBelongToUser(ctx, tagsId, idUser); err != nil {
-		return err
+		return 0, err
 	}
 
 	tags, err := e.prepareEvent(ctx, idUser, event)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	return e.EventsRepository.CreateEventWithTags(ctx, tags, tagsId, event, idUser)

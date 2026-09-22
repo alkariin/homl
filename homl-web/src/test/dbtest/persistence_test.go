@@ -101,7 +101,8 @@ func TestCrossTenantEventIsolation(t *testing.T) {
 	require.NoError(t, err)
 	aliceTag, err := r.cats.CreateTag(ctx, r.enc(t, "Trip", alice), nil, aliceOther, nil)
 	require.NoError(t, err)
-	require.NoError(t, r.events.CreateEventWithTags(ctx, nil, []uint{aliceTag}, &event.Event{Description: r.enc(t, "secret", alice), Date: time.Now()}, alice))
+	_, err = r.events.CreateEventWithTags(ctx, nil, []uint{aliceTag}, &event.Event{Description: r.enc(t, "secret", alice), Date: time.Now()}, alice)
+	require.NoError(t, err)
 	aliceEvents, _, err := r.events.FindEventsWithTags(ctx, nil, alice)
 	require.NoError(t, err)
 	require.Len(t, aliceEvents, 1)
@@ -149,8 +150,7 @@ func TestCrossTenantCategoryIsolation(t *testing.T) {
 
 	t.Run("mallory cannot delete alice's category", func(t *testing.T) {
 		// A custom (deletable) category of Alice.
-		require.NoError(t, r.cats.Create(ctx, &category.Category{Category: "enc", Color: "#fff", Kind: category.KindCustom, IdUser: alice}))
-		aliceCat, err := r.cats.FindIdByKind(ctx, alice, category.KindCustom)
+		aliceCat, err := r.cats.Create(ctx, &category.Category{Category: "enc", Color: "#fff", Kind: category.KindCustom, IdUser: alice})
 		require.NoError(t, err)
 
 		err = r.cats.Delete(ctx, aliceCat, mallory, false, false)

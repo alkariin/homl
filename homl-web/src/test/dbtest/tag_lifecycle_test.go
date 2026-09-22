@@ -17,26 +17,18 @@ import (
 )
 
 // newCustomCategory inserts a custom category for the user and returns its id.
-// The repository Create does not return the id, so the row is inserted raw.
 func newCustomCategory(t *testing.T, r *repos, idUser uint64, encName string) uint {
 	t.Helper()
-	res, err := r.db.Exec(
-		"INSERT INTO Categories (category, color, isLocked, kind, idUser) VALUES (?, ?, 0, 'custom', ?)",
-		encName, "#123456", idUser,
-	)
+	id, err := r.cats.Create(context.Background(), &category.Category{Category: encName, Color: "#123456", IdUser: idUser})
 	require.NoError(t, err)
-	id, err := res.LastInsertId()
-	require.NoError(t, err)
-	return uint(id)
+	return id
 }
 
 // newEvent creates an event linked to the given tags and returns its id.
 func newEvent(t *testing.T, r *repos, idUser uint64, tagsId []uint) uint {
 	t.Helper()
-	ctx := context.Background()
-	require.NoError(t, r.events.CreateEventWithTags(ctx, nil, tagsId, &event.Event{Date: time.Now()}, idUser))
-	var id uint
-	require.NoError(t, r.db.Get(&id, "SELECT MAX(id) FROM Events WHERE idUser = ?", idUser))
+	id, err := r.events.CreateEventWithTags(context.Background(), nil, tagsId, &event.Event{Date: time.Now()}, idUser)
+	require.NoError(t, err)
 	return id
 }
 

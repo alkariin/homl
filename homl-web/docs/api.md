@@ -35,6 +35,10 @@ the handlers next to it.
 
   Unexpected internal errors are replaced by a generic `INTERNAL` so nothing
   leaks; the original error is only logged.
+- **Creations** — `POST /categories`, `POST /tags` and `POST /events` answer
+  `201` with the id of the new row, `{ "id": 42 }`, so a client can address
+  what it just created (an edit or a delete queued behind the creation, say)
+  without refetching the whole list.
 
 ## Auth & account
 
@@ -190,7 +194,7 @@ All endpoints require auth. A category groups tags; locked categories
 | Method | Path | Body | Response |
 | --- | --- | --- | --- |
 | GET | `/categories` | — | `200` list below |
-| POST | `/categories` | `{category, color}` | `201` |
+| POST | `/categories` | `{category, color}` | `201` `{id}` |
 | PATCH | `/categories/:id` | `{category, color}` | `204` |
 | DELETE | `/categories/:id` | `{moveTags, deleteEvents?}` | `204` |
 | GET | `/categories/:id/usage` | — | `200` usage below |
@@ -266,7 +270,7 @@ category (one level deep, any category except dates — see
 
 | Method | Path | Body | Response |
 | --- | --- | --- | --- |
-| POST | `/tags` | `{tag, idCategory, idParentTag?, tagIndex?}` | `201` |
+| POST | `/tags` | `{tag, idCategory, idParentTag?, tagIndex?}` | `201` `{id}` |
 | PATCH | `/tags/:id` | `{tag, idCategory, idParentTag?, tagIndex?}` | `204` |
 | DELETE | `/tags/:id` | `{deleteEvents?}` (optional) | `204` |
 | GET | `/tags/:id/usage` | — | `200` usage below |
@@ -316,7 +320,7 @@ client creates and attaches its own.
 | Method | Path | Body / query | Response |
 | --- | --- | --- | --- |
 | GET | `/events` | `?tags=<name>&tags=<name>` (optional) | `200` list below |
-| POST | `/events` | `{description?, date, endDate?, isOngoing?, tagsId: uint[]}` | `201`, `400` on an invalid period |
+| POST | `/events` | `{description?, date, endDate?, isOngoing?, tagsId: uint[]}` | `201` `{id}`, `400` on an invalid period |
 | PATCH | `/events/:id` | `{description?, date, endDate?, isOngoing?, tagsId: uint[]}` | `204`, `400` on an invalid period |
 | DELETE | `/events/:id` | — | `204` |
 

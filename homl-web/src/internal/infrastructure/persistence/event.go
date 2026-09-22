@@ -137,44 +137,47 @@ func (e *EventsRepository) FindEventsWithTags(ctx context.Context, encTags []str
 	return resEvents, resTags, nil
 }
 
-func (e *EventsRepository) CreateEventWithTags(ctx context.Context, tags []category.Tag, tagsId []uint, event *event.Event, idUser uint64) error {
+func (e *EventsRepository) CreateEventWithTags(ctx context.Context, tags []category.Tag, tagsId []uint, event *event.Event, idUser uint64) (uint, error) {
 	tx, err := e.DB.BeginTxx(ctx, nil)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	defer tx.Rollback() // no-op once Commit succeeds
 
 	otherTagsId, err := CreateAllTags(ctx, tx, e.Crypto, tags, idUser)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	tagsId = append(tagsId, otherTagsId...)
 
 	// it works even if the description has been omitted
 	encDescription, err := e.storedDescription(ctx, event.Description, idUser)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	// A nil EndDate binds as NULL (the driver dereferences non-nil pointers).
 	res, err := tx.ExecContext(ctx, "INSERT INTO Events (description, date, endDate, isOngoing, idUser) VALUES (?, ?, ?, ?, ?);", encDescription, event.Date, event.EndDate, event.IsOngoing, idUser)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	eventId, err := res.LastInsertId()
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	for _, tagId := range tagsId {
 		_, err = tx.ExecContext(ctx, "INSERT INTO EventsTags (idTag, idEvent, idUser) VALUES (?, ?, ?)", tagId, eventId, idUser)
 		if err != nil {
-			return err
+			return 0, err
 		}
 	}
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return 0, err
+	}
+	return uint(eventId), nil
 }
 
 func (e *EventsRepository) UpdateEventWithTags(ctx context.Context, tags []category.Tag, tagsId []uint, event *event.Event, idUser uint64) error {

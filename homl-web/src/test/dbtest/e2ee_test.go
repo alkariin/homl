@@ -72,8 +72,9 @@ func TestE2EEMigrateLifecycle(t *testing.T) {
 	require.NoError(t, err)
 	aliceTag, err := r.cats.CreateTag(ctx, r.enc(t, "Trip", alice), nil, aliceOther, nil)
 	require.NoError(t, err)
-	require.NoError(t, r.events.CreateEventWithTags(ctx, nil, []uint{aliceTag},
-		&event.Event{Description: r.enc(t, "secret", alice), Date: time.Now()}, alice))
+	_, err = r.events.CreateEventWithTags(ctx, nil, []uint{aliceTag},
+		&event.Event{Description: r.enc(t, "secret", alice), Date: time.Now()}, alice)
+	require.NoError(t, err)
 
 	enabled, err := e2eeRepo.IsEnabled(ctx, alice)
 	require.NoError(t, err)
