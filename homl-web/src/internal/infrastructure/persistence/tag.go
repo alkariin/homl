@@ -295,8 +295,13 @@ func CreateAllTags(ctx context.Context, tx *sqlx.Tx, crypto application.Encrypto
 				return nil, err
 			}
 
-			res, err := tx.ExecContext(ctx, "INSERT INTO Tags (tag, idCategory) VALUES (?, ?)", encTag, tag.IdCategory)
-			// Refused if the tag already exists in another category
+			// The lookup that found the tag missing (buildDateTags) ran
+			// before this transaction, so a concurrent write of the same
+			// month or year may have created it since. The upsert hands back
+			// that row's id through LAST_INSERT_ID instead of failing on the
+			// (idCategory, tag) unique key; a deterministic encryption makes
+			// the two ciphertexts equal.
+			res, err := tx.ExecContext(ctx, "INSERT INTO Tags (tag, idCategory) VALUES (?, ?) ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)", encTag, tag.IdCategory)
 			if err != nil {
 				return nil, err
 			}

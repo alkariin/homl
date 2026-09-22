@@ -90,3 +90,55 @@ func TestUpdateTagReplayIsANoOp(t *testing.T) {
 		assert.Equal(t, beach, *stored.IdParentTag)
 	})
 }
+
+// The date tags of an event are looked up before its write transaction opens,
+// and the ones the lookup misses are inserted by the write. Two writes of the
+// same new month at once (two devices syncing together) both miss it: the
+// second insert must then reuse the row the first one created instead of
+// failing on the (idCategory, tag) unique key. The race is replayed here by
+// creating the tag between the "lookup" and the write.
+func TestDateTagCreatedMeanwhileIsReused(t *testing.T) {
+	r := setup(t)
+	ctx := context.Background()
+	u := newUser(t, r)
+
+	dates, err := r.cats.FindIdByKind(ctx, u, category.KindDate)
+	require.NoError(t, err)
+	// Left behind by the concurrent write, after this one's lookup missed it.
+	june, err := r.cats.CreateTag(ctx, r.enc(t, "June", u), nil, dates, nil)
+	require.NoError(t, err)
+
+	idOf := func(t *testing.T, name string) uint {
+		t.Helper()
+		var ids []uint
+		require.NoError(t, r.db.Select(&ids, "SELECT id FROM Tags WHERE idCategory = ? AND tag = ?", dates, r.enc(t, name, u)))
+		require.Len(t, ids, 1, "exactly one %q tag", name)
+		return ids[0]
+	}
+	linked := func(t *testing.T, idEvent uint) []uint {
+		t.Helper()
+		var ids []uint
+		require.NoError(t, r.db.Select(&ids, "SELECT idTag FROM EventsTags WHERE idEvent = ?", idEvent))
+		return ids
+	}
+
+	t.Run("on create", func(t *testing.T) {
+		missed := []category.Tag{{Tag: "June", IdCategory: dates}, {Tag: "2031", IdCategory: dates}}
+
+		id, err := r.events.CreateEventWithTags(ctx, missed, nil, &event.Event{Date: day(2031, time.June, 3)}, u)
+		require.NoError(t, err)
+
+		assert.Equal(t, june, idOf(t, "June"), "the existing tag is reused, not duplicated")
+		assert.ElementsMatch(t, []uint{june, idOf(t, "2031")}, linked(t, id))
+	})
+
+	t.Run("on update", func(t *testing.T) {
+		missed := []category.Tag{{Tag: "June", IdCategory: dates}, {Tag: "2032", IdCategory: dates}}
+		id := newEvent(t, r, u, nil)
+
+		require.NoError(t, r.events.UpdateEventWithTags(ctx, missed, nil, &event.Event{Id: id, Date: day(2032, time.June, 3)}, u))
+
+		assert.Equal(t, june, idOf(t, "June"), "the existing tag is reused, not duplicated")
+		assert.ElementsMatch(t, []uint{june, idOf(t, "2032")}, linked(t, id))
+	})
+}
