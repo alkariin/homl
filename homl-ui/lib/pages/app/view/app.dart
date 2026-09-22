@@ -81,7 +81,7 @@ class AppView extends StatefulWidget {
   State<AppView> createState() => _AppViewState();
 }
 
-class _AppViewState extends State<AppView> {
+class _AppViewState extends State<AppView> with WidgetsBindingObserver {
   final _navigatorKey = GlobalKey<NavigatorState>();
   final _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
   NavigatorState get _navigator => _navigatorKey.currentState!;
@@ -104,10 +104,32 @@ class _AppViewState extends State<AppView> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Future<void>.delayed(const Duration(milliseconds: 1350))
           .then((_) => _minSplash.complete());
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  /// Offline, the Api probes the server while the app is in the foreground
+  /// only; coming back to it (typically: back home) looks again at once.
+  /// Not on `inactive`: the fingerprint prompt makes the app inactive.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.resumed:
+        widget._apiInstance.onAppResumed();
+      case AppLifecycleState.paused:
+        widget._apiInstance.onAppPaused();
+      default:
+        break;
+    }
   }
 
   Future<PinAuthResult> onPinChanged(String pin) async {

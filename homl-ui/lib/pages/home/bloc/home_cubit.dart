@@ -16,6 +16,8 @@ import 'package:homl/data/repositories/tags.repository.dart';
 import 'package:homl/helpers/app_message.dart';
 import 'package:homl/helpers/categories.dart';
 import 'package:homl/helpers/colors.dart';
+import 'package:homl/helpers/server_reachability.dart';
+import 'package:rxdart/rxdart.dart';
 
 part 'home_state.dart';
 
@@ -27,6 +29,7 @@ class HomeCubit extends Cubit<HomeState> {
   final SettingsRepository settingsRepository;
   late StreamSubscription<Settings> _settingsSubscription;
   late StreamSubscription<void> _eventsChangedSubscription;
+  late StreamSubscription<List<Reachability>> _reachabilitySubscription;
 
   HomeCubit(this.settingsRepository, this.eventsRepository,
       this.categoriesRepository, this.tagsRepository, String username)
@@ -44,6 +47,17 @@ class HomeCubit extends Cubit<HomeState> {
     // Refresh the shared events/categories when another page (e.g. the
     // insert form) reports a change through the repository stream.
     _eventsChangedSubscription = eventsRepository.changes.listen((_) {
+      init();
+    });
+
+    // Back online after an offline spell: fetch what changed meanwhile (and
+    // rewrite the offline cache).
+    _reachabilitySubscription = ServerReachability.instance.stream
+        .pairwise()
+        .where((pair) =>
+            pair.first == Reachability.offline &&
+            pair.last == Reachability.online)
+        .listen((_) {
       init();
     });
 
@@ -97,6 +111,7 @@ class HomeCubit extends Cubit<HomeState> {
       final cachedEvents = await eventsRepository.getCachedEvents();
       final cachedCategories = await categoriesRepository.getCachedCategories();
 
+      if (isClosed) return;
       if (cachedEvents != null && cachedCategories != null) {
         final categories = _withFixedDateColor(cachedCategories);
         emit(state.copyWith(
@@ -112,12 +127,15 @@ class HomeCubit extends Cubit<HomeState> {
       final categories =
           _withFixedDateColor(await categoriesRepository.getCategories());
 
+      // A reconnection can land after the page was closed (logout).
+      if (isClosed) return;
       emit(state.copyWith(
           events: events,
           categories: categories,
           allTagsMap: _buildTagsMap(categories),
           initialized: true));
     } catch (_) {
+      if (isClosed) return;
       // Offline with a cached snapshot on screen: stale data is fine.
       if (!state.initialized) {
         emit(state.copyWith(modal: AppMessage.unexpectedError));
@@ -280,6 +298,7 @@ class HomeCubit extends Cubit<HomeState> {
     log('Closing settings subscription', name: 'HomeCubit');
     _settingsSubscription.cancel();
     _eventsChangedSubscription.cancel();
+    _reachabilitySubscription.cancel();
     return super.close();
   }
 }

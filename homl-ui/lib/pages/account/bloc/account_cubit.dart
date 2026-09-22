@@ -88,14 +88,15 @@ class AccountCubit extends Cubit<AccountState> {
   Future<void> updateIsFingerprintEnabled(bool isFingerprintEnabled) async {
     if (isFingerprintEnabled) {
       try {
-        final publicKey = await generateKeyPair();
+        final (publicKey, keyPair) = await generateKeyPair();
 
         final User newUser = state.user!
             .copyWith(isFingerprintEnabled: true, pin: null, pkey: publicKey);
 
         final User res;
         try {
-          res = await usersRepository.secureAuth(newUser);
+          res = await usersRepository.secureAuth(newUser,
+              biometricKeyPair: keyPair);
         } catch (_) {
           // Nothing changed server-side: drop the entry just created.
           await _removeBiometricEntry();

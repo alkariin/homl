@@ -8,6 +8,16 @@ enum LocalStorageKey {
   eventsCache,
   categoriesCache,
 
+  /// Last `GET /settings` payload: an offline start still knows the
+  /// language, the default screen and the E2EE key check.
+  settingsCache,
+
+  /// PBKDF2 hash of the last PIN the server accepted on this device, and the
+  /// count of wrong offline tries (see helpers/pin_verifier.dart). Dropped
+  /// whenever the session ends.
+  pinVerifier,
+  pinOfflineFailures,
+
   /// 16-byte E2EE seed (base64). Deliberately NOT removed on logout: it must
   /// survive re-logins on the same device — losing it means losing the data.
   /// Account deletion is the one case that wipes it (see [clearAll]): there
@@ -52,6 +62,7 @@ class LocalStorageManager {
   static Future<void> clearDataCaches() async {
     await remove(LocalStorageKey.eventsCache);
     await remove(LocalStorageKey.categoriesCache);
+    await remove(LocalStorageKey.settingsCache);
   }
 
   /// Removes every key this app owns. Account deletion only: unlike logout it

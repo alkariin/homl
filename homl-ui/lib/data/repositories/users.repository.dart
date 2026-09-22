@@ -5,9 +5,9 @@ import 'package:dio/dio.dart';
 import 'package:homl/data/models/user.dart';
 
 import 'package:homl/helpers/biometric_storage.dart';
-import 'package:homl/helpers/e2ee.dart';
 import 'package:homl/helpers/language.dart';
 import 'package:homl/helpers/local_storage_manager.dart';
+import 'package:homl/helpers/pin_verifier.dart';
 
 import 'api.dart';
 
@@ -119,15 +119,11 @@ class UsersRepository {
     await _endSession(AuthenticationStatus.accountDeleted);
   }
 
-  /// Ends the local session: forget the tokens and the cached data, lock the
-  /// in-memory E2EE keys and broadcast the new status so the app navigates.
-  Future<void> _endSession(AuthenticationStatus status) async {
-    await LocalStorageManager.remove(LocalStorageKey.refreshToken);
-    await LocalStorageManager.clearDataCaches();
-    E2ee().lock();
-    apiInstance.accessToken = null;
-    apiInstance.updateStatus(status);
-  }
+  /// Ends the local session: forget the tokens, the cached data and the
+  /// offline PIN, lock the in-memory E2EE keys and broadcast the new status so
+  /// the app navigates.
+  Future<void> _endSession(AuthenticationStatus status) =>
+      apiInstance.endSession(status);
 
   /// Requests a password-reset code by email. The server always answers 204,
   /// whether or not the account exists, so success reveals nothing.
@@ -187,7 +183,9 @@ class UsersRepository {
     apiInstance.accessToken = response.data['access_token'];
   }
 
-  Future<User> secureAuth(User user) async {
+  /// Sets up (or removes) the PIN / fingerprint factor. [biometricKeyPair]:
+  /// the keypair just created for the fingerprint.
+  Future<User> secureAuth(User user, {String? biometricKeyPair}) async {
     late Response<Map<String, dynamic>> response;
     try {
       response = await apiInstance.api
@@ -201,6 +199,18 @@ class UsersRepository {
 
     if (response.data == null) {
       throw UserOtherFailure();
+    }
+
+    // The new factor is the session's from now on: the next refreshes carry
+    // it, and a new PIN is the one to check offline.
+    final pin = user.isPinEnabled ? user.pin : null;
+    apiInstance.holdSecondFactor(
+        pin: pin,
+        biometricKeyPair: user.isFingerprintEnabled ? biometricKeyPair : null);
+    if (pin != null) {
+      await PinVerifier.store(pin);
+    } else {
+      await PinVerifier.clear();
     }
 
     return User.fromJson(response.data!);
