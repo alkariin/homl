@@ -47,6 +47,7 @@ the handlers next to it.
   | `PIN_LOCKED` | 401 | — | `POST /refresh` |
   | `RESET_CODE_INVALID` | 401 | — | `POST /confirmResetPassword` |
   | `TAG_NAME_CONFLICT` | 409 | — | `POST /tags`, `PATCH /tags/:id`, `DELETE /categories/:id` |
+
 - **Creations** — `POST /categories`, `POST /tags` and `POST /events` answer
   `201` with the id of the new row, `{ "id": 42 }`, so a client can address
   what it just created (an edit or a delete queued behind the creation, say)

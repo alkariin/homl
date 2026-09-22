@@ -204,7 +204,7 @@ func TestCreateTag(t *testing.T) {
 func TestUpdateTag(t *testing.T) {
 	ctx := context.Background()
 
-	// The repository UPDATE no longer checks the affected-rows count (a
+	// The repository UPDATE does not check the affected-rows count (a
 	// replayed PATCH changes nothing and must still succeed), so this scoped
 	// load is the one thing standing between a PATCH and another user's tag.
 	t.Run("Rejects a tag the user does not own before writing anything", func(t *testing.T) {
