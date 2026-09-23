@@ -48,18 +48,16 @@ func (c *CategoriesRepository) UpdateTag(ctx context.Context, tagNameEncrypt str
 	}
 	defer tx.Rollback() // no-op once Commit succeeds
 
-	res, err := tx.ExecContext(ctx, "UPDATE Tags SET tag = ?, tagIndex = ?, idCategory = ?, idParentTag = ? WHERE id = ?", tagNameEncrypt, tagIndex, idCategory, idParentTag, idTag)
-
+	// The affected-rows count is deliberately not checked: MySQL reports 0 for
+	// a no-op update (same values), which is what a client replaying a PATCH
+	// sends, and ownership is already verified by the service through
+	// FindTagForUser.
+	_, err = tx.ExecContext(ctx, "UPDATE Tags SET tag = ?, tagIndex = ?, idCategory = ?, idParentTag = ? WHERE id = ?", tagNameEncrypt, tagIndex, idCategory, idParentTag, idTag)
 	if err != nil {
 		// Renaming onto a name already used in the category, or moving into
 		// a category that already has one, hits the unique key. Nothing is
 		// written: the transaction rolls back.
 		return tagNameConflict(err, "A tag with this name already exists in the target category")
-	}
-
-	rowsAffected, err := res.RowsAffected()
-	if rowsAffected == 0 || err != nil {
-		return apperror.NewInternal()
 	}
 
 	// A synonym must live in the same category as its main tag: when a main
@@ -297,8 +295,13 @@ func CreateAllTags(ctx context.Context, tx *sqlx.Tx, crypto application.Encrypto
 				return nil, err
 			}
 
-			res, err := tx.ExecContext(ctx, "INSERT INTO Tags (tag, idCategory) VALUES (?, ?)", encTag, tag.IdCategory)
-			// Refused if the tag already exists in another category
+			// The lookup that found the tag missing (buildDateTags) ran
+			// before this transaction, so a concurrent write of the same
+			// month or year may have created it since. The upsert hands back
+			// that row's id through LAST_INSERT_ID instead of failing on the
+			// (idCategory, tag) unique key; a deterministic encryption makes
+			// the two ciphertexts equal.
+			res, err := tx.ExecContext(ctx, "INSERT INTO Tags (tag, idCategory) VALUES (?, ?) ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)", encTag, tag.IdCategory)
 			if err != nil {
 				return nil, err
 			}

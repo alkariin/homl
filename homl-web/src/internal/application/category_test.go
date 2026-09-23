@@ -24,11 +24,13 @@ func TestCreateCategory(t *testing.T) {
 		mockRepo.On("Create", mock.MatchedBy(func(c *category.Category) bool {
 			dec, err := testCrypto.Decrypt(c.Category, 42)
 			return err == nil && dec == "Noces" && c.Color == "red" && !c.IsLocked && c.IdUser == 42
-		})).Return(nil)
+		})).Return(uint(5), nil)
 
-		err := svc.CreateCategory(context.Background(), &category.Category{Category: "noces", Color: "red", IdUser: 42})
+		id, err := svc.CreateCategory(context.Background(), &category.Category{Category: "noces", Color: "red", IdUser: 42})
 
 		assert.NoError(t, err)
+		// The id of the new row reaches the caller (POST /categories answers it).
+		assert.Equal(t, uint(5), id)
 		mockRepo.AssertExpectations(t)
 	})
 
@@ -36,9 +38,9 @@ func TestCreateCategory(t *testing.T) {
 		mockRepo := new(mocks.MockCategoriesRepo)
 		svc := application.NewCategoriesService(&application.CSConfig{CategoriesRepository: mockRepo, Crypto: testCrypto})
 
-		mockRepo.On("Create", mock.Anything).Return(errors.New("db down"))
+		mockRepo.On("Create", mock.Anything).Return(uint(0), errors.New("db down"))
 
-		err := svc.CreateCategory(context.Background(), &category.Category{Category: "Noces", Color: "red"})
+		_, err := svc.CreateCategory(context.Background(), &category.Category{Category: "Noces", Color: "red"})
 
 		assert.Error(t, err)
 		mockRepo.AssertExpectations(t)

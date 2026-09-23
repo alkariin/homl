@@ -106,17 +106,25 @@ func (c *CategoriesRepository) GetAllCategoriesWithTags(ctx context.Context, idU
 	return categories, tags, nil
 }
 
-func (c *CategoriesRepository) Create(ctx context.Context, cat *category.Category) error {
+func (c *CategoriesRepository) Create(ctx context.Context, cat *category.Category) (uint, error) {
 	kind := cat.Kind
 	if kind == "" {
 		kind = category.KindCustom
 	}
-	_, err := c.DB.ExecContext(ctx,
+	res, err := c.DB.ExecContext(ctx,
 		"INSERT INTO Categories (category, color, isLocked, kind, idUser) VALUES (?, ?, ?, ?, ?)",
 		cat.Category, cat.Color, cat.IsLocked, kind, cat.IdUser,
 	)
+	if err != nil {
+		return 0, err
+	}
 
-	return err
+	idCategory, err := res.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+
+	return uint(idCategory), nil
 }
 
 func (c *CategoriesRepository) Update(ctx context.Context, category *category.Category) error {

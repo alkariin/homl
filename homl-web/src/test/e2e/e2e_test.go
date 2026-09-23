@@ -139,7 +139,8 @@ type categoryResponse struct {
 }
 
 // TestCategoryLifecycle creates a category, verifies it shows up in the list,
-// then deletes it — a self-cleaning CRUD round-trip against the real DB.
+// renames a tag of it twice over (a replayed PATCH), then deletes it — a
+// self-cleaning CRUD round-trip against the real DB.
 func TestCategoryLifecycle(t *testing.T) {
 	c := newClient(t)
 	c.login()
@@ -149,10 +150,11 @@ func TestCategoryLifecycle(t *testing.T) {
 	// survives the normalization unchanged — do not "fix" the casing.
 	name := fmt.Sprintf("E2e-%d", time.Now().UnixNano())
 
-	if status, body := c.do(http.MethodPost, "/categories", map[string]string{
+	status, body := c.do(http.MethodPost, "/categories", map[string]string{
 		"category": name,
 		"color":    "#abcdef",
-	}); status != http.StatusCreated {
+	})
+	if status != http.StatusCreated {
 		t.Fatalf("create category: status %d, body %s", status, body)
 	}
 
@@ -160,7 +162,27 @@ func TestCategoryLifecycle(t *testing.T) {
 	if created == nil {
 		t.Fatalf("created category %q not found in GET /categories", name)
 	}
+	// The creation answers the id of the new row.
+	if id := decodeID(t, body); id != created.Id {
+		t.Fatalf("POST /categories answered id %d, GET /categories lists %d", id, created.Id)
+	}
 
+	// PATCH /tags is full-state: replaying one that already landed (its answer
+	// was lost, say) changes no row and must still answer 204, not 500.
+	idTag := decodeID(t, c.mustDo(http.MethodPost, "/tags", map[string]interface{}{
+		"tag": "Snorkel", "idCategory": created.Id,
+	}, http.StatusCreated))
+	rename := map[string]interface{}{"tag": "Diving", "idCategory": created.Id}
+	for attempt := 1; attempt <= 2; attempt++ {
+		c.mustDo(http.MethodPatch, fmt.Sprintf("/tags/%d", idTag), rename, http.StatusNoContent)
+	}
+	// Skipping the affected-rows check must not let a PATCH through to a tag
+	// the user does not own.
+	if status, body := c.do(http.MethodPatch, "/tags/999999999", rename); status != http.StatusBadRequest {
+		t.Fatalf("PATCH an unknown tag: expected 400, got %d, body %s", status, body)
+	}
+
+	// Without moveTags, the tag goes with the category.
 	if status, body := c.do(http.MethodDelete, fmt.Sprintf("/categories/%d", created.Id),
 		map[string]bool{"moveTags": false}); status != http.StatusNoContent {
 		t.Fatalf("delete category: status %d, body %s", status, body)
@@ -169,6 +191,21 @@ func TestCategoryLifecycle(t *testing.T) {
 	if findCategory(t, c, name) != nil {
 		t.Fatalf("category %q still present after delete", name)
 	}
+}
+
+// decodeID reads the {"id": …} body the create endpoints answer.
+func decodeID(t *testing.T, body []byte) uint {
+	t.Helper()
+	var created struct {
+		Id uint `json:"id"`
+	}
+	if err := json.Unmarshal(body, &created); err != nil {
+		t.Fatalf("decode the created id: %v (body %s)", err, body)
+	}
+	if created.Id == 0 {
+		t.Fatalf("the creation answered no id: %s", body)
+	}
+	return created.Id
 }
 
 func findCategory(t *testing.T, c *client, name string) *categoryResponse {
@@ -345,39 +382,27 @@ func (c *client) findEvent(description string) *eventResponse {
 
 // newCategoryWithEvent creates a category holding one tag, and one event
 // carrying that tag — the smallest fixture the three options differ on. The
-// backend adds the month/year date tags to the event on its own.
+// backend adds the month/year date tags to the event on its own. Every
+// creation answers the id of its row, so nothing is looked up by name.
 func (c *client) newCategoryWithEvent(name, tagName, description string) (idCategory, idTag uint) {
 	c.t.Helper()
-	c.mustDo(http.MethodPost, "/categories", map[string]string{
+	idCategory = decodeID(c.t, c.mustDo(http.MethodPost, "/categories", map[string]string{
 		"category": name,
 		"color":    "#abcdef",
-	}, http.StatusCreated)
+	}, http.StatusCreated))
 
-	for _, cat := range c.categories() {
-		if cat.Category == name {
-			idCategory = cat.Id
-		}
-	}
-	if idCategory == 0 {
-		c.t.Fatalf("category %q not found after its creation", name)
-	}
-
-	body := c.mustDo(http.MethodPost, "/tags", map[string]interface{}{
+	idTag = decodeID(c.t, c.mustDo(http.MethodPost, "/tags", map[string]interface{}{
 		"tag": tagName, "idCategory": idCategory,
-	}, http.StatusCreated)
-	var created struct {
-		Id uint `json:"id"`
-	}
-	if err := json.Unmarshal(body, &created); err != nil {
-		c.t.Fatalf("decode tag: %v", err)
-	}
-	idTag = created.Id
+	}, http.StatusCreated))
 
-	c.mustDo(http.MethodPost, "/events", map[string]interface{}{
+	idEvent := decodeID(c.t, c.mustDo(http.MethodPost, "/events", map[string]interface{}{
 		"description": description,
 		"date":        "2026-07-05T00:00:00Z",
 		"tagsId":      []uint{idTag},
-	}, http.StatusCreated)
+	}, http.StatusCreated))
+	if e := c.findEvent(description); e == nil || e.Id != idEvent {
+		c.t.Fatalf("POST /events answered id %d, GET /events lists %+v", idEvent, e)
+	}
 
 	return idCategory, idTag
 }
@@ -418,14 +443,17 @@ func TestEventPeriods(t *testing.T) {
 	}
 
 	t.Run("a closed period is tagged with every month it covers", func(t *testing.T) {
-		c.mustDo(http.MethodPost, "/events", map[string]interface{}{
+		id := decodeID(t, c.mustDo(http.MethodPost, "/events", map[string]interface{}{
 			"description": "e2e-trip",
 			"date":        "2026-06-28T00:00:00Z",
 			"endDate":     "2026-07-05T00:00:00Z",
 			"tagsId":      []uint{},
-		}, http.StatusCreated)
+		}, http.StatusCreated))
 
 		e := mustFind(t, "e2e-trip")
+		if e.Id != id {
+			t.Fatalf("POST /events answered id %d, GET /events lists %d", id, e.Id)
+		}
 		if e.EndDate == nil || *e.EndDate != "2026-07-05T00:00:00Z" {
 			t.Fatalf("endDate read back as %v", e.EndDate)
 		}

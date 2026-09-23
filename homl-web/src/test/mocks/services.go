@@ -116,8 +116,13 @@ func (m *MockCategoriesService) GetCategories(ctx context.Context, idUser uint64
 	return r0, errAt(ret, 1)
 }
 
-func (m *MockCategoriesService) CreateCategory(ctx context.Context, category *category.Category) error {
-	return errAt(m.Called(category), 0)
+func (m *MockCategoriesService) CreateCategory(ctx context.Context, category *category.Category) (uint, error) {
+	ret := m.Called(category)
+	var r0 uint
+	if ret.Get(0) != nil {
+		r0 = ret.Get(0).(uint)
+	}
+	return r0, errAt(ret, 1)
 }
 
 func (m *MockCategoriesService) UpdateCategory(ctx context.Context, category *category.Category) error {
@@ -152,8 +157,13 @@ func (m *MockEventsService) GetEvents(ctx context.Context, idUser uint64, tags [
 	return r0, errAt(ret, 1)
 }
 
-func (m *MockEventsService) CreateEvent(ctx context.Context, idUser uint64, event *event.Event, tagsId []uint) error {
-	return errAt(m.Called(idUser, event, tagsId), 0)
+func (m *MockEventsService) CreateEvent(ctx context.Context, idUser uint64, event *event.Event, tagsId []uint) (uint, error) {
+	ret := m.Called(idUser, event, tagsId)
+	var r0 uint
+	if ret.Get(0) != nil {
+		r0 = ret.Get(0).(uint)
+	}
+	return r0, errAt(ret, 1)
 }
 
 func (m *MockEventsService) UpdateEvent(ctx context.Context, idUser uint64, event *event.Event, tagsId []uint) error {

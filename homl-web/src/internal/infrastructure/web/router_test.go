@@ -190,6 +190,36 @@ func TestRefreshEndpoint(t *testing.T) {
 	sm.users.AssertExpectations(t)
 }
 
+// A refresh missing the account's second factor reaches the client as a 401
+// naming the factor, so it can prompt for it and retry instead of treating
+// the refusal as a dead session.
+func TestRefreshReportsTheMissingSecondFactor(t *testing.T) {
+	cases := []struct {
+		factor  string
+		message string
+	}{
+		{apperror.FactorPin, "Pin must be provided"},
+		{apperror.FactorFingerprint, "Signature must be provided"},
+	}
+
+	for _, c := range cases {
+		t.Run(c.factor, func(t *testing.T) {
+			router, sm := newTestServer()
+			sm.users.On("Refresh", mock.AnythingOfType("*user.RefreshInput")).
+				Return(nil, apperror.NewSecondFactorRequired(c.factor))
+
+			rec := doRequest(router, http.MethodPost, "/refresh",
+				`{"refresh_token":"some-refresh-token"}`, "")
+
+			assert.Equal(t, http.StatusUnauthorized, rec.Code)
+			assert.JSONEq(t,
+				`{"error":{"type":"AUTHORIZATION","message":"`+c.message+`","code":"SECOND_FACTOR_REQUIRED","factor":"`+c.factor+`"}}`,
+				rec.Body.String())
+			sm.users.AssertExpectations(t)
+		})
+	}
+}
+
 func TestLogoutEndpoint(t *testing.T) {
 	router, sm := newTestServer()
 
@@ -280,15 +310,19 @@ func TestGetCategoriesEndpoint(t *testing.T) {
 	sm.categories.AssertExpectations(t)
 }
 
+// The new id comes back in the body, like POST /tags: a client that created
+// the category (offline replays included) must be able to address it without
+// refetching the whole list.
 func TestCreateCategoryEndpoint(t *testing.T) {
 	router, sm := newTestServer()
 
-	sm.categories.On("CreateCategory", mock.AnythingOfType("*category.Category")).Return(nil)
+	sm.categories.On("CreateCategory", mock.AnythingOfType("*category.Category")).Return(uint(7), nil)
 
 	rec := doRequest(router, http.MethodPost, "/categories",
 		`{"category":"Noces","color":"#ff0000"}`, authHeader())
 
 	assert.Equal(t, http.StatusCreated, rec.Code)
+	assert.Equal(t, map[string]interface{}{"id": float64(7)}, decodeJSON(t, rec))
 	sm.categories.AssertExpectations(t)
 }
 
@@ -550,15 +584,19 @@ func TestGetEventsEndpoint(t *testing.T) {
 	sm.events.AssertExpectations(t)
 }
 
+// The new id comes back in the body, like POST /tags: a client that created
+// the event (offline replays included) must be able to edit or delete it
+// without refetching the whole list.
 func TestCreateEventEndpoint(t *testing.T) {
 	router, sm := newTestServer()
 
-	sm.events.On("CreateEvent", testUserID, mock.AnythingOfType("*event.Event"), mock.Anything).Return(nil)
+	sm.events.On("CreateEvent", testUserID, mock.AnythingOfType("*event.Event"), mock.Anything).Return(uint(33), nil)
 
 	rec := doRequest(router, http.MethodPost, "/events",
 		`{"description":"cool","date":"1993-12-01T00:00:00Z","tagsId":[1,2]}`, authHeader())
 
 	assert.Equal(t, http.StatusCreated, rec.Code)
+	assert.Equal(t, map[string]interface{}{"id": float64(33)}, decodeJSON(t, rec))
 	sm.events.AssertExpectations(t)
 }
 
@@ -571,7 +609,7 @@ func TestCreateEventEndpointForwardsThePeriod(t *testing.T) {
 		router, sm := newTestServer()
 		sm.events.On("CreateEvent", testUserID, mock.MatchedBy(func(evt *event.Event) bool {
 			return evt.EndDate != nil && evt.EndDate.Equal(end) && !evt.IsOngoing
-		}), []uint{1}).Return(nil)
+		}), []uint{1}).Return(uint(1), nil)
 
 		rec := doRequest(router, http.MethodPost, "/events",
 			`{"date":"2026-06-28T00:00:00Z","endDate":"2026-07-05T00:00:00Z","tagsId":[1]}`, authHeader())
@@ -584,7 +622,7 @@ func TestCreateEventEndpointForwardsThePeriod(t *testing.T) {
 		router, sm := newTestServer()
 		sm.events.On("CreateEvent", testUserID, mock.MatchedBy(func(evt *event.Event) bool {
 			return evt.EndDate == nil && evt.IsOngoing
-		}), []uint{}).Return(nil)
+		}), []uint{}).Return(uint(1), nil)
 
 		rec := doRequest(router, http.MethodPost, "/events",
 			`{"date":"2024-06-03T00:00:00Z","isOngoing":true,"tagsId":[]}`, authHeader())
@@ -598,7 +636,7 @@ func TestCreateEventEndpointForwardsThePeriod(t *testing.T) {
 		router, sm := newTestServer()
 		sm.events.On("CreateEvent", testUserID, mock.MatchedBy(func(evt *event.Event) bool {
 			return evt.EndDate == nil && !evt.IsOngoing
-		}), []uint{}).Return(nil)
+		}), []uint{}).Return(uint(1), nil)
 
 		rec := doRequest(router, http.MethodPost, "/events",
 			`{"date":"2026-06-03T00:00:00Z","endDate":null,"tagsId":[]}`, authHeader())
@@ -631,7 +669,7 @@ func TestCreateEventEndpointRelaysAPeriodError(t *testing.T) {
 	router, sm := newTestServer()
 
 	sm.events.On("CreateEvent", testUserID, mock.Anything, mock.Anything).
-		Return(apperror.NewBadRequest("The end date cannot precede the start date"))
+		Return(uint(0), apperror.NewBadRequest("The end date cannot precede the start date"))
 
 	rec := doRequest(router, http.MethodPost, "/events",
 		`{"date":"2026-06-18T00:00:00Z","endDate":"2026-06-03T00:00:00Z","tagsId":[]}`, authHeader())

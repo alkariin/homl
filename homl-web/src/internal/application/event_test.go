@@ -166,11 +166,13 @@ func TestCreateEvent(t *testing.T) {
 					tags[1].Tag == "1993" && tags[1].IdCategory == 3
 			}),
 			mock.Anything, mock.Anything, uint64(1),
-		).Return(nil)
+		).Return(uint(42), nil)
 
-		err := svc.CreateEvent(ctx, 1, &event.Event{Date: date}, []uint{})
+		id, err := svc.CreateEvent(ctx, 1, &event.Event{Date: date}, []uint{})
 
 		assert.NoError(t, err)
+		// The id of the new row reaches the caller (POST /events answers it).
+		assert.Equal(t, uint(42), id)
 		eventsRepo.AssertExpectations(t)
 	})
 
@@ -195,9 +197,9 @@ func TestCreateEvent(t *testing.T) {
 					tags[1].Id == 77 && tags[1].Tag == ""
 			}),
 			mock.Anything, mock.Anything, uint64(1),
-		).Return(nil)
+		).Return(uint(43), nil)
 
-		err := svc.CreateEvent(ctx, 1, &event.Event{Date: date}, []uint{})
+		_, err := svc.CreateEvent(ctx, 1, &event.Event{Date: date}, []uint{})
 
 		assert.NoError(t, err)
 		eventsRepo.AssertExpectations(t)
@@ -264,7 +266,8 @@ func TestPeriodValidation(t *testing.T) {
 		run  func(svc application.EventsService, ctx context.Context, evt *event.Event) error
 	}{
 		{"CreateEvent", func(svc application.EventsService, ctx context.Context, evt *event.Event) error {
-			return svc.CreateEvent(ctx, 1, evt, []uint{})
+			_, err := svc.CreateEvent(ctx, 1, evt, []uint{})
+			return err
 		}},
 		{"UpdateEvent", func(svc application.EventsService, ctx context.Context, evt *event.Event) error {
 			evt.Id = 9
@@ -317,9 +320,9 @@ func TestPeriodValidation(t *testing.T) {
 
 		eventsRepo.On("CreateEventWithTags", []category.Tag(nil), []uint{}, mock.MatchedBy(func(evt *event.Event) bool {
 			return evt.EndDate != nil && evt.EndDate.Equal(june(18)) && !evt.IsOngoing
-		}), uint64(1)).Return(nil)
+		}), uint64(1)).Return(uint(1), nil)
 
-		err := svc.CreateEvent(e2ee.WithEnabled(context.Background(), true), 1,
+		_, err := svc.CreateEvent(e2ee.WithEnabled(context.Background(), true), 1,
 			&event.Event{Date: june(3), EndDate: datePtr(june(18))}, []uint{})
 
 		assert.NoError(t, err)
@@ -344,11 +347,11 @@ func TestCreateEventPeriodTags(t *testing.T) {
 			[]uint{},
 			mock.MatchedBy(func(evt *event.Event) bool { return evt.EndDate == nil && !evt.IsOngoing }),
 			uint64(1),
-		).Return(nil)
+		).Return(uint(1), nil)
 
 		// Same calendar day, even with a time part MySQL would truncate.
 		end := time.Date(2026, time.June, 3, 15, 30, 0, 0, time.UTC)
-		err := svc.CreateEvent(ctx, 1, &event.Event{Date: june(3), EndDate: &end}, []uint{})
+		_, err := svc.CreateEvent(ctx, 1, &event.Event{Date: june(3), EndDate: &end}, []uint{})
 
 		assert.NoError(t, err)
 		eventsRepo.AssertExpectations(t)
@@ -368,9 +371,9 @@ func TestCreateEventPeriodTags(t *testing.T) {
 				return evt.EndDate != nil && evt.EndDate.Equal(time.Date(2026, time.July, 5, 0, 0, 0, 0, time.UTC))
 			}),
 			uint64(1),
-		).Return(nil)
+		).Return(uint(1), nil)
 
-		err := svc.CreateEvent(ctx, 1, &event.Event{
+		_, err := svc.CreateEvent(ctx, 1, &event.Event{
 			Date:    june(28),
 			EndDate: datePtr(time.Date(2026, time.July, 5, 0, 0, 0, 0, time.UTC)),
 		}, []uint{})
@@ -391,9 +394,9 @@ func TestCreateEventPeriodTags(t *testing.T) {
 			[]uint{},
 			mock.MatchedBy(func(evt *event.Event) bool { return evt.EndDate == nil && evt.IsOngoing }),
 			uint64(1),
-		).Return(nil)
+		).Return(uint(1), nil)
 
-		err := svc.CreateEvent(ctx, 1, &event.Event{
+		_, err := svc.CreateEvent(ctx, 1, &event.Event{
 			Date:      time.Date(2024, time.June, 3, 0, 0, 0, 0, time.UTC),
 			IsOngoing: true,
 		}, []uint{})

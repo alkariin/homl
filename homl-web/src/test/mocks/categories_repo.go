@@ -78,15 +78,20 @@ func (m *MockCategoriesRepo) GetAllCategoriesWithTags(ctx context.Context, idUse
 	return r0, r1, r2
 }
 
-func (m *MockCategoriesRepo) Create(ctx context.Context, category *category.Category) error {
+func (m *MockCategoriesRepo) Create(ctx context.Context, category *category.Category) (uint, error) {
 	ret := m.Called(category)
 
-	var r0 error
+	var r0 uint
 	if ret.Get(0) != nil {
-		r0 = ret.Get(0).(error)
+		r0 = ret.Get(0).(uint)
 	}
 
-	return r0
+	var r1 error
+	if ret.Get(1) != nil {
+		r1 = ret.Get(1).(error)
+	}
+
+	return r0, r1
 }
 
 func (m *MockCategoriesRepo) Update(ctx context.Context, category *category.Category) error {
