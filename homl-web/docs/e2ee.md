@@ -202,7 +202,11 @@ atomic metadata commit; the endpoint itself does not change.
   indexes.
 - **Offline cache**: `eventsCache` / `categoriesCache` store the **ciphertext**
   payloads verbatim (as today); decryption happens in memory on read, so the
-  cache never becomes a second plaintext store.
+  cache never becomes a second plaintext store. `settingsCache` keeps the last
+  `GET /settings`, so an offline start still runs the E2EE gate: the stored
+  seed must match the cached `e2eeKeyCheck` (with no cached settings at all,
+  the stored seed is trusted). Back online, the gate runs again on fresh
+  settings. See [auth-flows.md](auth-flows.md), "Client session".
 - **Date tags**: on event create/update, the client ensures the Month/Year
   tags exist (create with ciphertext + index if missing) and references their
   ids — mirroring `buildDateTags` locally (`InsertCubit._buildDateTags`). The

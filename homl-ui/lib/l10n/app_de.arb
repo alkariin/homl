@@ -1,5 +1,6 @@
 {
   "global_unexpectedError": "Unerwarteter Fehler",
+  "global_serverUnreachable": "Server nicht erreichbar: Dafür ist eine Verbindung nötig.",
 
   "account": "Sicherheit",
   "account_logout": "Abmelden",
@@ -15,6 +16,7 @@
   "account_pinEnabled": "PIN wurde erfolgreich aktiviert",
   "account_pinDisabled": "PIN wurde erfolgreich deaktiviert",
   "account_pinIncorrect": "Der PIN-Code ist nicht korrekt",
+  "account_pinOfflineUnavailable": "Server nicht erreichbar. Deine PIN funktioniert offline, sobald du sie hier einmal mit Verbindung eingegeben hast.",
   "account_returnToLogin": "Zurück zur Anmeldung",
   "account_passwordUpdated": "Ihr Passwort wurde aktualisiert",
   "account_passwordIncorrect": "Das Passwort ist nicht korrekt",
@@ -32,6 +34,7 @@
   "login_submit": "Anmelden",
   "login_register": "Registrieren",
   "login_incorrectCredentials": "E-Mail oder Passwort falsch",
+  "login_serverUnreachable": "Server nicht erreichbar. Prüfe deine Verbindung und versuche es erneut.",
   "login_invalidEmail": "Die E-Mail-Adresse ist ungültig",
   "login_invalidPassword": "Muss mindestens eine Zahl, einen Groß- und einen Kleinbuchstaben, ein Sonderzeichen und mindestens 8 Zeichen enthalten",
 
@@ -197,5 +200,7 @@
   "categories_deleteCategoryDeleteAll": "Tags und ihre Ereignisse löschen",
   "categories_deleteCategoryDeleteAllDetail": "{count, plural, =1{1 Ereignis verwendet diese Tags und wird gelöscht.} other{{count} Ereignisse verwenden diese Tags und werden gelöscht.}}",
   "categories_deleteTagNameConflict": "Einer dieser Tags existiert bereits in Sonstiges. Benenne ihn um oder lösche die Tags, statt sie zu verschieben.",
-  "categories_tagNameConflict": "Diese Kategorie hat bereits einen Tag mit diesem Namen. Wähle einen anderen."
+  "categories_tagNameConflict": "Diese Kategorie hat bereits einen Tag mit diesem Namen. Wähle einen anderen.",
+  "offline_title": "Offline",
+  "offline_explanation": "Server nicht erreichbar. Du siehst die auf diesem Gerät gespeicherten Daten; Änderungen brauchen eine Verbindung. Die App verbindet sich von selbst wieder."
 }

@@ -457,6 +457,13 @@ plus the biometric entry (`removeStorageFile`). It then emits the
 "navigate to login + confirmation toast" — the same shape as `pinLocked`.
 The cubit emits nothing on success: the page is disposed by that navigation.
 
+The PIN and fingerprint switches write their local flags (`pinKeypair`,
+`isFingerprintEnabled`) only once `PUT /secureAuth` succeeded: those flags
+pick the factor the next app start sends, and one that disagrees with the
+server — a toggle that failed offline — would get the session refused there.
+A PIN the server accepts (here or at unlock) also becomes the one checked
+offline (see "Offline mode" below).
+
 ## Offline cache & local search
 
 The Search tab does **not** query the backend per filter change: it filters
@@ -487,16 +494,70 @@ The logo is an SVG (`assets/images/logo.svg`) rendered with `flutter_svg`: a
 buttons, focus borders and the selected nav item are ink, the gold stays in
 the logo and small accents.
 
-`EventsRepository.getEvents()` and `CategoriesRepository.getCategories()`
-cache each successful payload in `flutter_secure_storage` (encrypted at
-rest). On startup `HomeCubit.init()` serves the cached snapshot first, then
-refreshes it from the network; when the network is unavailable the cached
-copy is served instead. The caches are cleared whenever the local session
-ends (logout, rejected refresh token, PIN lockout, account deletion) so
-another account on the same device cannot read them.
+`EventsRepository.getEvents()`, `CategoriesRepository.getCategories()` and
+`SettingsRepository.getSettings()` cache each successful payload in
+`flutter_secure_storage` (encrypted at rest). On startup `HomeCubit.init()`
+serves the cached snapshot first, then refreshes it from the network; when the
+network is unavailable the cached copy is served instead. The caches are
+cleared whenever the local session ends (logout, rejected refresh token, PIN
+lockout, account deletion) so another account on the same device cannot read
+them. What happens when the server is out of reach is the next section.
 
-Writes (creating events/tags) still require the network; offline is
-read-only for now.
+## Offline mode (server out of reach)
+
+Away from the network that reaches the server, the app keeps the session and
+runs on the data saved on the device — read-only: browsing and searching work,
+a write fails with "server unreachable" and the form keeps what was typed.
+Writing offline comes later in the plan (a queue replayed on reconnect).
+The protocol side — what ends a session, the offline unlock, the trade-off of
+the offline PIN — is in
+[homl-web/docs/auth-flows.md](../homl-web/docs/auth-flows.md), "Client session".
+
+- **What the user sees**: a cloud-off icon in the app bar while the server is
+  unreachable (tap: what it means); "server unreachable" instead of "unexpected
+  error" or "incorrect credentials" when a request fails for that reason. The
+  app reconnects by itself and the icon goes away.
+- **Unlock** respects each account's own factor. No second factor: the saved
+  data opens directly. Fingerprint: the same OS prompt as online (releasing the
+  keypair is the proof of presence). PIN: the PIN is checked against a hash of
+  the last PIN the server accepted on this device, 3 tries like the server's
+  lockout; until the PIN was entered once online, the dialog says so instead.
+- **`lib/helpers/server_reachability.dart`** — `ServerReachability`, the
+  online / offline flag the Api maintains. A plain singleton that needs no
+  `API_BASE_URL`, so cubits read it to pick their message
+  (`AppMessage.requestFailed`) and their tests build without the network stack.
+- **`lib/data/repositories/api.dart`** — tells a network failure (keep the
+  session, go offline) from a verdict on the session (a `401` on
+  `/refresh` / `/challenge`: end it); holds the session's second factor in
+  memory for the silent refreshes; probes `/healthz` while offline and in the
+  foreground (`onAppResumed` / `onAppPaused`, wired in `app.dart`), then
+  reopens the session with a refresh. Requests fail at once for 10 s after a
+  network failure, so an offline start does not wait out one timeout per
+  request.
+- **`lib/helpers/pin_verifier.dart`** — the offline PIN check (PBKDF2-SHA256,
+  600 000 iterations — native through cryptography_flutter; the tests lower it)
+  and its counter.
+- **Back online**, `HomeCubit` reloads the data and `AuthenticationCubit` runs
+  the E2EE gate again on fresh settings.
+
+### Trying it on a phone
+
+Run the app against the dev backend (`./run-android.sh`), then for each kind
+of account — no second factor, PIN, fingerprint (Security page), with and
+without E2EE:
+
+1. Open the app once online (for a PIN account: enter the PIN, which stores
+   the offline hash), browse a bit so the caches are filled, close it.
+2. Airplane mode (or `docker stop homlback` on the dev machine). Reopen the
+   app: the same unlock as usual, then the journal with the cloud-off icon.
+   Search works; adding an event says "server unreachable" and keeps the form.
+3. PIN account: three wrong PINs offline lead to the login screen, like the
+   server's lockout.
+4. Back online (or `docker start homlback`): bring the app to the foreground,
+   the icon goes away within seconds and the lists reload.
+5. With `ENVIRONMENT=PROD` on the backend (10-minute access tokens), leave a
+   PIN or fingerprint session open for more than 10 minutes: it keeps working
+   without asking for the factor again.
 
 ## End-to-end encryption (opt-in)
 

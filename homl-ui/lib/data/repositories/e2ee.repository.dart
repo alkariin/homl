@@ -29,7 +29,10 @@ class E2eeRepository {
   /// and turns E2EE off. Destructive and irreversible.
   Future<void> purge() async {
     try {
-      await apiInstance.api.post<void>('/e2ee/purge');
+      await apiInstance.api.post<void>('/e2ee/purge',
+          // Deletes the whole dataset in one transaction: more room than the
+          // regular API calls, like the migration below.
+          options: Options(receiveTimeout: const Duration(minutes: 2)));
       await LocalStorageManager.clearDataCaches();
     } on DioException catch (_) {
       throw E2eeRequestFailure();

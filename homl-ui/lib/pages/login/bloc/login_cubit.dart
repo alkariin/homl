@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:developer';
 
 import 'package:homl/data/repositories/users.repository.dart';
+import 'package:homl/helpers/server_reachability.dart';
 
 part 'login_state.dart';
 
@@ -29,9 +30,11 @@ class LoginCubit extends Cubit<LoginState> {
   Future<void> submit() async {
     if (state.status == LoginStatus.submitting) return;
     if (state.username.isNotEmpty && state.password.isNotEmpty) {
-      // Reset the flag so a second failed attempt re-triggers the listener.
+      // Reset the flags so a second failed attempt re-triggers the listener.
       emit(state.update(
-          isLoginIncorrect: false, status: LoginStatus.submitting));
+          isLoginIncorrect: false,
+          isServerUnreachable: false,
+          status: LoginStatus.submitting));
       try {
         await _usersRepository.login(state.username, state.password);
         emit(state.update(status: LoginStatus.editing));
@@ -45,8 +48,12 @@ class LoginCubit extends Cubit<LoginState> {
             isLoginIncorrect: true, status: LoginStatus.editing));
       } catch (err) {
         log('Unexpected login error', name: 'LoginCubit', error: err);
+        // No answer from the server: say so rather than blame the password.
+        final unreachable = ServerReachability.instance.isOffline;
         emit(state.update(
-            isLoginIncorrect: true, status: LoginStatus.editing));
+            isLoginIncorrect: !unreachable,
+            isServerUnreachable: unreachable,
+            status: LoginStatus.editing));
       }
     }
   }

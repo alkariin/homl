@@ -133,6 +133,9 @@ void main() {
   });
 
   test('a wrong password throws and keeps the session intact', () async {
+    // A password-only account: the refresh the interceptor runs on the 401
+    // needs no second factor (a PIN account would ask for its PIN first).
+    storage.remove(LocalStorageKey.pinKeypair.name);
     final t = build(401);
     final statuses = <AuthenticationStatus>[];
     final subscription = t.api.status.listen(statuses.add);
@@ -146,7 +149,7 @@ void main() {
     // Nothing of the account was touched: it still exists.
     expect(storage.containsKey(LocalStorageKey.e2eeMasterKey.name), isTrue);
     expect(storage.containsKey(LocalStorageKey.refreshToken.name), isTrue);
-    expect(storage.containsKey(LocalStorageKey.pinKeypair.name), isTrue);
+    expect(storage.containsKey(LocalStorageKey.settingsCache.name), isTrue);
     expect(t.api.accessToken, isNotNull);
     expect(statuses, isNot(contains(AuthenticationStatus.accountDeleted)));
     expect(statuses, isNot(contains(AuthenticationStatus.unauthenticated)));

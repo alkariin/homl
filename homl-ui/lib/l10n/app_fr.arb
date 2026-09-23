@@ -1,5 +1,6 @@
 {
   "global_unexpectedError": "Erreur inattendue",
+  "global_serverUnreachable": "Serveur injoignable : cette action nécessite une connexion.",
 
   "account": "Sécurité",
   "account_logout": "Se déconnecter",
@@ -15,6 +16,7 @@
   "account_pinEnabled": "Le code PIN a été activé",
   "account_pinDisabled": "Le code PIN a été désactivé",
   "account_pinIncorrect": "Le code PIN est incorrect",
+  "account_pinOfflineUnavailable": "Serveur injoignable. Ton PIN fonctionnera hors ligne une fois que tu l'auras saisi ici avec une connexion.",
   "account_returnToLogin": "Retour à la connexion",
   "account_passwordUpdated": "Votre mot de passe a été mis à jour",
   "account_passwordIncorrect": "Le mot de passe est incorrect",
@@ -32,6 +34,7 @@
   "login_submit": "connexion",
   "login_register": "Créer un compte",
   "login_incorrectCredentials": "Email ou mot de passe incorrect",
+  "login_serverUnreachable": "Serveur injoignable. Vérifie ta connexion et réessaie.",
   "login_invalidEmail": "L'email n'est pas valide",
   "login_invalidPassword": "Doit contenir au moins un chiffre, une majuscule et une minuscule, un caractère spécial, et au moins 8 caractères",
 
@@ -197,5 +200,7 @@
   "categories_deleteCategoryDeleteAll": "Supprimer les tags et leurs événements",
   "categories_deleteCategoryDeleteAllDetail": "{count, plural, =1{1 événement utilise ces tags et sera supprimé.} other{{count} événements utilisent ces tags et seront supprimés.}}",
   "categories_deleteTagNameConflict": "Un de ces tags existe déjà dans Autres. Renomme-le, ou supprime les tags au lieu de les déplacer.",
-  "categories_tagNameConflict": "Cette catégorie a déjà un tag portant ce nom. Choisis-en un autre."
+  "categories_tagNameConflict": "Cette catégorie a déjà un tag portant ce nom. Choisis-en un autre.",
+  "offline_title": "Hors ligne",
+  "offline_explanation": "Serveur injoignable. Tu consultes les données enregistrées sur cet appareil ; les modifications nécessitent une connexion. L'app se reconnecte toute seule."
 }
