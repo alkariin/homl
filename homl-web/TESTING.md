@@ -6,8 +6,8 @@
 |---|---|---|---|
 | **Unit** | `src/internal/application/*_test.go`, `src/internal/apperror/*_test.go`, `src/internal/domain/e2ee/*_test.go`, `src/internal/infrastructure/{auth,config,crypto,mail,persistence}/*_test.go` | Business logic with mocked repositories; JWT, field encryption, config validation, the mailers and the error helpers; the Redis session store (rotation and its replay window) against an in-memory Redis ([miniredis](https://github.com/alicebob/miniredis)) | none |
 | **HTTP / integration** | `src/internal/infrastructure/web/router_test.go` | The real Gin router (routing, JWT middleware, JSON binding, validation, status codes & response bodies) with mocked services | none |
-| **DB-backed** | `src/test/dbtest/*_test.go` (build tag `dbtest`) | The real SQL of the persistence layer: cross-tenant isolation, tag/synonym lifecycle, the three category-deletion options, event periods, the writes a replaying client relies on, the atomic E2EE migration and purge | `make db-up` + `make migrateup` |
-| **End-to-end** | `src/test/e2e/e2e_test.go` (build tag `e2e`) | Full flow over real HTTP against a running stack (API + MySQL + Redis): auth (a refresh replayed after a lost answer included), category CRUD (a replayed tag PATCH included) and deletion options, event periods, account deletion | `make dev` |
+| **DB-backed** | `src/test/dbtest/*_test.go` (build tag `dbtest`) | The real SQL of the persistence layer: cross-tenant isolation, tag/synonym lifecycle, the three category-deletion options, event periods, the writes a replaying client relies on (an event create replayed by its `clientId`, concurrent replays included), the data generation, the atomic E2EE migration and purge | `make db-up` + `make migrateup` |
+| **End-to-end** | `src/test/e2e/e2e_test.go` (build tag `e2e`) | Full flow over real HTTP against a running stack (API + MySQL + Redis): auth (a refresh replayed after a lost answer included), category CRUD (a replayed tag PATCH included) and deletion options, event periods (an event create replayed by its `clientId` and the settings' data generation ride on its account), account deletion | `make dev` |
 
 The first two layers are in-process and deterministic — no database, no network —
 so they run on every commit; each HTTP test fires a real request and asserts the
@@ -180,7 +180,7 @@ Covered at every layer:
 
 The app is meant to keep working away from the server: it replays the writes
 it queued once it is back, and re-authenticates without losing the session.
-Four server behaviours make that safe:
+These server behaviours make that safe:
 
 | Behaviour | Why the app needs it |
 |---|---|
@@ -188,10 +188,21 @@ Four server behaviours make that safe:
 | an identical `PATCH /tags/:id` answers `204` | a `PATCH` whose answer was lost is simply sent again, and MySQL counts changed rows, not matched ones: the replay changes none |
 | a date tag a concurrent write created is reused | two devices writing the same new month at once must not fail on the unique name |
 | `POST /refresh` without the account's second factor answers `401 SECOND_FACTOR_REQUIRED` + `factor`, consuming nothing | the app prompts for the factor and retries with the same refresh token, instead of taking the refusal for a dead session |
+| `POST /events` with a `clientId` already used answers `200` with the first event, creating nothing — two racing replays included | a create whose answer was lost is sent again: it must not store the event twice |
+| `GET /settings` carries a `dataGeneration`, renewed by `POST /e2ee/purge` and `scripts/restore.sh` | writes queued before the user's rows were replaced wholesale must not be replayed against ids that now name other rows |
 
 - `src/test/dbtest/replay_test.go` — the ids the repositories hand back, the
   identical `PATCH` (a main tag and a synonym), and the date tag created
   between the lookup and the write, on create and on update.
+- `src/test/dbtest/offline_writes_test.go` — a create replayed by its
+  `clientId` (same id, one row, the first body kept, the key free for another
+  user), six concurrent replays ending with one row (InnoDB deadlocks on the
+  shared unique keys are retried, `persistence.retryDeadlocks`), creates
+  without a `clientId` unchanged, and the data generation (one per new
+  account, kept by an E2EE migration, renewed by a purge).
+- `src/internal/application/event_test.go` (`TestCreateEventReplay`) — the
+  replay touches nothing, not even the validation, and a replay losing the
+  race to the first insert gets that row.
 - `src/internal/application/user_test.go` (`TestRefresh`) — the refusal per
   factor, with nothing consumed (session, challenge, pin attempt), and a
   revoked session answered with the plain `401`: prompting would be useless.
@@ -201,7 +212,10 @@ Four server behaviours make that safe:
   `{id}` bodies, the refusal envelope with its `code` and `factor`.
 - `src/test/e2e/e2e_test.go` — every returned id checked against the listing
   (`TestCategoryLifecycle`, `TestEventPeriods`, `newCategoryWithEvent`), a tag
-  `PATCH` sent twice (`TestCategoryLifecycle`). The second-factor refusal has
+  `PATCH` sent twice (`TestCategoryLifecycle`), an event create sent twice
+  with one `clientId` and the settings' `dataGeneration` (`TestEventPeriods`).
+  `scripts/restore.sh` is rehearsed by hand: restore a fresh dump into a
+  throwaway database and compare its `Users.dataGeneration` with the live one. The second-factor refusal has
   no e2e test: it needs an account with a pin, hence a throwaway registration
   the `/login` budget has no room left for.
 

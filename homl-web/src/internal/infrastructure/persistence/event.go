@@ -3,6 +3,8 @@ package persistence
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"math/rand/v2"
 	"strconv"
 	"time"
 
@@ -11,8 +13,13 @@ import (
 	"github.com/alkariin/homl/homl-web/internal/domain/category"
 	"github.com/alkariin/homl/homl-web/internal/domain/e2ee"
 	"github.com/alkariin/homl/homl-web/internal/domain/event"
+	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 )
+
+// errDuplicateClientId is reachable where a parameter called event shadows
+// the package.
+var errDuplicateClientId = event.ErrDuplicateClientId
 
 // nullStringToString converts a sql.NullString to a plain string (empty when NULL).
 func nullStringToString(ns sql.NullString) string {
@@ -137,7 +144,42 @@ func (e *EventsRepository) FindEventsWithTags(ctx context.Context, encTags []str
 	return resEvents, resTags, nil
 }
 
+// mysqlDeadlock is MySQL error 1213: InnoDB rolled the transaction back to
+// break a lock cycle.
+const mysqlDeadlock = 1213
+
+const maxDeadlockAttempts = 5
+
+// retryDeadlocks runs a whole transaction again when InnoDB picked it as a
+// deadlock victim, as MySQL advises. Writes that create the same date tags
+// (two events of the same new month), or replays of one create, contend on
+// the same unique keys at once.
+func retryDeadlocks[T any](ctx context.Context, run func() (T, error)) (T, error) {
+	for attempt := 1; ; attempt++ {
+		v, err := run()
+		var mysqlErr *mysql.MySQLError
+		if err == nil || attempt == maxDeadlockAttempts ||
+			!errors.As(err, &mysqlErr) || mysqlErr.Number != mysqlDeadlock {
+			return v, err
+		}
+		// Backing off by a random, growing delay keeps the survivors from
+		// meeting again in the same order.
+		wait := time.Duration(attempt*5+rand.IntN(10)) * time.Millisecond
+		select {
+		case <-ctx.Done():
+			return v, ctx.Err()
+		case <-time.After(wait):
+		}
+	}
+}
+
 func (e *EventsRepository) CreateEventWithTags(ctx context.Context, tags []category.Tag, tagsId []uint, event *event.Event, idUser uint64) (uint, error) {
+	return retryDeadlocks(ctx, func() (uint, error) {
+		return e.createEventWithTags(ctx, tags, tagsId, event, idUser)
+	})
+}
+
+func (e *EventsRepository) createEventWithTags(ctx context.Context, tags []category.Tag, tagsId []uint, event *event.Event, idUser uint64) (uint, error) {
 	tx, err := e.DB.BeginTxx(ctx, nil)
 	if err != nil {
 		return 0, err
@@ -156,9 +198,15 @@ func (e *EventsRepository) CreateEventWithTags(ctx context.Context, tags []categ
 		return 0, err
 	}
 
-	// A nil EndDate binds as NULL (the driver dereferences non-nil pointers).
-	res, err := tx.ExecContext(ctx, "INSERT INTO Events (description, date, endDate, isOngoing, idUser) VALUES (?, ?, ?, ?, ?);", encDescription, event.Date, event.EndDate, event.IsOngoing, idUser)
+	// A nil EndDate (or ClientId) binds as NULL (the driver dereferences
+	// non-nil pointers).
+	res, err := tx.ExecContext(ctx, "INSERT INTO Events (description, date, endDate, isOngoing, clientId, idUser) VALUES (?, ?, ?, ?, ?, ?);", encDescription, event.Date, event.EndDate, event.IsOngoing, event.ClientId, idUser)
 	if err != nil {
+		// The only unique key besides the id is (idUser, clientId).
+		var mysqlErr *mysql.MySQLError
+		if event.ClientId != nil && errors.As(err, &mysqlErr) && mysqlErr.Number == mysqlDuplicateEntry {
+			return 0, errDuplicateClientId
+		}
 		return 0, err
 	}
 
@@ -180,7 +228,26 @@ func (e *EventsRepository) CreateEventWithTags(ctx context.Context, tags []categ
 	return uint(eventId), nil
 }
 
+func (e *EventsRepository) FindIdByClientId(ctx context.Context, clientId string, idUser uint64) (uint, bool, error) {
+	var id uint
+	err := e.DB.GetContext(ctx, &id, "SELECT id FROM Events WHERE idUser = ? AND clientId = ?", idUser, clientId)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, false, nil
+	}
+	if err != nil {
+		return 0, false, err
+	}
+	return id, true, nil
+}
+
 func (e *EventsRepository) UpdateEventWithTags(ctx context.Context, tags []category.Tag, tagsId []uint, event *event.Event, idUser uint64) error {
+	_, err := retryDeadlocks(ctx, func() (struct{}, error) {
+		return struct{}{}, e.updateEventWithTags(ctx, tags, tagsId, event, idUser)
+	})
+	return err
+}
+
+func (e *EventsRepository) updateEventWithTags(ctx context.Context, tags []category.Tag, tagsId []uint, event *event.Event, idUser uint64) error {
 	tx, err := e.DB.BeginTxx(ctx, nil)
 	if err != nil {
 		return err

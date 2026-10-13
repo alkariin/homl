@@ -13,6 +13,7 @@ import (
 	"github.com/alkariin/homl/homl-web/internal/domain/masterdata"
 	"github.com/alkariin/homl/homl-web/internal/domain/user"
 	"github.com/go-sql-driver/mysql"
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/crypto/bcrypt"
@@ -99,7 +100,7 @@ func (u *UsersRepository) Registration(ctx context.Context, user *user.User, lan
 	}
 	defer tx.Rollback() // no-op once Commit succeeds
 
-	res, err := tx.ExecContext(ctx, "INSERT INTO Users (username, password, language) VALUES (?, ?, ?)", user.Username, user.Password, *language)
+	res, err := tx.ExecContext(ctx, "INSERT INTO Users (username, password, language, dataGeneration) VALUES (?, ?, ?, ?)", user.Username, user.Password, *language, uuid.NewString())
 	if err != nil {
 		// An existing username violates the unique key: report it as a
 		// conflict instead of leaking a raw driver error as a 500.

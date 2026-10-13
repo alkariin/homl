@@ -355,7 +355,7 @@ client creates and attaches its own.
 | Method | Path | Body / query | Response |
 | --- | --- | --- | --- |
 | GET | `/events` | `?tags=<name>&tags=<name>` (optional) | `200` list below |
-| POST | `/events` | `{description?, date, endDate?, isOngoing?, tagsId: uint[]}` | `201` `{id}`, `400` on an invalid period |
+| POST | `/events` | `{description?, date, endDate?, isOngoing?, tagsId: uint[], clientId?}` | `201` `{id}`; `200` `{id}` for a replay (below); `400` on an invalid period |
 | PATCH | `/events/:id` | `{description?, date, endDate?, isOngoing?, tagsId: uint[]}` | `204`, `400` on an invalid period |
 | DELETE | `/events/:id` | — | `204` |
 
@@ -410,13 +410,32 @@ categories from `GET /categories`. `idParentTag` lets the client resolve a
 synonym to its group; `tagIndex` is added for E2EE users and omitted
 otherwise.
 
+**Replaying a create.** A client that writes offline sends its creates when it
+is back, and may lose an answer on the way (the connection drops after the
+server stored the row). It cannot tell, so it sends the same create again. To
+make that safe, `POST /events` takes an optional `clientId`, a UUID the client
+picks once per event it creates:
+
+- first time: the event is created, `201` `{id}`;
+- again with the same `clientId` (same user): nothing is created or changed —
+  the body of the replay is not even validated — and the answer is `200`
+  `{id}` with the event the first call created. Two replays racing end the
+  same way: one row, the same id for both;
+- a `clientId` that is not a UUID is refused with `422`; without one, a
+  create behaves as it always did (two calls, two events).
+
+`clientId` is scoped to the user and never returned by `GET /events`. `PATCH`
+needs no such key — it is full-state, a replay writes the same values — and a
+`DELETE` replayed after it succeeded answers `404`, which a replaying client
+reads as done.
+
 ## Settings
 
 All endpoints require auth.
 
 | Method | Path | Body | Response |
 | --- | --- | --- | --- |
-| GET | `/settings` | — | `200` `{language, defaultScreen, isE2eeEnabled, e2eeKeyCheck?}` |
+| GET | `/settings` | — | `200` `{language, defaultScreen, isE2eeEnabled, e2eeKeyCheck?, dataGeneration}` |
 | PUT | `/settings` | `{language, defaultScreen}` | `200` updated settings |
 
 `isE2eeEnabled` and `e2eeKeyCheck` are read-only here — they are set by
@@ -424,6 +443,14 @@ All endpoints require auth.
 fresh install reads `isE2eeEnabled` after login to decide whether to show the
 restore-or-purge screen, and `e2eeKeyCheck` (omitted when unset) is what lets
 that screen validate a typed recovery phrase (see [e2ee.md](e2ee.md)).
+
+`dataGeneration` (a UUID, read-only too) changes whenever the user's rows are
+replaced wholesale: by `POST /e2ee/purge`, and by a database restore
+(`scripts/restore.sh` gives every user a new one, see
+[deployment.md](deployment.md) §7). A client that queued writes offline stamps
+them with the value it last read; finding another one before replaying them
+means the ids they target may now name other rows, or none, and the writes
+must not be sent blindly.
 
 ## End-to-end encryption
 
@@ -465,5 +492,6 @@ up to 32 MiB and runs under its own 60 s timeout.
 
 Lost-key escape hatch: deletes every event, tag and category of the user,
 reseeds the default categories and disables E2EE — the account survives, the
-data does not. Returns `409` if the user is not in E2EE mode. The client
-double-confirms before calling.
+data does not. It also gives the user a new `dataGeneration` (see Settings):
+the old ids are gone. Returns `409` if the user is not in E2EE mode. The
+client double-confirms before calling.

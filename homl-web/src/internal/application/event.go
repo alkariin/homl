@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"errors"
 	"sort"
 	"time"
 
@@ -14,8 +15,10 @@ import (
 // EventsService is the use-case port of the Event aggregate.
 type EventsService interface {
 	GetEvents(ctx context.Context, idUser uint64, tags []string) ([]event.GetEventsResponse, error)
-	// CreateEvent returns the id of the created event.
-	CreateEvent(ctx context.Context, idUser uint64, e *event.Event, tagsId []uint) (uint, error)
+	// CreateEvent returns the id of the event and whether this call created
+	// it: false for a replay of an earlier create with the same ClientId,
+	// which hands back that event and changes nothing.
+	CreateEvent(ctx context.Context, idUser uint64, e *event.Event, tagsId []uint) (uint, bool, error)
 	UpdateEvent(ctx context.Context, idUser uint64, e *event.Event, tagsId []uint) error
 	DeleteEvent(ctx context.Context, idEvent uint, idUser uint64) error
 }
@@ -118,23 +121,49 @@ func (e *eventsService) GetEvents(ctx context.Context, idUser uint64, tags []str
 	return responses, nil
 }
 
-func (e *eventsService) CreateEvent(ctx context.Context, idUser uint64, event *event.Event, tagsId []uint) (uint, error) {
-	if err := validatePeriod(event); err != nil {
-		return 0, err
+func (e *eventsService) CreateEvent(ctx context.Context, idUser uint64, ev *event.Event, tagsId []uint) (uint, bool, error) {
+	// A client that lost the answer to a create sends it again with the
+	// same ClientId: hand back the first event, touch nothing (the body of
+	// a replay is not even validated).
+	if ev.ClientId != nil {
+		id, found, err := e.EventsRepository.FindIdByClientId(ctx, *ev.ClientId, idUser)
+		if err != nil || found {
+			return id, false, err
+		}
+	}
+
+	if err := validatePeriod(ev); err != nil {
+		return 0, false, err
 	}
 
 	// The tag ids come straight from the client: refuse any that live in
 	// another user's categories.
 	if err := e.CategoriesRepository.CheckTagsBelongToUser(ctx, tagsId, idUser); err != nil {
-		return 0, err
+		return 0, false, err
 	}
 
-	tags, err := e.prepareEvent(ctx, idUser, event)
+	tags, err := e.prepareEvent(ctx, idUser, ev)
 	if err != nil {
-		return 0, err
+		return 0, false, err
 	}
 
-	return e.EventsRepository.CreateEventWithTags(ctx, tags, tagsId, event, idUser)
+	id, err := e.EventsRepository.CreateEventWithTags(ctx, tags, tagsId, ev, idUser)
+	if errors.Is(err, event.ErrDuplicateClientId) {
+		// Two replays raced and the other one inserted first: its row
+		// stands, this create was rolled back.
+		existing, found, findErr := e.EventsRepository.FindIdByClientId(ctx, *ev.ClientId, idUser)
+		if findErr != nil {
+			return 0, false, findErr
+		}
+		if !found {
+			return 0, false, err
+		}
+		return existing, false, nil
+	}
+	if err != nil {
+		return 0, false, err
+	}
+	return id, true, nil
 }
 
 func (e *eventsService) UpdateEvent(ctx context.Context, idUser uint64, event *event.Event, tagsId []uint) error {

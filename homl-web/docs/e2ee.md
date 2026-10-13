@@ -243,7 +243,9 @@ screens behind it):
   `POST /e2ee/purge`: in one transaction it deletes the user's events and
   **all** their categories (cascading to tags and event links), reseeds the
   default categories exactly like a fresh registration, and resets
-  `isE2eeEnabled` / `e2eeKeyCheck`. The account survives, the data does not.
+  `isE2eeEnabled` / `e2eeKeyCheck`. The account survives, the data does not;
+  a new `dataGeneration` tells any device holding writes queued offline that
+  the ids they target are gone ([api.md](api.md), Settings).
   `409` if the user is not in E2EE mode. To delete the account *as well*, the
   Security page offers `DELETE /account`
   ([auth-flows.md](auth-flows.md#account-deletion)), which also wipes the

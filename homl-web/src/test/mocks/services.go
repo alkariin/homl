@@ -157,13 +157,13 @@ func (m *MockEventsService) GetEvents(ctx context.Context, idUser uint64, tags [
 	return r0, errAt(ret, 1)
 }
 
-func (m *MockEventsService) CreateEvent(ctx context.Context, idUser uint64, event *event.Event, tagsId []uint) (uint, error) {
+func (m *MockEventsService) CreateEvent(ctx context.Context, idUser uint64, event *event.Event, tagsId []uint) (uint, bool, error) {
 	ret := m.Called(idUser, event, tagsId)
 	var r0 uint
 	if ret.Get(0) != nil {
 		r0 = ret.Get(0).(uint)
 	}
-	return r0, errAt(ret, 1)
+	return r0, ret.Bool(1), errAt(ret, 2)
 }
 
 func (m *MockEventsService) UpdateEvent(ctx context.Context, idUser uint64, event *event.Event, tagsId []uint) error {

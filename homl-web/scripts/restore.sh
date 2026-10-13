@@ -45,4 +45,17 @@ docker exec "$MYSQL_CONTAINER" sh -c '
 gzip -dc "$dump" | docker exec -i "$MYSQL_CONTAINER" sh -c '
   MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysql -u root "$1"' sh "$db"
 
+# The restored rows are older than what the clients last saw: ids they hold
+# (pending offline writes included) may now name other rows, or none. A new
+# data generation per user tells them so (docs/deployment.md). Dumps taken
+# before migration 000008 have no such column: skip, the migration adds it.
+docker exec "$MYSQL_CONTAINER" sh -c '
+  MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysql -u root "$1" -N -e "
+    SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = \"Users\"
+      AND COLUMN_NAME = \"dataGeneration\"" ' sh "$db" | grep -q '^1$' &&
+  docker exec "$MYSQL_CONTAINER" sh -c '
+    MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysql -u root "$1" \
+      -e "UPDATE Users SET dataGeneration = UUID()"' sh "$db"
+
 echo "restored $dump into $db"

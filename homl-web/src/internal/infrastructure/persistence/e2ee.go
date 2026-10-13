@@ -8,6 +8,7 @@ import (
 	"github.com/alkariin/homl/homl-web/internal/application"
 	"github.com/alkariin/homl/homl-web/internal/domain/e2ee"
 	"github.com/go-sql-driver/mysql"
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -159,7 +160,9 @@ func (r *E2EERepository) Purge(ctx context.Context, idUser uint64) error {
 		return err
 	}
 
-	if _, err := tx.ExecContext(ctx, "UPDATE Users SET isE2eeEnabled = 0, e2eeKeyCheck = NULL WHERE id = ?", idUser); err != nil {
+	// Every id the client knew is gone: a new data generation tells a client
+	// holding pending writes that their targets are not these rows.
+	if _, err := tx.ExecContext(ctx, "UPDATE Users SET isE2eeEnabled = 0, e2eeKeyCheck = NULL, dataGeneration = ? WHERE id = ?", uuid.NewString(), idUser); err != nil {
 		return err
 	}
 
