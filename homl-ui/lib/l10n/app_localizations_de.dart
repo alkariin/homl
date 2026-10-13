@@ -661,4 +661,100 @@ class AppLocalizationsDe extends AppLocalizations {
   String offline_explanationSince(String date) {
     return 'Server nicht erreichbar. Du siehst die auf diesem Gerät gespeicherten Daten (Stand: $date); Änderungen brauchen eine Verbindung. Die App verbindet sich von selbst wieder.';
   }
+
+  @override
+  String get sync_savedOffline =>
+      'Auf diesem Gerät gespeichert. Es wird gesendet, sobald der Server erreichbar ist.';
+
+  @override
+  String get sync_sent => 'Deine offline gemachten Änderungen wurden gesendet.';
+
+  @override
+  String get sync_restored =>
+      'Ein auf einem anderen Gerät gelöschtes Ereignis wurde hier geändert: Es ist wieder da, mit deinen Änderungen.';
+
+  @override
+  String get sync_kept =>
+      'Ein Ereignis, das du gelöscht hast, wurde auf einem anderen Gerät geändert: Es wurde behalten.';
+
+  @override
+  String get sync_conflicts =>
+      'Deine Offline-Änderungen haben Änderungen an denselben Ereignissen von einem anderen Gerät ersetzt.';
+
+  @override
+  String get sync_parked =>
+      'Einige Änderungen konnten nicht gesendet werden: Sieh dir die wartenden Änderungen an.';
+
+  @override
+  String get sync_tagPending =>
+      'Dieser Tag ist noch nicht auf dem Server: Versuche es erneut, sobald deine Änderungen gesendet sind.';
+
+  @override
+  String get sync_pendingChangesFirst =>
+      'Offline gemachte Änderungen warten noch: Sende oder verwirf sie zuerst.';
+
+  @override
+  String get pending_title => 'Wartende Änderungen';
+
+  @override
+  String get pending_info =>
+      'Auf diesem Gerät gemacht, während der Server nicht erreichbar war. Sie werden gesendet, sobald er antwortet.';
+
+  @override
+  String get pending_sendNow => 'Jetzt senden';
+
+  @override
+  String get pending_retry => 'Erneut versuchen';
+
+  @override
+  String get pending_discard => 'Verwerfen';
+
+  @override
+  String get pending_createEvent => 'Neues Ereignis';
+
+  @override
+  String get pending_updateEvent => 'Geändertes Ereignis';
+
+  @override
+  String get pending_deleteEvent => 'Gelöschtes Ereignis';
+
+  @override
+  String get pending_createTag => 'Neuer Tag';
+
+  @override
+  String get pending_waiting => 'Wartet';
+
+  @override
+  String get pending_refused => 'Vom Server abgelehnt';
+
+  @override
+  String get pending_missingTag =>
+      'Verwendet einen Tag, der nicht erstellt werden konnte';
+
+  @override
+  String get pending_encryptionChanged =>
+      'Die Verschlüsselung wurde auf einem anderen Gerät geändert';
+
+  @override
+  String get pending_dataReplaced =>
+      'Die Serverdaten wurden ersetzt (aus einer Sicherung wiederhergestellt)';
+
+  @override
+  String get logout_pendingTitle => 'Nicht gesendete Änderungen';
+
+  @override
+  String get logout_pendingConfirm => 'Trotzdem abmelden';
+
+  @override
+  String logout_pendingInfo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count offline gemachte Änderungen sind noch nicht auf dem Server. Beim Abmelden gehen sie verloren.',
+      one:
+          '1 offline gemachte Änderung ist noch nicht auf dem Server. Beim Abmelden geht sie verloren.',
+    );
+    return '$_temp0';
+  }
 }

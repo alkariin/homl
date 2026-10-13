@@ -5,6 +5,7 @@ import 'package:homl/data/models/category.dart';
 import 'package:homl/data/models/event.dart';
 import 'package:homl/data/models/tag.dart';
 import 'package:homl/data/repositories/events.repository.dart';
+import 'package:homl/data/sync/offline_writes.dart';
 import 'package:homl/data/repositories/tags.repository.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart' show TagView;
 import 'package:homl/pages/insert/bloc/insert_cubit.dart';
@@ -75,7 +76,7 @@ void main() {
         date: DateTime(2026, 3, 15),
         endDate: null,
         isOngoing: false,
-        tagsId: [2])).thenAnswer((_) async {});
+        tagsId: [2])).thenAnswer((_) async => WriteOutcome.sent);
 
     final cubit = InsertCubit(eventsRepository, tagsRepository,
         editing: editedEvent, dateCategoryIds: {1});
@@ -100,6 +101,23 @@ void main() {
     expect(cubit.state.editingEventId, 7);
   });
 
+  test('a creation saved on the device says so', () async {
+    when(() => eventsRepository.createEvent(
+            description: any(named: 'description'),
+            date: any(named: 'date'),
+            endDate: any(named: 'endDate'),
+            isOngoing: any(named: 'isOngoing'),
+            tagsId: any(named: 'tagsId')))
+        .thenAnswer((_) async => WriteOutcome.queued);
+
+    final cubit = InsertCubit(eventsRepository, tagsRepository);
+    cubit.addTag('Football');
+    await cubit.submitEvent(categories, knownTags);
+
+    expect(cubit.state.status, InsertStatus.success);
+    expect(cubit.state.savedOffline, isTrue);
+  });
+
   test('submitEvent without an edited event still creates and resets',
       () async {
     when(() => eventsRepository.createEvent(
@@ -107,7 +125,7 @@ void main() {
         date: any(named: 'date'),
         endDate: any(named: 'endDate'),
         isOngoing: any(named: 'isOngoing'),
-        tagsId: any(named: 'tagsId'))).thenAnswer((_) async {});
+        tagsId: any(named: 'tagsId'))).thenAnswer((_) async => WriteOutcome.sent);
 
     final cubit = InsertCubit(eventsRepository, tagsRepository);
     cubit.addTag('Football');
@@ -216,7 +234,7 @@ void main() {
           date: any(named: 'date'),
           endDate: any(named: 'endDate'),
           isOngoing: any(named: 'isOngoing'),
-          tagsId: any(named: 'tagsId'))).thenAnswer((_) async {});
+          tagsId: any(named: 'tagsId'))).thenAnswer((_) async => WriteOutcome.sent);
 
       final cubit = InsertCubit(eventsRepository, tagsRepository,
           editing: editedEvent, dateCategoryIds: {1});

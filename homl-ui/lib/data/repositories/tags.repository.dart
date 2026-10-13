@@ -1,6 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:homl/data/models/usage.dart';
 import 'package:homl/data/repositories/api.dart';
+import 'package:homl/data/sync/offline_writes.dart';
+import 'package:homl/data/sync/outbox.dart';
+import 'package:homl/data/sync/sync_engine.dart';
 import 'package:homl/helpers/e2ee.dart';
 
 /// Exception thrown when a tags request fails
@@ -17,6 +20,10 @@ class TagsBlacklistedFailure implements Exception {}
 /// category (names are unique per category). Nothing was written.
 class TagNameConflictFailure implements Exception {}
 
+/// Exception thrown when a tag created offline is renamed, moved or deleted
+/// before the server has it: only its creation can wait in the outbox.
+class TagPendingFailure implements Exception {}
+
 class TagsRepository {
   final Api? _injectedApi;
   late final Api apiInstance = _injectedApi ?? Api();
@@ -27,36 +34,70 @@ class TagsRepository {
   /// as a synonym of an existing main tag of the same category. In E2EE mode
   /// the name is encrypted and its blind index sent alongside; [isDateTag]
   /// lifts the blacklist for the client-managed month/year tags.
+  ///
+  /// When the server is out of reach the creation waits in the outbox and a
+  /// temporary (negative) id comes back: events can use it right away.
   Future<int> createTag(String text, int idCategory,
       {int? idParentTag, bool isDateTag = false}) async {
+    final body = {
+      ...await _outgoingTag(text, isDateTag: isDateTag),
+      'idCategory': idCategory,
+      if (idParentTag != null) 'idParentTag': Outbox.instance.resolve(idParentTag),
+    };
+
+    Future<int> queue() async {
+      final int id;
+      try {
+        final stamps = await writeStamps();
+        id = await Outbox.instance.createTag(body,
+            keyCheck: stamps.keyCheck, generation: stamps.generation);
+      } catch (_) {
+        throw TagsRequestFailure();
+      }
+      SyncEngine.instance.kick();
+      return id;
+    }
+
+    if ((body['idParentTag'] as int? ?? 0) < 0 ||
+        await Outbox.instance.shouldQueue()) {
+      return queue();
+    }
+
     late Response<Map<String, dynamic>> response;
     try {
       response =
-          await apiInstance.api.post<Map<String, dynamic>>('/tags', data: {
-        ...await _outgoingTag(text, isDateTag: isDateTag),
-        'idCategory': idCategory,
-        if (idParentTag != null) 'idParentTag': idParentTag,
-      });
+          await apiInstance.api.post<Map<String, dynamic>>('/tags', data: body);
 
       if (response.data == null) {
         throw TagsNotFoundFailure();
       }
     } on DioException catch (err) {
+      if (Api.isUnreachable(err)) return queue();
       throw _tagFailure(err);
     }
 
     return response.data!['id'] as int;
   }
 
+  /// The server id of [id], or [TagPendingFailure] for a tag created offline
+  /// that the server does not have yet.
+  int _onServer(int id) {
+    final resolved = Outbox.instance.resolve(id);
+    if (resolved < 0) throw TagPendingFailure();
+    return resolved;
+  }
+
   /// Full-state update: omitting [idParentTag] detaches the tag from its
   /// parent (it becomes a main tag again).
   Future<void> updateTag(int id, String text, int idCategory,
       {int? idParentTag}) async {
+    final target = _onServer(id);
+    final parent = idParentTag == null ? null : _onServer(idParentTag);
     try {
-      await apiInstance.api.patch<void>('/tags/$id', data: {
+      await apiInstance.api.patch<void>('/tags/$target', data: {
         ...await _outgoingTag(text),
         'idCategory': idCategory,
-        if (idParentTag != null) 'idParentTag': idParentTag,
+        if (parent != null) 'idParentTag': parent,
       });
     } on DioException catch (err) {
       throw _tagFailure(err);
@@ -94,8 +135,9 @@ class TagsRepository {
   /// tag deletes its whole synonym group; [deleteEvents] also deletes the
   /// events whose only non-date tags belonged to the group.
   Future<void> deleteTag(int id, {bool deleteEvents = false}) async {
+    final target = _onServer(id);
     try {
-      await apiInstance.api.delete<void>('/tags/$id', data: {
+      await apiInstance.api.delete<void>('/tags/$target', data: {
         'deleteEvents': deleteEvents,
       });
     } on DioException catch (_) {
@@ -105,9 +147,10 @@ class TagsRepository {
 
   /// Event counts for the tag's synonym group, for the delete dialog.
   Future<TagUsage> getTagUsage(int id) async {
+    final target = _onServer(id);
     try {
-      final response =
-          await apiInstance.api.get<Map<String, dynamic>>('/tags/$id/usage');
+      final response = await apiInstance.api
+          .get<Map<String, dynamic>>('/tags/$target/usage');
       if (response.data == null) {
         throw TagsNotFoundFailure();
       }

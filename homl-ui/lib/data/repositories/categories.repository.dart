@@ -5,6 +5,8 @@ import 'package:homl/data/models/tag.dart';
 import 'package:homl/data/models/usage.dart';
 import 'package:homl/data/repositories/api.dart';
 import 'package:homl/data/store/local_store.dart';
+import 'package:homl/data/sync/outbox.dart';
+import 'package:homl/data/sync/projection.dart';
 import 'package:homl/helpers/e2ee.dart';
 
 /// Exception thrown when a categories request fails
@@ -44,15 +46,26 @@ class CategoriesRepository {
       throw CategoriesRequestFailure();
     }
 
-    final categories = response.data!
-        .map((e) => Category.fromJson(e as Map<String, dynamic>))
-        .toList();
-
     // The store gets the payload BEFORE decryption on purpose: for E2EE users
     // it must only ever hold ciphertext (homl-web/docs/e2ee.md).
     await LocalStore.instance.save(StoreEntry.categories, response.data);
 
-    return _decryptCategories(categories);
+    return _decryptCategories(await _project(response.data!));
+  }
+
+  /// The server payload with the tags created offline in their category.
+  Future<List<Category>> _project(List<dynamic> payload) async {
+    List<OutboxOp> ops;
+    try {
+      ops = await Outbox.instance.ops();
+    } catch (_) {
+      ops = const [];
+    }
+    final projected =
+        ops.isEmpty ? payload : projectCategories(payload, ops);
+    return projected
+        .map((e) => Category.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   /// Decrypts E2EE payloads at the repository boundary, so every model
@@ -85,10 +98,8 @@ class CategoriesRepository {
     }
 
     try {
-      final categories = (stored.payload as List<dynamic>)
-          .map((e) => Category.fromJson(e as Map<String, dynamic>))
-          .toList();
-      return await _decryptCategories(categories);
+      return await _decryptCategories(
+          await _project(stored.payload as List<dynamic>));
     } catch (_) {
       // A payload that no longer parses (model change) is just dropped.
       await LocalStore.instance.remove(StoreEntry.categories);

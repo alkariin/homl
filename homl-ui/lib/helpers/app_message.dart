@@ -20,7 +20,19 @@ enum AppMessage {
   accountDeleteError,
   categoryTagNameConflict,
   tagNameConflict,
-  serverUnreachable;
+  serverUnreachable,
+
+  /// Written while the server was out of reach: kept in the outbox.
+  savedOffline,
+  syncSent,
+  syncRestored,
+  syncKept,
+  syncConflicts,
+  syncParked,
+  tagPending,
+
+  /// An action that cannot run while changes made offline still wait.
+  pendingChangesFirst;
 
   /// The message for a request that failed: "server unreachable" when the
   /// Api just saw the server go away (the change needs a connection), the
@@ -61,6 +73,22 @@ extension AppMessageLocalization on AppMessage {
         return localization.categories_tagNameConflict;
       case AppMessage.serverUnreachable:
         return localization.global_serverUnreachable;
+      case AppMessage.savedOffline:
+        return localization.sync_savedOffline;
+      case AppMessage.syncSent:
+        return localization.sync_sent;
+      case AppMessage.syncRestored:
+        return localization.sync_restored;
+      case AppMessage.syncKept:
+        return localization.sync_kept;
+      case AppMessage.syncConflicts:
+        return localization.sync_conflicts;
+      case AppMessage.syncParked:
+        return localization.sync_parked;
+      case AppMessage.tagPending:
+        return localization.sync_tagPending;
+      case AppMessage.pendingChangesFirst:
+        return localization.sync_pendingChangesFirst;
     }
   }
 }

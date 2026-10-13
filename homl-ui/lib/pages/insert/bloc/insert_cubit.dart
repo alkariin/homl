@@ -6,6 +6,7 @@ import 'package:homl/data/models/event.dart';
 import 'package:homl/data/models/tag.dart';
 import 'package:homl/data/repositories/events.repository.dart';
 import 'package:homl/data/repositories/tags.repository.dart';
+import 'package:homl/data/sync/offline_writes.dart';
 import 'package:homl/helpers/app_message.dart';
 import 'package:homl/helpers/date_tags.dart';
 import 'package:homl/helpers/e2ee.dart';
@@ -168,7 +169,7 @@ class InsertCubit extends Cubit<InsertState> {
       // The repository notifies its change stream, which refreshes the
       // shared events/tags in the HomeCubit without coupling the cubits.
       if (state.editingEventId != null) {
-        await eventsRepository.updateEvent(
+        final outcome = await eventsRepository.updateEvent(
             id: state.editingEventId!,
             description: state.description,
             date: state.date,
@@ -178,9 +179,11 @@ class InsertCubit extends Cubit<InsertState> {
 
         // Keep the edited state (editingEventId included) so the view knows
         // to pop back to the list instead of resetting the form.
-        emit(state.copyWith(status: InsertStatus.success));
+        emit(state.copyWith(
+            status: InsertStatus.success,
+            savedOffline: outcome == WriteOutcome.queued));
       } else {
-        await eventsRepository.createEvent(
+        final outcome = await eventsRepository.createEvent(
             description: state.description,
             date: state.date,
             endDate: state.endDate,
@@ -188,7 +191,9 @@ class InsertCubit extends Cubit<InsertState> {
             tagsId: tagsId);
 
         // Reset the form
-        emit(InsertState.initial().copyWith(status: InsertStatus.success));
+        emit(InsertState.initial().copyWith(
+            status: InsertStatus.success,
+            savedOffline: outcome == WriteOutcome.queued));
       }
     } catch (_) {
       emit(state.copyWith(

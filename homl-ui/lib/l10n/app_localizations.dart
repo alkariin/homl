@@ -1071,6 +1071,156 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Server unreachable. You are viewing the data saved on this device (last updated {date}); changes need a connection. The app reconnects by itself.'**
   String offline_explanationSince(String date);
+
+  /// No description provided for @sync_savedOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved on this device. It will be sent once the server is reachable.'**
+  String get sync_savedOffline;
+
+  /// No description provided for @sync_sent.
+  ///
+  /// In en, this message translates to:
+  /// **'Your offline changes were sent.'**
+  String get sync_sent;
+
+  /// No description provided for @sync_restored.
+  ///
+  /// In en, this message translates to:
+  /// **'An event deleted on another device was edited here: it is back, with your changes.'**
+  String get sync_restored;
+
+  /// No description provided for @sync_kept.
+  ///
+  /// In en, this message translates to:
+  /// **'An event you deleted had been changed on another device: it was kept.'**
+  String get sync_kept;
+
+  /// No description provided for @sync_conflicts.
+  ///
+  /// In en, this message translates to:
+  /// **'Your offline changes replaced changes made to the same events on another device.'**
+  String get sync_conflicts;
+
+  /// No description provided for @sync_parked.
+  ///
+  /// In en, this message translates to:
+  /// **'Some changes could not be sent: see the changes waiting.'**
+  String get sync_parked;
+
+  /// No description provided for @sync_tagPending.
+  ///
+  /// In en, this message translates to:
+  /// **'This tag is not on the server yet: try again once your changes are sent.'**
+  String get sync_tagPending;
+
+  /// No description provided for @sync_pendingChangesFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes made offline are still waiting: send or discard them first.'**
+  String get sync_pendingChangesFirst;
+
+  /// No description provided for @pending_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes waiting'**
+  String get pending_title;
+
+  /// No description provided for @pending_info.
+  ///
+  /// In en, this message translates to:
+  /// **'Made on this device while the server was out of reach. They are sent as soon as it answers.'**
+  String get pending_info;
+
+  /// No description provided for @pending_sendNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Send now'**
+  String get pending_sendNow;
+
+  /// No description provided for @pending_retry.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get pending_retry;
+
+  /// No description provided for @pending_discard.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard'**
+  String get pending_discard;
+
+  /// No description provided for @pending_createEvent.
+  ///
+  /// In en, this message translates to:
+  /// **'New event'**
+  String get pending_createEvent;
+
+  /// No description provided for @pending_updateEvent.
+  ///
+  /// In en, this message translates to:
+  /// **'Edited event'**
+  String get pending_updateEvent;
+
+  /// No description provided for @pending_deleteEvent.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted event'**
+  String get pending_deleteEvent;
+
+  /// No description provided for @pending_createTag.
+  ///
+  /// In en, this message translates to:
+  /// **'New tag'**
+  String get pending_createTag;
+
+  /// No description provided for @pending_waiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting'**
+  String get pending_waiting;
+
+  /// No description provided for @pending_refused.
+  ///
+  /// In en, this message translates to:
+  /// **'Refused by the server'**
+  String get pending_refused;
+
+  /// No description provided for @pending_missingTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Uses a tag that could not be created'**
+  String get pending_missingTag;
+
+  /// No description provided for @pending_encryptionChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'The encryption changed on another device'**
+  String get pending_encryptionChanged;
+
+  /// No description provided for @pending_dataReplaced.
+  ///
+  /// In en, this message translates to:
+  /// **'The server data was replaced (restored from a backup)'**
+  String get pending_dataReplaced;
+
+  /// No description provided for @logout_pendingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes not sent'**
+  String get logout_pendingTitle;
+
+  /// No description provided for @logout_pendingConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Log out anyway'**
+  String get logout_pendingConfirm;
+
+  /// No description provided for @logout_pendingInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 change made offline has not reached the server yet. Logging out loses it.} other{{count} changes made offline have not reached the server yet. Logging out loses them.}}'**
+  String logout_pendingInfo(int count);
 }
 
 class _AppLocalizationsDelegate

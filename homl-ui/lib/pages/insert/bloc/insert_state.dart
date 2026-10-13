@@ -27,6 +27,10 @@ class InsertState extends Equatable {
   /// Id of the event being edited; null when the form creates a new event.
   final int? editingEventId;
 
+  /// The last save went to the outbox (the server was out of reach): the
+  /// success message says so.
+  final bool savedOffline;
+
   const InsertState(
       {required this.tagNames,
       required this.date,
@@ -35,7 +39,8 @@ class InsertState extends Equatable {
       required this.description,
       required this.status,
       this.modal,
-      this.editingEventId});
+      this.editingEventId,
+      this.savedOffline = false});
 
   PeriodShape get shape => isOngoing
       ? PeriodShape.ongoing
@@ -78,7 +83,8 @@ class InsertState extends Equatable {
       String? description,
       InsertStatus? status,
       AppMessage? modal,
-      bool clearModal = false}) {
+      bool clearModal = false,
+      bool? savedOffline}) {
     return InsertState(
       tagNames: tagNames ?? this.tagNames,
       date: date ?? this.date,
@@ -88,6 +94,7 @@ class InsertState extends Equatable {
       status: status ?? this.status,
       modal: clearModal ? null : (modal ?? this.modal),
       editingEventId: editingEventId,
+      savedOffline: savedOffline ?? this.savedOffline,
     );
   }
 
@@ -100,6 +107,7 @@ class InsertState extends Equatable {
         description,
         status,
         modal,
-        editingEventId
+        editingEventId,
+        savedOffline
       ];
 }

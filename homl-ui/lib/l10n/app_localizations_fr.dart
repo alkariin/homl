@@ -660,4 +660,100 @@ class AppLocalizationsFr extends AppLocalizations {
   String offline_explanationSince(String date) {
     return 'Serveur injoignable. Tu consultes les données enregistrées sur cet appareil (mises à jour le $date) ; les modifications nécessitent une connexion. L\'app se reconnecte toute seule.';
   }
+
+  @override
+  String get sync_savedOffline =>
+      'Enregistré sur cet appareil. Ce sera envoyé dès que le serveur sera joignable.';
+
+  @override
+  String get sync_sent =>
+      'Tes modifications faites hors ligne ont été envoyées.';
+
+  @override
+  String get sync_restored =>
+      'Un événement supprimé sur un autre appareil avait été modifié ici : il est revenu, avec tes modifications.';
+
+  @override
+  String get sync_kept =>
+      'Un événement que tu as supprimé avait été modifié sur un autre appareil : il a été gardé.';
+
+  @override
+  String get sync_conflicts =>
+      'Tes modifications hors ligne ont remplacé celles faites sur les mêmes événements depuis un autre appareil.';
+
+  @override
+  String get sync_parked =>
+      'Certaines modifications n\'ont pas pu être envoyées : vois les modifications en attente.';
+
+  @override
+  String get sync_tagPending =>
+      'Ce tag n\'est pas encore sur le serveur : réessaie une fois tes modifications envoyées.';
+
+  @override
+  String get sync_pendingChangesFirst =>
+      'Des modifications faites hors ligne attendent encore : envoie-les ou abandonne-les d\'abord.';
+
+  @override
+  String get pending_title => 'Modifications en attente';
+
+  @override
+  String get pending_info =>
+      'Faites sur cet appareil pendant que le serveur était injoignable. Elles partent dès qu\'il répond.';
+
+  @override
+  String get pending_sendNow => 'Envoyer maintenant';
+
+  @override
+  String get pending_retry => 'Réessayer';
+
+  @override
+  String get pending_discard => 'Abandonner';
+
+  @override
+  String get pending_createEvent => 'Nouvel événement';
+
+  @override
+  String get pending_updateEvent => 'Événement modifié';
+
+  @override
+  String get pending_deleteEvent => 'Événement supprimé';
+
+  @override
+  String get pending_createTag => 'Nouveau tag';
+
+  @override
+  String get pending_waiting => 'En attente';
+
+  @override
+  String get pending_refused => 'Refusée par le serveur';
+
+  @override
+  String get pending_missingTag => 'Utilise un tag qui n\'a pas pu être créé';
+
+  @override
+  String get pending_encryptionChanged =>
+      'Le chiffrement a changé sur un autre appareil';
+
+  @override
+  String get pending_dataReplaced =>
+      'Les données du serveur ont été remplacées (restauration d\'une sauvegarde)';
+
+  @override
+  String get logout_pendingTitle => 'Modifications non envoyées';
+
+  @override
+  String get logout_pendingConfirm => 'Se déconnecter quand même';
+
+  @override
+  String logout_pendingInfo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count modifications faites hors ligne ne sont pas encore sur le serveur. Te déconnecter les fait perdre.',
+      one:
+          '1 modification faite hors ligne n\'est pas encore sur le serveur. Te déconnecter la fait perdre.',
+    );
+    return '$_temp0';
+  }
 }

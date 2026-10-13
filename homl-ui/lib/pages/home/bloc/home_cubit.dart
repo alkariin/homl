@@ -13,6 +13,9 @@ import 'package:homl/data/repositories/categories.repository.dart';
 import 'package:homl/data/repositories/events.repository.dart';
 import 'package:homl/data/repositories/settings.repository.dart';
 import 'package:homl/data/repositories/tags.repository.dart';
+import 'package:homl/data/sync/offline_writes.dart';
+import 'package:homl/data/sync/outbox.dart';
+import 'package:homl/data/sync/sync_engine.dart';
 import 'package:homl/helpers/app_message.dart';
 import 'package:homl/helpers/categories.dart';
 import 'package:homl/helpers/colors.dart';
@@ -30,6 +33,8 @@ class HomeCubit extends Cubit<HomeState> {
   late StreamSubscription<Settings> _settingsSubscription;
   late StreamSubscription<void> _eventsChangedSubscription;
   late StreamSubscription<List<Reachability>> _reachabilitySubscription;
+  late StreamSubscription<SyncReport> _syncSubscription;
+  late StreamSubscription<OutboxCounts> _outboxSubscription;
 
   HomeCubit(this.settingsRepository, this.eventsRepository,
       this.categoriesRepository, this.tagsRepository, String username)
@@ -61,7 +66,32 @@ class HomeCubit extends Cubit<HomeState> {
       init();
     });
 
+    // The changes made offline reached the server (or some could not):
+    // reload, and say what happened.
+    _syncSubscription = SyncEngine.instance.reports.listen(_onSyncReport);
+
+    // The badge of the app bar.
+    _outboxSubscription = Outbox.instance.counts.listen((counts) {
+      if (!isClosed) emit(state.copyWith(pendingChanges: counts));
+    });
+
     init();
+  }
+
+  Future<void> _onSyncReport(SyncReport report) async {
+    await _fetch();
+    if (isClosed) return;
+    // One message: the one that most needs the user's attention.
+    final message = report.parked > 0
+        ? AppMessage.syncParked
+        : report.restored > 0
+            ? AppMessage.syncRestored
+            : report.kept > 0
+                ? AppMessage.syncKept
+                : report.conflicts > 0
+                    ? AppMessage.syncConflicts
+                    : AppMessage.syncSent;
+    emit(state.copyWith(modal: message));
   }
 
   /// The Dates category always wears the logo gold, whatever the backend
@@ -153,8 +183,11 @@ class HomeCubit extends Cubit<HomeState> {
   }
 
   /// Pull to refresh: the user asked, so an unreachable server is said even
-  /// with the saved data on screen.
+  /// with the saved data on screen. The changes waiting to be sent go first.
   Future<void> refresh() async {
+    if (!ServerReachability.instance.isOffline) {
+      await SyncEngine.instance.sync();
+    }
     final fetched = await _fetch();
     if (isClosed) return;
     if (!fetched || ServerReachability.instance.isOffline) {
@@ -167,6 +200,7 @@ class HomeCubit extends Cubit<HomeState> {
   Future<void> refreshIfStale(
       {Duration maxAge = const Duration(minutes: 1)}) async {
     if (ServerReachability.instance.isOffline) return;
+    SyncEngine.instance.kick();
     final last = state.lastSyncedAt;
     if (last != null && DateTime.now().difference(last) < maxAge) return;
     await _fetch();
@@ -185,7 +219,9 @@ class HomeCubit extends Cubit<HomeState> {
     try {
       // The repository change stream triggers init(), which refreshes the
       // shared events (and rewrites the offline cache).
-      await eventsRepository.deleteEvent(id);
+      if (await eventsRepository.deleteEvent(id) == WriteOutcome.queued) {
+        emit(state.copyWith(modal: AppMessage.savedOffline));
+      }
     } catch (_) {
       emit(state.copyWith(modal: AppMessage.requestFailed));
     }
@@ -222,6 +258,8 @@ class HomeCubit extends Cubit<HomeState> {
       // Renaming onto a taken name, or moving into a category that already
       // has one: nothing changed, the tag is still where it was.
       emit(state.copyWith(modal: AppMessage.tagNameConflict));
+    } on TagPendingFailure {
+      emit(state.copyWith(modal: AppMessage.tagPending));
     } catch (_) {
       emit(state.copyWith(modal: AppMessage.requestFailed));
     }
@@ -235,6 +273,8 @@ class HomeCubit extends Cubit<HomeState> {
       // The events changed too: deleted, or stripped of the removed tags.
       await refreshEvents();
       await _refreshCategories();
+    } on TagPendingFailure {
+      emit(state.copyWith(modal: AppMessage.tagPending));
     } catch (_) {
       emit(state.copyWith(modal: AppMessage.requestFailed));
     }
@@ -249,6 +289,8 @@ class HomeCubit extends Cubit<HomeState> {
       // Event payloads embed the tag's category: refresh them too.
       await refreshEvents();
       await _refreshCategories();
+    } on TagPendingFailure {
+      emit(state.copyWith(modal: AppMessage.tagPending));
     } catch (_) {
       emit(state.copyWith(modal: AppMessage.requestFailed));
     }
@@ -259,6 +301,9 @@ class HomeCubit extends Cubit<HomeState> {
   Future<TagUsage?> fetchTagUsage(int id) async {
     try {
       return await tagsRepository.getTagUsage(id);
+    } on TagPendingFailure {
+      emit(state.copyWith(modal: AppMessage.tagPending));
+      return null;
     } catch (_) {
       emit(state.copyWith(modal: AppMessage.requestFailed));
       return null;
@@ -328,6 +373,8 @@ class HomeCubit extends Cubit<HomeState> {
     _settingsSubscription.cancel();
     _eventsChangedSubscription.cancel();
     _reachabilitySubscription.cancel();
+    _syncSubscription.cancel();
+    _outboxSubscription.cancel();
     return super.close();
   }
 }
