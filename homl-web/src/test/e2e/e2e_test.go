@@ -478,6 +478,50 @@ func TestEventPeriods(t *testing.T) {
 		}
 	}
 
+	// The offline writes ride on this throwaway account too: the suite is
+	// at its per-minute /login budget, so they get no registration of their
+	// own.
+	t.Run("a create replayed with its clientId stores one event", func(t *testing.T) {
+		const clientId = "6f1c2a9e-4b7d-4e3a-8c5f-0a9d2e7b1c43"
+		body := map[string]interface{}{
+			"description": "e2e-replayed",
+			"date":        "2026-05-04T00:00:00Z",
+			"tagsId":      []uint{},
+			"clientId":    clientId,
+		}
+		first := decodeID(t, c.mustDo(http.MethodPost, "/events", body, http.StatusCreated))
+		// The answer was lost: the client sends the same create again.
+		again := decodeID(t, c.mustDo(http.MethodPost, "/events", body, http.StatusOK))
+		if again != first {
+			t.Fatalf("the replay answered id %d, the first create %d", again, first)
+		}
+
+		count := 0
+		for _, e := range c.events() {
+			if e.Description == "e2e-replayed" {
+				count++
+			}
+		}
+		if count != 1 {
+			t.Fatalf("expected one replayed event, found %d", count)
+		}
+
+		bad := map[string]interface{}{"date": "2026-05-04T00:00:00Z", "tagsId": []uint{}, "clientId": "not-a-uuid"}
+		c.mustDo(http.MethodPost, "/events", bad, http.StatusUnprocessableEntity)
+	})
+
+	t.Run("the settings carry a data generation", func(t *testing.T) {
+		var settings struct {
+			DataGeneration string `json:"dataGeneration"`
+		}
+		if err := json.Unmarshal(c.mustDo(http.MethodGet, "/settings", nil, http.StatusOK), &settings); err != nil {
+			t.Fatalf("decode settings: %v", err)
+		}
+		if len(settings.DataGeneration) != 36 {
+			t.Fatalf("dataGeneration %q is not a UUID", settings.DataGeneration)
+		}
+	})
+
 	t.Run("a closed period is tagged with every month it covers", func(t *testing.T) {
 		id := decodeID(t, c.mustDo(http.MethodPost, "/events", map[string]interface{}{
 			"description": "e2e-trip",
