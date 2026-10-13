@@ -3,6 +3,7 @@ package event
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"time"
 
@@ -30,7 +31,15 @@ type Event struct {
 	EndDate *time.Time `json:"endDate" db:"endDate"`
 	// IsOngoing marks an open period: started on Date, no end yet.
 	IsOngoing bool `json:"isOngoing" db:"isOngoing"`
+	// ClientId is the UUID the client chose for an event it creates, so a
+	// create replayed after a lost answer finds the first row instead of
+	// making a second one (nil: none sent). Never echoed in responses.
+	ClientId *string `json:"-" db:"clientId"`
 }
+
+// ErrDuplicateClientId reports a create whose clientId another create of the
+// same user already used (two replays racing): the first row stands.
+var ErrDuplicateClientId = errors.New("event clientId already used")
 
 // DateTagNames returns the names of the date tags the event's period implies:
 // the English month name and the year of every month it is known to cover,
@@ -84,8 +93,11 @@ type GetEventsResponse struct {
 type Repository interface {
 	FindEventsWithTags(ctx context.Context, encTags []string, idUser uint64) (map[uint]Event, map[uint][]category.Tag, error)
 	// CreateEventWithTags inserts the event with its tag links and returns
-	// its id.
+	// its id. ErrDuplicateClientId when event.ClientId is already used.
 	CreateEventWithTags(ctx context.Context, tags []category.Tag, tagsId []uint, event *Event, idUser uint64) (uint, error)
+	// FindIdByClientId returns the id of the user's event created with
+	// clientId, found = false when there is none.
+	FindIdByClientId(ctx context.Context, clientId string, idUser uint64) (id uint, found bool, err error)
 	UpdateEventWithTags(ctx context.Context, tags []category.Tag, tagsId []uint, event *Event, idUser uint64) error
 	Delete(ctx context.Context, id uint, idUser uint64) error
 }

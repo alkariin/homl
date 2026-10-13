@@ -73,6 +73,8 @@ func (h *EventHandler) GetEvents(c *gin.Context) {
  *   isOngoing?: bool,
  *   tagsId: []uint
  * }
+ *   clientId?: string (UUID; a replay with the same one answers 200 with
+ *              the event it created first, and changes nothing)
  * output:
  * { id: uint }
  */
@@ -83,6 +85,7 @@ func (h *EventHandler) CreateEvent(c *gin.Context) {
 		EndDate     *time.Time `json:"endDate"`
 		IsOngoing   bool       `json:"isOngoing"`
 		TagsId      []uint     `json:"tagsId" validate:"required"`
+		ClientId    *string    `json:"clientId" validate:"omitempty,uuid"`
 	}
 
 	var body *bodyRequest
@@ -103,6 +106,7 @@ func (h *EventHandler) CreateEvent(c *gin.Context) {
 		Date:        body.Date,
 		EndDate:     body.EndDate,
 		IsOngoing:   body.IsOngoing,
+		ClientId:    body.ClientId,
 	}
 
 	idUser, err := UserIDFromContext(c)
@@ -111,13 +115,18 @@ func (h *EventHandler) CreateEvent(c *gin.Context) {
 		return
 	}
 
-	idEvent, err := h.EventsService.CreateEvent(c.Request.Context(), idUser, event, body.TagsId)
+	idEvent, created, err := h.EventsService.CreateEvent(c.Request.Context(), idUser, event, body.TagsId)
 	if err != nil {
 		SendGinError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"id": idEvent})
+	// A replay (same clientId) created nothing: 200 with the first event.
+	status := http.StatusCreated
+	if !created {
+		status = http.StatusOK
+	}
+	c.JSON(status, gin.H{"id": idEvent})
 }
 
 /**

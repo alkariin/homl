@@ -168,11 +168,12 @@ func TestCreateEvent(t *testing.T) {
 			mock.Anything, mock.Anything, uint64(1),
 		).Return(uint(42), nil)
 
-		id, err := svc.CreateEvent(ctx, 1, &event.Event{Date: date}, []uint{})
+		id, created, err := svc.CreateEvent(ctx, 1, &event.Event{Date: date}, []uint{})
 
 		assert.NoError(t, err)
 		// The id of the new row reaches the caller (POST /events answers it).
 		assert.Equal(t, uint(42), id)
+		assert.True(t, created)
 		eventsRepo.AssertExpectations(t)
 	})
 
@@ -199,10 +200,92 @@ func TestCreateEvent(t *testing.T) {
 			mock.Anything, mock.Anything, uint64(1),
 		).Return(uint(43), nil)
 
-		_, err := svc.CreateEvent(ctx, 1, &event.Event{Date: date}, []uint{})
+		_, _, err := svc.CreateEvent(ctx, 1, &event.Event{Date: date}, []uint{})
 
 		assert.NoError(t, err)
 		eventsRepo.AssertExpectations(t)
+	})
+}
+
+func TestCreateEventReplay(t *testing.T) {
+	ctx := context.Background()
+	clientId := "5b0e6a3c-2f4d-4a51-9c1e-7d2b8f6a9e10"
+	newSvc := func(eventsRepo *mocks.MockEventsRepo, catRepo *mocks.MockCategoriesRepo) application.EventsService {
+		return application.NewEventsService(&application.ESConfig{
+			EventsRepository:     eventsRepo,
+			CategoriesRepository: catRepo,
+			Crypto:               testCrypto,
+		})
+	}
+
+	t.Run("A first create with a clientId inserts it", func(t *testing.T) {
+		eventsRepo := new(mocks.MockEventsRepo)
+		catRepo := new(mocks.MockCategoriesRepo)
+		catRepo.On("CheckTagsBelongToUser", []uint{}, uint64(1)).Return(nil)
+		catRepo.On("FindIdByKind", uint64(1), category.KindDate).Return(uint(3), nil)
+		catRepo.On("FindTagIdByTagAndIdCategory", mock.Anything, uint(3)).Return(uint(0), nil)
+		eventsRepo.On("FindIdByClientId", clientId, uint64(1)).Return(uint(0), false, nil)
+		eventsRepo.On("CreateEventWithTags", mock.Anything, []uint{},
+			mock.MatchedBy(func(evt *event.Event) bool { return evt.ClientId != nil && *evt.ClientId == clientId }),
+			uint64(1)).Return(uint(50), nil)
+
+		id, created, err := newSvc(eventsRepo, catRepo).CreateEvent(ctx, 1,
+			&event.Event{Date: june(3), ClientId: &clientId}, []uint{})
+
+		assert.NoError(t, err)
+		assert.Equal(t, uint(50), id)
+		assert.True(t, created)
+		eventsRepo.AssertExpectations(t)
+	})
+
+	t.Run("A replay hands back the first event and touches nothing", func(t *testing.T) {
+		eventsRepo := new(mocks.MockEventsRepo)
+		catRepo := new(mocks.MockCategoriesRepo)
+		eventsRepo.On("FindIdByClientId", clientId, uint64(1)).Return(uint(50), true, nil)
+
+		// Even an invalid body: a replay is not validated again.
+		id, created, err := newSvc(eventsRepo, catRepo).CreateEvent(ctx, 1,
+			&event.Event{Date: june(18), EndDate: datePtr(june(3)), ClientId: &clientId}, []uint{99})
+
+		assert.NoError(t, err)
+		assert.Equal(t, uint(50), id)
+		assert.False(t, created)
+		catRepo.AssertNotCalled(t, "CheckTagsBelongToUser", mock.Anything, mock.Anything)
+		eventsRepo.AssertNotCalled(t, "CreateEventWithTags", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	})
+
+	t.Run("A replay that loses the race to the first insert gets its row", func(t *testing.T) {
+		eventsRepo := new(mocks.MockEventsRepo)
+		catRepo := new(mocks.MockCategoriesRepo)
+		catRepo.On("CheckTagsBelongToUser", []uint{}, uint64(1)).Return(nil)
+		catRepo.On("FindIdByKind", uint64(1), category.KindDate).Return(uint(3), nil)
+		catRepo.On("FindTagIdByTagAndIdCategory", mock.Anything, uint(3)).Return(uint(0), nil)
+		eventsRepo.On("FindIdByClientId", clientId, uint64(1)).Return(uint(0), false, nil).Once()
+		eventsRepo.On("CreateEventWithTags", mock.Anything, []uint{}, mock.Anything, uint64(1)).
+			Return(uint(0), event.ErrDuplicateClientId)
+		eventsRepo.On("FindIdByClientId", clientId, uint64(1)).Return(uint(50), true, nil).Once()
+
+		id, created, err := newSvc(eventsRepo, catRepo).CreateEvent(ctx, 1,
+			&event.Event{Date: june(3), ClientId: &clientId}, []uint{})
+
+		assert.NoError(t, err)
+		assert.Equal(t, uint(50), id)
+		assert.False(t, created)
+	})
+
+	t.Run("Without a clientId nothing is looked up", func(t *testing.T) {
+		eventsRepo := new(mocks.MockEventsRepo)
+		catRepo := new(mocks.MockCategoriesRepo)
+		catRepo.On("CheckTagsBelongToUser", []uint{}, uint64(1)).Return(nil)
+		catRepo.On("FindIdByKind", uint64(1), category.KindDate).Return(uint(3), nil)
+		catRepo.On("FindTagIdByTagAndIdCategory", mock.Anything, uint(3)).Return(uint(0), nil)
+		eventsRepo.On("CreateEventWithTags", mock.Anything, []uint{}, mock.Anything, uint64(1)).Return(uint(51), nil)
+
+		_, created, err := newSvc(eventsRepo, catRepo).CreateEvent(ctx, 1, &event.Event{Date: june(3)}, []uint{})
+
+		assert.NoError(t, err)
+		assert.True(t, created)
+		eventsRepo.AssertNotCalled(t, "FindIdByClientId", mock.Anything, mock.Anything)
 	})
 }
 
@@ -266,7 +349,7 @@ func TestPeriodValidation(t *testing.T) {
 		run  func(svc application.EventsService, ctx context.Context, evt *event.Event) error
 	}{
 		{"CreateEvent", func(svc application.EventsService, ctx context.Context, evt *event.Event) error {
-			_, err := svc.CreateEvent(ctx, 1, evt, []uint{})
+			_, _, err := svc.CreateEvent(ctx, 1, evt, []uint{})
 			return err
 		}},
 		{"UpdateEvent", func(svc application.EventsService, ctx context.Context, evt *event.Event) error {
@@ -322,7 +405,7 @@ func TestPeriodValidation(t *testing.T) {
 			return evt.EndDate != nil && evt.EndDate.Equal(june(18)) && !evt.IsOngoing
 		}), uint64(1)).Return(uint(1), nil)
 
-		_, err := svc.CreateEvent(e2ee.WithEnabled(context.Background(), true), 1,
+		_, _, err := svc.CreateEvent(e2ee.WithEnabled(context.Background(), true), 1,
 			&event.Event{Date: june(3), EndDate: datePtr(june(18))}, []uint{})
 
 		assert.NoError(t, err)
@@ -351,7 +434,7 @@ func TestCreateEventPeriodTags(t *testing.T) {
 
 		// Same calendar day, even with a time part MySQL would truncate.
 		end := time.Date(2026, time.June, 3, 15, 30, 0, 0, time.UTC)
-		_, err := svc.CreateEvent(ctx, 1, &event.Event{Date: june(3), EndDate: &end}, []uint{})
+		_, _, err := svc.CreateEvent(ctx, 1, &event.Event{Date: june(3), EndDate: &end}, []uint{})
 
 		assert.NoError(t, err)
 		eventsRepo.AssertExpectations(t)
@@ -373,7 +456,7 @@ func TestCreateEventPeriodTags(t *testing.T) {
 			uint64(1),
 		).Return(uint(1), nil)
 
-		_, err := svc.CreateEvent(ctx, 1, &event.Event{
+		_, _, err := svc.CreateEvent(ctx, 1, &event.Event{
 			Date:    june(28),
 			EndDate: datePtr(time.Date(2026, time.July, 5, 0, 0, 0, 0, time.UTC)),
 		}, []uint{})
@@ -396,7 +479,7 @@ func TestCreateEventPeriodTags(t *testing.T) {
 			uint64(1),
 		).Return(uint(1), nil)
 
-		_, err := svc.CreateEvent(ctx, 1, &event.Event{
+		_, _, err := svc.CreateEvent(ctx, 1, &event.Event{
 			Date:      time.Date(2024, time.June, 3, 0, 0, 0, 0, time.UTC),
 			IsOngoing: true,
 		}, []uint{})

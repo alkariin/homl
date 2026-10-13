@@ -590,7 +590,7 @@ func TestGetEventsEndpoint(t *testing.T) {
 func TestCreateEventEndpoint(t *testing.T) {
 	router, sm := newTestServer()
 
-	sm.events.On("CreateEvent", testUserID, mock.AnythingOfType("*event.Event"), mock.Anything).Return(uint(33), nil)
+	sm.events.On("CreateEvent", testUserID, mock.AnythingOfType("*event.Event"), mock.Anything).Return(uint(33), true, nil)
 
 	rec := doRequest(router, http.MethodPost, "/events",
 		`{"description":"cool","date":"1993-12-01T00:00:00Z","tagsId":[1,2]}`, authHeader())
@@ -598,6 +598,48 @@ func TestCreateEventEndpoint(t *testing.T) {
 	assert.Equal(t, http.StatusCreated, rec.Code)
 	assert.Equal(t, map[string]interface{}{"id": float64(33)}, decodeJSON(t, rec))
 	sm.events.AssertExpectations(t)
+}
+
+// A create carrying a clientId already used answers 200 with the first
+// event: the client lost the answer to its first try and sent it again.
+func TestCreateEventEndpointReplay(t *testing.T) {
+	const clientId = "5b0e6a3c-2f4d-4a51-9c1e-7d2b8f6a9e10"
+	router, sm := newTestServer()
+	sm.events.On("CreateEvent", testUserID, mock.MatchedBy(func(evt *event.Event) bool {
+		return evt.ClientId != nil && *evt.ClientId == clientId
+	}), []uint{1}).Return(uint(33), false, nil)
+
+	rec := doRequest(router, http.MethodPost, "/events",
+		`{"date":"1993-12-01T00:00:00Z","tagsId":[1],"clientId":"`+clientId+`"}`, authHeader())
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, map[string]interface{}{"id": float64(33)}, decodeJSON(t, rec))
+	sm.events.AssertExpectations(t)
+}
+
+func TestCreateEventRejectsAClientIdThatIsNotAUUID(t *testing.T) {
+	router, sm := newTestServer()
+
+	rec := doRequest(router, http.MethodPost, "/events",
+		`{"date":"1993-12-01T00:00:00Z","tagsId":[1],"clientId":"not-a-uuid"}`, authHeader())
+
+	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
+	sm.events.AssertNotCalled(t, "CreateEvent", mock.Anything, mock.Anything, mock.Anything)
+}
+
+// GET /settings carries the data generation the offline client compares its
+// pending writes with.
+func TestGetSettingsCarriesTheDataGeneration(t *testing.T) {
+	router, sm := newTestServer()
+	sm.settings.On("GetSettings", testUserID).Return(&user.SettingsResponse{
+		Language:       "en",
+		DataGeneration: "0b9a2c6e-8f61-4d3a-a5e2-1c7f0d4b9e83",
+	}, nil)
+
+	rec := doRequest(router, http.MethodGet, "/settings", "", authHeader())
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "0b9a2c6e-8f61-4d3a-a5e2-1c7f0d4b9e83", decodeJSON(t, rec)["dataGeneration"])
 }
 
 // The period fields reach the service as parsed: a closed period keeps its
@@ -609,7 +651,7 @@ func TestCreateEventEndpointForwardsThePeriod(t *testing.T) {
 		router, sm := newTestServer()
 		sm.events.On("CreateEvent", testUserID, mock.MatchedBy(func(evt *event.Event) bool {
 			return evt.EndDate != nil && evt.EndDate.Equal(end) && !evt.IsOngoing
-		}), []uint{1}).Return(uint(1), nil)
+		}), []uint{1}).Return(uint(1), true, nil)
 
 		rec := doRequest(router, http.MethodPost, "/events",
 			`{"date":"2026-06-28T00:00:00Z","endDate":"2026-07-05T00:00:00Z","tagsId":[1]}`, authHeader())
@@ -622,7 +664,7 @@ func TestCreateEventEndpointForwardsThePeriod(t *testing.T) {
 		router, sm := newTestServer()
 		sm.events.On("CreateEvent", testUserID, mock.MatchedBy(func(evt *event.Event) bool {
 			return evt.EndDate == nil && evt.IsOngoing
-		}), []uint{}).Return(uint(1), nil)
+		}), []uint{}).Return(uint(1), true, nil)
 
 		rec := doRequest(router, http.MethodPost, "/events",
 			`{"date":"2024-06-03T00:00:00Z","isOngoing":true,"tagsId":[]}`, authHeader())
@@ -636,7 +678,7 @@ func TestCreateEventEndpointForwardsThePeriod(t *testing.T) {
 		router, sm := newTestServer()
 		sm.events.On("CreateEvent", testUserID, mock.MatchedBy(func(evt *event.Event) bool {
 			return evt.EndDate == nil && !evt.IsOngoing
-		}), []uint{}).Return(uint(1), nil)
+		}), []uint{}).Return(uint(1), true, nil)
 
 		rec := doRequest(router, http.MethodPost, "/events",
 			`{"date":"2026-06-03T00:00:00Z","endDate":null,"tagsId":[]}`, authHeader())
@@ -669,7 +711,7 @@ func TestCreateEventEndpointRelaysAPeriodError(t *testing.T) {
 	router, sm := newTestServer()
 
 	sm.events.On("CreateEvent", testUserID, mock.Anything, mock.Anything).
-		Return(uint(0), apperror.NewBadRequest("The end date cannot precede the start date"))
+		Return(uint(0), false, apperror.NewBadRequest("The end date cannot precede the start date"))
 
 	rec := doRequest(router, http.MethodPost, "/events",
 		`{"date":"2026-06-18T00:00:00Z","endDate":"2026-06-03T00:00:00Z","tagsId":[]}`, authHeader())
