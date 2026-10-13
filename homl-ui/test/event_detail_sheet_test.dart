@@ -11,6 +11,7 @@ import 'package:homl/data/models/settings.dart';
 import 'package:homl/data/models/tag.dart';
 import 'package:homl/data/repositories/categories.repository.dart';
 import 'package:homl/data/repositories/events.repository.dart';
+import 'package:homl/data/sync/offline_writes.dart';
 import 'package:homl/data/repositories/settings.repository.dart';
 import 'package:homl/data/repositories/tags.repository.dart';
 import 'package:homl/l10n/app_localizations.dart';
@@ -181,7 +182,7 @@ void main() {
 
   testWidgets('the trash action asks for confirmation before deleting',
       (tester) async {
-    when(() => eventsRepository.deleteEvent(1)).thenAnswer((_) async {});
+    when(() => eventsRepository.deleteEvent(1)).thenAnswer((_) async => WriteOutcome.sent);
 
     await openSheet(tester);
     await tester.tap(faIcon(FontAwesomeIcons.trash));
@@ -230,7 +231,7 @@ void main() {
         date: any(named: 'date'),
         endDate: any(named: 'endDate'),
         isOngoing: any(named: 'isOngoing'),
-        tagsId: any(named: 'tagsId'))).thenAnswer((_) async {});
+        tagsId: any(named: 'tagsId'))).thenAnswer((_) async => WriteOutcome.sent);
 
     await openSheet(tester);
     await tester.tap(faIcon(FontAwesomeIcons.pen));

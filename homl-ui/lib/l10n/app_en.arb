@@ -290,5 +290,35 @@
     "placeholders": {
       "date": { "type": "String" }
     }
+  },
+  "sync_savedOffline": "Saved on this device. It will be sent once the server is reachable.",
+  "sync_sent": "Your offline changes were sent.",
+  "sync_restored": "An event deleted on another device was edited here: it is back, with your changes.",
+  "sync_kept": "An event you deleted had been changed on another device: it was kept.",
+  "sync_conflicts": "Your offline changes replaced changes made to the same events on another device.",
+  "sync_parked": "Some changes could not be sent: see the changes waiting.",
+  "sync_tagPending": "This tag is not on the server yet: try again once your changes are sent.",
+  "sync_pendingChangesFirst": "Changes made offline are still waiting: send or discard them first.",
+  "pending_title": "Changes waiting",
+  "pending_info": "Made on this device while the server was out of reach. They are sent as soon as it answers.",
+  "pending_sendNow": "Send now",
+  "pending_retry": "Try again",
+  "pending_discard": "Discard",
+  "pending_createEvent": "New event",
+  "pending_updateEvent": "Edited event",
+  "pending_deleteEvent": "Deleted event",
+  "pending_createTag": "New tag",
+  "pending_waiting": "Waiting",
+  "pending_refused": "Refused by the server",
+  "pending_missingTag": "Uses a tag that could not be created",
+  "pending_encryptionChanged": "The encryption changed on another device",
+  "pending_dataReplaced": "The server data was replaced (restored from a backup)",
+  "logout_pendingTitle": "Changes not sent",
+  "logout_pendingConfirm": "Log out anyway",
+  "logout_pendingInfo": "{count, plural, =1{1 change made offline has not reached the server yet. Logging out loses it.} other{{count} changes made offline have not reached the server yet. Logging out loses them.}}",
+  "@logout_pendingInfo": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
   }
 }

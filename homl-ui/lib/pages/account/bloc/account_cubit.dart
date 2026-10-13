@@ -190,6 +190,10 @@ class AccountCubit extends Cubit<AccountState> {
       await settingsRepository?.getSettings();
       emit(state.copyWith(
           e2eeBusy: false, isE2eeEnabled: true, modal: AppMessage.e2eeEnabled));
+    } on E2eePendingChangesFailure {
+      E2ee().abortEnable();
+      emit(state.copyWith(
+          e2eeBusy: false, modal: AppMessage.pendingChangesFirst));
     } catch (_) {
       E2ee().abortEnable();
       emit(state.copyWith(e2eeBusy: false, modal: AppMessage.e2eeError));
@@ -208,6 +212,9 @@ class AccountCubit extends Cubit<AccountState> {
           e2eeBusy: false,
           isE2eeEnabled: false,
           modal: AppMessage.e2eeDisabled));
+    } on E2eePendingChangesFailure {
+      emit(state.copyWith(
+          e2eeBusy: false, modal: AppMessage.pendingChangesFirst));
     } catch (_) {
       emit(state.copyWith(e2eeBusy: false, modal: AppMessage.e2eeError));
     }

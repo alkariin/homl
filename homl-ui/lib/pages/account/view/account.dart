@@ -7,6 +7,7 @@ import 'package:homl/data/repositories/api.dart';
 import 'package:homl/components/settings_group.dart';
 import 'package:homl/data/repositories/settings.repository.dart';
 import 'package:homl/data/repositories/users.repository.dart';
+import 'package:homl/data/sync/outbox.dart';
 import 'package:homl/helpers/app_message.dart';
 import 'package:homl/helpers/colors.dart';
 import 'package:homl/helpers/toast.dart';
@@ -248,6 +249,14 @@ class AccountView extends StatelessWidget {
                             fontWeight: FontWeight.w600),
                       ),
                       onTap: () async {
+                        // Changes made offline not sent yet die with the
+                        // session: say so first.
+                        final pending = Outbox.instance.currentCounts.total;
+                        if (pending > 0 &&
+                            !await _confirmLosingChanges(context, pending)) {
+                          return;
+                        }
+                        if (!context.mounted) return;
                         await context.read<UsersRepository>().logout();
                       },
                     ),
@@ -271,4 +280,26 @@ class AccountView extends StatelessWidget {
               );
             })));
   }
+}
+
+Future<bool> _confirmLosingChanges(BuildContext context, int count) async {
+  final localization = AppLocalizations.of(context)!;
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(localization.logout_pendingTitle),
+      content: Text(localization.logout_pendingInfo(count)),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(localization.global_cancel)),
+        TextButton(
+            style: TextButton.styleFrom(
+                foregroundColor: Theme.of(context).colorScheme.error),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(localization.logout_pendingConfirm)),
+      ],
+    ),
+  );
+  return confirmed == true;
 }

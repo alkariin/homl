@@ -9,10 +9,12 @@ import 'package:homl/data/models/settings.dart';
 import 'package:homl/data/models/tag.dart';
 import 'package:homl/data/repositories/categories.repository.dart';
 import 'package:homl/data/repositories/events.repository.dart';
+import 'package:homl/data/sync/offline_writes.dart';
 import 'package:homl/data/repositories/settings.repository.dart';
 import 'package:homl/data/repositories/tags.repository.dart';
 import 'package:homl/helpers/app_message.dart';
 import 'package:homl/helpers/server_reachability.dart';
+import 'package:homl/data/sync/sync_engine.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
 
 class MockEventsRepository extends Mock implements EventsRepository {}
@@ -129,6 +131,37 @@ void main() {
     });
   });
 
+  group('after a sync', () {
+    Future<HomeCubit> loaded() async {
+      stubInitialLoad();
+      final cubit = buildCubit();
+      await expectLater(cubit.stream,
+          emitsThrough(predicate<HomeState>((s) => s.initialized)));
+      return cubit;
+    }
+
+    for (final (report, message) in [
+      (const SyncReport(sent: 2), AppMessage.syncSent),
+      (const SyncReport(sent: 1, conflicts: 1), AppMessage.syncConflicts),
+      (const SyncReport(kept: 1, conflicts: 1), AppMessage.syncKept),
+      (const SyncReport(restored: 1, kept: 1), AppMessage.syncRestored),
+      (const SyncReport(sent: 3, parked: 1, restored: 1), AppMessage.syncParked),
+    ]) {
+      test('reloads and says ${message.name}', () async {
+        final cubit = await loaded();
+        clearInteractions(eventsRepository);
+
+        final said = expectLater(cubit.stream,
+            emitsThrough(predicate<HomeState>((s) => s.modal == message)));
+        SyncEngine.instance.emitReport(report);
+        await said;
+
+        verify(() => eventsRepository.getEvents()).called(1);
+        await cubit.close();
+      });
+    }
+  });
+
   test('serves the cached snapshot when the network is unavailable', () async {
     when(() => eventsRepository.getCachedEvents())
         .thenAnswer((_) async => cachedEvents);
@@ -181,7 +214,7 @@ void main() {
         .thenAnswer((_) async => cachedEvents);
     when(() => categoriesRepository.getCategories())
         .thenAnswer((_) async => cachedCategories);
-    when(() => eventsRepository.deleteEvent(1)).thenAnswer((_) async {});
+    when(() => eventsRepository.deleteEvent(1)).thenAnswer((_) async => WriteOutcome.sent);
 
     final cubit = buildCubit();
     await expectLater(

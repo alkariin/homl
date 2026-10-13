@@ -655,4 +655,99 @@ class AppLocalizationsEn extends AppLocalizations {
   String offline_explanationSince(String date) {
     return 'Server unreachable. You are viewing the data saved on this device (last updated $date); changes need a connection. The app reconnects by itself.';
   }
+
+  @override
+  String get sync_savedOffline =>
+      'Saved on this device. It will be sent once the server is reachable.';
+
+  @override
+  String get sync_sent => 'Your offline changes were sent.';
+
+  @override
+  String get sync_restored =>
+      'An event deleted on another device was edited here: it is back, with your changes.';
+
+  @override
+  String get sync_kept =>
+      'An event you deleted had been changed on another device: it was kept.';
+
+  @override
+  String get sync_conflicts =>
+      'Your offline changes replaced changes made to the same events on another device.';
+
+  @override
+  String get sync_parked =>
+      'Some changes could not be sent: see the changes waiting.';
+
+  @override
+  String get sync_tagPending =>
+      'This tag is not on the server yet: try again once your changes are sent.';
+
+  @override
+  String get sync_pendingChangesFirst =>
+      'Changes made offline are still waiting: send or discard them first.';
+
+  @override
+  String get pending_title => 'Changes waiting';
+
+  @override
+  String get pending_info =>
+      'Made on this device while the server was out of reach. They are sent as soon as it answers.';
+
+  @override
+  String get pending_sendNow => 'Send now';
+
+  @override
+  String get pending_retry => 'Try again';
+
+  @override
+  String get pending_discard => 'Discard';
+
+  @override
+  String get pending_createEvent => 'New event';
+
+  @override
+  String get pending_updateEvent => 'Edited event';
+
+  @override
+  String get pending_deleteEvent => 'Deleted event';
+
+  @override
+  String get pending_createTag => 'New tag';
+
+  @override
+  String get pending_waiting => 'Waiting';
+
+  @override
+  String get pending_refused => 'Refused by the server';
+
+  @override
+  String get pending_missingTag => 'Uses a tag that could not be created';
+
+  @override
+  String get pending_encryptionChanged =>
+      'The encryption changed on another device';
+
+  @override
+  String get pending_dataReplaced =>
+      'The server data was replaced (restored from a backup)';
+
+  @override
+  String get logout_pendingTitle => 'Changes not sent';
+
+  @override
+  String get logout_pendingConfirm => 'Log out anyway';
+
+  @override
+  String logout_pendingInfo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count changes made offline have not reached the server yet. Logging out loses them.',
+      one:
+          '1 change made offline has not reached the server yet. Logging out loses it.',
+    );
+    return '$_temp0';
+  }
 }

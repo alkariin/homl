@@ -6,6 +6,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 
+import 'package:homl/data/sync/outbox.dart';
 import 'package:homl/helpers/biometric_storage.dart' as biometric;
 import 'package:homl/helpers/e2ee.dart';
 import 'package:homl/helpers/encryption.dart' as encryption;
@@ -153,18 +154,30 @@ class Api {
   /// down, the PIN lockout. The cached data goes with it — another account may
   /// use the device next — and so does the offline PIN; the PIN keypair and
   /// the E2EE seed stay, so the same account unlocks the same way next time.
-  Future<void> endSession(AuthenticationStatus status) async {
+  ///
+  /// [keepPendingChanges]: the changes made offline that the server does not
+  /// have yet stay sealed on the device, sent once the same account signs in
+  /// again (another account wipes them). Not on a logout: the user confirmed
+  /// losing them first.
+  Future<void> endSession(AuthenticationStatus status,
+      {bool keepPendingChanges = false}) async {
     accessToken = null;
     holdSecondFactor();
     _stopProbing();
     // No session left to be online or offline for.
     _reachability.markUnknown();
     await LocalStorageManager.remove(LocalStorageKey.refreshToken);
-    await LocalStorageManager.clearDataCaches();
+    await LocalStorageManager.clearDataCaches(keepOutbox: keepPendingChanges);
+    Outbox.instance.forget();
     await PinVerifier.clear();
     E2ee().lock();
     _controller.add(status);
   }
+
+  /// The server turned the session down (or the PIN locked): not the user's
+  /// choice, so what was written offline is kept for the next sign-in.
+  Future<void> _dropSession(AuthenticationStatus status) =>
+      endSession(status, keepPendingChanges: true);
 
   Future<_RefreshResult> _postRefresh(String refreshToken,
       {String? signature, String? pin}) async {
@@ -313,9 +326,9 @@ class Api {
         _markOffline();
       case _Refresh.rejected:
         log('Refresh token rejected, ending the session', name: 'Api');
-        await endSession(AuthenticationStatus.unauthenticated);
+        await _dropSession(AuthenticationStatus.unauthenticated);
       case _Refresh.pinLocked:
-        await endSession(AuthenticationStatus.pinLocked);
+        await _dropSession(AuthenticationStatus.pinLocked);
       case _Refresh.pinIncorrect:
         // The PIN held for the session no longer matches: stop spending the
         // server's tries on it and ask the user again.
@@ -324,7 +337,7 @@ class Api {
       case _Refresh.secondFactorRequired:
         // The server wants a factor this device does not know (enabled from
         // another device): this session cannot be renewed here.
-        await endSession(AuthenticationStatus.unauthenticated);
+        await _dropSession(AuthenticationStatus.unauthenticated);
     }
     return result.outcome;
   }
@@ -369,12 +382,12 @@ class Api {
         _openOffline();
         return true;
       case _Refresh.pinLocked:
-        await endSession(AuthenticationStatus.pinLocked);
+        await _dropSession(AuthenticationStatus.pinLocked);
         return false;
       case _Refresh.rejected:
       case _Refresh.pinIncorrect:
       case _Refresh.secondFactorRequired:
-        await endSession(AuthenticationStatus.unauthenticated);
+        await _dropSession(AuthenticationStatus.unauthenticated);
         return false;
     }
   }
@@ -414,11 +427,11 @@ class Api {
         case _Refresh.pinLocked:
           // Keep the pinKeypair: after the password login the PIN is still
           // the way in on this device.
-          await endSession(AuthenticationStatus.pinLocked);
+          await _dropSession(AuthenticationStatus.pinLocked);
           return const PinAuthResult(success: false, locked: true);
         case _Refresh.rejected:
         case _Refresh.secondFactorRequired:
-          await endSession(AuthenticationStatus.unauthenticated);
+          await _dropSession(AuthenticationStatus.unauthenticated);
           return const PinAuthResult(success: false);
       }
     } catch (e) {
@@ -443,7 +456,7 @@ class Api {
             success: false,
             attemptsRemaining: await PinVerifier.remainingTries());
       case OfflinePinCheck.locked:
-        await endSession(AuthenticationStatus.pinLocked);
+        await _dropSession(AuthenticationStatus.pinLocked);
         return const PinAuthResult(success: false, locked: true);
     }
   }
@@ -587,8 +600,10 @@ class Api {
   }
 
   /// Whether [error] means "the server did not answer" rather than an answer
-  /// the caller has to deal with.
-  static bool _isUnreachable(DioException error) {
+  /// the caller has to deal with. A write failing that way may still have
+  /// reached the server: the outbox replays it safely (the `clientId` of an
+  /// event creation, see data/sync/outbox.dart).
+  static bool isUnreachable(DioException error) {
     switch (error.type) {
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.sendTimeout:
@@ -698,7 +713,7 @@ class Api {
 
       if (isProbe) return handler.next(error);
 
-      if (_isUnreachable(error)) {
+      if (isUnreachable(error)) {
         log('Server unreachable', name: 'Api', error: error);
         _markOffline();
         return handler.next(error);

@@ -50,6 +50,7 @@ App icons and native splash screens are generated from the logo — see
 | [homl-web/docs/api.md](homl-web/docs/api.md) | HTTP reference: every route, body, status code and error shape |
 | [homl-web/docs/auth-flows.md](homl-web/docs/auth-flows.md) | Login, refresh with PIN/fingerprint, the client session offline, password reset, logout, account deletion |
 | [homl-web/docs/e2ee.md](homl-web/docs/e2ee.md) | End-to-end encryption: crypto, wire format, migration, recovery |
+| [homl-web/docs/offline-sync.md](homl-web/docs/offline-sync.md) | Writing offline: the outbox, the sync, conflicts, what stays online-only |
 | [homl-web/docs/deployment.md](homl-web/docs/deployment.md) | Self-hosting: secrets, TLS, reverse proxy, email, backups, upgrades |
 | [homl-web/docs/default-categories.md](homl-web/docs/default-categories.md) | The three seeded categories and their rules |
 | [homl-web/docs/tag-synonyms.md](homl-web/docs/tag-synonyms.md) | Synonyms: rules, lifecycle, client-side matching |

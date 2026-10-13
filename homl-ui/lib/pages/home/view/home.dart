@@ -7,10 +7,12 @@ import 'package:homl/data/repositories/categories.repository.dart';
 import 'package:homl/data/repositories/events.repository.dart';
 
 import 'package:homl/components/app_bar_mark.dart';
+import 'package:homl/components/pending_changes.dart';
 import 'package:homl/components/bubbles_background.dart';
 import 'package:homl/components/logo.dart';
 import 'package:homl/data/repositories/settings.repository.dart';
 import 'package:homl/data/repositories/tags.repository.dart';
+import 'package:homl/data/sync/outbox.dart';
 import 'package:homl/helpers/app_message.dart';
 import 'package:homl/helpers/colors.dart';
 import 'package:homl/helpers/server_reachability.dart';
@@ -287,6 +289,11 @@ class _HomeViewState extends State<HomeView>
           ),
           title: Text(tabTitles[_currentIndex]),
           actions: [
+            BlocSelector<HomeCubit, HomeState, OutboxCounts>(
+                selector: (state) => state.pendingChanges,
+                builder: (context, counts) => PendingChangesButton(
+                    counts: counts,
+                    onChanged: () => context.read<HomeCubit>().init())),
             BlocSelector<HomeCubit, HomeState, DateTime?>(
                 selector: (state) => state.lastSyncedAt,
                 builder: (context, lastSyncedAt) =>

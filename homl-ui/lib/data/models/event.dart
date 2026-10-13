@@ -33,13 +33,20 @@ class Event {
 
   final List<Tag> tags;
 
+  /// A change made offline that the server has not had yet (created, or
+  /// edited, on this device). Never sent by the server: the projection of
+  /// the outbox sets it (data/sync/projection.dart).
+  @JsonKey(name: 'pending', defaultValue: false, includeToJson: false)
+  final bool isPending;
+
   Event(
       {required this.id,
       required this.description,
       required this.date,
       this.endDate,
       required this.isOngoing,
-      required this.tags});
+      required this.tags,
+      this.isPending = false});
 
   factory Event.fromJson(Map<String, dynamic> json) => _$EventFromJson(json);
 

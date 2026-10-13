@@ -8,8 +8,10 @@ import 'package:homl/helpers/local_storage_manager.dart';
 
 import 'blob_store.dart';
 
-/// What the local store keeps: the last payload the server sent for each.
-enum StoreEntry { events, categories, settings }
+/// What the local store keeps: the last payload the server sent for the
+/// first three, and the changes made offline that the server has not had yet
+/// ([outbox], see data/sync/outbox.dart).
+enum StoreEntry { events, categories, settings, outbox }
 
 class StoredPayload {
   /// The decoded JSON, exactly as the server sent it (ciphertext for an
@@ -31,8 +33,10 @@ class StoredPayload {
 ///   another account wipes the store instead of showing it.
 /// - [wipe] deletes the key first: whatever file deletion fails afterwards, the
 ///   files left behind can no longer be read.
-/// - The store is a cache: a failure is logged and reads as "nothing saved",
-///   never as an error the screens have to handle.
+/// - The snapshot is a cache: a failure is logged and reads as "nothing
+///   saved", never as an error the screens have to handle. The outbox is not
+///   a cache — it holds what exists nowhere else — so it is read and written
+///   with `strict: true`, which lets a storage failure through instead.
 class LocalStore {
   LocalStore(this._blobs);
 
@@ -69,36 +73,55 @@ class LocalStore {
   String _blobName(StoreEntry entry) => '${entry.name}.bin';
 
   /// Saves [payload] (JSON-encodable) as [entry], for the account currently
-  /// signed in.
-  Future<void> save(StoreEntry entry, Object? payload) =>
+  /// signed in. [strict]: a failure throws instead of being logged.
+  Future<void> save(StoreEntry entry, Object? payload, {bool strict = false}) =>
       _serialized(() async {
         try {
           await _migrateLegacy();
           await _write(entry, payload, DateTime.now());
         } catch (error) {
           log('Could not save ${entry.name}', name: 'LocalStore', error: error);
+          if (strict) rethrow;
         }
       });
 
   /// The saved [entry], or null when there is none for the account currently
-  /// signed in.
-  Future<StoredPayload?> load(StoreEntry entry) => _serialized(() async {
+  /// signed in. An entry that can never be read (sealed under a lost key,
+  /// corrupted) is dropped and reads as null; [strict]: any other failure (the
+  /// storage itself) throws instead, so the caller does not mistake it for
+  /// "nothing saved" and overwrite what is there.
+  Future<StoredPayload?> load(StoreEntry entry, {bool strict = false}) =>
+      _serialized(() async {
         try {
           await _migrateLegacy();
           return await _read(entry);
         } catch (error) {
           log('Could not read ${entry.name}', name: 'LocalStore', error: error);
+          if (strict && !_unreadable(error)) rethrow;
           await _deleteQuietly(entry);
           return null;
         }
       });
 
+  static bool _unreadable(Object error) =>
+      error is SecretBoxAuthenticationError ||
+      error is FormatException ||
+      error is TypeError;
+
   /// Forgets [entry] alone (a payload the app can no longer parse).
   Future<void> remove(StoreEntry entry) =>
       _serialized(() => _deleteQuietly(entry));
 
-  /// Deletes everything saved, device key first.
-  Future<void> wipe() => _serialized(_wipe);
+  /// Deletes everything saved, device key first. [keepOutbox]: the session
+  /// was turned down by the server, not ended by the user — the changes not
+  /// sent yet (and the key sealing them) stay for the same account's next
+  /// sign-in; another account wipes them when it loads them.
+  Future<void> wipe({bool keepOutbox = false}) => _serialized(() async {
+        if (!keepOutbox) return _wipe();
+        for (final entry in StoreEntry.values) {
+          if (entry != StoreEntry.outbox) await _deleteQuietly(entry);
+        }
+      });
 
   Future<void> _write(StoreEntry entry, Object? payload, DateTime? savedAt) async {
     final key = await _deviceKey(create: true);

@@ -27,6 +27,10 @@ class HomeState extends Equatable {
   /// When the events on screen were fetched from the server (null: unknown,
   /// e.g. data saved by an older version of the app).
   final DateTime? lastSyncedAt;
+
+  /// The changes made offline still waiting to be sent (and how many of them
+  /// are held back).
+  final OutboxCounts pendingChanges;
   final AppMessage? modal;
 
   const HomeState(
@@ -37,6 +41,7 @@ class HomeState extends Equatable {
       required this.allTagsMap,
       this.initialized = false,
       this.lastSyncedAt,
+      this.pendingChanges = const OutboxCounts(0, 0),
       this.modal});
 
   HomeState.initial(String username)
@@ -55,6 +60,7 @@ class HomeState extends Equatable {
       Map<String, TagView>? allTagsMap,
       bool? initialized,
       DateTime? lastSyncedAt,
+      OutboxCounts? pendingChanges,
       AppMessage? modal,
       bool clearModal = false}) {
     return HomeState(
@@ -65,6 +71,7 @@ class HomeState extends Equatable {
       allTagsMap: allTagsMap ?? this.allTagsMap,
       initialized: initialized ?? this.initialized,
       lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
+      pendingChanges: pendingChanges ?? this.pendingChanges,
       modal: clearModal ? null : (modal ?? this.modal),
     );
   }
@@ -97,6 +104,8 @@ class HomeState extends Equatable {
         allTagsMap,
         initialized,
         lastSyncedAt,
+        pendingChanges.pending,
+        pendingChanges.parked,
         modal
       ];
 }

@@ -1,11 +1,17 @@
 import 'package:dio/dio.dart';
 
 import 'package:homl/data/repositories/api.dart';
+import 'package:homl/data/sync/outbox.dart';
 import 'package:homl/helpers/e2ee.dart';
 import 'package:homl/helpers/local_storage_manager.dart';
 
 /// Exception thrown when an E2EE request fails
 class E2eeRequestFailure implements Exception {}
+
+/// Exception thrown when changes made offline still wait to be sent: they
+/// are encoded for the current mode, which a migration would change under
+/// them.
+class E2eePendingChangesFailure implements Exception {}
 
 /// Repository of the E2EE lifecycle endpoints (homl-web/docs/e2ee.md):
 /// the atomic whole-dataset migration and the lost-key purge.
@@ -19,11 +25,23 @@ class E2eeRepository {
   /// Runs the enable migration. [E2ee.prepareEnable] must have been called
   /// first (the derived keys encrypt the payload); the caller commits or
   /// aborts the pending key depending on the outcome.
-  Future<void> enable() => _migrate(enable: true);
+  Future<void> enable() async {
+    await _noPendingChanges();
+    return _migrate(enable: true);
+  }
 
   /// Runs the disable migration: the payload carries plaintext, the server
   /// re-encrypts at rest. The caller wipes the key on success.
-  Future<void> disable() => _migrate(enable: false);
+  Future<void> disable() async {
+    await _noPendingChanges();
+    return _migrate(enable: false);
+  }
+
+  Future<void> _noPendingChanges() async {
+    if ((await Outbox.instance.ops()).isNotEmpty) {
+      throw E2eePendingChangesFailure();
+    }
+  }
 
   /// Lost-key escape hatch: deletes every event, tag and category server-side
   /// and turns E2EE off. Destructive and irreversible.
@@ -33,7 +51,9 @@ class E2eeRepository {
           // Deletes the whole dataset in one transaction: more room than the
           // regular API calls, like the migration below.
           options: Options(receiveTimeout: const Duration(minutes: 2)));
+      // Everything the waiting changes pointed at is gone.
       await LocalStorageManager.clearDataCaches();
+      Outbox.instance.forget();
     } on DioException catch (_) {
       throw E2eeRequestFailure();
     }

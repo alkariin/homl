@@ -203,11 +203,19 @@ class _InsertViewState extends State<InsertView> {
             // the way out.
             final messenger = ScaffoldMessenger.of(context);
             Navigator.of(context).pop();
-            showToastWith(messenger, localization.list_eventUpdated);
+            showToastWith(
+                messenger,
+                state.savedOffline
+                    ? localization.sync_savedOffline
+                    : localization.list_eventUpdated);
             return;
           }
           _descriptionController.clear();
-          showToast(context, localization.insert_eventCreated);
+          showToast(
+              context,
+              state.savedOffline
+                  ? localization.sync_savedOffline
+                  : localization.insert_eventCreated);
           // The search tab follows the shared events through the repository
           // changes stream, so no explicit refresh is needed here.
           insertCubit.endModal();

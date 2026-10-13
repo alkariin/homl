@@ -71,7 +71,22 @@ class EventCard extends StatelessWidget {
           onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.all(12),
-            child: _content(locale, badge),
+            child: event.isPending
+                // Made offline, not on the server yet: a small clock in the
+                // corner (the date stays centred, the corner is free).
+                ? Stack(clipBehavior: Clip.none, children: [
+                    Positioned.fill(child: _content(locale, badge)),
+                    Positioned(
+                      top: -6,
+                      right: -6,
+                      child: Tooltip(
+                        message: AppLocalizations.of(context)!.pending_waiting,
+                        child: Icon(Icons.schedule,
+                            size: 14, color: palette.ink.withValues(alpha: 0.45)),
+                      ),
+                    ),
+                  ])
+                : _content(locale, badge),
           ),
         ),
       ),

@@ -20,6 +20,8 @@ import 'package:homl/services/authentication/bloc/authentication_cubit.dart';
 import 'package:homl/data/repositories/api.dart';
 import 'package:homl/data/repositories/settings.repository.dart';
 import 'package:homl/data/repositories/users.repository.dart';
+import 'package:homl/data/sync/outbox.dart';
+import 'package:homl/data/sync/sync_engine.dart';
 
 class App extends StatefulWidget {
   const App({super.key});
@@ -105,6 +107,9 @@ class _AppViewState extends State<AppView> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // The changes made offline go out whenever the server answers.
+    SyncEngine.instance.start();
+    unawaited(Outbox.instance.warmUp());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Future<void>.delayed(const Duration(milliseconds: 1350))
           .then((_) => _minSplash.complete());

@@ -122,9 +122,15 @@ void main() {
     return (api: api, statuses: statuses);
   }
 
+  const snapshot = [
+    StoreEntry.events,
+    StoreEntry.categories,
+    StoreEntry.settings,
+  ];
+
   Future<int> savedEntries() async {
     var count = 0;
-    for (final entry in StoreEntry.values) {
+    for (final entry in snapshot) {
       if (await LocalStore.instance.load(entry) != null) count++;
     }
     return count;
@@ -132,14 +138,13 @@ void main() {
 
   Future<bool> sessionKept() async =>
       storage['refreshToken'] != null &&
-      await savedEntries() == StoreEntry.values.length;
+      await savedEntries() == snapshot.length;
 
-  /// The token gone, and the saved data with it — down to the key that
-  /// sealed it.
+  /// The token gone, and the saved data with it. The server turned the
+  /// session down (the user did not log out): the changes made offline stay,
+  /// sealed, for the same account's next sign-in.
   Future<bool> sessionWiped() async =>
-      !storage.containsKey('refreshToken') &&
-      !storage.containsKey('localStoreKey') &&
-      await savedEntries() == 0;
+      !storage.containsKey('refreshToken') && await savedEntries() == 0;
 
   /// Lets the status stream and the unawaited work settle.
   Future<void> settle() => Future<void>.delayed(const Duration(milliseconds: 20));
@@ -210,6 +215,8 @@ void main() {
     test('but a session the server turns down still ends, data included',
         () async {
       await PinVerifier.store('1234');
+      await LocalStore.instance
+          .save(StoreEntry.outbox, {'ops': [], 'written': 'offline'});
       final backend = _Backend((options) async {
         if (options.path.endsWith('/data')) {
           return _error(401, 'Invalid JWT');
@@ -227,6 +234,9 @@ void main() {
       expect(storage.containsKey('pinVerifier'), isFalse);
       expect(t.api.accessToken, isNull);
       expect(t.statuses, contains(AuthenticationStatus.unauthenticated));
+      // What was written offline waits for the next sign-in.
+      expect((await LocalStore.instance.load(StoreEntry.outbox))!.payload,
+          {'ops': [], 'written': 'offline'});
     });
   });
 
