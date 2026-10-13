@@ -656,4 +656,9 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get offline_explanation =>
       'Server nicht erreichbar. Du siehst die auf diesem Gerät gespeicherten Daten; Änderungen brauchen eine Verbindung. Die App verbindet sich von selbst wieder.';
+
+  @override
+  String offline_explanationSince(String date) {
+    return 'Server nicht erreichbar. Du siehst die auf diesem Gerät gespeicherten Daten (Stand: $date); Änderungen brauchen eine Verbindung. Die App verbindet sich von selbst wieder.';
+  }
 }

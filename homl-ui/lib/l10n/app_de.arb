@@ -202,5 +202,6 @@
   "categories_deleteTagNameConflict": "Einer dieser Tags existiert bereits in Sonstiges. Benenne ihn um oder lösche die Tags, statt sie zu verschieben.",
   "categories_tagNameConflict": "Diese Kategorie hat bereits einen Tag mit diesem Namen. Wähle einen anderen.",
   "offline_title": "Offline",
-  "offline_explanation": "Server nicht erreichbar. Du siehst die auf diesem Gerät gespeicherten Daten; Änderungen brauchen eine Verbindung. Die App verbindet sich von selbst wieder."
+  "offline_explanation": "Server nicht erreichbar. Du siehst die auf diesem Gerät gespeicherten Daten; Änderungen brauchen eine Verbindung. Die App verbindet sich von selbst wieder.",
+  "offline_explanationSince": "Server nicht erreichbar. Du siehst die auf diesem Gerät gespeicherten Daten (Stand: {date}); Änderungen brauchen eine Verbindung. Die App verbindet sich von selbst wieder."
 }

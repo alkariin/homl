@@ -23,6 +23,10 @@ class HomeState extends Equatable {
   /// True once the events/categories were loaded at least once, from the
   /// offline cache or from the network.
   final bool initialized;
+
+  /// When the events on screen were fetched from the server (null: unknown,
+  /// e.g. data saved by an older version of the app).
+  final DateTime? lastSyncedAt;
   final AppMessage? modal;
 
   const HomeState(
@@ -32,6 +36,7 @@ class HomeState extends Equatable {
       required this.settings,
       required this.allTagsMap,
       this.initialized = false,
+      this.lastSyncedAt,
       this.modal});
 
   HomeState.initial(String username)
@@ -49,6 +54,7 @@ class HomeState extends Equatable {
       Settings? settings,
       Map<String, TagView>? allTagsMap,
       bool? initialized,
+      DateTime? lastSyncedAt,
       AppMessage? modal,
       bool clearModal = false}) {
     return HomeState(
@@ -58,6 +64,7 @@ class HomeState extends Equatable {
       settings: settings ?? this.settings,
       allTagsMap: allTagsMap ?? this.allTagsMap,
       initialized: initialized ?? this.initialized,
+      lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
       modal: clearModal ? null : (modal ?? this.modal),
     );
   }
@@ -82,6 +89,14 @@ class HomeState extends Equatable {
   }
 
   @override
-  List<Object?> get props =>
-      [username, events, categories, settings, allTagsMap, initialized, modal];
+  List<Object?> get props => [
+        username,
+        events,
+        categories,
+        settings,
+        allTagsMap,
+        initialized,
+        lastSyncedAt,
+        modal
+      ];
 }

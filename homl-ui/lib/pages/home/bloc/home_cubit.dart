@@ -105,7 +105,7 @@ class HomeCubit extends Cubit<HomeState> {
   }
 
   Future<void> init() async {
-    // Serve the cached snapshot first: the UI is usable immediately (and
+    // Serve the saved snapshot first: the UI is usable immediately (and
     // offline); the network refresh below overwrites it when it lands.
     if (!state.initialized) {
       final cachedEvents = await eventsRepository.getCachedEvents();
@@ -118,29 +118,58 @@ class HomeCubit extends Cubit<HomeState> {
             events: cachedEvents,
             categories: categories,
             allTagsMap: _buildTagsMap(categories),
-            initialized: true));
+            initialized: true,
+            lastSyncedAt: eventsRepository.lastSyncedAt));
       }
     }
 
+    // Offline with a snapshot on screen: stale data is fine.
+    if (!await _fetch() && !isClosed && !state.initialized) {
+      emit(state.copyWith(modal: AppMessage.requestFailed));
+    }
+  }
+
+  /// Fetches the events and categories (the repositories fall back to the
+  /// saved copy when the server cannot be reached). False when nothing could
+  /// be loaded at all.
+  Future<bool> _fetch() async {
     try {
       final events = await eventsRepository.getEvents();
       final categories =
           _withFixedDateColor(await categoriesRepository.getCategories());
 
       // A reconnection can land after the page was closed (logout).
-      if (isClosed) return;
+      if (isClosed) return true;
       emit(state.copyWith(
           events: events,
           categories: categories,
           allTagsMap: _buildTagsMap(categories),
-          initialized: true));
+          initialized: true,
+          lastSyncedAt: eventsRepository.lastSyncedAt));
+      return true;
     } catch (_) {
-      if (isClosed) return;
-      // Offline with a cached snapshot on screen: stale data is fine.
-      if (!state.initialized) {
-        emit(state.copyWith(modal: AppMessage.requestFailed));
-      }
+      return false;
     }
+  }
+
+  /// Pull to refresh: the user asked, so an unreachable server is said even
+  /// with the saved data on screen.
+  Future<void> refresh() async {
+    final fetched = await _fetch();
+    if (isClosed) return;
+    if (!fetched || ServerReachability.instance.isOffline) {
+      emit(state.copyWith(modal: AppMessage.requestFailed));
+    }
+  }
+
+  /// Back in the foreground: fetch again unless the data is fresh. Not while
+  /// the server is known unreachable — the reconnection reloads then.
+  Future<void> refreshIfStale(
+      {Duration maxAge = const Duration(minutes: 1)}) async {
+    if (ServerReachability.instance.isOffline) return;
+    final last = state.lastSyncedAt;
+    if (last != null && DateTime.now().difference(last) < maxAge) return;
+    await _fetch();
   }
 
   Future<void> refreshEvents() async {

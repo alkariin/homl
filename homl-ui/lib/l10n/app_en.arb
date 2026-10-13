@@ -284,5 +284,11 @@
   "categories_deleteTagNameConflict": "One of these tags already exists in Others. Rename it, or delete the tags instead of moving them.",
   "categories_tagNameConflict": "This category already has a tag with that name. Pick another one.",
   "offline_title": "Offline",
-  "offline_explanation": "Server unreachable. You are viewing the data saved on this device; changes need a connection. The app reconnects by itself."
+  "offline_explanation": "Server unreachable. You are viewing the data saved on this device; changes need a connection. The app reconnects by itself.",
+  "offline_explanationSince": "Server unreachable. You are viewing the data saved on this device (last updated {date}); changes need a connection. The app reconnects by itself.",
+  "@offline_explanationSince": {
+    "placeholders": {
+      "date": { "type": "String" }
+    }
+  }
 }

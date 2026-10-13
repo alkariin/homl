@@ -1065,6 +1065,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Server unreachable. You are viewing the data saved on this device; changes need a connection. The app reconnects by itself.'**
   String get offline_explanation;
+
+  /// No description provided for @offline_explanationSince.
+  ///
+  /// In en, this message translates to:
+  /// **'Server unreachable. You are viewing the data saved on this device (last updated {date}); changes need a connection. The app reconnects by itself.'**
+  String offline_explanationSince(String date);
 }
 
 class _AppLocalizationsDelegate

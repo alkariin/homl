@@ -12,6 +12,7 @@ import 'package:homl/data/repositories/events.repository.dart';
 import 'package:homl/data/repositories/settings.repository.dart';
 import 'package:homl/data/repositories/tags.repository.dart';
 import 'package:homl/helpers/app_message.dart';
+import 'package:homl/helpers/server_reachability.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
 
 class MockEventsRepository extends Mock implements EventsRepository {}
@@ -45,6 +46,7 @@ void main() {
   late MockTagsRepository tagsRepository;
 
   setUp(() {
+    ServerReachability.instance.reset();
     eventsRepository = MockEventsRepository();
     categoriesRepository = MockCategoriesRepository();
     settingsRepository = MockSettingsRepository();
@@ -70,6 +72,62 @@ void main() {
     when(() => categoriesRepository.getCategories())
         .thenAnswer((_) async => cachedCategories);
   }
+
+  group('freshness', () {
+    Future<HomeCubit> loaded({DateTime? syncedAt}) async {
+      stubInitialLoad();
+      when(() => eventsRepository.lastSyncedAt).thenReturn(syncedAt);
+      final cubit = buildCubit();
+      await expectLater(cubit.stream,
+          emitsThrough(predicate<HomeState>((s) => s.initialized)));
+      // Let the network refresh of init() land too.
+      await Future<void>.delayed(Duration.zero);
+      return cubit;
+    }
+
+    test('carries the date the data on screen was fetched', () async {
+      final syncedAt = DateTime(2026, 10, 13, 18, 21);
+      final cubit = await loaded(syncedAt: syncedAt);
+
+      expect(cubit.state.lastSyncedAt, syncedAt);
+
+      await cubit.close();
+    });
+
+    test('a pull to refresh says when the server is unreachable', () async {
+      final cubit = await loaded(syncedAt: DateTime.now());
+      ServerReachability.instance.markOffline();
+
+      await cubit.refresh();
+
+      expect(cubit.state.modal, AppMessage.serverUnreachable);
+      await cubit.close();
+    });
+
+    test('back in the foreground, only stale data is fetched again',
+        () async {
+      final cubit = await loaded(syncedAt: DateTime.now());
+      clearInteractions(eventsRepository);
+
+      await cubit.refreshIfStale();
+      verifyNever(() => eventsRepository.getEvents());
+
+      when(() => eventsRepository.lastSyncedAt).thenReturn(
+          DateTime.now().subtract(const Duration(minutes: 10)));
+      await cubit.refresh();
+      clearInteractions(eventsRepository);
+      await cubit.refreshIfStale();
+      verify(() => eventsRepository.getEvents()).called(1);
+
+      // Offline: the reconnection reloads, not the resume.
+      ServerReachability.instance.markOffline();
+      clearInteractions(eventsRepository);
+      await cubit.refreshIfStale();
+      verifyNever(() => eventsRepository.getEvents());
+
+      await cubit.close();
+    });
+  });
 
   test('serves the cached snapshot when the network is unavailable', () async {
     when(() => eventsRepository.getCachedEvents())
