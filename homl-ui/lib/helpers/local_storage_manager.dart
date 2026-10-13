@@ -79,8 +79,9 @@ class LocalStorageManager {
   /// cache keys if still there). Called whenever the local session ends so
   /// the next account on this device cannot read the previous user's data,
   /// and after an E2EE migration (the saved payloads changed representation).
-  static Future<void> clearDataCaches() async {
-    await LocalStore.instance.wipe();
+  /// [keepOutbox]: keep the changes not sent yet (see [LocalStore.wipe]).
+  static Future<void> clearDataCaches({bool keepOutbox = false}) async {
+    await LocalStore.instance.wipe(keepOutbox: keepOutbox);
     await remove(LocalStorageKey.eventsCache);
     await remove(LocalStorageKey.categoriesCache);
     await remove(LocalStorageKey.settingsCache);
