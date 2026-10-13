@@ -260,6 +260,14 @@ asks you to type its name before it does (`RESTORE_YES=1` skips the prompt
 for scripted use). It refuses any file that does not end with
 `-- Dump completed`.
 
+After loading, the script gives every user a new `dataGeneration` (see
+[api.md](api.md), Settings). The restored rows are older than what the apps
+last saw, and MySQL hands out ids again from the restored counters: an app
+holding writes it queued offline (an edit of event 42, say) would otherwise
+replay them against rows that are not the ones it meant. Seeing a new
+generation, it holds them back instead. A dump taken before migration 000008
+has no such column; the script skips the step, and the migration adds it.
+
 Redis holds only sessions, reset codes and rate-limit counters: losing it logs
 everyone out and costs nothing else. It needs no backup.
 
