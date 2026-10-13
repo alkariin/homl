@@ -1,11 +1,10 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:developer';
 import 'package:dio/dio.dart';
 import 'package:rxdart/rxdart.dart';
 
 import 'package:homl/data/models/settings.dart';
-import 'package:homl/helpers/local_storage_manager.dart';
+import 'package:homl/data/store/local_store.dart';
 import 'package:homl/helpers/version.dart';
 
 import 'api.dart';
@@ -32,7 +31,7 @@ class SettingsRepository {
   Settings? get current => _settingsController.valueOrNull;
 
   /// Fetches the settings, pushes them on [settingsStream] and returns them.
-  /// Each successful payload is cached in the secure storage, and served
+  /// Each successful payload is saved in the local store, and served
   /// instead when the request fails, so an offline start still knows the
   /// language, the default screen and the E2EE key check. Null when neither
   /// is available.
@@ -47,8 +46,7 @@ class SettingsRepository {
       }
 
       Settings result = Settings.fromJson(response.data!);
-      await LocalStorageManager.setValue(
-          LocalStorageKey.settingsCache, jsonEncode(response.data));
+      await LocalStore.instance.save(StoreEntry.settings, response.data);
       _settingsController.add(result);
       return result;
     } on DioException catch (_) {
@@ -63,16 +61,15 @@ class SettingsRepository {
   }
 
   /// The last settings payload fetched from the backend, or null when none
-  /// usable was cached yet.
+  /// usable was saved yet.
   Future<Settings?> getCachedSettings() async {
-    final raw =
-        await LocalStorageManager.getValue(LocalStorageKey.settingsCache);
-    if (raw == null) return null;
+    final stored = await LocalStore.instance.load(StoreEntry.settings);
+    if (stored == null) return null;
     try {
-      return Settings.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+      return Settings.fromJson(stored.payload as Map<String, dynamic>);
     } catch (_) {
-      // A cache that no longer parses (model change) is just dropped.
-      await LocalStorageManager.remove(LocalStorageKey.settingsCache);
+      // A payload that no longer parses (model change) is just dropped.
+      await LocalStore.instance.remove(StoreEntry.settings);
       return null;
     }
   }
@@ -88,8 +85,7 @@ class SettingsRepository {
       }
 
       Settings result = Settings.fromJson(response.data!);
-      await LocalStorageManager.setValue(
-          LocalStorageKey.settingsCache, jsonEncode(response.data));
+      await LocalStore.instance.save(StoreEntry.settings, response.data);
       _settingsController.add(result);
     } on DioException catch (_) {
       _settingsController.addError(SettingsRequestFailure());

@@ -655,4 +655,9 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get offline_explanation =>
       'Serveur injoignable. Tu consultes les données enregistrées sur cet appareil ; les modifications nécessitent une connexion. L\'app se reconnecte toute seule.';
+
+  @override
+  String offline_explanationSince(String date) {
+    return 'Serveur injoignable. Tu consultes les données enregistrées sur cet appareil (mises à jour le $date) ; les modifications nécessitent une connexion. L\'app se reconnecte toute seule.';
+  }
 }

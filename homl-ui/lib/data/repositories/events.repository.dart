@@ -1,12 +1,11 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:homl/data/models/event.dart';
 import 'package:homl/data/models/tag.dart';
 import 'package:homl/data/repositories/api.dart';
+import 'package:homl/data/store/local_store.dart';
 import 'package:homl/helpers/e2ee.dart';
-import 'package:homl/helpers/local_storage_manager.dart';
 
 /// Exception thrown when an events request fails
 class EventsRequestFailure implements Exception {}
@@ -27,10 +26,17 @@ class EventsRepository {
   /// interested blocs can refresh without being coupled to each other.
   Stream<void> get changes => _changesController.stream;
 
-  /// Returns all the user's events. Each successful payload is cached in the
-  /// secure storage (encrypted at rest) so the app keeps working offline:
-  /// when the request fails, the cached copy is returned instead when one
-  /// exists. Tag filtering happens locally (see helpers/event_search.dart).
+  /// When the events last handed out were fetched from the server: now for a
+  /// fresh fetch, the save date for the copy saved on the device (null when
+  /// unknown).
+  DateTime? get lastSyncedAt => _lastSyncedAt;
+  DateTime? _lastSyncedAt;
+
+  /// Returns all the user's events. Each successful payload is saved in the
+  /// local store (sealed on the device, see data/store/local_store.dart) so
+  /// the app keeps working offline: when the request fails, the saved copy is
+  /// returned instead when there is one. Tag filtering happens locally (see
+  /// helpers/event_search.dart).
   Future<List<Event>> getEvents() async {
     late Response<List<dynamic>> response;
     try {
@@ -51,10 +57,10 @@ class EventsRepository {
         .map((e) => Event.fromJson(e as Map<String, dynamic>))
         .toList();
 
-    // The cache is written BEFORE decryption on purpose: for E2EE users it
-    // must only ever hold ciphertext (homl-web/docs/e2ee.md).
-    await LocalStorageManager.setValue(
-        LocalStorageKey.eventsCache, jsonEncode(response.data));
+    // The store gets the payload BEFORE decryption on purpose: for E2EE users
+    // it must only ever hold ciphertext (homl-web/docs/e2ee.md).
+    await LocalStore.instance.save(StoreEntry.events, response.data);
+    _lastSyncedAt = DateTime.now();
 
     return _decryptEvents(events);
   }
@@ -83,21 +89,23 @@ class EventsRepository {
   }
 
   /// Returns the last events payload fetched from the backend, or null when
-  /// nothing usable was cached yet.
+  /// nothing usable was saved yet.
   Future<List<Event>?> getCachedEvents() async {
-    final raw = await LocalStorageManager.getValue(LocalStorageKey.eventsCache);
-    if (raw == null) {
+    final stored = await LocalStore.instance.load(StoreEntry.events);
+    if (stored == null) {
       return null;
     }
 
     try {
-      final events = (jsonDecode(raw) as List<dynamic>)
+      final events = (stored.payload as List<dynamic>)
           .map((e) => Event.fromJson(e as Map<String, dynamic>))
           .toList();
-      return await _decryptEvents(events);
+      final decrypted = await _decryptEvents(events);
+      _lastSyncedAt = stored.savedAt;
+      return decrypted;
     } catch (_) {
-      // A cache that no longer parses (model change) is just dropped.
-      await LocalStorageManager.remove(LocalStorageKey.eventsCache);
+      // A payload that no longer parses (model change) is just dropped.
+      await LocalStore.instance.remove(StoreEntry.events);
       return null;
     }
   }

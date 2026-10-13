@@ -94,40 +94,58 @@ class ListPage extends StatelessWidget {
           Expanded(
             child: listState.loading
                 ? const Center(child: CircularProgressIndicator())
-                : listState.events.isEmpty
-                    ? Center(child: Text(localization.list_noEvents))
-                    : GridView.builder(
-                        padding: const EdgeInsets.fromLTRB(20, 22, 20, 25),
-                        gridDelegate:
-                            const SliverGridDelegateWithMaxCrossAxisExtent(
-                          maxCrossAxisExtent: 250,
-                          mainAxisSpacing: 20,
-                          crossAxisSpacing: 20,
-                          childAspectRatio: 155 / 160,
-                        ),
-                        itemCount: listState.events.length,
-                        itemBuilder: (context, index) {
-                          final event = listState.events[index];
-                          return EventCard(
-                            event: event,
-                            tagColorResolver: (tagName) =>
-                                homeState.allTagsMap[tagName]?.color,
-                            // The tags map comes from the categories fetch:
-                            // prefer it over the category carried by the
-                            // event payload, which a cached event may have
-                            // taken before a tag was moved.
-                            isDateTag: (tag) {
-                              final idCategory =
-                                  homeState.allTagsMap[tag.tag]?.idCategory ??
+                // Pull down to fetch the events again (the list is local:
+                // without this, only a restart or a write refreshed it).
+                : RefreshIndicator(
+                    onRefresh: () => context.read<HomeCubit>().refresh(),
+                    child: listState.events.isEmpty
+                        ? LayoutBuilder(
+                            // Scrollable, so the pull works on an empty list too.
+                            builder: (context, constraints) => ListView(
+                                  physics:
+                                      const AlwaysScrollableScrollPhysics(),
+                                  children: [
+                                    SizedBox(
+                                        height: constraints.maxHeight,
+                                        child: Center(
+                                            child: Text(
+                                                localization.list_noEvents))),
+                                  ],
+                                ))
+                        : GridView.builder(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding: const EdgeInsets.fromLTRB(20, 22, 20, 25),
+                            gridDelegate:
+                                const SliverGridDelegateWithMaxCrossAxisExtent(
+                              maxCrossAxisExtent: 250,
+                              mainAxisSpacing: 20,
+                              crossAxisSpacing: 20,
+                              childAspectRatio: 155 / 160,
+                            ),
+                            itemCount: listState.events.length,
+                            itemBuilder: (context, index) {
+                              final event = listState.events[index];
+                              return EventCard(
+                                event: event,
+                                tagColorResolver: (tagName) =>
+                                    homeState.allTagsMap[tagName]?.color,
+                                // The tags map comes from the categories fetch:
+                                // prefer it over the category carried by the
+                                // event payload, which a cached event may have
+                                // taken before a tag was moved.
+                                isDateTag: (tag) {
+                                  final idCategory = homeState
+                                          .allTagsMap[tag.tag]?.idCategory ??
                                       tag.idCategory;
-                              return idCategory != null &&
-                                  dateIds.contains(idCategory);
+                                  return idCategory != null &&
+                                      dateIds.contains(idCategory);
+                                },
+                                onTap: () =>
+                                    showEventDetailSheet(context, event: event),
+                              );
                             },
-                            onTap: () =>
-                                showEventDetailSheet(context, event: event),
-                          );
-                        },
-                      ),
+                          ),
+                  ),
           ),
         ]);
       });

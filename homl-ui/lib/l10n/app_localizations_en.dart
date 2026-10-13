@@ -650,4 +650,9 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get offline_explanation =>
       'Server unreachable. You are viewing the data saved on this device; changes need a connection. The app reconnects by itself.';
+
+  @override
+  String offline_explanationSince(String date) {
+    return 'Server unreachable. You are viewing the data saved on this device (last updated $date); changes need a connection. The app reconnects by itself.';
+  }
 }

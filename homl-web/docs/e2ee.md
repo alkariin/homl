@@ -200,13 +200,15 @@ atomic metadata commit; the endpoint itself does not change.
 - **Repositories**: for E2EE users, encrypt on write / decrypt on read at the
   repository layer (`events`, `categories`, `tags`). Filtering by tags sends
   indexes.
-- **Offline cache**: `eventsCache` / `categoriesCache` store the **ciphertext**
-  payloads verbatim (as today); decryption happens in memory on read, so the
-  cache never becomes a second plaintext store. `settingsCache` keeps the last
-  `GET /settings`, so an offline start still runs the E2EE gate: the stored
-  seed must match the cached `e2eeKeyCheck` (with no cached settings at all,
-  the stored seed is trusted). Back online, the gate runs again on fresh
-  settings. See [auth-flows.md](auth-flows.md), "Client session".
+- **Offline cache**: the client's local store (`homl-ui/lib/data/store/`)
+  keeps the events and categories payloads verbatim, so the **ciphertext**
+  for E2EE users, sealed once more under a device key; decryption happens in
+  memory on read, so the store never becomes a second plaintext store. It
+  also keeps the last `GET /settings`, so an offline start still runs the
+  E2EE gate: the stored seed must match the cached `e2eeKeyCheck` (with no
+  cached settings at all, the stored seed is trusted). Back online, the gate
+  runs again on fresh settings. See [auth-flows.md](auth-flows.md), "Client
+  session".
 - **Date tags**: on event create/update, the client ensures the Month/Year
   tags exist (create with ciphertext + index if missing) and references their
   ids — mirroring `buildDateTags` locally (`InsertCubit._buildDateTags`). The

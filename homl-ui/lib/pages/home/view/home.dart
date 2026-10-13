@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:homl/l10n/app_localizations.dart';
 import 'package:homl/data/repositories/categories.repository.dart';
 import 'package:homl/data/repositories/events.repository.dart';
@@ -113,6 +114,8 @@ class _HomeViewState extends State<HomeView>
   /// to the tags chosen in the tab the user lands on.
   final ValueNotifier<String?> _typedTag = ValueNotifier(null);
 
+  late final AppLifecycleListener _lifecycle;
+
   @override
   void initState() {
     super.initState();
@@ -121,6 +124,10 @@ class _HomeViewState extends State<HomeView>
     // The controller must start on the same page as the selected tab,
     // otherwise the PageView shows page 0 while the nav bar says otherwise.
     _pageController = PageController(initialPage: _currentIndex);
+    // Back in the foreground after a while: the data may have changed on
+    // another device.
+    _lifecycle = AppLifecycleListener(
+        onResume: () => context.read<HomeCubit>().refreshIfStale());
   }
 
   @override
@@ -141,6 +148,7 @@ class _HomeViewState extends State<HomeView>
 
   @override
   void dispose() {
+    _lifecycle.dispose();
     _pageController.dispose();
     _typedTag.dispose();
     super.dispose();
@@ -279,7 +287,10 @@ class _HomeViewState extends State<HomeView>
           ),
           title: Text(tabTitles[_currentIndex]),
           actions: [
-            const OfflineIndicator(),
+            BlocSelector<HomeCubit, HomeState, DateTime?>(
+                selector: (state) => state.lastSyncedAt,
+                builder: (context, lastSyncedAt) =>
+                    OfflineIndicator(lastSyncedAt: lastSyncedAt)),
             _mark(),
             const SizedBox(width: 16)
           ],
@@ -444,9 +455,11 @@ class _ParallaxBackground extends StatelessWidget {
 
 /// Shown in the app bar while the server cannot be reached: the screens run
 /// on the data saved on this device, changes need a connection. Tapping it
-/// says so.
+/// says so, with the date of that data when known.
 class OfflineIndicator extends StatelessWidget {
-  const OfflineIndicator({super.key});
+  final DateTime? lastSyncedAt;
+
+  const OfflineIndicator({super.key, this.lastSyncedAt});
 
   @override
   Widget build(BuildContext context) {
@@ -458,11 +471,18 @@ class OfflineIndicator extends StatelessWidget {
           return const SizedBox.shrink();
         }
         final localization = AppLocalizations.of(context)!;
+        final syncedAt = lastSyncedAt;
+        final message = syncedAt == null
+            ? localization.offline_explanation
+            : localization.offline_explanationSince(DateFormat.MMMd(
+                    Localizations.localeOf(context).toString())
+                .add_Hm()
+                .format(syncedAt));
         return IconButton(
           tooltip: localization.offline_title,
           icon: const Icon(Icons.cloud_off_outlined),
-          onPressed: () => showToast(context, localization.offline_explanation,
-              duration: const Duration(seconds: 6)),
+          onPressed: () =>
+              showToast(context, message, duration: const Duration(seconds: 6)),
         );
       },
     );

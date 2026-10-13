@@ -199,7 +199,7 @@ Only a `401` on `/refresh` or `/challenge` is a verdict on the session:
 
 | Answer | Client |
 | --- | --- |
-| `401 Not authorized` (revoked, expired or reused refresh token) | ends the session: refresh token, cached data (events, categories, settings) and the offline PIN are removed; the PIN keypair and the E2EE seed stay, as on logout |
+| `401 Not authorized` (revoked, expired or reused refresh token) | ends the session: refresh token, the data saved for offline use (events, categories, settings — the local store, its device key first) and the offline PIN are removed; the PIN keypair and the E2EE seed stay, as on logout |
 | `401 PIN_LOCKED` | same, with the pin lockout message |
 | `401 PIN_INCORRECT` | stays on the pin dialog, `attemptsRemaining` shown |
 | `401 SECOND_FACTOR_REQUIRED` | answered with the session's factor (below); a factor this device cannot produce (enabled from another device) ends the session |

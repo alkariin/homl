@@ -138,7 +138,8 @@ lib/
 ├── components/        # reusable widgets (Tag, TagInput, EventCard, Input, dialogs…)
 ├── data/
 │   ├── models/        # json_serializable DTOs (*.g.dart committed)
-│   └── repositories/  # one per backend resource + api.dart (Dio client, refresh, cache)
+│   ├── repositories/  # one per backend resource + api.dart (Dio client, refresh)
+│   └── store/         # the data saved for offline use, sealed on the device
 ├── helpers/           # cross-cutting logic: e2ee, date_tags, event_search, theme, toast…
 ├── l10n/              # .arb sources + generated AppLocalizations
 ├── pages/             # one folder per screen: <page>/bloc (cubit + state) and <page>/view
@@ -451,7 +452,7 @@ and the dialog stays open.
 
 On success `UsersRepository.deleteAccount` wipes **everything** this device
 holds — a superset of logout: `LocalStorageManager.clearAll()` (refresh token,
-both caches, the `e2eeMasterKey` seed, the PIN keypair, the fingerprint flag)
+the local store, the `e2eeMasterKey` seed, the PIN keypair, the fingerprint flag)
 plus the biometric entry (`removeStorageFile`). It then emits the
 `accountDeleted` authentication status, which `app.dart` turns into
 "navigate to login + confirmation toast" — the same shape as `pinLocked`.
@@ -495,13 +496,13 @@ buttons, focus borders and the selected nav item are ink, the gold stays in
 the logo and small accents.
 
 `EventsRepository.getEvents()`, `CategoriesRepository.getCategories()` and
-`SettingsRepository.getSettings()` cache each successful payload in
-`flutter_secure_storage` (encrypted at rest). On startup `HomeCubit.init()`
-serves the cached snapshot first, then refreshes it from the network; when the
-network is unavailable the cached copy is served instead. The caches are
-cleared whenever the local session ends (logout, rejected refresh token, PIN
-lockout, account deletion) so another account on the same device cannot read
-them. What happens when the server is out of reach is the next section.
+`SettingsRepository.getSettings()` save each successful payload in the local
+store (below). On startup `HomeCubit.init()` serves the saved snapshot first,
+then refreshes it from the network; when the network is unavailable the saved
+copy is served instead. The store is wiped whenever the local session ends
+(logout, rejected refresh token, PIN lockout, account deletion) so another
+account on the same device cannot read it. What happens when the server is
+out of reach is the next section.
 
 ## Offline mode (server out of reach)
 
@@ -514,9 +515,12 @@ the offline PIN — is in
 [homl-web/docs/auth-flows.md](../homl-web/docs/auth-flows.md), "Client session".
 
 - **What the user sees**: a cloud-off icon in the app bar while the server is
-  unreachable (tap: what it means); "server unreachable" instead of "unexpected
-  error" or "incorrect credentials" when a request fails for that reason. The
-  app reconnects by itself and the icon goes away.
+  unreachable (tap: what it means, and when the data on screen was fetched);
+  "server unreachable" instead of "unexpected error" or "incorrect
+  credentials" when a request fails for that reason. The app reconnects by
+  itself and the icon goes away. Online, pulling the Search list down fetches
+  everything again, and coming back to the app after a minute or more does it
+  by itself (`HomeCubit.refresh` / `refreshIfStale`).
 - **Unlock** respects each account's own factor. No second factor: the saved
   data opens directly. Fingerprint: the same OS prompt as online (releasing the
   keypair is the proof of presence). PIN: the PIN is checked against a hash of
@@ -537,6 +541,26 @@ the offline PIN — is in
 - **`lib/helpers/pin_verifier.dart`** — the offline PIN check (PBKDF2-SHA256,
   600 000 iterations — native through cryptography_flutter; the tests lower it)
   and its counter.
+- **`lib/data/store/local_store.dart`** — `LocalStore`, the data saved for
+  offline use: one entry per payload (events, categories, settings), as the
+  server sent it (ciphertext for an E2EE account), each sealed with
+  AES-256-GCM under a random device key kept in the secure storage
+  (`localStoreKey`), the entry name bound as associated data. Each entry
+  records the account it belongs to (the `user_id` of the refresh token):
+  one saved by another account is never shown, the whole store is wiped
+  instead. `wipe()` deletes the key first, so a file whose deletion failed is
+  unreadable anyway. Failures read as "nothing saved" — it is a cache. The
+  payloads the app used to keep in the secure storage are carried over once.
+- **`lib/data/store/blob_store*.dart`** — where the sealed entries live: one
+  file per entry under the app support directory (`store/<entry>.bin`, written
+  next to the target then renamed over it, so a crash never leaves half an
+  entry), the browser storage on the web.
+- **No OS backup**: the Android manifest sets `allowBackup="false"` and
+  `res/xml/data_extraction_rules.xml` excludes the app data from cloud backups
+  and device-to-device transfers (the secure storage could not be decrypted
+  on another device anyway). On iOS the device key is a "this device only"
+  keychain item, so a restored backup holds no readable copy. A new phone
+  fetches everything again after the login.
 - **Back online**, `HomeCubit` reloads the data and `AuthenticationCubit` runs
   the E2EE gate again on fresh settings.
 
@@ -547,14 +571,16 @@ of account — no second factor, PIN, fingerprint (Security page), with and
 without E2EE:
 
 1. Open the app once online (for a PIN account: enter the PIN, which stores
-   the offline hash), browse a bit so the caches are filled, close it.
+   the offline hash), browse a bit so the local store is filled, close it.
 2. Airplane mode (or `docker stop homlback` on the dev machine). Reopen the
    app: the same unlock as usual, then the journal with the cloud-off icon.
    Search works; adding an event says "server unreachable" and keeps the form.
 3. PIN account: three wrong PINs offline lead to the login screen, like the
    server's lockout.
 4. Back online (or `docker start homlback`): bring the app to the foreground,
-   the icon goes away within seconds and the lists reload.
+   the icon goes away within seconds and the lists reload. Tapping the icon
+   while offline gives the date of the data on screen; pulling the list down
+   while offline says the server is unreachable.
 5. With `ENVIRONMENT=PROD` on the backend (10-minute access tokens), leave a
    PIN or fingerprint session open for more than 10 minutes: it keeps working
    without asking for the factor again.
