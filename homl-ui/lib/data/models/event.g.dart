@@ -17,6 +17,7 @@ Event _$EventFromJson(Map<String, dynamic> json) => Event(
       tags: (json['tags'] as List<dynamic>)
           .map((e) => Tag.fromJson(e as Map<String, dynamic>))
           .toList(),
+      isPending: json['pending'] as bool? ?? false,
     );
 
 Map<String, dynamic> _$EventToJson(Event instance) => <String, dynamic>{
