@@ -1,16 +1,24 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import 'package:homl/data/store/local_store.dart';
+
 enum LocalStorageKey {
   refreshToken,
   isFingerprintEnabled,
   fingerprintStorage,
   pinKeypair,
+
+  /// Where the events, categories and settings payloads used to be cached.
+  /// They live in the [LocalStore] now, which carries these over once and
+  /// deletes them.
   eventsCache,
   categoriesCache,
-
-  /// Last `GET /settings` payload: an offline start still knows the
-  /// language, the default screen and the E2EE key check.
   settingsCache,
+
+  /// The key sealing the [LocalStore] entries (base64). Kept on this device
+  /// only: an OS backup restored elsewhere carries no readable copy of the
+  /// saved data.
+  localStoreKey,
 
   /// PBKDF2 hash of the last PIN the server accepted on this device, and the
   /// count of wrong offline tries (see helpers/pin_verifier.dart). Dropped
@@ -36,14 +44,24 @@ class LocalStorageManager {
   static const FlutterSecureStorage _secureStorage =
       FlutterSecureStorage(iOptions: _iosOptions, aOptions: _androidOptions);
 
+  /// iOS only differs: a "this device only" keychain item never travels in a
+  /// backup. Android keystore-backed values never do anyway.
+  static const FlutterSecureStorage _deviceOnlyStorage = FlutterSecureStorage(
+      iOptions: IOSOptions(
+          accessibility: KeychainAccessibility.first_unlock_this_device),
+      aOptions: _androidOptions);
+
+  static FlutterSecureStorage _storageFor(LocalStorageKey key) =>
+      key == LocalStorageKey.localStoreKey ? _deviceOnlyStorage : _secureStorage;
+
   static Future<void> setValue(LocalStorageKey key, String value) async =>
-      await _secureStorage.write(key: key.name, value: value);
+      await _storageFor(key).write(key: key.name, value: value);
 
   static Future<String?> getValue(LocalStorageKey key) async =>
-      await _secureStorage.read(key: key.name);
+      await _storageFor(key).read(key: key.name);
 
   static Future<void> remove(LocalStorageKey key) async =>
-      await _secureStorage.delete(key: key.name);
+      await _storageFor(key).delete(key: key.name);
 
   /// Stores a boolean flag. Always use this together with [getBool] so the
   /// serialized representation stays consistent ("true"/"false").
@@ -55,20 +73,25 @@ class LocalStorageManager {
       await getValue(key) == true.toString();
 
   static Future<bool> has(LocalStorageKey key) async =>
-      await _secureStorage.containsKey(key: key.name);
+      await _storageFor(key).containsKey(key: key.name);
 
-  /// Removes the offline data caches. Called whenever the local session ends
-  /// so the next account on this device cannot read the previous user's data.
+  /// Removes the data saved for offline use (the [LocalStore], and the old
+  /// cache keys if still there). Called whenever the local session ends so
+  /// the next account on this device cannot read the previous user's data,
+  /// and after an E2EE migration (the saved payloads changed representation).
   static Future<void> clearDataCaches() async {
+    await LocalStore.instance.wipe();
     await remove(LocalStorageKey.eventsCache);
     await remove(LocalStorageKey.categoriesCache);
     await remove(LocalStorageKey.settingsCache);
   }
 
-  /// Removes every key this app owns. Account deletion only: unlike logout it
-  /// also drops [LocalStorageKey.e2eeMasterKey], the PIN keypair and the
-  /// fingerprint flag, because the account they unlock no longer exists.
+  /// Removes every key this app owns, and the [LocalStore]. Account deletion
+  /// only: unlike logout it also drops [LocalStorageKey.e2eeMasterKey], the
+  /// PIN keypair and the fingerprint flag, because the account they unlock no
+  /// longer exists.
   static Future<void> clearAll() async {
+    await LocalStore.instance.wipe();
     for (final key in LocalStorageKey.values) {
       await remove(key);
     }

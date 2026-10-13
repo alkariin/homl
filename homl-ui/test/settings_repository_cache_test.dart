@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:homl/data/models/settings.dart';
 import 'package:homl/data/repositories/api.dart';
 import 'package:homl/data/repositories/settings.repository.dart';
+import 'package:homl/data/store/local_store.dart';
 import 'package:homl/helpers/language.dart';
 import 'package:homl/helpers/server_reachability.dart';
 
@@ -66,6 +67,7 @@ void main() {
       return null;
     });
 
+    LocalStore.instance = LocalStore.inMemory();
     backend = _SettingsBackend();
     api = Api.internal(
         baseUrlOverride: 'https://api.test', initFromStorage: false);
@@ -80,12 +82,14 @@ void main() {
         .setMockMethodCallHandler(storageChannel, null);
   });
 
-  test('the fetched settings are cached', () async {
+  test('the fetched settings are saved on the device', () async {
     await repository.getSettings();
 
-    final cached = jsonDecode(storage['settingsCache']!);
-    expect(cached['language'], 'fr');
-    expect(cached['e2eeKeyCheck'], 'a-key-check');
+    final saved = await LocalStore.instance.load(StoreEntry.settings);
+    final payload = saved!.payload as Map<String, dynamic>;
+    expect(payload['language'], 'fr');
+    expect(payload['e2eeKeyCheck'], 'a-key-check');
+    expect(saved.savedAt, isNotNull);
   });
 
   test('offline, the cached settings are served and streamed', () async {
@@ -123,10 +127,10 @@ void main() {
     await subscription.cancel();
   });
 
-  test('a cache that no longer parses is dropped', () async {
-    storage['settingsCache'] = '{"language": 42}';
+  test('saved settings that no longer parse are dropped', () async {
+    await LocalStore.instance.save(StoreEntry.settings, {'language': 42});
 
     expect(await repository.getCachedSettings(), isNull);
-    expect(storage.containsKey('settingsCache'), isFalse);
+    expect(await LocalStore.instance.load(StoreEntry.settings), isNull);
   });
 }

@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:homl/data/repositories/api.dart';
+import 'package:homl/data/store/local_store.dart';
 import 'package:homl/helpers/encryption.dart' as encryption;
 import 'package:homl/helpers/pin_verifier.dart';
 import 'package:homl/helpers/server_reachability.dart';
@@ -67,14 +68,9 @@ void main() {
     PinVerifier.iterations = 1000;
   });
 
-  setUp(() {
+  setUp(() async {
     ServerReachability.instance.reset();
-    storage = {
-      'refreshToken': 'stored-refresh',
-      'eventsCache': '[]',
-      'categoriesCache': '[]',
-      'settingsCache': '{}',
-    };
+    storage = {'refreshToken': 'stored-refresh'};
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(storageChannel, (call) async {
       final args = (call.arguments as Map?)?.cast<String, dynamic>();
@@ -97,6 +93,12 @@ void main() {
       }
       return null;
     });
+
+    // The data saved for offline use, as a previous session left it.
+    LocalStore.instance = LocalStore.inMemory();
+    await LocalStore.instance.save(StoreEntry.events, []);
+    await LocalStore.instance.save(StoreEntry.categories, []);
+    await LocalStore.instance.save(StoreEntry.settings, {});
   });
 
   tearDown(() {
@@ -120,17 +122,24 @@ void main() {
     return (api: api, statuses: statuses);
   }
 
-  bool sessionKept() =>
-      storage['refreshToken'] != null &&
-      storage['eventsCache'] != null &&
-      storage['categoriesCache'] != null &&
-      storage['settingsCache'] != null;
+  Future<int> savedEntries() async {
+    var count = 0;
+    for (final entry in StoreEntry.values) {
+      if (await LocalStore.instance.load(entry) != null) count++;
+    }
+    return count;
+  }
 
-  bool sessionWiped() =>
+  Future<bool> sessionKept() async =>
+      storage['refreshToken'] != null &&
+      await savedEntries() == StoreEntry.values.length;
+
+  /// The token gone, and the saved data with it — down to the key that
+  /// sealed it.
+  Future<bool> sessionWiped() async =>
       !storage.containsKey('refreshToken') &&
-      !storage.containsKey('eventsCache') &&
-      !storage.containsKey('categoriesCache') &&
-      !storage.containsKey('settingsCache');
+      !storage.containsKey('localStoreKey') &&
+      await savedEntries() == 0;
 
   /// Lets the status stream and the unawaited work settle.
   Future<void> settle() => Future<void>.delayed(const Duration(milliseconds: 20));
@@ -157,7 +166,7 @@ void main() {
           throwsA(isA<DioException>()));
       await settle();
 
-      expect(sessionKept(), isTrue);
+      expect(await sessionKept(), isTrue);
       expect(ServerReachability.instance.value, Reachability.offline);
       expect(t.statuses, isNot(contains(AuthenticationStatus.unauthenticated)));
     });
@@ -176,7 +185,7 @@ void main() {
           throwsA(isA<DioException>()));
       await settle();
 
-      expect(sessionKept(), isTrue);
+      expect(await sessionKept(), isTrue);
       expect(ServerReachability.instance.value, Reachability.offline);
     });
 
@@ -194,7 +203,7 @@ void main() {
           throwsA(isA<DioException>()));
       await settle();
 
-      expect(sessionKept(), isTrue);
+      expect(await sessionKept(), isTrue);
       expect(t.statuses, isNot(contains(AuthenticationStatus.unauthenticated)));
     });
 
@@ -214,7 +223,7 @@ void main() {
           throwsA(isA<DioException>()));
       await settle();
 
-      expect(sessionWiped(), isTrue);
+      expect(await sessionWiped(), isTrue);
       expect(storage.containsKey('pinVerifier'), isFalse);
       expect(t.api.accessToken, isNull);
       expect(t.statuses, contains(AuthenticationStatus.unauthenticated));
@@ -231,7 +240,7 @@ void main() {
 
       expect(t.statuses, contains(AuthenticationStatus.authenticated));
       expect(ServerReachability.instance.value, Reachability.offline);
-      expect(sessionKept(), isTrue);
+      expect(await sessionKept(), isTrue);
       expect(t.api.accessToken, isNull);
     });
 
@@ -252,7 +261,7 @@ void main() {
       expect(prompts, 1);
       expect(t.statuses, contains(AuthenticationStatus.authenticated));
       expect(ServerReachability.instance.value, Reachability.offline);
-      expect(sessionKept(), isTrue);
+      expect(await sessionKept(), isTrue);
     });
 
     test('a failed fingerprint prompt does not open anything', () async {
@@ -267,7 +276,7 @@ void main() {
       expect(t.statuses, contains(AuthenticationStatus.biometricCheck));
       expect(t.statuses, isNot(contains(AuthenticationStatus.authenticated)));
       expect(backend.requests, isEmpty);
-      expect(sessionKept(), isTrue);
+      expect(await sessionKept(), isTrue);
     });
   });
 
@@ -342,7 +351,7 @@ void main() {
           (backend.lastTo('/refresh').data as Map).cast<String, dynamic>();
       expect(refresh['pin'], '1234');
       expect(refresh['signature'], isNotNull);
-      expect(sessionKept(), isTrue);
+      expect(await sessionKept(), isTrue);
       expect(t.statuses, isNot(contains(AuthenticationStatus.unauthenticated)));
     });
 
@@ -358,7 +367,7 @@ void main() {
 
       expect(backend.callsTo('/refresh'), 0);
       expect(t.statuses, contains(AuthenticationStatus.pinCheck));
-      expect(sessionKept(), isTrue);
+      expect(await sessionKept(), isTrue);
     });
 
     test('offline without a stored PIN says the server is unreachable',
@@ -369,7 +378,7 @@ void main() {
 
       expect(result.success, isFalse);
       expect(result.unreachable, isTrue);
-      expect(sessionKept(), isTrue);
+      expect(await sessionKept(), isTrue);
       expect(t.statuses, isNot(contains(AuthenticationStatus.authenticated)));
     });
 
@@ -383,7 +392,7 @@ void main() {
       expect(result.success, isTrue);
       expect(t.statuses, contains(AuthenticationStatus.authenticated));
       expect(ServerReachability.instance.value, Reachability.offline);
-      expect(sessionKept(), isTrue);
+      expect(await sessionKept(), isTrue);
     });
 
     test('offline, three wrong PINs lock like the server does', () async {
@@ -394,14 +403,14 @@ void main() {
       final second = await t.api.sendPinAuth('1111');
       expect(first.attemptsRemaining, 2);
       expect(second.attemptsRemaining, 1);
-      expect(sessionKept(), isTrue);
+      expect(await sessionKept(), isTrue);
 
       final third = await t.api.sendPinAuth('2222');
       await settle();
 
       expect(third.locked, isTrue);
       expect(t.statuses, contains(AuthenticationStatus.pinLocked));
-      expect(sessionWiped(), isTrue);
+      expect(await sessionWiped(), isTrue);
       expect(storage.containsKey('pinVerifier'), isFalse);
       // As after the server's lockout: the password login keeps the PIN.
       expect(storage['pinKeypair'], pinKeypair);
@@ -427,7 +436,7 @@ void main() {
       final refresh =
           (backend.lastTo('/refresh').data as Map).cast<String, dynamic>();
       expect(refresh['pin'], '1234');
-      expect(sessionKept(), isTrue);
+      expect(await sessionKept(), isTrue);
     });
   });
 
@@ -448,7 +457,7 @@ void main() {
     await settle();
 
     expect(t.statuses, contains(AuthenticationStatus.unauthenticated));
-    expect(sessionWiped(), isTrue);
+    expect(await sessionWiped(), isTrue);
   });
 
   test('offline, requests fail at once instead of waiting for a timeout',
@@ -543,6 +552,6 @@ void main() {
     expect(ServerReachability.instance.value, Reachability.offline);
     expect(backend.callsTo('/refresh'), 1,
         reason: 'only the refresh of the offline start');
-    expect(sessionKept(), isTrue);
+    expect(await sessionKept(), isTrue);
   });
 }

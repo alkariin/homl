@@ -1,12 +1,11 @@
-import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:homl/data/models/category.dart';
 import 'package:homl/data/models/tag.dart';
 import 'package:homl/data/models/usage.dart';
 import 'package:homl/data/repositories/api.dart';
+import 'package:homl/data/store/local_store.dart';
 import 'package:homl/helpers/e2ee.dart';
-import 'package:homl/helpers/local_storage_manager.dart';
 
 /// Exception thrown when a categories request fails
 class CategoriesRequestFailure implements Exception {}
@@ -26,9 +25,9 @@ class CategoriesRepository {
   CategoriesRepository({Api? api}) : _injectedApi = api;
 
   /// Returns the user's categories with their tags. Each successful payload
-  /// is cached in the secure storage (encrypted at rest) so the app keeps
-  /// working offline: when the request fails, the cached copy is returned
-  /// instead when one exists.
+  /// is saved in the local store (sealed on the device) so the app keeps
+  /// working offline: when the request fails, the saved copy is returned
+  /// instead when there is one.
   Future<List<Category>> getCategories() async {
     late Response<List<dynamic>> response;
     try {
@@ -49,10 +48,9 @@ class CategoriesRepository {
         .map((e) => Category.fromJson(e as Map<String, dynamic>))
         .toList();
 
-    // The cache is written BEFORE decryption on purpose: for E2EE users it
-    // must only ever hold ciphertext (homl-web/docs/e2ee.md).
-    await LocalStorageManager.setValue(
-        LocalStorageKey.categoriesCache, jsonEncode(response.data));
+    // The store gets the payload BEFORE decryption on purpose: for E2EE users
+    // it must only ever hold ciphertext (homl-web/docs/e2ee.md).
+    await LocalStore.instance.save(StoreEntry.categories, response.data);
 
     return _decryptCategories(categories);
   }
@@ -79,22 +77,21 @@ class CategoriesRepository {
   }
 
   /// Returns the last categories payload fetched from the backend, or null
-  /// when nothing usable was cached yet.
+  /// when nothing usable was saved yet.
   Future<List<Category>?> getCachedCategories() async {
-    final raw =
-        await LocalStorageManager.getValue(LocalStorageKey.categoriesCache);
-    if (raw == null) {
+    final stored = await LocalStore.instance.load(StoreEntry.categories);
+    if (stored == null) {
       return null;
     }
 
     try {
-      final categories = (jsonDecode(raw) as List<dynamic>)
+      final categories = (stored.payload as List<dynamic>)
           .map((e) => Category.fromJson(e as Map<String, dynamic>))
           .toList();
       return await _decryptCategories(categories);
     } catch (_) {
-      // A cache that no longer parses (model change) is just dropped.
-      await LocalStorageManager.remove(LocalStorageKey.categoriesCache);
+      // A payload that no longer parses (model change) is just dropped.
+      await LocalStore.instance.remove(StoreEntry.categories);
       return null;
     }
   }
