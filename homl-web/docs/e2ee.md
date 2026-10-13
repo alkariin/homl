@@ -209,6 +209,13 @@ atomic metadata commit; the endpoint itself does not change.
   cached settings at all, the stored seed is trusted). Back online, the gate
   runs again on fresh settings. See [auth-flows.md](auth-flows.md), "Client
   session".
+- **Offline writes**: the outbox holds the request bodies already encrypted,
+  each stamped with the key check it was encoded under; a sync parks the ops
+  whose stamp no longer matches the server (E2EE enabled, disabled or re-keyed
+  elsewhere meanwhile). Enabling or disabling E2EE on this device is refused
+  while changes wait; a purge drops them. Under E2EE the client builds the
+  date tags, so creating one offline queues its creation too. See
+  [offline-sync.md](offline-sync.md).
 - **Date tags**: on event create/update, the client ensures the Month/Year
   tags exist (create with ciphertext + index if missing) and references their
   ids — mirroring `buildDateTags` locally (`InsertCubit._buildDateTags`). The

@@ -506,13 +506,15 @@ out of reach is the next section.
 
 ## Offline mode (server out of reach)
 
-Away from the network that reaches the server, the app keeps the session and
-runs on the data saved on the device — read-only: browsing and searching work,
-a write fails with "server unreachable" and the form keeps what was typed.
-Writing offline comes later in the plan (a queue replayed on reconnect).
-The protocol side — what ends a session, the offline unlock, the trade-off of
-the offline PIN — is in
-[homl-web/docs/auth-flows.md](../homl-web/docs/auth-flows.md), "Client session".
+Away from the network that reaches the server, the app keeps the session,
+runs on the data saved on the device, and keeps working: events can be
+created, edited and deleted, new tags typed; it all waits in an outbox and is
+sent once the server answers again. Tag and category management, settings and
+the Security page stay online-only ("server unreachable"). The protocol side —
+what ends a session, the offline unlock, the trade-off of the offline PIN — is
+in [homl-web/docs/auth-flows.md](../homl-web/docs/auth-flows.md), "Client
+session"; the outbox and the sync in
+[homl-web/docs/offline-sync.md](../homl-web/docs/offline-sync.md).
 
 - **What the user sees**: a cloud-off icon in the app bar while the server is
   unreachable (tap: what it means, and when the data on screen was fetched);
@@ -563,6 +565,18 @@ the offline PIN — is in
   fetches everything again after the login.
 - **Back online**, `HomeCubit` reloads the data and `AuthenticationCubit` runs
   the E2EE gate again on fresh settings.
+- **Writing offline** (`lib/data/sync/`): the repositories send a write
+  directly when they can, and queue it in the `Outbox` when the server is out
+  of reach — or when earlier changes still wait, so nothing overtakes them.
+  The form then says "saved on this device". `projection.dart` shows the
+  saved data with the waiting changes applied (a small clock on their cards);
+  `SyncEngine` sends them once the server answers, merging an edit with what
+  changed on another device meanwhile (an edit wins over a deletion either
+  way, the same field changed on both sides keeps this device's value — each
+  case says so). The app bar counts the waiting changes; its sheet lists them
+  and lets the user discard one, or try again those the server refused.
+  Logging out with changes waiting asks first; enabling or disabling E2EE
+  waits until they are sent.
 
 ### Trying it on a phone
 
@@ -574,14 +588,21 @@ without E2EE:
    the offline hash), browse a bit so the local store is filled, close it.
 2. Airplane mode (or `docker stop homlback` on the dev machine). Reopen the
    app: the same unlock as usual, then the journal with the cloud-off icon.
-   Search works; adding an event says "server unreachable" and keeps the form.
+   Search works. Add an event with a new tag, edit it, edit an older event,
+   delete another: each says "saved on this device", the cards show a clock,
+   the app bar counts the waiting changes.
 3. PIN account: three wrong PINs offline lead to the login screen, like the
    server's lockout.
 4. Back online (or `docker start homlback`): bring the app to the foreground,
-   the icon goes away within seconds and the lists reload. Tapping the icon
+   the icon goes away within seconds, the changes are sent ("your offline
+   changes were sent"), the clocks and the count disappear. Tapping the icon
    while offline gives the date of the data on screen; pulling the list down
    while offline says the server is unreachable.
-5. With `ENVIRONMENT=PROD` on the backend (10-minute access tokens), leave a
+5. Conflicts, with the web app (or `curl`) as the other device: offline,
+   edit an event's description on the phone; meanwhile change its date (or
+   delete it) on the other device; back online, both changes are kept (or the
+   event comes back with the phone's edit), and a message says so.
+6. With `ENVIRONMENT=PROD` on the backend (10-minute access tokens), leave a
    PIN or fingerprint session open for more than 10 minutes: it keeps working
    without asking for the factor again.
 

@@ -272,8 +272,10 @@ elsewhere, ends the session then).
   held factor; the screens then reload and the E2EE gate runs again on fresh
   settings. A regular request answered in JSON (or `204`) also ends the
   offline state.
-- Offline, the app is read-only: browsing and searching work on the cached
-  data, a write fails with "server unreachable" and keeps what was typed.
+- Offline, the app keeps working on the data saved on the device; event
+  writes and tag creations wait in an outbox sent once the server answers —
+  see [offline-sync.md](offline-sync.md). A session the server turns down
+  keeps that outbox for the same account's next sign-in.
 
 ## Enabling pin / fingerprint (`PUT /secureAuth`)
 
