@@ -12,7 +12,8 @@ import (
 // CategoriesService is the use-case port of the Category aggregate.
 type CategoriesService interface {
 	GetCategories(ctx context.Context, idUser uint64) ([]category.GetCategoryResponse, error)
-	CreateCategory(ctx context.Context, c *category.Category) error
+	// CreateCategory returns the id of the created category.
+	CreateCategory(ctx context.Context, c *category.Category) (uint, error)
 	UpdateCategory(ctx context.Context, c *category.Category) error
 	DeleteCategory(ctx context.Context, idCategory uint, idUser uint64, moveTags bool, deleteEvents bool) error
 	GetCategoryUsage(ctx context.Context, idCategory uint, idUser uint64) (*category.CategoryUsage, error)
@@ -81,10 +82,10 @@ func (c *categoriesService) GetCategories(ctx context.Context, idUser uint64) ([
 	return responses, nil
 }
 
-func (c *categoriesService) CreateCategory(ctx context.Context, newCategory *category.Category) error {
+func (c *categoriesService) CreateCategory(ctx context.Context, newCategory *category.Category) (uint, error) {
 	encCategory, err := c.storedCategoryValue(ctx, newCategory, true)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	cat := &category.Category{
@@ -95,12 +96,7 @@ func (c *categoriesService) CreateCategory(ctx context.Context, newCategory *cat
 		IdUser:   newCategory.IdUser,
 	}
 
-	err = c.CategoriesRepository.Create(ctx, cat)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return c.CategoriesRepository.Create(ctx, cat)
 }
 
 func (c *categoriesService) UpdateCategory(ctx context.Context, newCategory *category.Category) error {

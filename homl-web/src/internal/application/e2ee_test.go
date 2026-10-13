@@ -281,9 +281,9 @@ func TestEventsE2EE(t *testing.T) {
 
 		catRepo.On("CheckTagsBelongToUser", []uint{8}, uint64(1)).Return(nil)
 		// No date tags are built: E2EE clients attach their own.
-		evtRepo.On("CreateEventWithTags", []category.Tag(nil), []uint{8}, evt, uint64(1)).Return(nil)
+		evtRepo.On("CreateEventWithTags", []category.Tag(nil), []uint{8}, evt, uint64(1)).Return(uint(1), nil)
 
-		err := svc.CreateEvent(e2eeCtx, 1, evt, []uint{8})
+		_, err := svc.CreateEvent(e2eeCtx, 1, evt, []uint{8})
 
 		assert.NoError(t, err)
 		catRepo.AssertNotCalled(t, "FindIdByKind", mock.Anything, mock.Anything)
@@ -299,7 +299,7 @@ func TestEventsE2EE(t *testing.T) {
 
 		catRepo.On("CheckTagsBelongToUser", []uint(nil), uint64(1)).Return(nil)
 
-		err := svc.CreateEvent(e2eeCtx, 1, evt, nil)
+		_, err := svc.CreateEvent(e2eeCtx, 1, evt, nil)
 
 		assert.Error(t, err)
 		evtRepo.AssertNotCalled(t, "CreateEventWithTags", mock.Anything, mock.Anything, mock.Anything, mock.Anything)

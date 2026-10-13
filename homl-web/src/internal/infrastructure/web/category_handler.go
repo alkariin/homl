@@ -46,6 +46,8 @@ func (h *CategoryHandler) GetCategories(c *gin.Context) {
  *   category: string,
  *	 color: string
  * }
+ * output:
+ * { id: uint }
  */
 func (h *CategoryHandler) CreateCategory(c *gin.Context) {
 	var category *category.Category
@@ -68,13 +70,13 @@ func (h *CategoryHandler) CreateCategory(c *gin.Context) {
 		return
 	}
 
-	err = h.CategoriesService.CreateCategory(c.Request.Context(), category)
+	idCategory, err := h.CategoriesService.CreateCategory(c.Request.Context(), category)
 	if err != nil {
 		SendGinError(c, err)
 		return
 	}
 
-	c.Writer.WriteHeader(http.StatusCreated)
+	c.JSON(http.StatusCreated, gin.H{"id": idCategory})
 }
 
 /** input:

@@ -73,6 +73,8 @@ func (h *EventHandler) GetEvents(c *gin.Context) {
  *   isOngoing?: bool,
  *   tagsId: []uint
  * }
+ * output:
+ * { id: uint }
  */
 func (h *EventHandler) CreateEvent(c *gin.Context) {
 	type bodyRequest struct {
@@ -109,13 +111,13 @@ func (h *EventHandler) CreateEvent(c *gin.Context) {
 		return
 	}
 
-	err = h.EventsService.CreateEvent(c.Request.Context(), idUser, event, body.TagsId)
+	idEvent, err := h.EventsService.CreateEvent(c.Request.Context(), idUser, event, body.TagsId)
 	if err != nil {
 		SendGinError(c, err)
 		return
 	}
 
-	c.Writer.WriteHeader(http.StatusCreated)
+	c.JSON(http.StatusCreated, gin.H{"id": idEvent})
 }
 
 /**

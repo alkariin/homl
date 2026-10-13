@@ -30,6 +30,11 @@ own name once renamed. Requests always carry the stored name.
   (inclusive) end; an open one is tagged from its start month only, since it
   has no known end and expanding to "today" at write time would go stale the
   next day. Closing it drops `Ongoing` and attaches the months up to the end.
+- A date tag is looked up before the event is written and inserted by the
+  write when missing. Two writes bringing the same new month at once (two
+  devices syncing together) therefore both insert it: the insert is an upsert
+  (`persistence.CreateAllTags`), so the second one reuses the row the first
+  created instead of failing on the unique name.
 - Enforcement (`application/tag.go`, `application/category.go`):
   - `POST /tags` and `PATCH /tags/:id` reject the date category as target;
   - `PATCH /tags/:id` and `DELETE /tags/:id` reject a tag currently living in

@@ -34,7 +34,8 @@ func TestDeleteUserCascades(t *testing.T) {
 	require.NoError(t, err)
 	aliceSynonym, err := r.cats.CreateTag(ctx, r.enc(t, "Journey", alice), nil, aliceOther, &aliceTag)
 	require.NoError(t, err)
-	require.NoError(t, r.events.CreateEventWithTags(ctx, nil, []uint{aliceTag}, &event.Event{Description: r.enc(t, "secret", alice), Date: time.Now()}, alice))
+	_, err = r.events.CreateEventWithTags(ctx, nil, []uint{aliceTag}, &event.Event{Description: r.enc(t, "secret", alice), Date: time.Now()}, alice)
+	require.NoError(t, err)
 
 	aliceEvents, _, err := r.events.FindEventsWithTags(ctx, nil, alice)
 	require.NoError(t, err)
@@ -49,7 +50,8 @@ func TestDeleteUserCascades(t *testing.T) {
 	require.NoError(t, err)
 	bobTag, err := r.cats.CreateTag(ctx, r.enc(t, "Trip", bob), nil, bobOther, nil)
 	require.NoError(t, err)
-	require.NoError(t, r.events.CreateEventWithTags(ctx, nil, []uint{bobTag}, &event.Event{Description: r.enc(t, "kept", bob), Date: time.Now()}, bob))
+	_, err = r.events.CreateEventWithTags(ctx, nil, []uint{bobTag}, &event.Event{Description: r.enc(t, "kept", bob), Date: time.Now()}, bob)
+	require.NoError(t, err)
 
 	require.NoError(t, r.users.Delete(ctx, alice))
 

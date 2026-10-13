@@ -36,6 +36,23 @@ the handlers next to it.
   Unexpected internal errors are replaced by a generic `INTERNAL` so nothing
   leaks; the original error is only logged.
 
+  Some errors also carry a machine-readable `code`, sometimes with an extra
+  field. Clients switch on the code, never on `message` (the messages of the
+  older codes are kept verbatim only for the clients that predate them):
+
+  | Code | Status | Extra field | Raised by |
+  | --- | --- | --- | --- |
+  | `SECOND_FACTOR_REQUIRED` | 401 | `factor`: `pin` or `fingerprint` | `POST /refresh` |
+  | `PIN_INCORRECT` | 401 | `attemptsRemaining` | `POST /refresh` |
+  | `PIN_LOCKED` | 401 | — | `POST /refresh` |
+  | `RESET_CODE_INVALID` | 401 | — | `POST /confirmResetPassword` |
+  | `TAG_NAME_CONFLICT` | 409 | — | `POST /tags`, `PATCH /tags/:id`, `DELETE /categories/:id` |
+
+- **Creations** — `POST /categories`, `POST /tags` and `POST /events` answer
+  `201` with the id of the new row, `{ "id": 42 }`, so a client can address
+  what it just created (an edit or a delete queued behind the creation, say)
+  without refetching the whole list.
+
 ## Auth & account
 
 | Method | Path | Auth | Rate limit |
@@ -93,8 +110,26 @@ accompanied by a `signature`.
 { "refresh_token": "...", "signature": "base64?", "pin": "1234?" }
 ```
 
-→ `201` token pair — `401` on invalid/rotated token, missing factor, bad
-signature or locked pin.
+→ `201` token pair — `400` for a `pin` without a `signature` — `401` otherwise:
+
+| `code` | Meaning | What the client does |
+| --- | --- | --- |
+| — (`Not authorized`) | the token is invalid, expired, rotated or revoked, or the signature does not verify against the registered key | log in again with the password |
+| `SECOND_FACTOR_REQUIRED` | the session is alive but the body lacks the account's factor, named by `factor` | ask for it, then retry **with the same refresh token** |
+| `PIN_INCORRECT` | wrong pin, `attemptsRemaining` tries left | ask again |
+| `PIN_LOCKED` | three wrong pins: even the right one is refused until a password login | log in with the password |
+
+A `SECOND_FACTOR_REQUIRED` refusal consumes nothing (no session, no
+challenge, no pin attempt):
+
+```json
+{ "error": { "type": "AUTHORIZATION", "code": "SECOND_FACTOR_REQUIRED",
+             "factor": "pin", "message": "Pin must be provided" } }
+```
+
+`factor` is `pin` (send `pin` and the `signature` of a fresh challenge) or
+`fingerprint` (send the `signature`). See
+[auth-flows.md](auth-flows.md#refresh-with-second-factor-pin--fingerprint).
 
 ### PUT /password
 
@@ -190,7 +225,7 @@ All endpoints require auth. A category groups tags; locked categories
 | Method | Path | Body | Response |
 | --- | --- | --- | --- |
 | GET | `/categories` | — | `200` list below |
-| POST | `/categories` | `{category, color}` | `201` |
+| POST | `/categories` | `{category, color}` | `201` `{id}` |
 | PATCH | `/categories/:id` | `{category, color}` | `204` |
 | DELETE | `/categories/:id` | `{moveTags, deleteEvents?}` | `204` |
 | GET | `/categories/:id/usage` | — | `200` usage below |
@@ -266,13 +301,17 @@ category (one level deep, any category except dates — see
 
 | Method | Path | Body | Response |
 | --- | --- | --- | --- |
-| POST | `/tags` | `{tag, idCategory, idParentTag?, tagIndex?}` | `201` |
+| POST | `/tags` | `{tag, idCategory, idParentTag?, tagIndex?}` | `201` `{id}` |
 | PATCH | `/tags/:id` | `{tag, idCategory, idParentTag?, tagIndex?}` | `204` |
 | DELETE | `/tags/:id` | `{deleteEvents?}` (optional) | `204` |
 | GET | `/tags/:id/usage` | — | `200` usage below |
 
 Moving a main tag to another category through `PATCH` relocates its synonyms
 with it (a synonym always lives in its main tag's category).
+
+`PATCH` is full-state, so sending the same body again is harmless: the replay
+changes nothing and answers `204` like the first one. A client that lost the
+answer can simply resend.
 
 Tag names are unique per category, so `POST` and `PATCH` are refused with a
 `409` `TAG_NAME_CONFLICT` (same envelope as the category deletion above) when
@@ -316,7 +355,7 @@ client creates and attaches its own.
 | Method | Path | Body / query | Response |
 | --- | --- | --- | --- |
 | GET | `/events` | `?tags=<name>&tags=<name>` (optional) | `200` list below |
-| POST | `/events` | `{description?, date, endDate?, isOngoing?, tagsId: uint[]}` | `201`, `400` on an invalid period |
+| POST | `/events` | `{description?, date, endDate?, isOngoing?, tagsId: uint[]}` | `201` `{id}`, `400` on an invalid period |
 | PATCH | `/events/:id` | `{description?, date, endDate?, isOngoing?, tagsId: uint[]}` | `204`, `400` on an invalid period |
 | DELETE | `/events/:id` | — | `204` |
 

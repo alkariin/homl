@@ -158,10 +158,10 @@ func (u *usersService) Refresh(ctx context.Context, ri *user.RefreshInput) (map[
 		return nil, apperror.NewAuthorization("Not authorized")
 	}
 	if secureUser.IsPinEnabled && ri.Pin == nil {
-		return nil, apperror.NewAuthorization("Pin must be provided")
+		return nil, u.secondFactorRequired(ctx, rd.RefreshUuid, apperror.FactorPin)
 	}
 	if secureUser.IsFingerprintEnabled && ri.Signature == nil {
-		return nil, apperror.NewAuthorization("Signature must be provided")
+		return nil, u.secondFactorRequired(ctx, rd.RefreshUuid, apperror.FactorFingerprint)
 	}
 
 	// Verification of signature
@@ -222,6 +222,23 @@ func (u *usersService) Refresh(ctx context.Context, ri *user.RefreshInput) (map[
 		return nil, apperror.NewStatusForbidden()
 	}
 	return tokens, nil
+}
+
+// secondFactorRequired refuses a refresh that lacks the account's second
+// factor. Nothing has been consumed at that point (neither the session, the
+// challenge nor a pin attempt), so the client can prompt for the factor and
+// retry with the same refresh token. A prompt is only worth it on a live
+// session, though: a revoked one (logout, rotation, password change) gets the
+// plain 401 of a dead token, so the client ends the session instead.
+func (u *usersService) secondFactorRequired(ctx context.Context, refreshUuid string, factor string) error {
+	alive, err := u.UsersRepository.RefreshSessionExists(ctx, refreshUuid)
+	if err != nil {
+		return err
+	}
+	if !alive {
+		return apperror.NewAuthorization("Not authorized")
+	}
+	return apperror.NewSecondFactorRequired(factor)
 }
 
 func (u *usersService) ResetPassword(ctx context.Context, usr *user.User) error {

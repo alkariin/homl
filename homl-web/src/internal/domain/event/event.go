@@ -83,7 +83,9 @@ type GetEventsResponse struct {
 // scoped to the owning user.
 type Repository interface {
 	FindEventsWithTags(ctx context.Context, encTags []string, idUser uint64) (map[uint]Event, map[uint][]category.Tag, error)
-	CreateEventWithTags(ctx context.Context, tags []category.Tag, tagsId []uint, event *Event, idUser uint64) error
+	// CreateEventWithTags inserts the event with its tag links and returns
+	// its id.
+	CreateEventWithTags(ctx context.Context, tags []category.Tag, tagsId []uint, event *Event, idUser uint64) (uint, error)
 	UpdateEventWithTags(ctx context.Context, tags []category.Tag, tagsId []uint, event *Event, idUser uint64) error
 	Delete(ctx context.Context, id uint, idUser uint64) error
 }

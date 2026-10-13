@@ -372,19 +372,88 @@ func TestRefresh(t *testing.T) {
 		mockRepo.AssertNotCalled(t, "CreateAuth")
 	})
 
-	t.Run("Requires the pin when the account has pin auth enabled", func(t *testing.T) {
+	// A refresh without the enabled factor is refused with a code naming the
+	// factor, and consumes nothing: neither the session (the client retries
+	// with the same refresh token once the user has answered the prompt) nor
+	// the challenge, nor a pin attempt.
+	factors := []struct {
+		name    string
+		account user.User
+		factor  string
+		message string
+	}{
+		{"Requires the pin when the account has pin auth enabled",
+			user.User{ID: 1, IsPinEnabled: true}, apperror.FactorPin, "Pin must be provided"},
+		{"Requires the signature when the account has fingerprint auth enabled",
+			user.User{ID: 1, IsFingerprintEnabled: true}, apperror.FactorFingerprint, "Signature must be provided"},
+	}
+	for _, f := range factors {
+		t.Run(f.name, func(t *testing.T) {
+			mockRepo := new(mocks.MockUsersRepo)
+			svc := application.NewUsersService(&application.UserConfig{UsersRepository: mockRepo, Tokens: testTokens})
+
+			refreshToken, refreshUuid := mintRefreshToken(t)
+
+			account := f.account
+			mockRepo.On("FindById", uint64(1)).Return(&account, nil)
+			mockRepo.On("RefreshSessionExists", refreshUuid).Return(true, nil)
+
+			tokens, err := svc.Refresh(context.Background(), &user.RefreshInput{Refresh_token: refreshToken})
+
+			assert.Nil(t, tokens)
+			var appErr *apperror.Error
+			if assert.ErrorAs(t, err, &appErr) {
+				assert.Equal(t, http.StatusUnauthorized, appErr.Status())
+				assert.Equal(t, apperror.CodeSecondFactorRequired, appErr.Code)
+				assert.Equal(t, f.factor, appErr.Factor)
+				assert.Equal(t, f.message, appErr.Message)
+			}
+			mockRepo.AssertExpectations(t)
+			mockRepo.AssertNotCalled(t, "RevokeSessionByRefresh", mock.Anything)
+			mockRepo.AssertNotCalled(t, "UpdateChallenge", mock.Anything, mock.Anything)
+			mockRepo.AssertNotCalled(t, "CheckPin", mock.Anything, mock.Anything)
+		})
+	}
+
+	t.Run("Answers a revoked session with the plain 401, not a factor prompt", func(t *testing.T) {
 		mockRepo := new(mocks.MockUsersRepo)
 		svc := application.NewUsersService(&application.UserConfig{UsersRepository: mockRepo, Tokens: testTokens})
 
-		refreshToken, _ := mintRefreshToken(t)
-
+		// The token still verifies, but its session is gone (logout,
+		// rotation, password change): asking the user for a pin would only
+		// end in a refusal once they typed it.
+		refreshToken, refreshUuid := mintRefreshToken(t)
 		mockRepo.On("FindById", uint64(1)).Return(&user.User{ID: 1, IsPinEnabled: true}, nil)
+		mockRepo.On("RefreshSessionExists", refreshUuid).Return(false, nil)
 
 		tokens, err := svc.Refresh(context.Background(), &user.RefreshInput{Refresh_token: refreshToken})
 
-		assert.Error(t, err)
 		assert.Nil(t, tokens)
-		mockRepo.AssertNotCalled(t, "RevokeSessionByRefresh")
+		var appErr *apperror.Error
+		if assert.ErrorAs(t, err, &appErr) {
+			assert.Equal(t, http.StatusUnauthorized, appErr.Status())
+			assert.Empty(t, appErr.Code)
+			assert.Empty(t, appErr.Factor)
+		}
+		mockRepo.AssertNotCalled(t, "RevokeSessionByRefresh", mock.Anything)
+	})
+
+	t.Run("Keeps the plain 401 for a token that does not verify", func(t *testing.T) {
+		mockRepo := new(mocks.MockUsersRepo)
+		svc := application.NewUsersService(&application.UserConfig{UsersRepository: mockRepo, Tokens: testTokens})
+
+		// A dead session is not a missing factor: the client must end the
+		// session instead of prompting for a pin.
+		tokens, err := svc.Refresh(context.Background(), &user.RefreshInput{Refresh_token: "not-a-jwt"})
+
+		assert.Nil(t, tokens)
+		var appErr *apperror.Error
+		if assert.ErrorAs(t, err, &appErr) {
+			assert.Equal(t, http.StatusUnauthorized, appErr.Status())
+			assert.Empty(t, appErr.Code)
+			assert.Empty(t, appErr.Factor)
+		}
+		mockRepo.AssertNotCalled(t, "FindById", mock.Anything)
 	})
 }
 

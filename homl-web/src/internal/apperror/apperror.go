@@ -27,10 +27,17 @@ const (
 // Machine-readable error codes clients can rely on instead of matching
 // message strings.
 const (
-	CodePinIncorrect     = "PIN_INCORRECT"
-	CodePinLocked        = "PIN_LOCKED"
-	CodeResetCodeInvalid = "RESET_CODE_INVALID"
-	CodeTagNameConflict  = "TAG_NAME_CONFLICT"
+	CodePinIncorrect         = "PIN_INCORRECT"
+	CodePinLocked            = "PIN_LOCKED"
+	CodeResetCodeInvalid     = "RESET_CODE_INVALID"
+	CodeSecondFactorRequired = "SECOND_FACTOR_REQUIRED"
+	CodeTagNameConflict      = "TAG_NAME_CONFLICT"
+)
+
+// The second factors a SECOND_FACTOR_REQUIRED error can name.
+const (
+	FactorPin         = "pin"
+	FactorFingerprint = "fingerprint"
 )
 
 // Error holds a custom error for the application
@@ -41,6 +48,9 @@ type Error struct {
 	Message           string `json:"message"`
 	Code              string `json:"code,omitempty"`
 	AttemptsRemaining *uint  `json:"attemptsRemaining,omitempty"`
+	// Factor names the missing second factor of a SECOND_FACTOR_REQUIRED
+	// error (FactorPin or FactorFingerprint).
+	Factor string `json:"factor,omitempty"`
 }
 
 // Error satisfies standard error interface
@@ -123,6 +133,23 @@ func NewPinLocked() *Error {
 		Type:    Authorization,
 		Message: "Pin is locked",
 		Code:    CodePinLocked,
+	}
+}
+
+// NewSecondFactorRequired to create a 401 when a refresh omits the second
+// factor the account has enabled: the pin (FactorPin) or the challenge
+// signature of the fingerprint key (FactorFingerprint). The message strings
+// are kept verbatim because shipped clients match on them.
+func NewSecondFactorRequired(factor string) *Error {
+	message := "Signature must be provided"
+	if factor == FactorPin {
+		message = "Pin must be provided"
+	}
+	return &Error{
+		Type:    Authorization,
+		Message: message,
+		Code:    CodeSecondFactorRequired,
+		Factor:  factor,
 	}
 }
 
