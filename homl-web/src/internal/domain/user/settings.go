@@ -11,13 +11,19 @@ type Settings struct {
 	// phrase before trusting it. See docs/e2ee.md.
 	IsE2eeEnabled bool    `json:"isE2eeEnabled" db:"isE2eeEnabled"`
 	E2eeKeyCheck  *string `json:"e2eeKeyCheck,omitempty" db:"e2eeKeyCheck"`
+	// DataGeneration changes whenever the user's rows are replaced wholesale
+	// (E2EE purge, a database restore): a client holding writes stamped
+	// with an older value knows the ids they target may name other rows now.
+	// Read-only, like the E2EE fields.
+	DataGeneration string `json:"dataGeneration" db:"dataGeneration"`
 }
 
 type SettingsResponse struct {
-	Language      Language `json:"language"`
-	DefaultScreen bool     `json:"defaultScreen"`
-	IsE2eeEnabled bool     `json:"isE2eeEnabled"`
-	E2eeKeyCheck  *string  `json:"e2eeKeyCheck,omitempty"`
+	Language       Language `json:"language"`
+	DefaultScreen  bool     `json:"defaultScreen"`
+	IsE2eeEnabled  bool     `json:"isE2eeEnabled"`
+	E2eeKeyCheck   *string  `json:"e2eeKeyCheck,omitempty"`
+	DataGeneration string   `json:"dataGeneration"`
 }
 
 type Language string

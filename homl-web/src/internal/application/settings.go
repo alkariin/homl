@@ -41,10 +41,11 @@ func (s *settingsService) GetSettings(ctx context.Context, idUser uint64) (*user
 	}
 
 	response := &user.SettingsResponse{
-		Language:      res.Language,
-		DefaultScreen: res.DefaultScreen,
-		IsE2eeEnabled: res.IsE2eeEnabled,
-		E2eeKeyCheck:  res.E2eeKeyCheck,
+		Language:       res.Language,
+		DefaultScreen:  res.DefaultScreen,
+		IsE2eeEnabled:  res.IsE2eeEnabled,
+		E2eeKeyCheck:   res.E2eeKeyCheck,
+		DataGeneration: res.DataGeneration,
 	}
 
 	return response, nil
@@ -75,10 +76,11 @@ func (s *settingsService) UpdateSettings(ctx context.Context, idUser uint64, new
 	}
 
 	response := &user.SettingsResponse{
-		Language:      res.Language,
-		DefaultScreen: res.DefaultScreen,
-		IsE2eeEnabled: res.IsE2eeEnabled,
-		E2eeKeyCheck:  res.E2eeKeyCheck,
+		Language:       res.Language,
+		DefaultScreen:  res.DefaultScreen,
+		IsE2eeEnabled:  res.IsE2eeEnabled,
+		E2eeKeyCheck:   res.E2eeKeyCheck,
+		DataGeneration: res.DataGeneration,
 	}
 
 	return response, nil
