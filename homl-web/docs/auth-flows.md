@@ -10,7 +10,7 @@ regenerate this document when a flow changes.
 | Token | Format | Lifetime | Secret | Stored server-side |
 | --- | --- | --- | --- | --- |
 | Access token | JWT HS256 (`user_id`, `access_uuid`, `exp`) | 10 min (8 h in DEV) | `ACCESS_SECRET` | Redis: `access_uuid → user_id`, TTL = expiry |
-| Refresh token | JWT HS256 (`user_id`, `refresh_uuid`, `exp`) | 6 months | `REFRESH_SECRET` | Redis: `refresh_uuid → user_id`, TTL = expiry |
+| Refresh token | JWT HS256 (`user_id`, `refresh_uuid`, `exp`) | 6 months | `REFRESH_SECRET` | Redis: `refresh_uuid → user_id`, TTL = expiry; after a rotation, `auth:rot:` / `auth:prev:` until it settles (see below) |
 | Reset code | 6 decimal digits (CSPRNG) | 15 min, single use, 5 guesses | — (random) | Redis: `pwdreset:code:<user_id>`, plus `pwdreset:attempts:<user_id>` and `pwdreset:cooldown:<user_id>` |
 | Challenge | 256-bit URL-safe base64 | Until consumed | — (random) | MySQL: `Users.challenge` |
 
@@ -137,7 +137,14 @@ sequenceDiagram
         Note over S,M: hard lockout: after 3 failures even a<br/>correct pin is refused until a password login
     end
 
-    S->>R: DEL old refresh_uuid (rotation)
+    alt refresh_uuid live
+        S->>R: DEL old pair, settle the rotation that created it
+    else refresh_uuid retired by a rotation still pending (a replay)
+        S->>R: revoke the pair that rotation handed out
+    else neither
+        S-->>C: 401 Not authorized
+    end
+    S->>R: SET rot:old → new, prev:new → old (TTL = old token's)
     S->>R: SET new access_uuid + refresh_uuid
     S-->>C: 201 {access_token, refresh_token}
 ```
@@ -160,8 +167,24 @@ Details worth knowing:
 - The pin lockout counter lives in MySQL (`pinTryCounter`); it is incremented
   on each wrong pin, refused outright at ≥ 3, and only reset by a successful
   pin check or a full password login.
-- Refresh rotation deletes the old `refresh_uuid` first; if that uuid is
-  already gone (token reuse), the refresh is rejected.
+- Rotation retires the old pair at once (its access token dies), but the old
+  refresh token may **replay** the rotation until the new refresh token is
+  first used. The answer to a refresh can be lost on the way back (a phone
+  leaving the Wi-Fi mid-request); the client then holds only the old token,
+  and without a replay that session would be gone for good. A replay revokes
+  the pair the previous attempt handed out — never used, so never received —
+  and hands out a new one; the client retries whenever it is back, hours
+  later included. Using the new refresh token **settles** the rotation: the old
+  token dies, and a later reuse is refused as before. Revoking the new pair
+  (logout, password change or reset, account deletion) takes the old token
+  along. The window costs little: the old token is no longer on the device
+  once the new pair arrived, and it closes at the next refresh. Redis keeps
+  `auth:rot:<old>` → `<user_id>:<new>` and `auth:prev:<new>` → `<old>`, with
+  the old token's remaining lifetime as TTL; `RefreshSessionExists` (used by
+  `/challenge` and the `SECOND_FACTOR_REQUIRED` check) accepts a token whose
+  rotation is pending, so a pin or fingerprint account can replay too.
+- A Redis failure during the rotation answers `500`, not `401`: the client
+  keeps its session on a server error and ends it on a `401`.
 
 ## Client session: the second factor, and a server out of reach
 
@@ -241,6 +264,10 @@ elsewhere, ends the session then).
 - While offline and in the foreground, the client probes `GET /healthz`
   (3 s timeout) with a 5 s → 2 min backoff, and at once when the app returns
   to the foreground. Only a `200` with a JSON body counts.
+- A refresh whose answer is lost (the connection drops mid-request) is no
+  answer: the client keeps its old refresh token, and the server lets that
+  token replay the rotation (see "Details worth knowing" above), however long
+  the client stays away.
 - When the server answers, the session reopens with a refresh carrying the
   held factor; the screens then reload and the E2EE gate runs again on fresh
   settings. A regular request answered in JSON (or `204`) also ends the

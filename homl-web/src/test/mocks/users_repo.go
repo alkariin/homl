@@ -177,12 +177,12 @@ func (m *MockUsersRepo) RevokeSessionByAccess(ctx context.Context, accessUuid st
 	return r0, r1
 }
 
-func (m *MockUsersRepo) RevokeSessionByRefresh(ctx context.Context, refreshUuid string) (int64, error) {
-	ret := m.Called(refreshUuid)
+func (m *MockUsersRepo) RotateSession(ctx context.Context, userID uint64, refreshUuid string, td *user.TokenDetails) (bool, error) {
+	ret := m.Called(userID, refreshUuid, td)
 
-	var r0 int64
+	var r0 bool
 	if ret.Get(0) != nil {
-		r0 = ret.Get(0).(int64)
+		r0 = ret.Get(0).(bool)
 	}
 
 	var r1 error

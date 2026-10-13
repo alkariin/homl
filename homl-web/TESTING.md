@@ -4,10 +4,10 @@
 
 | Layer | Location | What it covers | Dependencies |
 |---|---|---|---|
-| **Unit** | `src/internal/application/*_test.go`, `src/internal/apperror/*_test.go`, `src/internal/domain/e2ee/*_test.go`, `src/internal/infrastructure/{auth,config,crypto,mail}/*_test.go` | Business logic with mocked repositories; JWT, field encryption, config validation, the mailers and the error helpers | none |
+| **Unit** | `src/internal/application/*_test.go`, `src/internal/apperror/*_test.go`, `src/internal/domain/e2ee/*_test.go`, `src/internal/infrastructure/{auth,config,crypto,mail,persistence}/*_test.go` | Business logic with mocked repositories; JWT, field encryption, config validation, the mailers and the error helpers; the Redis session store (rotation and its replay window) against an in-memory Redis ([miniredis](https://github.com/alicebob/miniredis)) | none |
 | **HTTP / integration** | `src/internal/infrastructure/web/router_test.go` | The real Gin router (routing, JWT middleware, JSON binding, validation, status codes & response bodies) with mocked services | none |
 | **DB-backed** | `src/test/dbtest/*_test.go` (build tag `dbtest`) | The real SQL of the persistence layer: cross-tenant isolation, tag/synonym lifecycle, the three category-deletion options, event periods, the writes a replaying client relies on, the atomic E2EE migration and purge | `make db-up` + `make migrateup` |
-| **End-to-end** | `src/test/e2e/e2e_test.go` (build tag `e2e`) | Full flow over real HTTP against a running stack (API + MySQL + Redis): auth, category CRUD (a replayed tag PATCH included) and deletion options, event periods, account deletion | `make dev` |
+| **End-to-end** | `src/test/e2e/e2e_test.go` (build tag `e2e`) | Full flow over real HTTP against a running stack (API + MySQL + Redis): auth (a refresh replayed after a lost answer included), category CRUD (a replayed tag PATCH included) and deletion options, event periods, account deletion | `make dev` |
 
 The first two layers are in-process and deterministic — no database, no network —
 so they run on every commit; each HTTP test fires a real request and asserts the

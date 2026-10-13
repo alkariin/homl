@@ -344,32 +344,54 @@ func TestRefresh(t *testing.T) {
 		refreshToken, refreshUuid := mintRefreshToken(t)
 
 		mockRepo.On("FindById", uint64(1)).Return(&user.User{ID: 1}, nil)
-		mockRepo.On("RevokeSessionByRefresh", refreshUuid).Return(int64(2), nil)
-		mockRepo.On("CreateAuth", uint64(1), mock.AnythingOfType("*user.TokenDetails")).Return(nil)
+		var rotatedTo *user.TokenDetails
+		mockRepo.On("RotateSession", uint64(1), refreshUuid, mock.AnythingOfType("*user.TokenDetails")).
+			Run(func(args mock.Arguments) { rotatedTo = args.Get(2).(*user.TokenDetails) }).
+			Return(true, nil)
 
 		tokens, err := svc.Refresh(context.Background(), &user.RefreshInput{Refresh_token: refreshToken})
 
 		assert.NoError(t, err)
-		assert.NotEmpty(t, tokens["access_token"])
-		assert.NotEmpty(t, tokens["refresh_token"])
+		// The pair handed out is the one the store rotated to.
+		if assert.NotNil(t, rotatedTo) {
+			assert.Equal(t, rotatedTo.AccessToken, tokens["access_token"])
+			assert.Equal(t, rotatedTo.RefreshToken, tokens["refresh_token"])
+			assert.NotEqual(t, refreshUuid, rotatedTo.RefreshUuid)
+		}
 		mockRepo.AssertExpectations(t)
 	})
 
-	t.Run("Rejects a refresh token that was already used or revoked", func(t *testing.T) {
+	t.Run("Rejects a refresh token that was revoked or reused", func(t *testing.T) {
 		mockRepo := new(mocks.MockUsersRepo)
 		svc := application.NewUsersService(&application.UserConfig{UsersRepository: mockRepo, Tokens: testTokens})
 
 		refreshToken, refreshUuid := mintRefreshToken(t)
 
 		mockRepo.On("FindById", uint64(1)).Return(&user.User{ID: 1}, nil)
-		// 0 deleted keys: the session was already rotated out or revoked.
-		mockRepo.On("RevokeSessionByRefresh", refreshUuid).Return(int64(0), nil)
+		// Revoked, or rotated by a rotation that has since settled.
+		mockRepo.On("RotateSession", uint64(1), refreshUuid, mock.Anything).Return(false, nil)
 
 		tokens, err := svc.Refresh(context.Background(), &user.RefreshInput{Refresh_token: refreshToken})
 
-		assert.Error(t, err)
 		assert.Nil(t, tokens)
-		mockRepo.AssertNotCalled(t, "CreateAuth")
+		assert.Equal(t, http.StatusUnauthorized, apperror.Status(err))
+	})
+
+	t.Run("A store failure is a server error, not a dead session", func(t *testing.T) {
+		mockRepo := new(mocks.MockUsersRepo)
+		svc := application.NewUsersService(&application.UserConfig{UsersRepository: mockRepo, Tokens: testTokens})
+
+		refreshToken, refreshUuid := mintRefreshToken(t)
+
+		mockRepo.On("FindById", uint64(1)).Return(&user.User{ID: 1}, nil)
+		mockRepo.On("RotateSession", uint64(1), refreshUuid, mock.Anything).Return(false, assert.AnError)
+
+		tokens, err := svc.Refresh(context.Background(), &user.RefreshInput{Refresh_token: refreshToken})
+
+		// A 401 would make the client end a session that is still valid.
+		assert.Nil(t, tokens)
+		assert.Error(t, err)
+		assert.Equal(t, http.StatusInternalServerError, apperror.Status(err))
 	})
 
 	// A refresh without the enabled factor is refused with a code naming the
@@ -409,7 +431,7 @@ func TestRefresh(t *testing.T) {
 				assert.Equal(t, f.message, appErr.Message)
 			}
 			mockRepo.AssertExpectations(t)
-			mockRepo.AssertNotCalled(t, "RevokeSessionByRefresh", mock.Anything)
+			mockRepo.AssertNotCalled(t, "RotateSession", mock.Anything, mock.Anything, mock.Anything)
 			mockRepo.AssertNotCalled(t, "UpdateChallenge", mock.Anything, mock.Anything)
 			mockRepo.AssertNotCalled(t, "CheckPin", mock.Anything, mock.Anything)
 		})
@@ -435,7 +457,7 @@ func TestRefresh(t *testing.T) {
 			assert.Empty(t, appErr.Code)
 			assert.Empty(t, appErr.Factor)
 		}
-		mockRepo.AssertNotCalled(t, "RevokeSessionByRefresh", mock.Anything)
+		mockRepo.AssertNotCalled(t, "RotateSession", mock.Anything, mock.Anything, mock.Anything)
 	})
 
 	t.Run("Keeps the plain 401 for a token that does not verify", func(t *testing.T) {

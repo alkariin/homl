@@ -44,6 +44,8 @@ type client struct {
 	t     *testing.T
 	http  *http.Client
 	token string
+	// refreshToken is the one the last login or registration handed out.
+	refreshToken string
 }
 
 func newClient(t *testing.T) *client {
@@ -100,6 +102,24 @@ func (c *client) login() {
 		c.t.Fatalf("login response missing tokens: %s", body)
 	}
 	c.token = tokens["access_token"]
+	c.refreshToken = tokens["refresh_token"]
+}
+
+// refresh posts refreshToken to /refresh, expects want and returns the new
+// pair (empty unless want is 201).
+func (c *client) refresh(refreshToken string, want int) map[string]string {
+	c.t.Helper()
+	status, body := c.do(http.MethodPost, "/refresh", map[string]string{"refresh_token": refreshToken})
+	if status != want {
+		c.t.Fatalf("POST /refresh: expected %d, got %d, body %s", want, status, body)
+	}
+	tokens := map[string]string{}
+	if status == http.StatusCreated {
+		if err := json.Unmarshal(body, &tokens); err != nil {
+			c.t.Fatalf("decode refresh body: %v", err)
+		}
+	}
+	return tokens
 }
 
 // Auth checks: login returns tokens, a protected route is reachable with the token
@@ -247,6 +267,7 @@ func (c *client) register(email, pass string) {
 		c.t.Fatalf("registration response missing tokens: %s", body)
 	}
 	c.token = tokens["access_token"]
+	c.refreshToken = tokens["refresh_token"]
 }
 
 // TestAccountDeletion walks the whole "delete my account" flow on a throwaway
@@ -261,6 +282,18 @@ func TestAccountDeletion(t *testing.T) {
 
 	c := newClient(t)
 	c.register(email, pass)
+
+	// A refresh whose answer never reached the client: it still holds only
+	// the old token and replays the rotation. The pair it never received is
+	// revoked; once the new refresh token is used, the old one is dead. (A
+	// fresh account: the shared demo one may have a pin set by hand.)
+	old := c.refreshToken
+	lost := c.refresh(old, http.StatusCreated)
+	retried := c.refresh(old, http.StatusCreated)
+	c.refresh(lost["refresh_token"], http.StatusUnauthorized)
+	next := c.refresh(retried["refresh_token"], http.StatusCreated)
+	c.refresh(old, http.StatusUnauthorized)
+	c.token = next["access_token"]
 
 	// Own some data, so the cascade has something to sweep.
 	status, body := c.do(http.MethodPost, "/categories", map[string]string{
@@ -284,10 +317,13 @@ func TestAccountDeletion(t *testing.T) {
 		t.Fatalf("DELETE /account: status %d, body %s", status, body)
 	}
 
-	// The session died with the account.
+	// The session died with the account, and so did the rotation still
+	// pending (nothing used the last refresh token).
 	if status, _ := c.do(http.MethodGet, "/categories", nil); status != http.StatusUnauthorized {
 		t.Fatalf("GET /categories with the token of a deleted account: expected 401, got %d", status)
 	}
+	c.refresh(next["refresh_token"], http.StatusUnauthorized)
+	c.refresh(retried["refresh_token"], http.StatusUnauthorized)
 
 	// And so did the credentials.
 	fresh := newClient(t)

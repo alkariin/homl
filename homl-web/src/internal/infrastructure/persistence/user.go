@@ -47,6 +47,16 @@ const (
 	userSessionsKey  = "auth:user:"
 )
 
+// A rotation is only settled once the new pair has been used: until then the
+// old refresh token may replay it (its answer may have been lost on the way
+// back). rotatedKeyPrefix+old stores "<user id>:<new refresh uuid>",
+// prevKeyPrefix+new stores the old refresh uuid; both live as long as the old
+// token would have.
+const (
+	rotatedKeyPrefix = "auth:rot:"
+	prevKeyPrefix    = "auth:prev:"
+)
+
 // sessionValue encodes what a session key stores: the owning user id and the
 // partner uuid of the other token of the pair.
 func sessionValue(userID uint64, partnerUuid string) string {
@@ -356,7 +366,35 @@ func (u *UsersRepository) revokeSession(ctx context.Context, uuid string, keyPre
 	if _, err := pipe.Exec(ctx); err != nil {
 		return 0, err
 	}
+
+	// A pair whose rotation is still pending takes the token it replaced
+	// along: a logout must not leave that one able to replay the rotation.
+	refreshUuid := partnerUuid
+	if keyPrefix == refreshKeyPrefix {
+		refreshUuid = uuid
+	}
+	if err := u.dropPredecessor(ctx, userID, refreshUuid); err != nil {
+		return 0, err
+	}
 	return deleted.Val(), nil
+}
+
+// dropPredecessor ends the pending rotation that created refreshUuid, if any:
+// the refresh token it replaced can no longer replay it. Called when
+// refreshUuid is used (the client did receive it) or revoked.
+func (u *UsersRepository) dropPredecessor(ctx context.Context, userID uint64, refreshUuid string) error {
+	previous, err := u.Redis.GetDel(ctx, prevKeyPrefix+refreshUuid).Result()
+	if err == redis.Nil {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	pipe := u.Redis.TxPipeline()
+	pipe.Del(ctx, rotatedKeyPrefix+previous)
+	pipe.SRem(ctx, userSessionsKey+strconv.FormatUint(userID, 10), previous)
+	_, err = pipe.Exec(ctx)
+	return err
 }
 
 // RevokeSessionByAccess deletes the session pair identified by an access
@@ -365,15 +403,118 @@ func (u *UsersRepository) RevokeSessionByAccess(ctx context.Context, accessUuid 
 	return u.revokeSession(ctx, accessUuid, accessKeyPrefix, refreshKeyPrefix)
 }
 
-// RevokeSessionByRefresh deletes the session pair identified by a refresh
-// token uuid (token rotation). Revoking the paired access token too means a
-// rotated-out access token dies immediately instead of surviving to expiry.
-func (u *UsersRepository) RevokeSessionByRefresh(ctx context.Context, refreshUuid string) (int64, error) {
-	return u.revokeSession(ctx, refreshUuid, refreshKeyPrefix, accessKeyPrefix)
+// RotateSession swaps the refresh token refreshUuid for the new pair td. It
+// returns false, changing nothing, when refreshUuid can no longer be rotated:
+// revoked, expired, owned by another user, or rotated by a rotation that has
+// since settled.
+//
+// The rotation retires the old pair (its access token dies at once), but the
+// old refresh token can replay it until the new refresh token is first used:
+// the client may never have received the new pair (a connection lost before
+// the answer), and it still holds only the old token. A replay revokes the
+// pair the previous attempt handed out — never used, so never received — and
+// hands out td instead. Using the new refresh token settles the rotation and
+// the old one dies for good; revoking the new pair (logout, password change)
+// takes the old one along.
+func (u *UsersRepository) RotateSession(ctx context.Context, userID uint64, refreshUuid string, td *user.TokenDetails) (bool, error) {
+	ttl, ok, err := u.retireRefresh(ctx, userID, refreshUuid)
+	if err != nil || !ok {
+		return false, err
+	}
+	if ttl <= 0 {
+		ttl = time.Until(time.Unix(td.RtExpires, 0))
+	}
+
+	// Recorded before the new pair exists: if storing it fails, the old token
+	// can still replay the rotation.
+	pipe := u.Redis.TxPipeline()
+	pipe.Set(ctx, rotatedKeyPrefix+refreshUuid, sessionValue(userID, td.RefreshUuid), ttl)
+	pipe.Set(ctx, prevKeyPrefix+td.RefreshUuid, refreshUuid, ttl)
+	if _, err := pipe.Exec(ctx); err != nil {
+		return false, err
+	}
+
+	if err := u.CreateAuth(ctx, userID, td); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// retireRefresh claims refreshUuid for a rotation and returns how long it
+// would still have lived.
+func (u *UsersRepository) retireRefresh(ctx context.Context, userID uint64, refreshUuid string) (time.Duration, bool, error) {
+	userKey := userSessionsKey + strconv.FormatUint(userID, 10)
+
+	// A live token gives up its pair. It stays in the user's session set
+	// while its rotation is pending, so revoke-all still finds it.
+	pipe := u.Redis.Pipeline()
+	live := pipe.Get(ctx, refreshKeyPrefix+refreshUuid)
+	liveTTL := pipe.PTTL(ctx, refreshKeyPrefix+refreshUuid)
+	if _, err := pipe.Exec(ctx); err != nil && err != redis.Nil {
+		return 0, false, err
+	}
+	if live.Err() == nil {
+		owner, accessUuid, err := parseSessionValue(live.Val())
+		if err != nil {
+			return 0, false, err
+		}
+		if owner != userID {
+			return 0, false, nil
+		}
+
+		tx := u.Redis.TxPipeline()
+		claimed := tx.Del(ctx, refreshKeyPrefix+refreshUuid)
+		tx.Del(ctx, accessKeyPrefix+accessUuid)
+		tx.SRem(ctx, userKey, accessUuid)
+		if _, err := tx.Exec(ctx); err != nil {
+			return 0, false, err
+		}
+		if claimed.Val() == 0 {
+			// A concurrent rotation of the same token got there first.
+			return 0, false, nil
+		}
+
+		// The client is using the token a pending rotation handed out: it did
+		// receive it, so the token that rotation replaced dies now.
+		if err := u.dropPredecessor(ctx, owner, refreshUuid); err != nil {
+			return 0, false, err
+		}
+		return liveTTL.Val(), true, nil
+	}
+
+	// Retired by a rotation still pending: a replay.
+	tx := u.Redis.TxPipeline()
+	pendingTTL := tx.PTTL(ctx, rotatedKeyPrefix+refreshUuid)
+	pending := tx.GetDel(ctx, rotatedKeyPrefix+refreshUuid)
+	if _, err := tx.Exec(ctx); err != nil {
+		if err == redis.Nil {
+			return 0, false, nil
+		}
+		return 0, false, err
+	}
+	owner, unusedUuid, err := parseSessionValue(pending.Val())
+	if err != nil {
+		return 0, false, err
+	}
+	if owner != userID {
+		return 0, false, nil
+	}
+
+	// The pair that rotation handed out was never used (using it settles the
+	// rotation): revoke it. Its link back to refreshUuid goes first, so the
+	// revocation does not treat refreshUuid as a predecessor to drop.
+	if err := u.Redis.Del(ctx, prevKeyPrefix+unusedUuid).Err(); err != nil {
+		return 0, false, err
+	}
+	if _, err := u.revokeSession(ctx, unusedUuid, refreshKeyPrefix, accessKeyPrefix); err != nil {
+		return 0, false, err
+	}
+	return pendingTTL.Val(), true, nil
 }
 
 // RevokeAllSessions deletes every live session of the user (password change
 // or reset): a stolen refresh token must not survive a credential rotation.
+// Pending rotations go too, so no retired token can replay one.
 func (u *UsersRepository) RevokeAllSessions(ctx context.Context, idUser uint64) error {
 	userKey := userSessionsKey + strconv.FormatUint(idUser, 10)
 
@@ -382,20 +523,22 @@ func (u *UsersRepository) RevokeAllSessions(ctx context.Context, idUser uint64) 
 		return err
 	}
 
-	keys := make([]string, 0, 2*len(uuids)+1)
+	keys := make([]string, 0, 4*len(uuids)+1)
 	for _, id := range uuids {
-		// Membership does not record the token type: delete both candidates.
-		keys = append(keys, accessKeyPrefix+id, refreshKeyPrefix+id)
+		// Membership does not record the token type: delete every candidate.
+		keys = append(keys, accessKeyPrefix+id, refreshKeyPrefix+id,
+			rotatedKeyPrefix+id, prevKeyPrefix+id)
 	}
 	keys = append(keys, userKey)
 
 	return u.Redis.Del(ctx, keys...).Err()
 }
 
-// RefreshSessionExists reports whether a refresh token uuid still has a live
-// session (i.e. has not been revoked or rotated out).
+// RefreshSessionExists reports whether a refresh token uuid can still be
+// used: a live session, or a token whose rotation is still pending (it may
+// replay it).
 func (u *UsersRepository) RefreshSessionExists(ctx context.Context, refreshUuid string) (bool, error) {
-	n, err := u.Redis.Exists(ctx, refreshKeyPrefix+refreshUuid).Result()
+	n, err := u.Redis.Exists(ctx, refreshKeyPrefix+refreshUuid, rotatedKeyPrefix+refreshUuid).Result()
 	if err != nil {
 		return false, err
 	}
