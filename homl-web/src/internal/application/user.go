@@ -210,18 +210,27 @@ func (u *usersService) Refresh(ctx context.Context, ri *user.RefreshInput) (map[
 		}
 	}
 
-	// Rotate: revoke the previous session pair (refresh + its access token).
-	// deleted == 0 means the refresh token was already used or revoked.
-	deleted, delErr := u.UsersRepository.RevokeSessionByRefresh(ctx, rd.RefreshUuid)
-	if delErr != nil || deleted == 0 { // if any goes wrong
-		return nil, apperror.NewAuthorization("Not authorized")
-	}
-	//Create new pairs of refresh and access tokens
-	tokens, err := u.createSession(ctx, rd.UserId)
+	// Rotate: a new pair replaces the presented one. Until the new refresh
+	// token is used, the old one can replay this rotation, in case the answer
+	// never reached the client (see RotateSession).
+	td, err := u.Tokens.CreateToken(rd.UserId)
 	if err != nil {
 		return nil, apperror.NewStatusForbidden()
 	}
-	return tokens, nil
+	rotated, err := u.UsersRepository.RotateSession(ctx, rd.UserId, rd.RefreshUuid, td)
+	if err != nil {
+		// A store failure is not a verdict on the session: a 401 here would
+		// make the client end a session that is still valid.
+		return nil, err
+	}
+	if !rotated {
+		// Revoked, expired, or reused after its rotation settled.
+		return nil, apperror.NewAuthorization("Not authorized")
+	}
+	return map[string]string{
+		"access_token":  td.AccessToken,
+		"refresh_token": td.RefreshToken,
+	}, nil
 }
 
 // secondFactorRequired refuses a refresh that lacks the account's second

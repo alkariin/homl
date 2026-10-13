@@ -88,16 +88,22 @@ type Repository interface {
 	CheckPin(ctx context.Context, idUser uint64, pin string) error
 	CreateAuth(ctx context.Context, userid uint64, td *TokenDetails) error
 	FetchAuth(ctx context.Context, authD *AccessDetails) (uint64, error)
-	// RevokeSessionByAccess / RevokeSessionByRefresh delete a whole session
-	// pair (access + refresh) given either of its uuids, returning how many
-	// keys were removed (0 = the session was already gone).
+	// RevokeSessionByAccess deletes a whole session pair (access + refresh)
+	// given its access uuid, returning how many keys were removed (0 = the
+	// session was already gone).
 	RevokeSessionByAccess(ctx context.Context, accessUuid string) (int64, error)
-	RevokeSessionByRefresh(ctx context.Context, refreshUuid string) (int64, error)
+	// RotateSession swaps the refresh token refreshUuid for the new pair td,
+	// returning false when that token can no longer be rotated (revoked,
+	// expired, or rotated already and that rotation settled). Until the new
+	// refresh token is first used, the old one may replay the rotation, which
+	// revokes the pair handed out before: a client that lost the answer still
+	// holds only the old token.
+	RotateSession(ctx context.Context, userID uint64, refreshUuid string, td *TokenDetails) (bool, error)
 	// RevokeAllSessions deletes every live session of the user, so stolen
 	// tokens do not survive a password change or reset.
 	RevokeAllSessions(ctx context.Context, idUser uint64) error
-	// RefreshSessionExists reports whether a refresh token uuid still has a
-	// live (non-revoked) session.
+	// RefreshSessionExists reports whether a refresh token uuid can still be
+	// used: a live session, or a rotation still pending that it may replay.
 	RefreshSessionExists(ctx context.Context, refreshUuid string) (bool, error)
 	UpdatePinAndFingerprint(ctx context.Context, user *User, removePkey bool, removePin bool) error
 
