@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:homl/data/repositories/api.dart';
 import 'package:homl/helpers/encryption.dart' as encryption;
+import 'package:homl/helpers/pin_verifier.dart';
 
 /// Scripted backend for the challenge–response refresh:
 /// - POST /challenge answers a bare JSON string, exactly like the Gin handler
@@ -79,6 +80,11 @@ void main() {
   const storageChannel =
       MethodChannel('plugins.it_nomads.com/flutter_secure_storage');
   late Map<String, String> storage;
+
+  setUpAll(() {
+    // An accepted PIN is hashed for the offline check: keep it cheap here.
+    PinVerifier.iterations = 1000;
+  });
 
   setUp(() {
     storage = {};

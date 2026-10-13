@@ -79,19 +79,33 @@ class AccountCubit extends Cubit<AccountState> {
     }
   }
 
+  // The factor toggles below touch the local flags (pinKeypair,
+  // isFingerprintEnabled) only once the server has agreed. The next app start
+  // reads those flags to pick the factor to send: a flag that disagrees with
+  // the server (a toggle that failed offline) would get the session turned
+  // down there, and the data saved on the device wiped with it.
+
   Future<void> updateIsFingerprintEnabled(bool isFingerprintEnabled) async {
     if (isFingerprintEnabled) {
       try {
-        final publicKey = await generateKeyPair();
-        // We store it in local storage as well because during the next login process, we should know if it's activated and at this moment the user is not logged in, so no api request
-        await LocalStorageManager.setBool(
-            LocalStorageKey.isFingerprintEnabled, true);
-        await LocalStorageManager.remove(LocalStorageKey.pinKeypair);
+        final (publicKey, keyPair) = await generateKeyPair();
 
         final User newUser = state.user!
             .copyWith(isFingerprintEnabled: true, pin: null, pkey: publicKey);
 
-        final res = await usersRepository.secureAuth(newUser);
+        final User res;
+        try {
+          res = await usersRepository.secureAuth(newUser,
+              biometricKeyPair: keyPair);
+        } catch (_) {
+          // Nothing changed server-side: drop the entry just created.
+          await _removeBiometricEntry();
+          rethrow;
+        }
+        // We store it in local storage as well because during the next login process, we should know if it's activated and at this moment the user is not logged in, so no api request
+        await LocalStorageManager.setBool(
+            LocalStorageKey.isFingerprintEnabled, true);
+        await LocalStorageManager.remove(LocalStorageKey.pinKeypair);
         emit(state.copyWith(user: res));
       } on AuthException catch (e) {
         final modal = e.message == BiometricErrors.noBiometric.toString()
@@ -99,21 +113,29 @@ class AccountCubit extends Cubit<AccountState> {
             : AppMessage.unexpectedError;
         emit(state.copyWith(modal: modal));
       } catch (e) {
-        emit(state.copyWith(modal: AppMessage.unexpectedError));
+        emit(state.copyWith(modal: AppMessage.requestFailed));
       }
     } else {
       try {
-        await removeStorageFile();
-        await LocalStorageManager.remove(LocalStorageKey.isFingerprintEnabled);
-
         final User newAccount =
             state.user!.copyWith(isFingerprintEnabled: false);
 
         final res = await usersRepository.secureAuth(newAccount);
+        await LocalStorageManager.remove(LocalStorageKey.isFingerprintEnabled);
+        await _removeBiometricEntry();
         emit(state.copyWith(user: res));
       } catch (e) {
-        emit(state.copyWith(modal: AppMessage.unexpectedError));
+        emit(state.copyWith(modal: AppMessage.requestFailed));
       }
+    }
+  }
+
+  /// A leftover entry is harmless once the flag is off: never fail on it.
+  Future<void> _removeBiometricEntry() async {
+    try {
+      await removeStorageFile();
+    } catch (err) {
+      log('Biometric storage cleanup failed', name: 'AccountCubit', error: err);
     }
   }
 
@@ -121,10 +143,6 @@ class AccountCubit extends Cubit<AccountState> {
     if (pin != null) {
       try {
         var (publicKey, keyPairJson) = await encryption.generateKeyPair();
-        // Allow us to know at the start of the app if the user has enabled the PIN, as well as retrieve the keypair
-        await LocalStorageManager.setValue(
-            LocalStorageKey.pinKeypair, keyPairJson);
-        await LocalStorageManager.remove(LocalStorageKey.isFingerprintEnabled);
 
         final User newUser = state.user!.copyWith(
             isFingerprintEnabled: false,
@@ -133,19 +151,23 @@ class AccountCubit extends Cubit<AccountState> {
             pkey: publicKey);
 
         final res = await usersRepository.secureAuth(newUser);
+        // Allow us to know at the start of the app if the user has enabled the PIN, as well as retrieve the keypair
+        await LocalStorageManager.setValue(
+            LocalStorageKey.pinKeypair, keyPairJson);
+        await LocalStorageManager.remove(LocalStorageKey.isFingerprintEnabled);
         emit(state.copyWith(user: res, modal: AppMessage.pinEnabled));
       } catch (e) {
-        emit(state.copyWith(modal: AppMessage.unexpectedError));
+        emit(state.copyWith(modal: AppMessage.requestFailed));
       }
     } else {
       try {
         final User newUser = state.user!
             .copyWith(isPinEnabled: false); // it will put "pin" as null
-        await LocalStorageManager.remove(LocalStorageKey.pinKeypair);
         final res = await usersRepository.secureAuth(newUser);
+        await LocalStorageManager.remove(LocalStorageKey.pinKeypair);
         emit(state.copyWith(user: res, modal: AppMessage.pinDisabled));
       } catch (e) {
-        emit(state.copyWith(modal: AppMessage.unexpectedError));
+        emit(state.copyWith(modal: AppMessage.requestFailed));
       }
     }
   }

@@ -12,6 +12,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get global_unexpectedError => 'Unexpected error';
 
   @override
+  String get global_serverUnreachable =>
+      'Server unreachable: this needs a connection.';
+
+  @override
   String get account => 'Security';
 
   @override
@@ -53,6 +57,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get account_pinIncorrect => 'The PIN code is not correct';
+
+  @override
+  String get account_pinOfflineUnavailable =>
+      'Server unreachable. Your PIN works offline once you have entered it here while connected.';
 
   @override
   String get account_returnToLogin => 'Return to login';
@@ -104,6 +112,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get login_incorrectCredentials => 'Incorrect email or password';
+
+  @override
+  String get login_serverUnreachable =>
+      'Server unreachable. Check your connection and try again.';
 
   @override
   String get login_invalidEmail => 'The email is not valid';
@@ -631,4 +643,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get categories_tagNameConflict =>
       'This category already has a tag with that name. Pick another one.';
+
+  @override
+  String get offline_title => 'Offline';
+
+  @override
+  String get offline_explanation =>
+      'Server unreachable. You are viewing the data saved on this device; changes need a connection. The app reconnects by itself.';
 }

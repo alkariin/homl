@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:homl/data/repositories/api.dart';
 import 'package:homl/data/repositories/users.repository.dart';
+import 'package:homl/helpers/server_reachability.dart';
 import 'package:homl/pages/login/bloc/login_cubit.dart';
 
 class _StubUsersRepository extends UsersRepository {
@@ -20,6 +21,7 @@ void main() {
   late LoginCubit cubit;
 
   setUp(() {
+    ServerReachability.instance.reset();
     repository = _StubUsersRepository();
     cubit = LoginCubit(repository);
     cubit.usernameChanged('user@example.com');
@@ -60,6 +62,34 @@ void main() {
     );
     unawaited(cubit.submit());
     await expectation;
+  });
+
+  test('an unreachable server is not reported as wrong credentials',
+      () async {
+    // The Api flags the server as offline before the failure surfaces.
+    ServerReachability.instance.markOffline();
+    repository.error = UserOtherFailure();
+
+    unawaited(cubit.submit());
+
+    await expectLater(
+      cubit.stream,
+      emitsThrough(predicate<LoginState>(
+          (s) => s.isServerUnreachable && !s.isLoginIncorrect)),
+    );
+  });
+
+  test('a failure with the server online still reads as wrong credentials',
+      () async {
+    repository.error = UserOtherFailure();
+
+    unawaited(cubit.submit());
+
+    await expectLater(
+      cubit.stream,
+      emitsThrough(predicate<LoginState>(
+          (s) => s.isLoginIncorrect && !s.isServerUnreachable)),
+    );
   });
 
   test('does not set isLoginIncorrect on success', () async {

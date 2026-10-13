@@ -61,9 +61,14 @@ class _LoginViewState extends State<LoginView> {
         // next submit, so listening to every emission re-showed the toast on
         // each keystroke of the corrected password.
         listenWhen: (previous, current) =>
-            current.isLoginIncorrect && !previous.isLoginIncorrect,
+            (current.isLoginIncorrect && !previous.isLoginIncorrect) ||
+            (current.isServerUnreachable && !previous.isServerUnreachable),
         listener: (context, state) {
-          showToast(context, localization.login_incorrectCredentials,
+          showToast(
+              context,
+              state.isServerUnreachable
+                  ? localization.login_serverUnreachable
+                  : localization.login_incorrectCredentials,
               isError: true);
         },
         builder: (context, state) => Scaffold(

@@ -12,6 +12,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get global_unexpectedError => 'Unerwarteter Fehler';
 
   @override
+  String get global_serverUnreachable =>
+      'Server nicht erreichbar: Dafür ist eine Verbindung nötig.';
+
+  @override
   String get account => 'Sicherheit';
 
   @override
@@ -54,6 +58,10 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get account_pinIncorrect => 'Der PIN-Code ist nicht korrekt';
+
+  @override
+  String get account_pinOfflineUnavailable =>
+      'Server nicht erreichbar. Deine PIN funktioniert offline, sobald du sie hier einmal mit Verbindung eingegeben hast.';
 
   @override
   String get account_returnToLogin => 'Zurück zur Anmeldung';
@@ -107,6 +115,10 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get login_incorrectCredentials => 'E-Mail oder Passwort falsch';
+
+  @override
+  String get login_serverUnreachable =>
+      'Server nicht erreichbar. Prüfe deine Verbindung und versuche es erneut.';
 
   @override
   String get login_invalidEmail => 'Die E-Mail-Adresse ist ungültig';
@@ -637,4 +649,11 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get categories_tagNameConflict =>
       'Diese Kategorie hat bereits einen Tag mit diesem Namen. Wähle einen anderen.';
+
+  @override
+  String get offline_title => 'Offline';
+
+  @override
+  String get offline_explanation =>
+      'Server nicht erreichbar. Du siehst die auf diesem Gerät gespeicherten Daten; Änderungen brauchen eine Verbindung. Die App verbindet sich von selbst wieder.';
 }

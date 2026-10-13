@@ -16,6 +16,8 @@ import 'package:homl/data/repositories/tags.repository.dart';
 import 'package:homl/helpers/app_message.dart';
 import 'package:homl/helpers/categories.dart';
 import 'package:homl/helpers/colors.dart';
+import 'package:homl/helpers/server_reachability.dart';
+import 'package:rxdart/rxdart.dart';
 
 part 'home_state.dart';
 
@@ -27,6 +29,7 @@ class HomeCubit extends Cubit<HomeState> {
   final SettingsRepository settingsRepository;
   late StreamSubscription<Settings> _settingsSubscription;
   late StreamSubscription<void> _eventsChangedSubscription;
+  late StreamSubscription<List<Reachability>> _reachabilitySubscription;
 
   HomeCubit(this.settingsRepository, this.eventsRepository,
       this.categoriesRepository, this.tagsRepository, String username)
@@ -38,12 +41,23 @@ class HomeCubit extends Cubit<HomeState> {
     }, onError: (error) {
       log('Failed to retrieve settings stream event',
           name: 'HomeCubit', error: error);
-      errorModal(AppMessage.unexpectedError);
+      errorModal(AppMessage.requestFailed);
     });
 
     // Refresh the shared events/categories when another page (e.g. the
     // insert form) reports a change through the repository stream.
     _eventsChangedSubscription = eventsRepository.changes.listen((_) {
+      init();
+    });
+
+    // Back online after an offline spell: fetch what changed meanwhile (and
+    // rewrite the offline cache).
+    _reachabilitySubscription = ServerReachability.instance.stream
+        .pairwise()
+        .where((pair) =>
+            pair.first == Reachability.offline &&
+            pair.last == Reachability.online)
+        .listen((_) {
       init();
     });
 
@@ -97,6 +111,7 @@ class HomeCubit extends Cubit<HomeState> {
       final cachedEvents = await eventsRepository.getCachedEvents();
       final cachedCategories = await categoriesRepository.getCachedCategories();
 
+      if (isClosed) return;
       if (cachedEvents != null && cachedCategories != null) {
         final categories = _withFixedDateColor(cachedCategories);
         emit(state.copyWith(
@@ -112,15 +127,18 @@ class HomeCubit extends Cubit<HomeState> {
       final categories =
           _withFixedDateColor(await categoriesRepository.getCategories());
 
+      // A reconnection can land after the page was closed (logout).
+      if (isClosed) return;
       emit(state.copyWith(
           events: events,
           categories: categories,
           allTagsMap: _buildTagsMap(categories),
           initialized: true));
     } catch (_) {
+      if (isClosed) return;
       // Offline with a cached snapshot on screen: stale data is fine.
       if (!state.initialized) {
-        emit(state.copyWith(modal: AppMessage.unexpectedError));
+        emit(state.copyWith(modal: AppMessage.requestFailed));
       }
     }
   }
@@ -130,7 +148,7 @@ class HomeCubit extends Cubit<HomeState> {
       final events = await eventsRepository.getEvents();
       emit(state.copyWith(events: events));
     } catch (_) {
-      emit(state.copyWith(modal: AppMessage.unexpectedError));
+      emit(state.copyWith(modal: AppMessage.requestFailed));
     }
   }
 
@@ -140,7 +158,7 @@ class HomeCubit extends Cubit<HomeState> {
       // shared events (and rewrites the offline cache).
       await eventsRepository.deleteEvent(id);
     } catch (_) {
-      emit(state.copyWith(modal: AppMessage.unexpectedError));
+      emit(state.copyWith(modal: AppMessage.requestFailed));
     }
   }
 
@@ -160,7 +178,7 @@ class HomeCubit extends Cubit<HomeState> {
       emit(state.copyWith(modal: AppMessage.tagNameConflict));
       return false;
     } catch (_) {
-      emit(state.copyWith(modal: AppMessage.unexpectedError));
+      emit(state.copyWith(modal: AppMessage.requestFailed));
       return false;
     }
   }
@@ -176,7 +194,7 @@ class HomeCubit extends Cubit<HomeState> {
       // has one: nothing changed, the tag is still where it was.
       emit(state.copyWith(modal: AppMessage.tagNameConflict));
     } catch (_) {
-      emit(state.copyWith(modal: AppMessage.unexpectedError));
+      emit(state.copyWith(modal: AppMessage.requestFailed));
     }
   }
 
@@ -189,7 +207,7 @@ class HomeCubit extends Cubit<HomeState> {
       await refreshEvents();
       await _refreshCategories();
     } catch (_) {
-      emit(state.copyWith(modal: AppMessage.unexpectedError));
+      emit(state.copyWith(modal: AppMessage.requestFailed));
     }
   }
 
@@ -203,7 +221,7 @@ class HomeCubit extends Cubit<HomeState> {
       await refreshEvents();
       await _refreshCategories();
     } catch (_) {
-      emit(state.copyWith(modal: AppMessage.unexpectedError));
+      emit(state.copyWith(modal: AppMessage.requestFailed));
     }
   }
 
@@ -213,7 +231,7 @@ class HomeCubit extends Cubit<HomeState> {
     try {
       return await tagsRepository.getTagUsage(id);
     } catch (_) {
-      emit(state.copyWith(modal: AppMessage.unexpectedError));
+      emit(state.copyWith(modal: AppMessage.requestFailed));
       return null;
     }
   }
@@ -224,7 +242,7 @@ class HomeCubit extends Cubit<HomeState> {
     try {
       return await categoriesRepository.getCategoryUsage(id);
     } catch (_) {
-      emit(state.copyWith(modal: AppMessage.unexpectedError));
+      emit(state.copyWith(modal: AppMessage.requestFailed));
       return null;
     }
   }
@@ -234,7 +252,7 @@ class HomeCubit extends Cubit<HomeState> {
       await categoriesRepository.createCategory(name, color);
       await _refreshCategories();
     } catch (_) {
-      emit(state.copyWith(modal: AppMessage.unexpectedError));
+      emit(state.copyWith(modal: AppMessage.requestFailed));
     }
   }
 
@@ -243,7 +261,7 @@ class HomeCubit extends Cubit<HomeState> {
       await categoriesRepository.updateCategory(id, name, color);
       await _refreshCategories();
     } catch (_) {
-      emit(state.copyWith(modal: AppMessage.unexpectedError));
+      emit(state.copyWith(modal: AppMessage.requestFailed));
     }
   }
 
@@ -263,7 +281,7 @@ class HomeCubit extends Cubit<HomeState> {
       // one of the two other options instead of retrying blindly.
       emit(state.copyWith(modal: AppMessage.categoryTagNameConflict));
     } catch (_) {
-      emit(state.copyWith(modal: AppMessage.unexpectedError));
+      emit(state.copyWith(modal: AppMessage.requestFailed));
     }
   }
 
@@ -280,6 +298,7 @@ class HomeCubit extends Cubit<HomeState> {
     log('Closing settings subscription', name: 'HomeCubit');
     _settingsSubscription.cancel();
     _eventsChangedSubscription.cancel();
+    _reachabilitySubscription.cancel();
     return super.close();
   }
 }

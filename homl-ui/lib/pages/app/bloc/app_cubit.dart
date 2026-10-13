@@ -27,7 +27,7 @@ class AppCubit extends Cubit<AppState> {
     }, onError: (error) {
       log('Failed to retrieve settings stream event',
           name: 'AppCubit', error: error);
-      errorModal(AppMessage.unexpectedError);
+      errorModal(AppMessage.requestFailed);
     });
   }
 

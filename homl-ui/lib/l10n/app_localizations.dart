@@ -106,6 +106,12 @@ abstract class AppLocalizations {
   /// **'Unexpected error'**
   String get global_unexpectedError;
 
+  /// No description provided for @global_serverUnreachable.
+  ///
+  /// In en, this message translates to:
+  /// **'Server unreachable: this needs a connection.'**
+  String get global_serverUnreachable;
+
   /// No description provided for @account.
   ///
   /// In en, this message translates to:
@@ -189,6 +195,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The PIN code is not correct'**
   String get account_pinIncorrect;
+
+  /// No description provided for @account_pinOfflineUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Server unreachable. Your PIN works offline once you have entered it here while connected.'**
+  String get account_pinOfflineUnavailable;
 
   /// No description provided for @account_returnToLogin.
   ///
@@ -285,6 +297,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Incorrect email or password'**
   String get login_incorrectCredentials;
+
+  /// No description provided for @login_serverUnreachable.
+  ///
+  /// In en, this message translates to:
+  /// **'Server unreachable. Check your connection and try again.'**
+  String get login_serverUnreachable;
 
   /// No description provided for @login_invalidEmail.
   ///
@@ -1035,6 +1053,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This category already has a tag with that name. Pick another one.'**
   String get categories_tagNameConflict;
+
+  /// No description provided for @offline_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline'**
+  String get offline_title;
+
+  /// No description provided for @offline_explanation.
+  ///
+  /// In en, this message translates to:
+  /// **'Server unreachable. You are viewing the data saved on this device; changes need a connection. The app reconnects by itself.'**
+  String get offline_explanation;
 }
 
 class _AppLocalizationsDelegate

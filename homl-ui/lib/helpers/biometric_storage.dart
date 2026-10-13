@@ -1,5 +1,4 @@
 import 'package:biometric_storage/biometric_storage.dart';
-import 'package:cryptography/cryptography.dart';
 import 'package:homl/helpers/encryption.dart' as encryption;
 
 enum BiometricErrors { noBiometric, noStorage }
@@ -44,13 +43,24 @@ Future<void> removeStorageFile() async {
   _storageFile = null;
 }
 
-Future<String> generateKeyPair() async {
+/// Creates the fingerprint-protected keypair. Returns its public key, for the
+/// server, and the keypair itself, which the open session keeps in memory
+/// (see Api.holdSecondFactor) so it does not prompt again before it ends.
+Future<(String, String)> generateKeyPair() async {
   var (publicKey, keyPairJson) = await encryption.generateKeyPair();
   await _createBioProtectedEntry(keyPairJson);
-  return publicKey;
+  return (publicKey, keyPairJson);
 }
 
-Future<Signature> signData(String challenge) async {
+/// Reads the fingerprint-protected keypair: the OS shows its fingerprint
+/// prompt, and only a recognised fingerprint releases the entry. Throws when
+/// the prompt fails or is cancelled. Reading it is the proof of presence the
+/// app relies on when the server cannot check a signature (offline start).
+Future<String> readBiometricKeyPair() async {
   final keyPair = await _readBioProtectedEntry();
-  return encryption.signData(challenge, keyPair);
+  if (keyPair == null) {
+    throw AuthException(
+        AuthExceptionCode.unknown, BiometricErrors.noStorage.toString());
+  }
+  return keyPair;
 }

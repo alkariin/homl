@@ -6,6 +6,8 @@ import 'package:homl/data/models/settings.dart';
 import 'package:homl/data/repositories/settings.repository.dart';
 import 'package:homl/data/repositories/api.dart';
 import 'package:homl/helpers/e2ee.dart';
+import 'package:homl/helpers/server_reachability.dart';
+import 'package:rxdart/rxdart.dart';
 
 part 'authentication_state.dart';
 
@@ -20,11 +22,25 @@ class AuthenticationCubit extends Cubit<AuthenticationState> {
         _statusChanged(status);
       }
     });
+
+    // Back online after an offline spell: run the gate again on fresh
+    // settings — the E2EE state may have changed from another device.
+    _reachabilitySubscription = ServerReachability.instance.stream
+        .pairwise()
+        .where((pair) =>
+            pair.first == Reachability.offline &&
+            pair.last == Reachability.online)
+        .listen((_) {
+      if (state.status == AuthenticationStatus.authenticated) {
+        recheckAuthenticated();
+      }
+    });
   }
 
   final SettingsRepository _settingsRepository;
   late StreamSubscription<AuthenticationStatus>
       _authenticationStatusSubscription;
+  late StreamSubscription<List<Reachability>> _reachabilitySubscription;
 
   Future<void> _statusChanged(AuthenticationStatus status) async {
     switch (status) {
@@ -33,7 +49,9 @@ class AuthenticationCubit extends Cubit<AuthenticationState> {
       case AuthenticationStatus.accountDeleted:
         return emit(const AuthenticationState.accountDeleted());
       case AuthenticationStatus.authenticated:
-        // We do it directly now to know asap the default screen of the user
+        // We do it directly now to know asap the default screen of the user.
+        // Offline, these are the cached settings (null if none was cached:
+        // the E2EE gate then trusts the stored key).
         final settings = await _settingsRepository.getSettings();
         // E2EE gate: an end-to-end encrypted account without a matching
         // local key must not reach the data screens (they would only show
@@ -63,6 +81,7 @@ class AuthenticationCubit extends Cubit<AuthenticationState> {
   @override
   Future<void> close() {
     _authenticationStatusSubscription.cancel();
+    _reachabilitySubscription.cancel();
     return super.close();
   }
 }

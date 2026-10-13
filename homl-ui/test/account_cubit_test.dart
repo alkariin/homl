@@ -92,6 +92,28 @@ void main() {
       emitsThrough(predicate<AccountState>(
           (s) => s.modal == AppMessage.unexpectedError)),
     );
+    // Nothing enabled locally either: the next app start must not ask the
+    // server for a PIN it never registered.
+    expect(storage.containsKey('pinKeypair'), isFalse);
+
+    await cubit.close();
+  });
+
+  test('a PIN the server did not let go stays enabled on the device',
+      () async {
+    storage['pinKeypair'] = 'a-keypair';
+    when(() => repository.secureAuth(any())).thenThrow(UserOtherFailure());
+
+    final cubit = await buildInitializedCubit();
+    // Subscribe first: the stubbed failure is thrown synchronously.
+    final expectation = expectLater(
+      cubit.stream,
+      emitsThrough(predicate<AccountState>(
+          (s) => s.modal == AppMessage.unexpectedError)),
+    );
+    unawaited(cubit.submitPin(null));
+    await expectation;
+    expect(storage['pinKeypair'], 'a-keypair');
 
     await cubit.close();
   });

@@ -1,3 +1,4 @@
+import 'package:homl/helpers/server_reachability.dart';
 import 'package:homl/l10n/app_localizations.dart';
 
 /// User-facing messages emitted by the blocs.
@@ -19,6 +20,14 @@ enum AppMessage {
   accountDeleteError,
   categoryTagNameConflict,
   tagNameConflict,
+  serverUnreachable;
+
+  /// The message for a request that failed: "server unreachable" when the
+  /// Api just saw the server go away (the change needs a connection), the
+  /// generic error otherwise.
+  static AppMessage get requestFailed => ServerReachability.instance.isOffline
+      ? AppMessage.serverUnreachable
+      : AppMessage.unexpectedError;
 }
 
 extension AppMessageLocalization on AppMessage {
@@ -50,6 +59,8 @@ extension AppMessageLocalization on AppMessage {
         return localization.categories_deleteTagNameConflict;
       case AppMessage.tagNameConflict:
         return localization.categories_tagNameConflict;
+      case AppMessage.serverUnreachable:
+        return localization.global_serverUnreachable;
     }
   }
 }

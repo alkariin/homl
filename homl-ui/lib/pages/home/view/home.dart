@@ -12,6 +12,7 @@ import 'package:homl/data/repositories/settings.repository.dart';
 import 'package:homl/data/repositories/tags.repository.dart';
 import 'package:homl/helpers/app_message.dart';
 import 'package:homl/helpers/colors.dart';
+import 'package:homl/helpers/server_reachability.dart';
 import 'package:homl/helpers/toast.dart';
 import 'package:homl/pages/settings/view/settings.dart';
 import 'package:homl/pages/categories/categories.dart';
@@ -277,7 +278,11 @@ class _HomeViewState extends State<HomeView>
             ),
           ),
           title: Text(tabTitles[_currentIndex]),
-          actions: [_mark(), const SizedBox(width: 16)],
+          actions: [
+            const OfflineIndicator(),
+            _mark(),
+            const SizedBox(width: 16)
+          ],
         ),
         body: Stack(
           children: [
@@ -434,5 +439,32 @@ class _ParallaxBackground extends StatelessWidget {
         ),
       );
     });
+  }
+}
+
+/// Shown in the app bar while the server cannot be reached: the screens run
+/// on the data saved on this device, changes need a connection. Tapping it
+/// says so.
+class OfflineIndicator extends StatelessWidget {
+  const OfflineIndicator({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<Reachability>(
+      stream: ServerReachability.instance.stream,
+      initialData: ServerReachability.instance.value,
+      builder: (context, snapshot) {
+        if (snapshot.data != Reachability.offline) {
+          return const SizedBox.shrink();
+        }
+        final localization = AppLocalizations.of(context)!;
+        return IconButton(
+          tooltip: localization.offline_title,
+          icon: const Icon(Icons.cloud_off_outlined),
+          onPressed: () => showToast(context, localization.offline_explanation,
+              duration: const Duration(seconds: 6)),
+        );
+      },
+    );
   }
 }
