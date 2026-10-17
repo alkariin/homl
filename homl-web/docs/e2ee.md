@@ -226,6 +226,11 @@ atomic metadata commit; the endpoint itself does not change.
 - **Blacklist + normalization**: applied client-side before encryption
   (`E2ee.isBlacklistedTag` over the same `dateTagMonths`, mirroring
   `masterdata.BlacklistedTags()`).
+- **Data export**: the export runs on the device and reads through the
+  repositories, so the file holds the decrypted data. Its password protection
+  (independent of the E2EE key) is therefore on by default for E2EE users,
+  with a warning when turned off; an import encrypts again like any write.
+  See [data-export.md](data-export.md).
 - **Settings UX**: the toggle lives on the Security page of the drawer
   (`lib/pages/account/view/account.dart`), alongside the fingerprint/PIN
   switches which already follow the generate-key + secure-storage pattern.
