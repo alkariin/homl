@@ -59,13 +59,20 @@ flutter doctor            # Android toolchain should be [✓]
 
 ### Gradle toolchain
 
-The Android build pins the versions Flutter 3.44 requires in
-`android/settings.gradle` (AGP 8.11.1, Kotlin 2.2.20) and
-`android/gradle/wrapper/gradle-wrapper.properties` (Gradle 8.14.3); all three
-are downloaded on first build. `android/app/build.gradle` uses
+The Android build pins its toolchain in `android/settings.gradle` (AGP 8.11.1,
+Kotlin 2.4.0) and `android/gradle/wrapper/gradle-wrapper.properties` (Gradle
+8.14.6); all three are downloaded on first build. Flutter 3.47 warns that it
+will soon drop these (it asks for Gradle 9.1+ and AGP 9.0.1+), but anything
+newer is blocked by biometric_storage 5: it compiles against API 31, which AGP
+8.12+ rejects in `checkDebugAarMetadata`, and it applies the Kotlin Gradle
+plugin (and kapt) itself, so AGP 9's built-in Kotlin must stay off, while
+file_picker 11 skips that plugin on AGP 9 and expects built-in Kotlin (the
+build then fails on a missing `FilePickerPlugin`). biometric_storage 6, still
+in dev releases, fixes both. `android/app/build.gradle` uses
 `flutter.ndkVersion`, so the NDK follows the Flutter SDK (28.2 today) and is
-pulled by `sdkmanager` automatically. When Flutter warns that a version "will
-soon be dropped", bump those two files to the minimum it prints and rebuild.
+pulled by `sdkmanager` automatically. Once that blocker is gone, follow
+Flutter's "will soon be dropped" warnings: bump those two files to the minimum
+it prints and rebuild.
 
 Disk tip: `flutter build apk --debug` produces a fat APK (arm64 + armeabi-v7a +
 x86_64) and needs ~4 GB between `build/` and `~/.gradle/caches`. For a phone,

@@ -423,7 +423,7 @@ class Api {
           return PinAuthResult(
               success: false, attemptsRemaining: result.attemptsRemaining);
         case _Refresh.unreachable:
-          return _unlockOffline(pin);
+          return await _unlockOffline(pin);
         case _Refresh.pinLocked:
           // Keep the pinKeypair: after the password login the PIN is still
           // the way in on this device.
