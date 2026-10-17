@@ -36,6 +36,11 @@ type Config struct {
 
 	HandlerTimeout time.Duration
 
+	// RegistrationOpen lets anyone who reaches the API create an account
+	// (REGISTRATION_OPEN, true when unset). An operator turns it off once
+	// the accounts the instance is meant for exist.
+	RegistrationOpen bool
+
 	MysqlAddress  string
 	MysqlUser     string
 	MysqlPassword string
@@ -62,31 +67,41 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("could not parse HANDLER_TIMEOUT as int: %w", err)
 	}
 
+	registrationOpen, err := parseBool("REGISTRATION_OPEN", os.Getenv("REGISTRATION_OPEN"), true)
+	if err != nil {
+		return nil, err
+	}
+
 	cfg := &Config{
-		Environment:    os.Getenv("ENVIRONMENT"),
-		AccessSecret:   os.Getenv("ACCESS_SECRET"),
-		RefreshSecret:  os.Getenv("REFRESH_SECRET"),
-		EncryptSecret:  os.Getenv("ENCRYPT_SECRET"),
-		Host:           os.Getenv("HOST"),
-		BaseURL:        os.Getenv("HOML_API_URL"),
-		CorsOrigin:     os.Getenv("CORS_ORIGIN"),
-		TrustedProxies: splitList(os.Getenv("TRUSTED_PROXIES")),
-		HandlerTimeout: time.Duration(ht) * time.Second,
-		MysqlAddress:   os.Getenv("MYSQL_ADDRESS"),
-		MysqlUser:      os.Getenv("MYSQL_USER"),
-		MysqlPassword:  os.Getenv("MYSQL_PASSWORD"),
-		MysqlDatabase:  os.Getenv("MYSQL_DATABASE"),
-		RedisAddress:   os.Getenv("REDIS_ADDRESS"),
-		RedisPassword:  os.Getenv("REDIS_PASSWORD"),
-		SmtpHost:       os.Getenv("SMTP_HOST"),
-		SmtpPort:       os.Getenv("SMTP_PORT"),
-		SmtpFrom:       os.Getenv("SMTP_FROM"),
-		SmtpUser:       os.Getenv("SMTP_USER"),
-		SmtpPassword:   os.Getenv("SMTP_PASSWORD"),
+		Environment:      os.Getenv("ENVIRONMENT"),
+		AccessSecret:     os.Getenv("ACCESS_SECRET"),
+		RefreshSecret:    os.Getenv("REFRESH_SECRET"),
+		EncryptSecret:    os.Getenv("ENCRYPT_SECRET"),
+		Host:             os.Getenv("HOST"),
+		BaseURL:          os.Getenv("HOML_API_URL"),
+		CorsOrigin:       os.Getenv("CORS_ORIGIN"),
+		TrustedProxies:   splitList(os.Getenv("TRUSTED_PROXIES")),
+		HandlerTimeout:   time.Duration(ht) * time.Second,
+		RegistrationOpen: registrationOpen,
+		MysqlAddress:     os.Getenv("MYSQL_ADDRESS"),
+		MysqlUser:        os.Getenv("MYSQL_USER"),
+		MysqlPassword:    os.Getenv("MYSQL_PASSWORD"),
+		MysqlDatabase:    os.Getenv("MYSQL_DATABASE"),
+		RedisAddress:     os.Getenv("REDIS_ADDRESS"),
+		RedisPassword:    os.Getenv("REDIS_PASSWORD"),
+		SmtpHost:         os.Getenv("SMTP_HOST"),
+		SmtpPort:         os.Getenv("SMTP_PORT"),
+		SmtpFrom:         os.Getenv("SMTP_FROM"),
+		SmtpUser:         os.Getenv("SMTP_USER"),
+		SmtpPassword:     os.Getenv("SMTP_PASSWORD"),
 	}
 
 	if err := cfg.validate(); err != nil {
 		return nil, err
+	}
+
+	if !cfg.RegistrationOpen {
+		log.Printf("registration is closed (REGISTRATION_OPEN=false): no new accounts")
 	}
 
 	if !cfg.isProd() {
@@ -94,6 +109,22 @@ func Load() (*Config, error) {
 	}
 
 	return cfg, nil
+}
+
+// parseBool reads a boolean env value, falling back to fallback when it is
+// unset. Anything strconv.ParseBool does not take ("yes", "off", a typo) is
+// refused rather than read as false: a misspelt switch must not silently
+// flip a security setting.
+func parseBool(name, value string, fallback bool) (bool, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return fallback, nil
+	}
+	parsed, err := strconv.ParseBool(value)
+	if err != nil {
+		return false, fmt.Errorf("%s must be true or false (got %q)", name, value)
+	}
+	return parsed, nil
 }
 
 // splitList parses a comma-separated env value into its non-empty, trimmed

@@ -29,6 +29,7 @@ const (
 const (
 	CodePinIncorrect         = "PIN_INCORRECT"
 	CodePinLocked            = "PIN_LOCKED"
+	CodeRegistrationClosed   = "REGISTRATION_CLOSED"
 	CodeResetCodeInvalid     = "RESET_CODE_INVALID"
 	CodeSecondFactorRequired = "SECOND_FACTOR_REQUIRED"
 	CodeTagNameConflict      = "TAG_NAME_CONFLICT"
@@ -236,6 +237,16 @@ func NewStatusForbidden() *Error {
 	return &Error{
 		Type:    StatusForbidden,
 		Message: "Forbidden",
+	}
+}
+
+// NewRegistrationClosed to create a 403 for a sign-up on an instance whose
+// operator closed registration (REGISTRATION_OPEN=false)
+func NewRegistrationClosed() *Error {
+	return &Error{
+		Type:    StatusForbidden,
+		Message: "Registration is closed on this server",
+		Code:    CodeRegistrationClosed,
 	}
 }
 

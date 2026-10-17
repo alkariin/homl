@@ -21,6 +21,12 @@ var languageValidation = "required,eq=fr|eq=de|eq=en"
  * }
  */
 func (h *UserHandler) Registration(c *gin.Context) {
+	// Checked before the body: a closed instance has nothing to validate.
+	if h.RegistrationClosed {
+		SendGinError(c, apperror.NewRegistrationClosed())
+		return
+	}
+
 	type RegistrationInput struct {
 		Username string        `json:"username"`
 		Password string        `json:"password"`
@@ -55,6 +61,12 @@ func (h *UserHandler) Registration(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, tokens)
+}
+
+// RegistrationStatus tells a client, before it shows a sign-up form, whether
+// this instance takes new accounts: { "open": bool }.
+func (h *UserHandler) RegistrationStatus(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"open": !h.RegistrationClosed})
 }
 
 /** input:
@@ -345,4 +357,8 @@ func (h *UserHandler) SecureAuth(c *gin.Context) {
 type UserHandler struct {
 	UsersService application.UsersService
 	Tokens       TokenParser
+	// RegistrationClosed refuses every sign-up (REGISTRATION_OPEN=false).
+	// Closed rather than open so the zero value keeps the historical
+	// behavior: an instance takes new accounts unless told otherwise.
+	RegistrationClosed bool
 }

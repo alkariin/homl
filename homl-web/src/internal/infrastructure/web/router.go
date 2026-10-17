@@ -121,6 +121,8 @@ func SetupRouter(s *Server, baseUrl string, timeoutDuration time.Duration, isDev
 	challengeLimit := RateLimit(s.RateLimiter, "challenge", 30, time.Minute)
 	resetLimit := RateLimit(s.RateLimiter, "reset", 5, time.Hour)
 
+	// Public and unthrottled like /healthz: it only reads a setting.
+	g.GET("/registration", s.User.RegistrationStatus)
 	g.POST("/registration", loginLimit, s.User.Registration)
 	g.POST("/login", loginLimit, s.User.Login)
 	g.POST("/logout", authRequired, s.User.Logout)
