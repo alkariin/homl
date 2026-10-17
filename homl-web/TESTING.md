@@ -6,8 +6,8 @@
 |---|---|---|---|
 | **Unit** | `src/internal/application/*_test.go`, `src/internal/apperror/*_test.go`, `src/internal/domain/e2ee/*_test.go`, `src/internal/infrastructure/{auth,config,crypto,mail,persistence}/*_test.go` | Business logic with mocked repositories; JWT, field encryption, config validation, the mailers and the error helpers; the Redis session store (rotation and its replay window) against an in-memory Redis ([miniredis](https://github.com/alicebob/miniredis)) | none |
 | **HTTP / integration** | `src/internal/infrastructure/web/router_test.go` | The real Gin router (routing, JWT middleware, JSON binding, validation, status codes & response bodies) with mocked services | none |
-| **DB-backed** | `src/test/dbtest/*_test.go` (build tag `dbtest`) | The real SQL of the persistence layer: cross-tenant isolation, tag/synonym lifecycle, the three category-deletion options, event periods, the writes a replaying client relies on (an event create replayed by its `clientId`, concurrent replays included), the data generation, the atomic E2EE migration and purge | `make db-up` + `make migrateup` |
-| **End-to-end** | `src/test/e2e/e2e_test.go` (build tag `e2e`) | Full flow over real HTTP against a running stack (API + MySQL + Redis): auth (a refresh replayed after a lost answer included), category CRUD (a replayed tag PATCH included) and deletion options, event periods (an event create replayed by its `clientId` and the settings' data generation ride on its account), account deletion | `make dev` |
+| **DB-backed** | `src/test/dbtest/*_test.go` (build tag `dbtest`) | The real SQL of the persistence layer: cross-tenant isolation, tag/synonym lifecycle, tag groups following their tags, the three category-deletion options, event periods, the writes a replaying client relies on (an event create replayed by its `clientId`, concurrent replays included), the data generation, the atomic E2EE migration and purge | `make db-up` + `make migrateup` |
+| **End-to-end** | `src/test/e2e/e2e_test.go` (build tag `e2e`) | Full flow over real HTTP against a running stack (API + MySQL + Redis): auth (a refresh replayed after a lost answer included), category CRUD (a replayed tag PATCH included) and deletion options, tag group CRUD (a member moved out of the category included), event periods (an event create replayed by its `clientId` and the settings' data generation ride on its account), account deletion | `make dev` |
 
 The first two layers are in-process and deterministic — no database, no network —
 so they run on every commit; each HTTP test fires a real request and asserts the
@@ -76,6 +76,12 @@ They are configurable via environment variables (defaults match `make dev`):
 | `E2E_USERNAME` | `demo@homl.local` |
 | `E2E_PASSWORD` | `Demo1234!` |
 
+The per-IP `/login` budget (10 per minute, shared with `/registration` and
+`DELETE /account`) is spent to the last call by one run of the suite. A test
+on the demo account takes the shared session (`loginDemo`) instead of a login
+of its own; a run started less than a minute after another one (or after a
+manual login) can hit `429`.
+
 ## How the layers are wired
 
 - **Repository mocks** (`src/test/mocks/*_repo.go`) are programmable `testify`
@@ -134,14 +140,16 @@ clients switch on the code, never on the message:
 |---|---|
 | `POST /tags` | the name already exists in that category |
 | `PATCH /tags/:id` | the rename, the move, or a synonym following a moved main tag |
-| `DELETE /categories/:id` `{"moveTags": true}` | a tag being moved is already in Other |
+| `DELETE /categories/:id` `{"moveTags": true}` | a tag (or a tag group) being moved is already in Other |
+| `POST /tagGroups`, `PATCH /tagGroups/:id` | another group of the category has the name |
 
 - `src/test/dbtest/tag_lifecycle_test.go` (`TestTagNameConflicts`) — every
   case against the real unique key, plus the two that must stay legal (the
   same name in another category, and another user's identical name), each
   checked to have rolled back.
 - `src/test/dbtest/category_delete_test.go` — the same for the move of a
-  whole category.
+  whole category; `tag_group_test.go` for the group names, the move of a
+  category included.
 - `src/internal/infrastructure/web/router_test.go` — the 409 reaching the
   client with its `code` and `message`.
 - `homl-ui/test/tags_repository_conflict_test.dart`,

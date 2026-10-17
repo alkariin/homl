@@ -41,6 +41,9 @@ Handled in `persistence/tag.go` (`DeleteTag`, `UpdateTag`):
   client the counts for its confirmation dialog.
 - Moving a **main tag** to another category (`PATCH /tags/:id`) relocates its
   synonyms with it: a synonym always lives in its main tag's category.
+- Turning a main tag into a synonym hands its tag group memberships over to
+  its new main tag (a synonym is never a group member, see
+  [tag-groups.md](tag-groups.md)).
 - Deleting a category cascades to its tags; with `moveTags: true` the tags
   (synonym links included) move to the Others category instead, and with
   `deleteEvents: true` every event tagged from the category is deleted (see

@@ -77,7 +77,8 @@ own name once renamed. Requests always carry the stored name.
   - free tags typed on the insert page are created in it
     (`InsertCubit._defaultCategoryId`), so `POST /tags` keeps accepting it as
     a target;
-  - deleting a category with `moveTags: true` moves the orphaned tags into it.
+  - deleting a category with `moveTags: true` moves the orphaned tags into it,
+    with the category's tag groups ([tag-groups.md](tag-groups.md)).
 - The app hides the category in the Categories tab while it has no tags
   (`CategoryManagementBody`).
 

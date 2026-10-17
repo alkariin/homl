@@ -127,7 +127,8 @@ The backend design docs live in [`docs/`](docs):
 [end-to-end encryption](docs/e2ee.md) ·
 [deployment](docs/deployment.md) ·
 [default categories](docs/default-categories.md) ·
-[tag synonyms](docs/tag-synonyms.md).
+[tag synonyms](docs/tag-synonyms.md) ·
+[tag groups](docs/tag-groups.md).
 
 ## Updating dependencies
 

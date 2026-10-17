@@ -70,6 +70,13 @@ classDiagram
         +*uint IdParentTag
         +*string TagIndex
     }
+    class TagGroup {
+        +uint Id
+        +string Name
+        +uint IdCategory
+        +[]uint Members
+        +*string NameIndex
+    }
 
     %% EventAggregate
     class Event {
@@ -93,6 +100,8 @@ classDiagram
     User "1" o-- "0..*" Category : owns
     Category "1" *-- "0..*" Tag : owns lifecycle
     Tag "0..*" --> "0..1" Tag : synonym (IdParentTag)
+    Category "1" *-- "0..*" TagGroup : owns lifecycle
+    TagGroup "0..*" --> "0..*" Tag : members (TagGroupMembers)
     Event "0..*" -- "0..*" Tag : EventsTags join table
     DefaultCategory ..> Category : seeded at registration
 ```
@@ -115,7 +124,7 @@ classDiagram
   transaction (see [Masterdata](#masterdata-domainmasterdata)).
 - Deletion is a hard delete of the aggregate root: one `DELETE` on the `Users`
   row, and the schema cascades to every owned aggregate (categories → tags →
-  synonyms, events, event-tag links). The Redis half of the aggregate
+  synonyms and tag groups, events, event-tag links). The Redis half of the aggregate
   (sessions, reset codes) is purged first — see
   [auth-flows.md](auth-flows.md#account-deletion).
 
@@ -138,6 +147,11 @@ classDiagram
 - `TagIndex` is the client-side blind index of E2EE users (NULL otherwise):
   uniqueness and tag search use it when the `tag` column holds opaque client
   blobs. See [e2ee.md](e2ee.md).
+- A `TagGroup` names a set of main tags of its category ("Family" = Alice and
+  Bob), which the client expands into its members when the user picks it;
+  it is never linked to an event. It follows its members through the tag
+  writes (a member moved out or turned synonym leaves it) and moves to Others
+  with them on a category deletion. See [tag-groups.md](tag-groups.md).
 
 ### E2EE (`domain/e2ee`)
 
@@ -177,7 +191,7 @@ crossing the port.
 | Port | Responsibilities |
 | --- | --- |
 | `user.Repository` | Registration (user + default categories, transactional), lookup, password/pin/fingerprint updates, Redis auth sessions, single-use password-reset codes (attempt counter + cooldown), settings read/write, hard delete of the account (cascades) + reset-code cleanup |
-| `category.Repository` | Category CRUD (delete moves the tags to Others or removes them, optionally with every event they tag), tag CRUD (synonyms included, moving a main tag takes its synonyms along), tag lookup by name, usage counts (`TagUsage`, `CategoryUsage`) |
+| `category.Repository` | Category CRUD (delete moves the tags and tag groups to Others or removes them, optionally with every event they tag), tag group CRUD and member checks, tag CRUD (synonyms included, moving a main tag takes its synonyms along), tag lookup by name, usage counts (`TagUsage`, `CategoryUsage`) |
 | `event.Repository` | Event CRUD with tags, per-user listing |
 | `e2ee.Repository` | E2EE flag lookup, atomic whole-dataset enable/disable migration, lost-key purge (reseeds the default categories) |
 
@@ -186,4 +200,5 @@ crossing the port.
 Response/input shapes colocated with their aggregate, used by the application
 and web layers: `user.UserResponse`, `user.UserPassword`, `user.RefreshInput`,
 `user.SettingsResponse`, `category.GetCategoryResponse`, `category.TagDTO`,
+`category.TagGroupDTO`,
 `event.GetEventsResponse`.

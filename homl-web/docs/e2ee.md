@@ -73,14 +73,16 @@ current behavior unchanged; both modes coexist.
   ciphertext and allows future format migrations. The server validates the
   prefix and a sane max length on write for E2EE users, nothing more.
 
-### 2.3 Blind index (tags only)
+### 2.3 Blind index (tags and tag groups)
 
 - `tagIndex = hex(HMAC-SHA256(k_index, normalize(tagName))[0:16])` (16 bytes,
   32 hex chars).
 - `normalize` is the client-side mirror of the backend `titleCase`
   (`src/internal/application/text.go`), already implemented in
   `homl-ui/lib/helpers/event_search.dart` (`normalizeTagName`).
-- Used for: tag uniqueness, server-side tag search, and date-tag reuse.
+- Used for: tag uniqueness, server-side tag search, and date-tag reuse. A
+  tag group's `nameIndex` is the same HMAC over its normalized name, used
+  for group-name uniqueness only ([tag-groups.md](tag-groups.md)).
   Leakage: the server learns equality/frequency of tag usage (not the names).
   This is equivalent to today's deterministic scheme and can later be reduced
   by dropping the index and moving search fully client-side.
@@ -101,6 +103,9 @@ ALTER TABLE Tags  ADD UNIQUE KEY tags_index_unique (idCategory, tagIndex);
 - `tagIndex` is NULL for non-E2EE users; the existing `UNIQUE(idCategory, tag)`
   keeps guarding them. For E2EE users the `tag` column holds non-deterministic
   blobs (never colliding), so `UNIQUE(idCategory, tagIndex)` takes over.
+- The tag groups added later (`000009_tag_groups`) follow the same pattern:
+  `TagGroups.name` holds the blob and `TagGroups.nameIndex` its blind index,
+  under `UNIQUE(idCategory, nameIndex)`.
 - `e2eeKeyCheck = hex(HMAC-SHA256(k_index, "homl-e2ee:v1:keycheck"))` — lets a
   restoring device verify a typed recovery phrase even if the user has no data
   yet. Set at enable, cleared at disable.
@@ -125,6 +130,9 @@ API surface changes:
 
 - `POST /tags`, `PATCH /tags/:id`: accept optional `tagIndex` (required when
   the user is E2EE, rejected otherwise).
+- `POST /tagGroups`, `PATCH /tagGroups/:id`: `name` is a blob and `nameIndex`
+  is required for E2EE users (dropped otherwise); the date category stays off
+  limits for groups in both modes.
 - `GET /events?tags=`: for E2EE users the values are 32-hex `tagIndex` strings
   instead of plaintext names.
 - `GET /settings`: exposes the read-only `isE2eeEnabled` and `e2eeKeyCheck`,
@@ -153,6 +161,7 @@ POST /e2ee/migrate
   "keyCheck": "<hex>",                     // enable only
   "categories": [{ "id": 1, "category": "e2ee:v1:..." }, ...],
   "tags":       [{ "id": 7, "tag": "e2ee:v1:...", "tagIndex": "<hex>" }, ...],
+  "tagGroups":  [{ "id": 4, "name": "e2ee:v1:...", "nameIndex": "<hex>" }, ...],
   "events":     [{ "id": 42, "description": "e2ee:v1:..." }, ...]
 }
 ```
@@ -269,7 +278,8 @@ screens behind it):
 ## 8. Residual leakage (accepted)
 
 The server still sees: `Events.date` (phase 1 decision), tag/category/event
-row counts and ids, the event↔tag graph, `tagIndex` equality patterns
+row counts and ids, the event↔tag graph, which tags each tag group holds,
+`tagIndex` equality patterns
 (frequency analysis over small vocabularies is possible), category
 `kind`/`color`/`isLocked`, request timing. Accepted trade-offs for keeping
 server-side search, uniqueness and date sorting.
