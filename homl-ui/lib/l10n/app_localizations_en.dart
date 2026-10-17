@@ -377,7 +377,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get insert_periodOngoing => 'Ongoing';
 
   @override
-  String get list_filterLabel => 'Filter by tag';
+  String get list_filterLabel => 'Tag or text';
+
+  @override
+  String get list_filterHint => '-Bob, \"beach\"';
+
+  @override
+  String get list_pickDates => 'Filter by dates';
 
   @override
   String get list_noEvents => 'No events found';

@@ -21,6 +21,9 @@ class Tag extends StatelessWidget {
 
   /// A tag group (a shortcut for its tags), marked with a stack icon.
   final bool isGroup;
+
+  /// A search term the events must not match, marked with a ban icon.
+  final bool excluded;
   final bool large;
 
   static const double _fontSize = 13.5;
@@ -65,6 +68,7 @@ class Tag extends StatelessWidget {
       this.onDeleteTag,
       this.isDate = false,
       this.isGroup = false,
+      this.excluded = false,
       this.large = false,
       super.key});
 
@@ -98,11 +102,13 @@ class Tag extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (isDate || isGroup) ...[
+              if (excluded || isDate || isGroup) ...[
                 FaIcon(
-                    isDate
-                        ? FontAwesomeIcons.calendar
-                        : FontAwesomeIcons.layerGroup,
+                    excluded
+                        ? FontAwesomeIcons.ban
+                        : isDate
+                            ? FontAwesomeIcons.calendar
+                            : FontAwesomeIcons.layerGroup,
                     size: large ? 13 : 12,
                     color: label),
                 const SizedBox(width: 5),

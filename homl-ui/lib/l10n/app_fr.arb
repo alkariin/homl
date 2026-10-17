@@ -145,7 +145,9 @@
   "insert_periodClosed": "Période",
   "insert_periodOngoing": "En cours",
 
-  "list_filterLabel": "Filtrer par tag",
+  "list_filterLabel": "Tag ou texte",
+  "list_filterHint": "-Bob, \"plage\"",
+  "list_pickDates": "Filtrer par dates",
   "list_noEvents": "Aucun événement trouvé",
   "list_editEvent": "Modifier l'événement",
   "list_deleteEventTitle": "Supprimer l'événement ?",

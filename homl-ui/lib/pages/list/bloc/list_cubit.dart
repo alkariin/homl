@@ -13,42 +13,66 @@ part 'list_state.dart';
 /// network round-trip.
 class ListCubit extends Cubit<ListState> {
   final HomeCubit homeCubit;
+
+  /// Today, for the open periods a range has to reach (tests pin it).
+  final DateTime Function() _now;
   late final StreamSubscription<HomeState> _homeSubscription;
 
-  ListCubit(this.homeCubit) : super(ListState.initial()) {
+  ListCubit(this.homeCubit, {DateTime Function()? now})
+      : _now = now ?? DateTime.now,
+        super(ListState.initial()) {
     // Follow the shared events/categories: an insert or a lost/recovered
-    // connection re-applies the current filters automatically.
+    // connection re-applies the current search automatically.
     _homeSubscription = homeCubit.stream.listen((_) {
-      _applyFilters(state.filters);
+      _search(state.terms, state.range);
     });
 
-    _applyFilters(state.filters);
+    _search(state.terms, state.range);
   }
 
-  void _applyFilters(List<String> filters) {
+  void _search(List<SearchTerm> terms, DayRange? range) {
     final home = homeCubit.state;
-    emit(state.copyWith(
-      filters: filters,
-      events: filterEventsByTags(home.events, home.categories, filters),
+    emit(ListState(
+      terms: terms,
+      range: range,
+      events: searchEvents(home.events, home.categories,
+          terms: terms, range: range, today: _now()),
       loading: !home.initialized,
     ));
   }
 
-  void addFilterTag(String name) {
-    // Normalized like the backend stores tags, so matching is
-    // case-insensitive and the chip shows the canonical casing.
-    final normalized = normalizeTagName(name.trim());
-    if (normalized.isEmpty || state.filters.contains(normalized)) {
-      return;
+  /// A term typed in the field: a leading '-' excludes, quotes search the
+  /// descriptions only (see [SearchTerm.parse]).
+  void addTypedTerm(String typed) {
+    final term = SearchTerm.parse(typed);
+    if (term != null) _addTerm(term);
+  }
+
+  /// A tag picked in the tag sheet, taken as it is named.
+  void addTag(String name) {
+    final text = name.trim();
+    if (text.isNotEmpty) _addTerm(SearchTerm(text));
+  }
+
+  /// Adds [term] unless it is there already. The same term the other way
+  /// round ("-Bob" while "Bob" is set) turns over in place, since asking for
+  /// both could only ever find nothing.
+  void _addTerm(SearchTerm term) {
+    final index = state.terms.indexWhere(term.sameAs);
+    if (index == -1) {
+      _search([...state.terms, term], state.range);
+    } else if (state.terms[index].exclude != term.exclude) {
+      _search([...state.terms]..[index] = term, state.range);
     }
-
-    _applyFilters([...state.filters, normalized]);
   }
 
-  void removeFilterTag(String name) {
-    final normalized = normalizeTagName(name.trim());
-    _applyFilters(state.filters.where((f) => f != normalized).toList());
+  void removeTerm(SearchTerm term) {
+    _search(state.terms.where((t) => t != term).toList(), state.range);
   }
+
+  /// Narrows the search to [range], replacing the one set before; null lifts
+  /// it.
+  void setRange(DayRange? range) => _search(state.terms, range);
 
   @override
   Future<void> close() {

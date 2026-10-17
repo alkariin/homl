@@ -40,6 +40,9 @@ ThemeData homlTheme() {
       filled: true,
       fillColor: const Color(0xFFF4F4F2),
       labelStyle: TextStyle(color: ink.withValues(alpha: 0.45), fontSize: 14),
+      // Under the floating label, a size below the typed text: an example,
+      // not a value.
+      hintStyle: TextStyle(color: ink.withValues(alpha: 0.35), fontSize: 14),
       floatingLabelStyle: const TextStyle(
           color: ink, fontSize: 14, fontWeight: FontWeight.w500),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),

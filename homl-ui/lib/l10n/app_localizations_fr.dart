@@ -382,7 +382,13 @@ class AppLocalizationsFr extends AppLocalizations {
   String get insert_periodOngoing => 'En cours';
 
   @override
-  String get list_filterLabel => 'Filtrer par tag';
+  String get list_filterLabel => 'Tag ou texte';
+
+  @override
+  String get list_filterHint => '-Bob, \"plage\"';
+
+  @override
+  String get list_pickDates => 'Filtrer par dates';
 
   @override
   String get list_noEvents => 'Aucun événement trouvé';

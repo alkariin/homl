@@ -383,7 +383,13 @@ class AppLocalizationsDe extends AppLocalizations {
   String get insert_periodOngoing => 'Laufend';
 
   @override
-  String get list_filterLabel => 'Nach Tag filtern';
+  String get list_filterLabel => 'Tag oder Text';
+
+  @override
+  String get list_filterHint => '-Bob, \"Strand\"';
+
+  @override
+  String get list_pickDates => 'Nach Datum filtern';
 
   @override
   String get list_noEvents => 'Keine Ereignisse gefunden';

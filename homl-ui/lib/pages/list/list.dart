@@ -1,8 +1,10 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
 import 'package:homl/l10n/app_localizations.dart';
 
 import 'package:homl/components/event_card.dart';
+import 'package:homl/components/tag.dart' as components;
 import 'package:homl/components/tag_input.dart';
 import 'package:homl/data/models/category.dart';
 import 'package:homl/data/models/event.dart';
@@ -10,6 +12,7 @@ import 'package:homl/helpers/categories.dart';
 import 'package:homl/helpers/category_labels.dart';
 import 'package:homl/helpers/colors.dart' as palette;
 import 'package:homl/helpers/date_tags.dart';
+import 'package:homl/helpers/event_search.dart';
 import 'package:homl/helpers/last_time.dart';
 import 'package:homl/helpers/on_this_day.dart';
 import 'package:homl/helpers/tag_groups.dart';
@@ -21,6 +24,10 @@ import 'package:homl/pages/list/view/last_time_summary.dart';
 import 'package:homl/pages/list/view/on_this_day_strip.dart';
 
 class ListPage extends StatelessWidget {
+  /// Chip of a term looked up in the descriptions: a neutral grey, so it
+  /// never reads as a category.
+  static const String _textChipColor = '#e8eaed';
+
   /// Reports the tag being typed to the app bar mark (see [AppBarMark]);
   /// null when the page is shown without one.
   final ValueNotifier<String?>? typedTag;
@@ -29,6 +36,58 @@ class ListPage extends StatelessWidget {
 
   static Route<void> route() {
     return MaterialPageRoute<void>(builder: (_) => const ListPage());
+  }
+
+  /// The chip of a search term. Named after the term as typed ("-Bob"), so
+  /// the field knows it is chipped and a tap hands it back for removal. A
+  /// term naming a tag wears that tag; any other one is printed in quotes.
+  static TagChipData _chipOf(SearchTerm term, HomeState home, String locale) {
+    final tag = home.allTagsMap[term.tagName];
+    if (tag != null) {
+      return TagChipData(
+          id: tag.id,
+          name: term.typed,
+          displayName: localizedTagName(tag.tagName, locale),
+          color: tag.color,
+          excluded: term.exclude);
+    }
+    return TagChipData(
+        id: -1,
+        name: term.typed,
+        displayName: '\u201c${term.text}\u201d',
+        color: _textChipColor,
+        excluded: term.exclude);
+  }
+
+  /// "Mar 3, 2019 – Aug 12, 2021", or the one day.
+  static String _rangeLabel(DayRange range, String locale) {
+    final format = DateFormat.yMMMd(locale);
+    final first = format.format(range.first);
+    return range.first == range.last
+        ? first
+        : '$first \u2013 ${format.format(range.last)}';
+  }
+
+  /// Opens the range picker on the range already set, if any; a new pick
+  /// replaces it.
+  static Future<void> _pickRange(BuildContext context) async {
+    final cubit = context.read<ListCubit>();
+    final current = cubit.state.range;
+    // The range holds calendar days; the picker works on local dates.
+    DateTime local(DateTime day) => DateTime(day.year, day.month, day.day);
+
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(1900),
+      lastDate: DateTime(2100),
+      initialDateRange: current == null
+          ? null
+          : DateTimeRange(
+              start: local(current.first), end: local(current.last)),
+    );
+    if (picked != null) {
+      cubit.setRange(DayRange(picked.start, picked.end));
+    }
   }
 
   @override
@@ -75,12 +134,12 @@ class ListPage extends StatelessWidget {
         // stored, so never a day behind. "On this day" over the whole list,
         // "Last time" over the results of a search.
         final today = DateTime.now();
-        final memories = listState.filters.isEmpty
-            ? eventsOnThisDay(homeState.events, today)
-            : const <Memory>[];
-        final lastTime = listState.filters.isEmpty
-            ? null
-            : lastTimeOf(listState.events, today);
+        final memories = listState.isSearching
+            ? const <Memory>[]
+            : eventsOnThisDay(homeState.events, today);
+        final lastTime =
+            listState.isSearching ? lastTimeOf(listState.events, today) : null;
+        final range = listState.range;
 
         // The decorative background is shared by the tabs (parallax in the
         // home page).
@@ -89,13 +148,26 @@ class ListPage extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
             child: TagInput(
               labelText: localization.list_filterLabel,
+              hintText: localization.list_filterHint,
               showSearchIcon: true,
-              tags: listState.filters
-                  .map((name) => TagChipData(
-                      id: homeState.allTagsMap[name]?.id ?? -1,
-                      name: name,
-                      displayName: localizedTagName(name, locale),
-                      color: homeState.allTagsMap[name]?.color))
+              // "-Bob" leaves Bob's events out (see SearchTerm.parse).
+              allowExclusion: true,
+              // The range comes first, a tap lifts it like any chip.
+              leading: [
+                if (range != null)
+                  components.Tag(
+                    id: -1,
+                    text: _rangeLabel(range, locale),
+                    color: palette.yellowHex,
+                    isDate: true,
+                    large: true,
+                    onTap: () => context.read<ListCubit>().setRange(null),
+                    onDeleteTag: (_) =>
+                        context.read<ListCubit>().setRange(null),
+                  ),
+              ],
+              tags: listState.terms
+                  .map((term) => _chipOf(term, homeState, locale))
                   .toList(),
               suggestions: [
                 ...homeState.allTagsMap.values.map((tagView) => TagChipData(
@@ -112,17 +184,25 @@ class ListPage extends StatelessWidget {
                 // carrying them all.
                 ...tagGroupSuggestions(homeState.categories),
               ],
-              onAddTag: (name) => context.read<ListCubit>().addFilterTag(name),
-              onRemoveTag: (tag) =>
-                  context.read<ListCubit>().removeFilterTag(tag.name),
+              onAddTag: (typed) =>
+                  context.read<ListCubit>().addTypedTerm(typed),
+              onRemoveTag: (chip) {
+                final cubit = context.read<ListCubit>();
+                final term = cubit.state.terms
+                    .where((term) => term.typed == chip.name)
+                    .firstOrNull;
+                if (term != null) cubit.removeTerm(term);
+              },
               // The button next to the field browses the categories; a
               // tap on a tag inserts it as a search filter.
               browseLabel: localization.categories_browseTags,
               onBrowse: () => showTagPickerSheet(
                 context,
                 onTagSelected: (tag) =>
-                    context.read<ListCubit>().addFilterTag(tag.tagName),
+                    context.read<ListCubit>().addTag(tag.tagName),
               ),
+              pickDatesLabel: localization.list_pickDates,
+              onPickDates: () => _pickRange(context),
               // The app bar mark follows the tag being typed, then the
               // filters already chosen.
               onSuggestionChanged: (name) => typedTag?.value = name,

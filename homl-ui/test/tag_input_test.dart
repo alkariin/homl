@@ -62,23 +62,31 @@ const family = TagChipData(
 /// mark follows.
 String? suggested;
 int browsed = 0;
+int datesPicked = 0;
 
 Widget wrap(
     {List<TagChipData> tags = const [],
     List<TagChipData> suggestions = const [info, football, other, july],
     void Function(String name)? onAddTag,
-    bool browsable = true}) {
+    bool browsable = true,
+    bool allowExclusion = false,
+    bool pickDates = false}) {
   suggested = null;
   browsed = 0;
+  datesPicked = 0;
   return MaterialApp(
     home: Scaffold(
       body: TagInput(
         labelText: 'Filter',
+        hintText: '"beach", -Bob',
         tags: tags,
         suggestions: suggestions,
         onAddTag: onAddTag ?? (_) {},
         browseLabel: 'Browse tags',
         onBrowse: browsable ? () => browsed++ : null,
+        pickDatesLabel: 'Pick dates',
+        onPickDates: pickDates ? () => datesPicked++ : null,
+        allowExclusion: allowExclusion,
         onSuggestionChanged: (name) => suggested = name,
       ),
     ),
@@ -330,6 +338,117 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(added, ['Family']);
+    });
+  });
+
+  group('the search field', () {
+    testWidgets('shows its hint once focused', (tester) async {
+      await tester.pumpWidget(wrap());
+      await tester.tap(find.byType(TextField));
+      await tester.pumpAndSettle();
+
+      expect(find.text('"beach", -Bob'), findsOneWidget);
+    });
+
+    testWidgets('the date button is optional and reports its taps',
+        (tester) async {
+      await tester.pumpWidget(wrap());
+      expect(find.byTooltip('Pick dates'), findsNothing);
+
+      await tester.pumpWidget(wrap(pickDates: true));
+      await tester.tap(find.byTooltip('Pick dates'));
+      expect(datesPicked, 1);
+      expect(browsed, 0);
+    });
+
+    testWidgets('an excluded chip wears the ban icon', (tester) async {
+      await tester.pumpWidget(wrap(tags: const [
+        TagChipData(
+            id: 1,
+            name: '-Football',
+            displayName: 'Football',
+            color: '#f28b82',
+            excluded: true),
+      ]));
+
+      expect(tester.widget<Tag>(find.byType(Tag)).excluded, isTrue);
+    });
+  });
+
+  group('a leading -', () {
+    testWidgets('suggests the tags without it, and adds them with it',
+        (tester) async {
+      final added = <String>[];
+      await tester.pumpWidget(wrap(allowExclusion: true, onAddTag: added.add));
+
+      await tester.enterText(find.byType(TextField), '-foo');
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(ListTile, 'Football'), findsOneWidget);
+      // A tag being excluded is no tag for the mark to wear.
+      expect(suggested, isNull);
+
+      await tester.tap(find.widgetWithText(ListTile, 'Football'));
+      await tester.pumpAndSettle();
+      expect(added, ['-Football']);
+    });
+
+    testWidgets('resolves a label typed in full, then keeps the -',
+        (tester) async {
+      final added = <String>[];
+      await tester.pumpWidget(wrap(allowExclusion: true, onAddTag: added.add));
+
+      await tester.enterText(find.byType(TextField), '- juillet');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), '-beach');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+
+      expect(added, ['-July', '-beach']);
+    });
+
+    testWidgets('excludes every tag of a group', (tester) async {
+      final added = <String>[];
+      await tester.pumpWidget(wrap(
+          allowExclusion: true,
+          suggestions: const [alice, bob, family],
+          onAddTag: added.add));
+
+      await tester.enterText(find.byType(TextField), '-fam');
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ListTile, 'Family'));
+      await tester.pumpAndSettle();
+
+      expect(added, ['-Alice', '-Bob']);
+    });
+
+    testWidgets('an excluded tag is offered again to ask for it',
+        (tester) async {
+      const excluded = TagChipData(
+          id: 1, name: '-Football', displayName: 'Football', excluded: true);
+      await tester
+          .pumpWidget(wrap(allowExclusion: true, tags: const [excluded]));
+
+      await tester.enterText(find.byType(TextField), '-foo');
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(ListTile, 'Football'), findsNothing);
+
+      await tester.enterText(find.byType(TextField), 'foo');
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(ListTile, 'Football'), findsOneWidget);
+    });
+
+    testWidgets('is plain text where exclusion is not allowed', (tester) async {
+      final added = <String>[];
+      await tester.pumpWidget(wrap(onAddTag: added.add));
+
+      await tester.enterText(find.byType(TextField), '-foo');
+      await tester.pumpAndSettle();
+      expect(find.byType(ListTile), findsNothing);
+
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+      expect(added, ['-foo']);
     });
   });
 }
