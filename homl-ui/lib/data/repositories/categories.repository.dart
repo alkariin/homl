@@ -29,8 +29,9 @@ class CategoriesRepository {
   /// Returns the user's categories with their tags. Each successful payload
   /// is saved in the local store (sealed on the device) so the app keeps
   /// working offline: when the request fails, the saved copy is returned
-  /// instead when there is one.
-  Future<List<Category>> getCategories() async {
+  /// instead when there is one — unless [cacheFallback] is false, for a
+  /// caller that must compare against the server itself (the import).
+  Future<List<Category>> getCategories({bool cacheFallback = true}) async {
     late Response<List<dynamic>> response;
     try {
       response = await apiInstance.api.get<List<dynamic>>('/categories');
@@ -39,7 +40,7 @@ class CategoriesRepository {
         throw CategoriesNotFoundFailure();
       }
     } on DioException catch (_) {
-      final cached = await getCachedCategories();
+      final cached = cacheFallback ? await getCachedCategories() : null;
       if (cached != null) {
         return cached;
       }
@@ -107,15 +108,22 @@ class CategoriesRepository {
     }
   }
 
-  Future<void> createCategory(String category, String color) async {
+  /// Returns the id of the created category.
+  Future<int> createCategory(String category, String color) async {
+    late Response<Map<String, dynamic>> response;
     try {
-      await apiInstance.api.post<void>('/categories', data: {
+      response = await apiInstance.api
+          .post<Map<String, dynamic>>('/categories', data: {
         'category': await _outgoingName(category),
         'color': color,
       });
     } on DioException catch (_) {
       throw CategoriesRequestFailure();
     }
+
+    final id = response.data?['id'];
+    if (id is! int) throw CategoriesNotFoundFailure();
+    return id;
   }
 
   Future<void> updateCategory(int id, String category, String color) async {

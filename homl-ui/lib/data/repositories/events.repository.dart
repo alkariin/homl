@@ -40,9 +40,11 @@ class EventsRepository {
   /// in the outbox applied (data/sync/projection.dart). Each successful
   /// payload is saved in the local store (sealed on the device, see
   /// data/store/local_store.dart) so the app keeps working offline: when the
-  /// request fails, the saved copy is returned instead when there is one. Tag
-  /// filtering happens locally (see helpers/event_search.dart).
-  Future<List<Event>> getEvents() async {
+  /// request fails, the saved copy is returned instead when there is one —
+  /// unless [cacheFallback] is false, for a caller that must compare against
+  /// the server itself (the import). Tag filtering happens locally (see
+  /// helpers/event_search.dart).
+  Future<List<Event>> getEvents({bool cacheFallback = true}) async {
     late Response<List<dynamic>> response;
     try {
       response = await apiInstance.api.get<List<dynamic>>('/events');
@@ -51,7 +53,7 @@ class EventsRepository {
         throw EventsNotFoundFailure();
       }
     } on DioException catch (_) {
-      final cached = await getCachedEvents();
+      final cached = cacheFallback ? await getCachedEvents() : null;
       if (cached != null) {
         return cached;
       }
@@ -142,12 +144,17 @@ class EventsRepository {
   /// Saved in the outbox instead when the server is out of reach (or earlier
   /// offline changes still wait): [WriteOutcome.queued]. [tagsId] may then
   /// hold tags created offline (negative ids).
+  ///
+  /// [notify] false keeps [changes] quiet, for a caller writing many events
+  /// in a row: it calls [notifyChanged] once at the end instead of having
+  /// the app reload after every one.
   Future<WriteOutcome> createEvent({
     String? description,
     required DateTime date,
     DateTime? endDate,
     bool isOngoing = false,
     required List<int> tagsId,
+    bool notify = true,
   }) async {
     final body = {
       if (description != null && description.isNotEmpty)
@@ -179,9 +186,13 @@ class EventsRepository {
       throw EventsRequestFailure();
     }
 
-    _changesController.add(null);
+    if (notify) _changesController.add(null);
     return WriteOutcome.sent;
   }
+
+  /// Tells [changes] listeners the data changed, after a batch of writes made
+  /// with `notify: false`.
+  void notifyChanged() => _changesController.add(null);
 
   /// Saves a write in the outbox, shows it at once and lets the engine try to
   /// send it.
