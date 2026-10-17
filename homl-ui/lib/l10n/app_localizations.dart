@@ -424,6 +424,24 @@ abstract class AppLocalizations {
   /// **'Registration failed'**
   String get register_failure;
 
+  /// Shown instead of the sign-up form when the server takes no new accounts (REGISTRATION_OPEN=false on the backend).
+  ///
+  /// In en, this message translates to:
+  /// **'Registration is closed'**
+  String get register_closedTitle;
+
+  /// No description provided for @register_closedInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'This server takes no new accounts. Whoever runs it can open registration.'**
+  String get register_closedInfo;
+
+  /// No description provided for @register_backToLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to login'**
+  String get register_backToLogin;
+
   /// No description provided for @settings.
   ///
   /// In en, this message translates to:

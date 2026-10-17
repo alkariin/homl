@@ -22,6 +22,10 @@ class UserOtherFailure implements Exception {}
 /// Exception thrown when the password-reset code is wrong or expired
 class ResetCodeInvalidFailure implements Exception {}
 
+/// Exception thrown when the server takes no new accounts (its operator set
+/// REGISTRATION_OPEN=false)
+class RegistrationClosedFailure implements Exception {}
+
 class UsersRepository {
   final Api? _injectedApi;
 
@@ -61,13 +65,37 @@ class UsersRepository {
     return AuthenticationStatus.authenticated;
   }
 
+  /// Whether the server takes new accounts, asked before the sign-up form is
+  /// shown. Null when it cannot tell — offline, or a server older than the
+  /// route: the form is then shown and the sign-up itself has the last word.
+  Future<bool?> isRegistrationOpen() async {
+    try {
+      final response = await apiInstance.api.get<dynamic>('/registration');
+      final data = response.data;
+      final open = data is Map ? data['open'] : null;
+      return open is bool ? open : null;
+    } on DioException catch (err) {
+      log('Registration status unavailable',
+          name: 'UsersRepository', error: err);
+      return null;
+    }
+  }
+
   Future<AuthenticationStatus> register(
       String username, String password, Language language) async {
-    final response = await apiInstance.api.post('/registration', data: {
-      'username': username,
-      'password': password,
-      'language': language.name,
-    });
+    late Response<dynamic> response;
+    try {
+      response = await apiInstance.api.post('/registration', data: {
+        'username': username,
+        'password': password,
+        'language': language.name,
+      });
+    } on DioException catch (err) {
+      if (err.response?.data?['error']?['code'] == 'REGISTRATION_CLOSED') {
+        throw RegistrationClosedFailure();
+      }
+      rethrow;
+    }
 
     if (response.data == null || !response.data!.containsKey('refresh_token')) {
       throw UserNotFoundFailure();

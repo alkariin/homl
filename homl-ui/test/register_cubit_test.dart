@@ -87,4 +87,49 @@ void main() {
       expect(cubit.state.status, RegisterStatus.editing);
     },
   );
+
+  group('a closed server', () {
+    blocTest<RegisterCubit, RegisterState>(
+      'is said as soon as the page asks',
+      build: () {
+        when(() => repository.isRegistrationOpen())
+            .thenAnswer((_) async => false);
+        return RegisterCubit(repository, Language.en);
+      },
+      act: (cubit) => cubit.checkRegistration(),
+      expect: () => [
+        predicate<RegisterState>((s) => s.isRegistrationClosed),
+      ],
+    );
+
+    blocTest<RegisterCubit, RegisterState>(
+      'an open or unknown answer keeps the form',
+      build: () {
+        when(() => repository.isRegistrationOpen())
+            .thenAnswer((_) async => null);
+        return RegisterCubit(repository, Language.en);
+      },
+      act: (cubit) => cubit.checkRegistration(),
+      expect: () => <RegisterState>[],
+    );
+
+    blocTest<RegisterCubit, RegisterState>(
+      'refusing the sign-up closes the form too, without the failure toast',
+      build: () {
+        when(() => repository.register(any(), any(), any()))
+            .thenThrow(RegistrationClosedFailure());
+        return RegisterCubit(repository, Language.en);
+      },
+      seed: () => const RegisterState(
+          username: 'user@example.com', password: 'Pass1!aa'),
+      act: (cubit) => cubit.submit(),
+      expect: () => [
+        predicate<RegisterState>((s) => s.status == RegisterStatus.submitting),
+        predicate<RegisterState>((s) =>
+            s.isRegistrationClosed &&
+            !s.isRegisterIncorrect &&
+            s.status == RegisterStatus.editing),
+      ],
+    );
+  });
 }

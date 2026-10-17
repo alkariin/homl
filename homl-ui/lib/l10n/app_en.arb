@@ -67,6 +67,12 @@
 
   "register_submit": "Register",
   "register_failure": "Registration failed",
+  "register_closedTitle": "Registration is closed",
+  "@register_closedTitle": {
+    "description": "Shown instead of the sign-up form when the server takes no new accounts (REGISTRATION_OPEN=false on the backend)."
+  },
+  "register_closedInfo": "This server takes no new accounts. Whoever runs it can open registration.",
+  "register_backToLogin": "Back to login",
 
   "settings": "Settings",
   "settings_language": "Language",

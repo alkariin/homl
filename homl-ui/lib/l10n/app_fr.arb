@@ -67,6 +67,9 @@
 
   "register_submit": "Créer un compte",
   "register_failure": "L'inscription a échoué",
+  "register_closedTitle": "Inscriptions fermées",
+  "register_closedInfo": "Ce serveur n'accepte pas de nouveaux comptes. La personne qui l'administre peut ouvrir les inscriptions.",
+  "register_backToLogin": "Retour à la connexion",
 
   "settings": "Paramètres",
   "settings_language": "Langue",

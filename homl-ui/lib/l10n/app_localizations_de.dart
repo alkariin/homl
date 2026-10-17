@@ -195,6 +195,16 @@ class AppLocalizationsDe extends AppLocalizations {
   String get register_failure => 'Registrierung fehlgeschlagen';
 
   @override
+  String get register_closedTitle => 'Registrierung geschlossen';
+
+  @override
+  String get register_closedInfo =>
+      'Dieser Server nimmt keine neuen Konten an. Wer ihn betreibt, kann die Registrierung öffnen.';
+
+  @override
+  String get register_backToLogin => 'Zurück zur Anmeldung';
+
+  @override
   String get settings => 'Einstellungen';
 
   @override

@@ -13,6 +13,15 @@ class RegisterCubit extends Cubit<RegisterState> {
   RegisterCubit(this._usersRepository, this._language)
       : super(const RegisterState());
 
+  /// Asks the server whether it takes new accounts, so a closed one is
+  /// explained before anything is typed. An unknown answer keeps the form.
+  Future<void> checkRegistration() async {
+    final open = await _usersRepository.isRegistrationOpen();
+    if (open == false && !isClosed) {
+      emit(state.update(isRegistrationClosed: true));
+    }
+  }
+
   void usernameChanged(String username) {
     emit(state.update(username: username));
   }
@@ -31,6 +40,10 @@ class RegisterCubit extends Cubit<RegisterState> {
         await _usersRepository.register(
             state.username, state.password, _language);
         emit(state.update(status: RegisterStatus.editing));
+      } on RegistrationClosedFailure {
+        // Closed after the page opened, or it could not be asked then.
+        emit(state.update(
+            isRegistrationClosed: true, status: RegisterStatus.editing));
       } on UserRequestFailure catch (err) {
         log('Registration request failed', name: 'RegisterCubit', error: err);
         emit(state.update(
@@ -41,8 +54,7 @@ class RegisterCubit extends Cubit<RegisterState> {
         emit(state.update(
             isRegisterIncorrect: true, status: RegisterStatus.editing));
       } catch (err) {
-        log('Unexpected registration error',
-            name: 'RegisterCubit', error: err);
+        log('Unexpected registration error', name: 'RegisterCubit', error: err);
         emit(state.update(
             isRegisterIncorrect: true, status: RegisterStatus.editing));
       }
