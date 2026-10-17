@@ -763,8 +763,20 @@ abstract class AppLocalizations {
   /// No description provided for @list_filterLabel.
   ///
   /// In en, this message translates to:
-  /// **'Filter by tag'**
+  /// **'Tag or text'**
   String get list_filterLabel;
+
+  /// Example search in the empty field: a tag excluded with a leading '-', then a text in quotes (searched in the descriptions); the '-' comes first so it survives a cut. Keep it short: the field is narrow on a phone.
+  ///
+  /// In en, this message translates to:
+  /// **'-Bob, \"beach\"'**
+  String get list_filterHint;
+
+  /// No description provided for @list_pickDates.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter by dates'**
+  String get list_pickDates;
 
   /// No description provided for @list_noEvents.
   ///

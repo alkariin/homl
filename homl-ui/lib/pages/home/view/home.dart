@@ -165,7 +165,7 @@ class _HomeViewState extends State<HomeView>
         case 1:
           return BlocBuilder<ListCubit, ListState>(
               builder: (context, state) => AppBarMark(
-                  tagNames: state.filters,
+                  tagNames: state.chosenTagNames,
                   typedTag: _typedTag,
                   accentColorOf: home.markAccentFor));
         case 2:

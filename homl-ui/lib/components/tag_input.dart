@@ -35,6 +35,9 @@ class TagChipData {
   /// never chipped, see homl-web/docs/tag-groups.md). Null on a tag.
   final List<String>? members;
 
+  /// A search term the events must not match: the chip wears a ban icon.
+  final bool excluded;
+
   const TagChipData(
       {required this.id,
       required this.name,
@@ -42,7 +45,8 @@ class TagChipData {
       this.highlightColor,
       this.displayName,
       this.category,
-      this.members});
+      this.members,
+      this.excluded = false});
 
   String get label => displayName ?? name;
 
@@ -80,6 +84,22 @@ class TagInput extends StatefulWidget {
   /// Tooltip and accessible name of that button.
   final String? browseLabel;
 
+  /// Opens a date picker. Renders a calendar button after the browse one
+  /// when set, nothing when null.
+  final VoidCallback? onPickDates;
+
+  /// Tooltip and accessible name of that button.
+  final String? pickDatesLabel;
+
+  /// Shown in the empty focused field, under the label.
+  final String? hintText;
+
+  /// The search field: a '-' typed in front of a tag excludes it. The
+  /// suggestions and the enter key work on what follows the '-', and the
+  /// name reported to [onAddTag] keeps it ("-Bob"), as do the names of the
+  /// chips it is checked against.
+  final bool allowExclusion;
+
   /// Reports the stored name of the tag being typed — the top suggestion of
   /// the autocomplete, or the first member of a group, whose category it
   /// shares — on every change of the field, and null when it is empty or
@@ -101,6 +121,10 @@ class TagInput extends StatefulWidget {
       this.showSearchIcon = false,
       this.onBrowse,
       this.browseLabel,
+      this.onPickDates,
+      this.pickDatesLabel,
+      this.hintText,
+      this.allowExclusion = false,
       this.onSuggestionChanged,
       this.controller,
       super.key});
@@ -110,9 +134,9 @@ class TagInput extends StatefulWidget {
 }
 
 class _TagInputState extends State<TagInput> {
-  /// Side of the browse button: the height a filled field takes under the
-  /// theme's content padding, so the two sit flush.
-  static const double _browseButtonSize = 52;
+  /// Side of the buttons next to the field: the height a filled field takes
+  /// under the theme's content padding, so they sit flush.
+  static const double _buttonSize = 52;
 
   /// Widest the category name of a suggestion (or the tag list of a group)
   /// may get. A ListTile hands its trailing the whole tile width: a long name
@@ -139,6 +163,12 @@ class _TagInputState extends State<TagInput> {
     final report = widget.onSuggestionChanged;
     if (report == null) return;
 
+    // A tag being excluded is no tag the search wears.
+    if (_prefixOf(_controller.text).isNotEmpty) {
+      report(null);
+      return;
+    }
+
     final top = _filterSuggestions(_controller.value).firstOrNull;
     report(top == null
         ? null
@@ -157,8 +187,20 @@ class _TagInputState extends State<TagInput> {
     super.dispose();
   }
 
-  void _submit(String text) {
+  /// The '-' typed in front of a term to exclude it, when the field allows
+  /// it ([TagInput.allowExclusion]); empty otherwise.
+  String _prefixOf(String text) =>
+      widget.allowExclusion && text.trimLeft().startsWith('-') ? '-' : '';
+
+  /// [text] trimmed, without that prefix.
+  String _termOf(String text) {
     final trimmed = text.trim();
+    return _prefixOf(trimmed).isEmpty ? trimmed : trimmed.substring(1).trim();
+  }
+
+  void _submit(String text) {
+    final prefix = _prefixOf(text);
+    final trimmed = _termOf(text);
     if (trimmed.isEmpty) return;
 
     // A typed label that names a known tag is resolved to its stored name, so
@@ -167,10 +209,10 @@ class _TagInputState extends State<TagInput> {
     // group's tags.
     final suggestion = _suggestionFor(trimmed);
     if (suggestion != null && suggestion.isGroup) {
-      _addGroup(suggestion);
+      _addGroup(suggestion, prefix);
       return;
     }
-    final name = suggestion?.name ?? trimmed;
+    final name = '$prefix${suggestion?.name ?? trimmed}';
     if (widget.tags
         .any((tag) => tag.name.toLowerCase() == name.toLowerCase())) {
       _clearField();
@@ -183,12 +225,12 @@ class _TagInputState extends State<TagInput> {
   }
 
   /// Adds the member tags of [group] that are not chipped yet, in the
-  /// group's order. The group itself never becomes a chip.
-  void _addGroup(TagChipData group) {
+  /// group's order, each behind [prefix] (an excluded group excludes them
+  /// all). The group itself never becomes a chip.
+  void _addGroup(TagChipData group, [String prefix = '']) {
     for (final member in group.members!) {
-      if (!widget.tags
-          .any((tag) => tag.name.toLowerCase() == member.toLowerCase())) {
-        widget.onAddTag(member);
+      if (!_isChipped('$prefix$member')) {
+        widget.onAddTag('$prefix$member');
       }
     }
     _clearField();
@@ -233,7 +275,8 @@ class _TagInputState extends State<TagInput> {
       widget.tags.any((tag) => tag.name.toLowerCase() == name.toLowerCase());
 
   Iterable<TagChipData> _filterSuggestions(TextEditingValue value) {
-    final query = value.text.trim().toLowerCase();
+    final prefix = _prefixOf(value.text);
+    final query = _termOf(value.text).toLowerCase();
     if (query.isEmpty) return const Iterable<TagChipData>.empty();
 
     // Matched on the label as well as the stored name: a translated month tag
@@ -244,8 +287,9 @@ class _TagInputState extends State<TagInput> {
         (suggestion.name.toLowerCase().contains(query) ||
             suggestion.label.toLowerCase().contains(query)) &&
         (suggestion.isGroup
-            ? !suggestion.members!.every(_isChipped)
-            : !_isChipped(suggestion.name)));
+            ? !suggestion.members!
+                .every((member) => _isChipped('$prefix$member'))
+            : !_isChipped('$prefix${suggestion.name}')));
 
     // Tags starting with the query come first, so the top suggestion (which
     // also drives the highlight color below) is the most natural completion.
@@ -270,18 +314,21 @@ class _TagInputState extends State<TagInput> {
     return highlightColor == null ? null : darken(colorFromHex(highlightColor));
   }
 
-  /// Opens the tag picker: a tonal square matching the height of the field,
-  /// wearing the same icon as the Categories tab.
-  Widget _browseButton() {
+  /// A tonal square next to the field, matching its height: the tag picker
+  /// (the same icon as the Categories tab) or the date picker.
+  Widget _squareButton(
+      {required FaIconData icon,
+      required VoidCallback onPressed,
+      String? tooltip}) {
     return IconButton(
-      onPressed: widget.onBrowse,
-      tooltip: widget.browseLabel,
-      icon: const FaIcon(FontAwesomeIcons.tags, size: 20),
+      onPressed: onPressed,
+      tooltip: tooltip,
+      icon: FaIcon(icon, size: 20),
       style: IconButton.styleFrom(
         backgroundColor: ink.withValues(alpha: 0.06),
         foregroundColor: ink,
         padding: EdgeInsets.zero,
-        fixedSize: const Size.square(_browseButtonSize),
+        fixedSize: const Size.square(_buttonSize),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
@@ -305,6 +352,7 @@ class _TagInputState extends State<TagInput> {
                   id: tag.id,
                   text: tag.label,
                   color: tag.color,
+                  excluded: tag.excluded,
                   large: true,
                   onTap: widget.onRemoveTag == null
                       ? null
@@ -322,10 +370,20 @@ class _TagInputState extends State<TagInput> {
               child: RawAutocomplete<TagChipData>(
                 textEditingController: _controller,
                 focusNode: _focusNode,
-                displayStringForOption: (option) => option.label,
+                // The autocomplete writes this into the field before it
+                // calls onSelected: it keeps the '-' a pick was made behind,
+                // which onSelected then reads back.
+                displayStringForOption: (option) =>
+                    '${_prefixOf(_controller.text)}${option.label}',
                 optionsBuilder: _filterSuggestions,
-                onSelected: (option) =>
-                    option.isGroup ? _addGroup(option) : _submit(option.name),
+                onSelected: (option) {
+                  // A suggestion picked behind a '-' is excluded too (see
+                  // displayStringForOption).
+                  final prefix = _prefixOf(_controller.text);
+                  option.isGroup
+                      ? _addGroup(option, prefix)
+                      : _submit('$prefix${option.name}');
+                },
                 fieldViewBuilder:
                     (context, controller, focusNode, onFieldSubmitted) {
                   return ValueListenableBuilder<TextEditingValue>(
@@ -355,6 +413,7 @@ class _TagInputState extends State<TagInput> {
                         textInputAction: TextInputAction.done,
                         decoration: InputDecoration(
                           labelText: widget.labelText,
+                          hintText: widget.hintText,
                           enabledBorder: border,
                           focusedBorder: focusedBorder,
                           // FaIcon is a bare glyph (the Icon widget minus
@@ -451,7 +510,17 @@ class _TagInputState extends State<TagInput> {
             ),
             if (widget.onBrowse != null) ...[
               const SizedBox(width: 10),
-              _browseButton(),
+              _squareButton(
+                  icon: FontAwesomeIcons.tags,
+                  onPressed: widget.onBrowse!,
+                  tooltip: widget.browseLabel),
+            ],
+            if (widget.onPickDates != null) ...[
+              const SizedBox(width: 10),
+              _squareButton(
+                  icon: FontAwesomeIcons.solidCalendarDays,
+                  onPressed: widget.onPickDates!,
+                  tooltip: widget.pickDatesLabel),
             ],
           ],
         ),

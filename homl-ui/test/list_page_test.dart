@@ -5,9 +5,11 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:homl/components/tag.dart' as components;
 import 'package:homl/data/models/category.dart';
 import 'package:homl/data/models/event.dart';
 import 'package:homl/data/models/tag.dart';
+import 'package:homl/helpers/event_search.dart';
 import 'package:homl/helpers/localizations.dart';
 import 'package:homl/l10n/app_localizations.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
@@ -105,7 +107,7 @@ void main() {
       eventOn(3, DateTime(2003, 6, 2), [dentist]),
     ]);
 
-    listCubit.addFilterTag('dentist');
+    listCubit.addTypedTerm('dentist');
     await tester.pumpAndSettle();
 
     expect(find.byType(OnThisDayStrip), findsNothing);
@@ -118,10 +120,100 @@ void main() {
       eventOn(4, DateTime(now.year + 1, 1, 1), [dentist]),
     ]);
 
-    listCubit.addFilterTag('Dentist');
+    listCubit.addTypedTerm('Dentist');
     await tester.pumpAndSettle();
 
     expect(find.text('Event 4'), findsOneWidget);
     expect(find.byType(LastTimeSummary), findsNothing);
+  });
+
+  group('the search field', () {
+    final events = [
+      eventOn(1, DateTime(2001, 1, 1), [dentist]),
+      eventOn(2, DateTime(2003, 6, 2), [cinema]),
+    ];
+
+    components.Tag chipLabelled(WidgetTester tester, String label) =>
+        tester.widget<components.Tag>(find.ancestor(
+            of: find.text(label), matching: find.byType(components.Tag)));
+
+    testWidgets('a typed - excludes the tag', (tester) async {
+      await pumpPage(tester, events);
+
+      await tester.enterText(find.byType(TextField), '-dentist');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+
+      expect(
+          listCubit.state.terms, [const SearchTerm('Dentist', exclude: true)]);
+      expect(chipLabelled(tester, 'Dentist').excluded, isTrue);
+      expect(find.text('Event 1'), findsNothing);
+      expect(find.text('Event 2'), findsOneWidget);
+    });
+
+    testWidgets('a term naming no tag is a text chip, in quotes',
+        (tester) async {
+      await pumpPage(tester, events);
+
+      await tester.enterText(find.byType(TextField), 'event 2');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+
+      final chip = chipLabelled(tester, '\u201cevent 2\u201d');
+      expect(chip.color, '#e8eaed');
+      expect(chip.excluded, isFalse);
+      // The description matched, not a tag.
+      expect(find.text('Event 2'), findsOneWidget);
+      expect(find.text('Event 1'), findsNothing);
+
+      // A tap on the chip takes the term away.
+      await tester.tap(find.text('\u201cevent 2\u201d'));
+      await tester.pumpAndSettle();
+      expect(listCubit.state.terms, isEmpty);
+    });
+
+    testWidgets('the range is a chip of its own, a tap lifts it',
+        (tester) async {
+      await pumpPage(tester, events);
+
+      listCubit
+          .setRange(DayRange(DateTime(2003, 1, 1), DateTime(2003, 12, 31)));
+      await tester.pumpAndSettle();
+
+      final label = find.text('Jan 1, 2003 \u2013 Dec 31, 2003');
+      expect(label, findsOneWidget);
+      expect(chipLabelled(tester, 'Jan 1, 2003 \u2013 Dec 31, 2003').isDate,
+          isTrue);
+      expect(find.text('Event 1'), findsNothing);
+      expect(find.text('Event 2'), findsOneWidget);
+
+      await tester.tap(label);
+      await tester.pumpAndSettle();
+      expect(listCubit.state.range, isNull);
+      expect(find.text('Event 1'), findsOneWidget);
+    });
+
+    testWidgets('the calendar button picks the range', (tester) async {
+      await pumpPage(tester, events);
+
+      await tester.tap(find.byTooltip('Filter by dates'));
+      await tester.pumpAndSettle();
+      expect(find.byType(DateRangePickerDialog), findsOneWidget);
+
+      // Typed in, rather than scrolled to in the calendar.
+      await tester.tap(find.byIcon(Icons.edit_outlined));
+      await tester.pumpAndSettle();
+      final fields = find.byType(TextField);
+      await tester.enterText(
+          fields.at(fields.evaluate().length - 2), '6/1/2003');
+      await tester.enterText(fields.last, '6/30/2003');
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+
+      expect(listCubit.state.range,
+          DayRange(DateTime(2003, 6, 1), DateTime(2003, 6, 30)));
+      expect(find.text('Event 2'), findsOneWidget);
+      expect(find.text('Event 1'), findsNothing);
+    });
   });
 }

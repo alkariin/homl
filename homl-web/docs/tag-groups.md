@@ -75,7 +75,8 @@ Details and file pointers: the homl-ui README, "Tag groups".
   that are not there yet; a group with nothing left to add is not offered.
   On the Insert tab the event gets the tags. On the Search tab each tag
   becomes a filter, and the search keeps its AND semantics: "Family" finds
-  the events carrying all of its tags. The picker sheet lists the groups too.
+  the events carrying all of its tags, while "-Family" excludes each of them
+  and finds the events carrying none. The picker sheet lists the groups too.
 - **A name shared with a tag.** Enter adds the tag, what was typed; the group
   stays a tap away in the dropdown.
 - **Managing groups.** In the Categories tab, under the tags of a category:

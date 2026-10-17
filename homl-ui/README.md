@@ -318,7 +318,8 @@ linked to an event (`homl-web/docs/tag-groups.md`). In the app:
   name typed in full then enter — adds its tags that are not chipped yet, and
   a group with nothing left to add is no longer offered. On the Insert tab the
   event gets the tags; on the Search tab each tag becomes a filter, so the
-  search keeps its AND semantics and finds the events carrying them all. When
+  search keeps its AND semantics and finds the events carrying them all —
+  typed behind a `-` (`-Family`), each tag is excluded instead. When
   a tag and a group share a name, enter adds the tag (what was typed) and the
   group stays one tap away in the dropdown;
 - the picker sheet lists the groups too: tapping one hands its tags over, as
@@ -500,8 +501,8 @@ stored or asked of the server, so they work offline and for an E2EE account
 alike, and are never a day behind.
 
 - **On this day** (`lib/helpers/on_this_day.dart`,
-  `lib/pages/list/view/on_this_day_strip.dart`), on the whole list only: a
-  horizontal strip of the events that *started* on today's month and day in
+  `lib/pages/list/view/on_this_day_strip.dart`), on the whole list only (no
+  term, no range): a horizontal strip of the events that *started* on today's month and day in
   an earlier year, the most recent first, each card under "1 year ago",
   "10 years ago". The cards are the grid's own `EventCard`s, so a tap opens
   the detail sheet. Only the start counts: a period comes back on the
@@ -511,8 +512,8 @@ alike, and are never a day behind.
   1 March. The current year's events are not memories yet. No memory, no
   strip.
 - **Last time** (`lib/helpers/last_time.dart`,
-  `lib/pages/list/view/last_time_summary.dart`), once a filter is set: what
-  the results say about the past.
+  `lib/pages/list/view/last_time_summary.dart`), once a term or a range
+  narrows the list: what the results say about the past.
 
   ```
   Last time: 14 months ago · Aug 12, 2025
@@ -588,17 +589,53 @@ protection and merge rules: [homl-web/docs/data-export.md](../homl-web/docs/data
 
 ## Offline cache & local search
 
-The Search tab does **not** query the backend per filter change: it filters
-the shared in-memory events list locally, so the search is instant and works
-offline. The matching replicates the backend one (`FindEventsWithTags`):
+The Search tab does **not** query the backend per filter change: it searches
+the shared in-memory events list locally (`searchEvents` in
+`lib/helpers/event_search.dart`), so the search is instant, works offline and
+reaches the descriptions of an E2EE account, which only the device can read.
+What the field takes (`SearchTerm.parse`):
 
-- filter names are normalized to the backend's canonical title case
-  (`lib/helpers/event_search.dart` mirrors `application/text.go`), so any
-  typed casing matches;
-- each name matches through its whole synonym group
-  (`idParentTag ?? id` as the group root, see
-  `homl-web/docs/tag-synonyms.md`);
-- multiple filters use AND semantics.
+| Typed | Finds |
+| --- | --- |
+| `Alice` | a tag: the events carrying it |
+| `beach`, when no tag bears that name | the events whose description contains it |
+| `"Paris"` | the descriptions only, even with a tag named Paris |
+| `-Bob`, `-"beach"` | the events the term does **not** match |
+
+- **Tag or text.** A term is a tag when a tag bears its name, synonyms
+  included, and a text otherwise. That is settled at each search, never when
+  the term is typed: a term set before the categories load, or before its
+  tag exists, finds what it names once they do.
+- **Tags** match the way the backend does (`FindEventsWithTags`): names in
+  the backend's canonical title case (`normalizeTagName` mirrors
+  `application/text.go`), so any typed casing matches, and each name through
+  its whole synonym group (`idParentTag ?? id` as the group root, see
+  `homl-web/docs/tag-synonyms.md`). An excluded tag leaves its whole group
+  out.
+- **Texts** match anywhere in the description as one phrase, ignoring case,
+  the accents of the Latin letters, curly apostrophes and runs of spaces
+  (`foldForSearch`): `cafe by` finds "Café by the sea". Quotes may be the
+  typographic ones a phone keyboard types, and the closing one may be left
+  out.
+- **Dates.** The calendar button after the browse one opens the Material
+  date range picker. An event is kept when it took place on one of the
+  picked days at least: a period overlapping the range counts, an open one
+  runs until today. The range is a gold chip with a calendar icon, first in
+  the row; a tap lifts it, a new pick replaces it.
+- Every term and the range combine with **AND**.
+- **Chips.** A tag term wears its tag's chip, a text term a neutral grey one
+  in quotes, an excluded term a ban icon. A tap (or a long press) removes a
+  chip, as before. The same term typed the other way round (`-Bob` while
+  `Bob` is set) turns its chip over instead of adding a contradiction.
+- **The field** (`allowExclusion` on `TagInput`) reads a leading `-`: the
+  suggestions and the enter key work on what follows it, and the name it
+  reports keeps it (`-Bob`); a group picked behind a `-` excludes each of its
+  tags. While a `-` is typed the app bar mark ignores the suggestion, and it
+  only ever wears the included tags (`ListState.chosenTagNames`): an excluded
+  tag is not what the search is about. The empty field shows an example
+  (`-Bob, "beach"`), the `-` first so it survives a cut on a narrow phone.
+  The tag sheet adds tags by name (`ListCubit.addTag`), so a tag whose name
+  starts with a `-` is still searchable from there.
 
 While typing, the field autocompletes on the existing tags (prefix matches
 first, then substring matches); each suggestion is drawn as the chip it would
