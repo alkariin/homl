@@ -796,6 +796,30 @@ abstract class AppLocalizations {
   /// **'Filter by dates'**
   String get list_pickDates;
 
+  /// No description provided for @list_showTimeline.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the timeline'**
+  String get list_showTimeline;
+
+  /// No description provided for @list_showGrid.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the grid'**
+  String get list_showGrid;
+
+  /// No description provided for @timeline_empty.
+  ///
+  /// In en, this message translates to:
+  /// **'No period here. An event with an end date, or still ongoing, shows up on the timeline.'**
+  String get timeline_empty;
+
+  /// Under the timeline: the results it leaves out, which have no length to draw.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 single-day event is not shown} other{{count} single-day events are not shown}}'**
+  String timeline_singleDays(int count);
+
   /// No description provided for @list_noEvents.
   ///
   /// In en, this message translates to:

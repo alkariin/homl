@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:homl/components/event_card.dart';
 import 'package:homl/components/tag.dart' as components;
 import 'package:homl/data/models/category.dart';
 import 'package:homl/data/models/event.dart';
@@ -17,6 +18,7 @@ import 'package:homl/pages/list/bloc/list_cubit.dart';
 import 'package:homl/pages/list/list.dart';
 import 'package:homl/pages/list/view/last_time_summary.dart';
 import 'package:homl/pages/list/view/on_this_day_strip.dart';
+import 'package:homl/pages/list/view/period_timeline.dart';
 
 class MockHomeCubit extends MockCubit<HomeState> implements HomeCubit {}
 
@@ -48,15 +50,19 @@ void main() {
   late MockHomeCubit homeCubit;
   late ListCubit listCubit;
 
-  Future<void> pumpPage(WidgetTester tester, List<Event> events) async {
+  Future<void> pumpPage(WidgetTester tester, List<Event> events,
+      {List<Category>? withCategories}) async {
+    final shown = withCategories ?? categories;
     homeCubit = MockHomeCubit();
     whenListen(homeCubit, const Stream<HomeState>.empty(),
         initialState: HomeState.initial('user').copyWith(
             events: events,
-            categories: categories,
+            categories: shown,
             allTagsMap: {
-              for (final tag in [dentist, cinema])
-                tag.tag: TagView(tag.id, '#e8eaed', tag.tag, 2),
+              for (final category in shown)
+                for (final tag in category.tags)
+                  tag.tag:
+                      TagView(tag.id, category.color, tag.tag, category.id),
             },
             initialized: true));
     listCubit = ListCubit(homeCubit);
@@ -214,6 +220,119 @@ void main() {
           DayRange(DateTime(2003, 6, 1), DateTime(2003, 6, 30)));
       expect(find.text('Event 2'), findsOneWidget);
       expect(find.text('Event 1'), findsNothing);
+    });
+  });
+
+  group('the timeline', () {
+    // A Dates category first, as on a real account: the date tags are told
+    // apart by their category.
+    final dates = Category(
+        id: 1,
+        category: 'Dates',
+        color: '#D3A934',
+        isLocked: true,
+        kind: CategoryKind.date,
+        tags: []);
+    final lisbon = Tag(id: 5, tag: 'Lisbon', idCategory: 3);
+    final places = Category(
+        id: 3,
+        category: 'Places',
+        color: '#ccff90',
+        isLocked: false,
+        kind: CategoryKind.custom,
+        tags: [lisbon]);
+    final withPlaces = [dates, places, ...categories];
+
+    Event period(int id, DateTime date, List<Tag> tags,
+            {DateTime? end, bool ongoing = false, String text = ''}) =>
+        Event(
+            id: id,
+            description: text,
+            date: date,
+            endDate: end,
+            isOngoing: ongoing,
+            tags: tags);
+
+    Future<void> pumpTimeline(WidgetTester tester, List<Event> events) async {
+      await pumpPage(tester, events, withCategories: withPlaces);
+      listCubit.toggleTimeline();
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('takes the place of the grid and of the strip', (tester) async {
+      await pumpTimeline(tester, [
+        eventOn(1, anniversary, [cinema]),
+        period(2, DateTime(2019, 3, 1), [lisbon],
+            end: DateTime(2021, 6, 30), text: 'Moved'),
+      ]);
+
+      expect(find.byType(PeriodTimeline), findsOneWidget);
+      expect(find.byType(OnThisDayStrip), findsNothing);
+      expect(find.byType(EventCard), findsNothing);
+      expect(find.text('Lisbon'), findsOneWidget);
+      expect(find.text('2 years'), findsOneWidget);
+      expect(find.text('1 single-day event is not shown'), findsOneWidget);
+
+      // And back.
+      listCubit.toggleTimeline();
+      await tester.pumpAndSettle();
+      expect(find.byType(PeriodTimeline), findsNothing);
+      expect(find.byType(OnThisDayStrip), findsOneWidget);
+    });
+
+    testWidgets('a row is called by its tags, its description, its dates',
+        (tester) async {
+      await pumpTimeline(tester, [
+        period(1, DateTime(2019, 3, 1), [lisbon], end: DateTime(2021, 6, 30)),
+        period(2, DateTime(2015, 9, 1), [],
+            end: DateTime(2016, 6, 30), text: 'Gap year\nthen more'),
+        period(3, DateTime(2021, 3, 3), [], end: DateTime(2021, 6, 1)),
+        period(4, DateTime(2024, 5, 1), [], ongoing: true),
+      ]);
+
+      expect(find.text('Lisbon'), findsOneWidget);
+      expect(find.text('Gap year'), findsOneWidget);
+      expect(find.text('Mar 2021 – Jun 2021'), findsOneWidget);
+      expect(find.text('May 2024 – Ongoing'), findsOneWidget);
+      expect(find.textContaining('single-day'), findsNothing);
+    });
+
+    testWidgets('a tap on a row opens its event', (tester) async {
+      await pumpTimeline(tester, [
+        period(1, DateTime(2019, 3, 1), [lisbon],
+            end: DateTime(2021, 6, 30), text: 'Moved for the job'),
+      ]);
+      expect(find.text('Moved for the job'), findsNothing);
+
+      await tester.tap(find.text('Lisbon'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Moved for the job'), findsOneWidget);
+    });
+
+    testWidgets('follows the search', (tester) async {
+      await pumpTimeline(tester, [
+        period(1, DateTime(2019, 3, 1), [lisbon], end: DateTime(2021, 6, 30)),
+        period(2, DateTime(2010, 1, 1), [cinema], end: DateTime(2012, 1, 1)),
+      ]);
+      expect(find.text('Cinema'), findsOneWidget);
+
+      listCubit.addTypedTerm('Lisbon');
+      await tester.pumpAndSettle();
+
+      expect(find.text('Lisbon'), findsWidgets);
+      expect(find.text('Cinema'), findsNothing);
+    });
+
+    testWidgets('without a period, says what makes one', (tester) async {
+      await pumpTimeline(tester, [
+        eventOn(1, DateTime(2001, 1, 1), [cinema])
+      ]);
+
+      expect(
+          find.text('No period here. An event with an end date, or still '
+              'ongoing, shows up on the timeline.'),
+          findsOneWidget);
     });
   });
 }

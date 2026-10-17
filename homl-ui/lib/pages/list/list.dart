@@ -8,6 +8,7 @@ import 'package:homl/components/tag.dart' as components;
 import 'package:homl/components/tag_input.dart';
 import 'package:homl/data/models/category.dart';
 import 'package:homl/data/models/event.dart';
+import 'package:homl/data/models/tag.dart';
 import 'package:homl/helpers/categories.dart';
 import 'package:homl/helpers/category_labels.dart';
 import 'package:homl/helpers/colors.dart' as palette;
@@ -16,12 +17,14 @@ import 'package:homl/helpers/event_search.dart';
 import 'package:homl/helpers/last_time.dart';
 import 'package:homl/helpers/on_this_day.dart';
 import 'package:homl/helpers/tag_groups.dart';
+import 'package:homl/helpers/timeline.dart';
 import 'package:homl/pages/categories/view/category_management.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
 import 'package:homl/pages/list/bloc/list_cubit.dart';
 import 'package:homl/pages/list/view/event_detail_sheet.dart';
 import 'package:homl/pages/list/view/last_time_summary.dart';
 import 'package:homl/pages/list/view/on_this_day_strip.dart';
+import 'package:homl/pages/list/view/period_timeline.dart';
 
 class ListPage extends StatelessWidget {
   /// Chip of a term looked up in the descriptions: a neutral grey, so it
@@ -114,27 +117,55 @@ class ListPage extends StatelessWidget {
       };
 
       return BlocBuilder<ListCubit, ListState>(builder: (context, listState) {
+        // The tags map comes from the categories fetch: prefer it over the
+        // category carried by the event payload, which a cached event may
+        // have taken before a tag was moved.
+        bool isDateTag(Tag tag) {
+          final idCategory =
+              homeState.allTagsMap[tag.tag]?.idCategory ?? tag.idCategory;
+          return idCategory != null && dateIds.contains(idCategory);
+        }
+
         // The same card in the grid and in the "On this day" strip.
         Widget cardFor(Event event) => EventCard(
               event: event,
               tagColorResolver: (tagName) =>
                   homeState.allTagsMap[tagName]?.color,
-              // The tags map comes from the categories fetch: prefer it over
-              // the category carried by the event payload, which a cached
-              // event may have taken before a tag was moved.
-              isDateTag: (tag) {
-                final idCategory =
-                    homeState.allTagsMap[tag.tag]?.idCategory ?? tag.idCategory;
-                return idCategory != null && dateIds.contains(idCategory);
-              },
+              isDateTag: isDateTag,
               onTap: () => showEventDetailSheet(context, event: event),
             );
+
+        // A timeline row is called by its tags, like a card without the
+        // room for chips; the first line of the description otherwise.
+        String timelineLabel(Event event) {
+          final names = [
+            for (final tag in event.tags)
+              if (!isDateTag(tag)) localizedTagName(tag.tag, locale),
+          ];
+          if (names.isNotEmpty) return names.join(' \u00b7 ');
+          return event.description.trim().split('\n').first.trim();
+        }
+
+        // Its bar wears the color of its first tag in a real category. The
+        // pale Others grey would vanish on the light background: such a
+        // bar, like an untagged one, is drawn in the darker neutral grey.
+        String? timelineColor(Event event) {
+          for (final tag in event.tags) {
+            if (isDateTag(tag)) continue;
+            final view = homeState.allTagsMap[tag.tag];
+            if (view != null && !otherCategoryIds.contains(view.idCategory)) {
+              return view.color;
+            }
+          }
+          return null;
+        }
 
         // Both worked out at render time, like the period lengths: never
         // stored, so never a day behind. "On this day" over the whole list,
         // "Last time" over the results of a search.
         final today = DateTime.now();
-        final memories = listState.isSearching
+        // The strip opens the grid only: the timeline is a view of its own.
+        final memories = listState.isSearching || listState.timeline
             ? const <Memory>[]
             : eventsOnThisDay(homeState.events, today);
         final lastTime =
@@ -260,22 +291,33 @@ class ListPage extends StatelessWidget {
                                         lastTime: lastTime, today: today),
                                   ),
                                 ),
-                              SliverPadding(
-                                padding:
-                                    const EdgeInsets.fromLTRB(20, 22, 20, 25),
-                                sliver: SliverGrid.builder(
-                                  gridDelegate:
-                                      const SliverGridDelegateWithMaxCrossAxisExtent(
-                                    maxCrossAxisExtent: 250,
-                                    mainAxisSpacing: 20,
-                                    crossAxisSpacing: 20,
-                                    childAspectRatio: 155 / 160,
+                              if (listState.timeline)
+                                PeriodTimeline(
+                                  timeline: timelineOf(listState.events, today),
+                                  today: today,
+                                  labelOf: timelineLabel,
+                                  colorOf: timelineColor,
+                                  onTap: (event) => showEventDetailSheet(
+                                      context,
+                                      event: event),
+                                )
+                              else
+                                SliverPadding(
+                                  padding:
+                                      const EdgeInsets.fromLTRB(20, 22, 20, 25),
+                                  sliver: SliverGrid.builder(
+                                    gridDelegate:
+                                        const SliverGridDelegateWithMaxCrossAxisExtent(
+                                      maxCrossAxisExtent: 250,
+                                      mainAxisSpacing: 20,
+                                      crossAxisSpacing: 20,
+                                      childAspectRatio: 155 / 160,
+                                    ),
+                                    itemCount: listState.events.length,
+                                    itemBuilder: (context, index) =>
+                                        cardFor(listState.events[index]),
                                   ),
-                                  itemCount: listState.events.length,
-                                  itemBuilder: (context, index) =>
-                                      cardFor(listState.events[index]),
                                 ),
-                              ),
                             ],
                           ),
                   ),

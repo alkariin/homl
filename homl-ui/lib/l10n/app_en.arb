@@ -162,6 +162,16 @@
     "description": "Example search in the empty field: a tag excluded with a leading '-', then a text in quotes (searched in the descriptions); the '-' comes first so it survives a cut. Keep it short: the field is narrow on a phone."
   },
   "list_pickDates": "Filter by dates",
+  "list_showTimeline": "Show the timeline",
+  "list_showGrid": "Show the grid",
+  "timeline_empty": "No period here. An event with an end date, or still ongoing, shows up on the timeline.",
+  "timeline_singleDays": "{count, plural, =1{1 single-day event is not shown} other{{count} single-day events are not shown}}",
+  "@timeline_singleDays": {
+    "description": "Under the timeline: the results it leaves out, which have no length to draw.",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
   "list_noEvents": "No events found",
   "list_editEvent": "Edit event",
   "list_deleteEventTitle": "Delete event?",

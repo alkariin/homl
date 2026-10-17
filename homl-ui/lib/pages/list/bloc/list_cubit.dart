@@ -38,6 +38,7 @@ class ListCubit extends Cubit<ListState> {
       events: searchEvents(home.events, home.categories,
           terms: terms, range: range, today: _now()),
       loading: !home.initialized,
+      timeline: state.timeline,
     ));
   }
 
@@ -73,6 +74,18 @@ class ListCubit extends Cubit<ListState> {
   /// Narrows the search to [range], replacing the one set before; null lifts
   /// it.
   void setRange(DayRange? range) => _search(state.terms, range);
+
+  /// Switches between the grid of cards and the timeline of the periods.
+  /// The search stays as it is: both views show the same results.
+  void toggleTimeline() {
+    emit(ListState(
+      terms: state.terms,
+      range: state.range,
+      events: state.events,
+      loading: state.loading,
+      timeline: !state.timeline,
+    ));
+  }
 
   @override
   Future<void> close() {
