@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'package:homl/components/logo.dart';
 import 'package:homl/helpers/colors.dart';

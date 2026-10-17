@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Design palette of the app.
 const Color yellow = Color(0xFFD3A934);

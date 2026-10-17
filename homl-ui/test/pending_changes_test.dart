@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -7,11 +7,12 @@ import 'package:homl/components/pending_changes.dart';
 import 'package:homl/data/models/event.dart';
 import 'package:homl/data/store/local_store.dart';
 import 'package:homl/data/sync/outbox.dart';
+import 'package:homl/helpers/localizations.dart';
 import 'package:homl/helpers/server_reachability.dart';
 import 'package:homl/l10n/app_localizations.dart';
 
 Widget _app(Widget child) => MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      localizationsDelegates: appLocalizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(appBar: AppBar(actions: [child])),
     );
@@ -108,7 +109,7 @@ void main() {
 
   testWidgets('a card made offline wears a clock', (tester) async {
     Widget card(bool pending) => MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
             body: SizedBox(

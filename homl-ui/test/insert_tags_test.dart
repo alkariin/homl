@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -12,6 +12,7 @@ import 'package:homl/data/repositories/categories.repository.dart';
 import 'package:homl/data/repositories/events.repository.dart';
 import 'package:homl/data/repositories/settings.repository.dart';
 import 'package:homl/data/repositories/tags.repository.dart';
+import 'package:homl/helpers/localizations.dart';
 import 'package:homl/l10n/app_localizations.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
 import 'package:homl/pages/insert/bloc/insert_cubit.dart';
@@ -81,7 +82,7 @@ void main() {
 
   Widget wrap() {
     return MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      localizationsDelegates: appLocalizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: MultiRepositoryProvider(
         providers: [

@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'dart:ui';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:homl/helpers/localizations.dart';
 import 'package:homl/l10n/app_localizations.dart';
 
 import 'package:homl/components/biometric_dialog.dart';
@@ -153,7 +154,7 @@ class _AppViewState extends State<AppView> with WidgetsBindingObserver {
         scaffoldMessengerKey: _scaffoldMessengerKey,
         navigatorObservers: [_toastObserver],
         theme: homlTheme(),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         locale: Locale(state.locale.text),
         builder: (context, child) {

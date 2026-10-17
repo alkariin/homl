@@ -172,6 +172,14 @@ dart run build_runner build --delete-conflicting-outputs   # lib/data/models/*.g
 flutter gen-l10n                                           # lib/l10n/app_localizations*.dart
 ```
 
+Material comes from the `material_ui` package (Flutter 3.47 moved it out of
+the SDK and froze the `package:flutter/material.dart` copy): import
+`package:material_ui/material_ui.dart`. Every `MaterialApp`, tests included,
+takes `appLocalizationsDelegates` (`lib/helpers/localizations.dart`), never the
+generated `AppLocalizations.localizationsDelegates`, which still lists
+flutter_localizations' delegates: material_ui would find no French or German
+`MaterialLocalizations` and throw.
+
 Translations live in `lib/l10n/app_{en,fr,de}.arb` (`app_en.arb` is the
 template, see `l10n.yaml`). The three files must stay in sync — `flutter
 gen-l10n` reports every key missing from a locale as an untranslated message.
