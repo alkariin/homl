@@ -37,6 +37,8 @@ See each sub-project's README for full setup.
 **Self-hosting?** Before opening the instance to anyone, put
 `homl-web/scripts/backup.sh` in root's crontab and rehearse one restore with
 `scripts/restore.sh` — see [deployment.md §7](homl-web/docs/deployment.md#7-backups).
+Once the accounts it is meant for exist, set `REGISTRATION_OPEN=false` so
+nobody else can sign up — see [deployment.md §3](homl-web/docs/deployment.md#create-the-accounts-then-close-sign-ups).
 
 App icons and native splash screens are generated from the logo — see
 [`homl-ui/tool/icons/README.md`](homl-ui/tool/icons/README.md) to regenerate them.

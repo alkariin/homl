@@ -48,6 +48,7 @@ Set the production values too:
 ENVIRONMENT=PROD                      # shorter token lifetime, gin in release mode
 CORS_ORIGIN=https://homl.example.com  # the origin serving the web client, no wildcard
 TRUSTED_PROXIES=172.16.0.0/12         # see §4 — required behind a proxy
+REGISTRATION_OPEN=true                # false once your accounts exist, see §3
 ```
 
 `.env` is git-ignored and must stay that way; it is the one file on the host
@@ -94,6 +95,28 @@ curl -fsS http://127.0.0.1:8080/healthz
 build argument, which `make dev|up|build` fill with `git describe`; a bare
 `docker compose up --build` leaves it at `dev`, so on the server pass it
 explicitly (see §8).
+
+### Create the accounts, then close sign-ups
+
+A fresh instance takes new accounts from anyone who reaches it. Create the
+accounts it is meant for from the app, then close registration in `.env`
+and recreate the container:
+
+```ini
+REGISTRATION_OPEN=false
+```
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+curl -fsS http://127.0.0.1:8080/api/registration   # {"open":false}
+```
+
+From then on a sign-up is refused with `403 REGISTRATION_CLOSED`, and the
+app's sign-up page says the server takes no new accounts instead of showing
+its form. Existing accounts are untouched: login, password reset and account
+deletion work as before. To add someone later, open it again for the time
+it takes. Only `true` or `false` (also `1`/`0`) are accepted: any other
+value stops the service at startup rather than being read as either.
 
 ## 4. TLS and the reverse proxy
 
@@ -309,6 +332,7 @@ than assume.
 - [ ] `ENVIRONMENT=PROD`, `CORS_ORIGIN` set to the real origin
 - [ ] `TRUSTED_PROXIES` matching the actual proxy (§4)
 - [ ] Migrations applied, **seeder never run**
+- [ ] Your accounts created, then `REGISTRATION_OPEN=false` (§3)
 - [ ] TLS working, port 8080 not reachable from outside
 - [ ] `3306` and `6379` not reachable from outside (`ss -ltn` on the host)
 - [ ] SMTP configured, a real reset email received
