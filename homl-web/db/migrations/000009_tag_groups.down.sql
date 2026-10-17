@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS `TagGroupMembers`;
+DROP TABLE IF EXISTS `TagGroups`;

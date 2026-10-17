@@ -46,9 +46,10 @@ the handlers next to it.
   | `PIN_INCORRECT` | 401 | `attemptsRemaining` | `POST /refresh` |
   | `PIN_LOCKED` | 401 | — | `POST /refresh` |
   | `RESET_CODE_INVALID` | 401 | — | `POST /confirmResetPassword` |
-  | `TAG_NAME_CONFLICT` | 409 | — | `POST /tags`, `PATCH /tags/:id`, `DELETE /categories/:id` |
+  | `TAG_NAME_CONFLICT` | 409 | — | `POST /tags`, `PATCH /tags/:id`, `POST /tagGroups`, `PATCH /tagGroups/:id`, `DELETE /categories/:id` |
 
-- **Creations** — `POST /categories`, `POST /tags` and `POST /events` answer
+- **Creations** — `POST /categories`, `POST /tags`, `POST /tagGroups` and
+  `POST /events` answer
   `201` with the id of the new row, `{ "id": 42 }`, so a client can address
   what it just created (an edit or a delete queued behind the creation, say)
   without refetching the whole list.
@@ -235,15 +236,23 @@ All endpoints require auth. A category groups tags; locked categories
 ```json
 [
   { "id": 1, "category": "Dates", "color": "#ffff60", "isLocked": true,
-    "kind": "date", "tags": [ { "id": 3, "tag": "2024", "idParentTag": null } ] }
+    "kind": "date", "tags": [ { "id": 3, "tag": "2024", "idParentTag": null } ],
+    "groups": [] },
+  { "id": 2, "category": "Persons", "color": "#60ccff", "isLocked": false,
+    "kind": "person",
+    "tags": [ { "id": 7, "tag": "Alice", "idParentTag": null },
+              { "id": 8, "tag": "Bob", "idParentTag": null } ],
+    "groups": [ { "id": 4, "name": "Family", "members": [7, 8] } ] }
 ]
 ```
 
 `idParentTag` is the synonym link (`null` on a main tag, see
-[tag-synonyms.md](tag-synonyms.md)).
+[tag-synonyms.md](tag-synonyms.md)). `groups` lists the category's tag
+groups, each with the ids of its member tags (see [Tag groups](#tag-groups)).
 
 `DELETE` with `"moveTags": true` moves the category's tags (synonym links
-intact) to the user's Other category instead of deleting them, and
+intact) and its tag groups to the user's Other category instead of deleting
+them, and
 `deleteEvents` is then ignored — a move never deletes anything. With
 `"moveTags": false` the tags are deleted, and `"deleteEvents": true` also
 deletes every event tagged with one of them, whatever other tags it carries;
@@ -252,9 +261,9 @@ without it those events are preserved, only the tags are removed from them
 default to `false`, the option that destroys the least.
 
 The whole deletion is one transaction, so a failure leaves the category, its
-tags and its events untouched. Tag names being unique per category,
+tags and its events untouched. Tag and group names being unique per category,
 `"moveTags": true` is refused with a `409` when the Other category already
-holds a tag of the same name:
+holds a tag (or a group) of the same name:
 
 ```json
 { "error": { "type": "CONFLICT", "code": "TAG_NAME_CONFLICT",
@@ -336,6 +345,35 @@ confirmation dialog:
 `deleteEvents` would delete), `exclusiveEvents` the ones that have no other
 non-date tag — the ones a deletion that keeps the events would leave
 date-only.
+
+## Tag groups
+
+All endpoints require auth. A tag group is a named set of main tags of one
+category, which the app expands into its members when the user picks it; it
+is never linked to an event. Rules and lifecycle: [tag-groups.md](tag-groups.md).
+
+| Method | Path | Body | Response |
+| --- | --- | --- | --- |
+| POST | `/tagGroups` | `{name, idCategory, members, nameIndex?}` | `201` `{id}` |
+| PATCH | `/tagGroups/:id` | `{name, members, nameIndex?}` | `204` |
+| DELETE | `/tagGroups/:id` | — | `204` |
+
+The groups are read through `GET /categories` (the `groups` of each
+category).
+
+- `members` are ids of main tags of the group's category (no synonym, no
+  other category, at least one; duplicates are dropped). Anything else is a
+  `400`, and so is the date category as `idCategory`.
+- `name` is title-cased and checked against the reserved date names, like a
+  tag name. **E2EE users** send an `e2ee:v1:` blob and its 32-char
+  `nameIndex` instead (see [e2ee.md](e2ee.md)).
+- Names are unique per category: `POST` and `PATCH` onto a name another group
+  of the category holds answer `409` `TAG_NAME_CONFLICT`, writing nothing.
+- `PATCH` is full-state (the name and the whole member list), so a replay
+  changes nothing and answers `204` again. A group never changes category:
+  an `idCategory` in the body is ignored.
+- `DELETE` removes the group only, never its tags or their events. An unknown
+  id, or another user's group, is a `404`.
 
 ## Events
 
@@ -476,22 +514,24 @@ up to 32 MiB and runs under its own 60 s timeout.
   "keyCheck": "<64 hex chars>",
   "categories": [ { "id": 1, "category": "e2ee:v1:…" } ],
   "tags":       [ { "id": 7, "tag": "e2ee:v1:…", "tagIndex": "<32 hex chars>" } ],
+  "tagGroups":  [ { "id": 4, "name": "e2ee:v1:…", "nameIndex": "<32 hex chars>" } ],
   "events":     [ { "id": 42, "description": "e2ee:v1:…" } ]
 }
 ```
 
 - `direction: "enable"` — values are client-encrypted blobs; every tag needs
-  its `tagIndex`; `keyCheck` (stored on the user) lets a restoring device
-  verify a typed recovery phrase. Malformed values return `400`.
+  its `tagIndex` and every tag group its `nameIndex`; `keyCheck` (stored on
+  the user) lets a restoring device verify a typed recovery phrase. Malformed
+  values return `400`.
 - `direction: "disable"` — values are plaintext; the server re-normalizes
   names, re-encrypts everything with the at-rest scheme and clears the
-  indexes and `keyCheck`. Two tags collapsing onto the same name in one
-  category return `409` (the client merges them first).
+  indexes and `keyCheck`. Two tags (or two tag groups) collapsing onto the
+  same name in one category return `409` (the client merges them first).
 
 ### POST /e2ee/purge
 
-Lost-key escape hatch: deletes every event, tag and category of the user,
-reseeds the default categories and disables E2EE — the account survives, the
-data does not. It also gives the user a new `dataGeneration` (see Settings):
+Lost-key escape hatch: deletes every event, tag, tag group and category of
+the user, reseeds the default categories and disables E2EE — the account
+survives, the data does not. It also gives the user a new `dataGeneration` (see Settings):
 the old ids are gone. Returns `409` if the user is not in E2EE mode. The
 client double-confirms before calling.

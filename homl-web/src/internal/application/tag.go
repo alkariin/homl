@@ -41,6 +41,20 @@ func NewTagsService(c *TSConfig) TagsService {
 // cost of never colliding with a year.
 var yearTagName = regexp.MustCompile(`^[0-9]{4}$`)
 
+// isReservedTagName reports whether a title-cased name is reserved for the
+// date tags: the month names and Ongoing (masterdata), plus any four-digit
+// name, which could collide with a year tag. The backend derives all of these
+// from event dates, and the client matches a filter through every category
+// carrying the name. Tag groups follow the same rule (see tag_group.go).
+func isReservedTagName(uName string) bool {
+	for _, e := range masterdata.BlacklistedTags() {
+		if e == uName {
+			return true
+		}
+	}
+	return yearTagName.MatchString(uName)
+}
+
 // validateTag runs the checks shared by CreateTag and UpdateTag and returns
 // the tag name ready to be stored (title-cased plaintext to encrypt, or the
 // client blob as-is for E2EE users).
@@ -74,20 +88,8 @@ func (t *tagsService) validateTag(ctx context.Context, idUser uint64, tag *categ
 		return "", apperror.NewBadRequest("The given idCategory is not valid")
 	}
 
-	// Check that the tag is not blacklisted: the month names and Ongoing
-	// (masterdata), plus any four-digit name, which could collide with a year
-	// tag. The backend derives all of these from event dates, and the client
-	// matches a filter through every category carrying the name.
-	blacklistTags := masterdata.BlacklistedTags()
-
 	uTag := titleCase(tag.Tag)
-
-	for _, e := range blacklistTags {
-		if e == uTag {
-			return "", apperror.NewBadRequest("The given tag is not accepted")
-		}
-	}
-	if yearTagName.MatchString(uTag) {
+	if isReservedTagName(uTag) {
 		return "", apperror.NewBadRequest("The given tag is not accepted")
 	}
 

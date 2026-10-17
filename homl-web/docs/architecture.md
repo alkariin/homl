@@ -119,7 +119,7 @@ Three cross-cutting rules the layers enforce:
 
 | Store | Holds |
 | --- | --- |
-| MySQL | `Users` (credentials, pin, pkey, challenge, settings columns, E2EE flag + key check, data generation), `Categories`, `Tags` (incl. the E2EE blind index), `Events` (incl. the client's `clientId` for replayed creates), `EventsTags` |
+| MySQL | `Users` (credentials, pin, pkey, challenge, settings columns, E2EE flag + key check, data generation), `Categories`, `Tags` (incl. the E2EE blind index), `TagGroups` + `TagGroupMembers`, `Events` (incl. the client's `clientId` for replayed creates), `EventsTags` |
 | Redis | Access/refresh sessions (`uuid → user_id`, TTL = token expiry; pending rotations `auth:rot:*` / `auth:prev:*`, see [auth-flows.md](auth-flows.md)), password-reset codes with their attempt counter and per-user cooldown (`pwdreset:*`, 15 min TTL), rate-limit counters (`rl:<endpoint>:<ip>`) |
 
 Every table is owned by a user through a cascading foreign key, so deleting an

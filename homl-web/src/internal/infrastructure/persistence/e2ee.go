@@ -59,6 +59,9 @@ func (r *E2EERepository) Migrate(ctx context.Context, idUser uint64, enable bool
 	if err := checkIdSetMatches(ctx, tx, "SELECT t.id FROM Tags t INNER JOIN Categories c ON t.idCategory = c.id WHERE c.idUser = ?", idUser, tagIds(data)); err != nil {
 		return err
 	}
+	if err := checkIdSetMatches(ctx, tx, "SELECT g.id FROM TagGroups g INNER JOIN Categories c ON g.idCategory = c.id WHERE c.idUser = ?", idUser, tagGroupIds(data)); err != nil {
+		return err
+	}
 	if err := checkIdSetMatches(ctx, tx, "SELECT id FROM Events WHERE idUser = ?", idUser, eventIds(data)); err != nil {
 		return err
 	}
@@ -101,6 +104,30 @@ func (r *E2EERepository) Migrate(ctx context.Context, idUser uint64, enable bool
 			var mysqlErr *mysql.MySQLError
 			if errors.As(err, &mysqlErr) && mysqlErr.Number == mysqlDuplicateEntry {
 				return apperror.NewConflict("tag", "duplicate in category")
+			}
+			return err
+		}
+	}
+
+	// Tag group ids were verified like the tag ids above.
+	groupStmt, err := tx.PrepareContext(ctx, "UPDATE TagGroups SET name = ?, nameIndex = ? WHERE id = ?")
+	if err != nil {
+		return err
+	}
+	defer groupStmt.Close()
+	for _, g := range data.TagGroups {
+		value := g.Name
+		if !enable {
+			if value, err = r.Crypto.Encrypt(g.Name, idUser); err != nil {
+				return err
+			}
+		}
+		if _, err := groupStmt.ExecContext(ctx, value, g.NameIndex, g.Id); err != nil {
+			// Two groups of a category collapsing onto the same name, like
+			// the tags above.
+			var mysqlErr *mysql.MySQLError
+			if errors.As(err, &mysqlErr) && mysqlErr.Number == mysqlDuplicateEntry {
+				return apperror.NewConflict("tagGroup", "duplicate in category")
 			}
 			return err
 		}
@@ -150,8 +177,8 @@ func (r *E2EERepository) Purge(ctx context.Context, idUser uint64) error {
 	if _, err := tx.ExecContext(ctx, "DELETE FROM Events WHERE idUser = ?", idUser); err != nil {
 		return err
 	}
-	// Deleting the categories cascades to their tags and any remaining
-	// EventsTags rows.
+	// Deleting the categories cascades to their tags, tag groups and any
+	// remaining EventsTags rows.
 	if _, err := tx.ExecContext(ctx, "DELETE FROM Categories WHERE idUser = ?", idUser); err != nil {
 		return err
 	}
@@ -211,6 +238,14 @@ func tagIds(data *e2ee.MigrationData) []uint {
 	ids := make([]uint, 0, len(data.Tags))
 	for _, t := range data.Tags {
 		ids = append(ids, t.Id)
+	}
+	return ids
+}
+
+func tagGroupIds(data *e2ee.MigrationData) []uint {
+	ids := make([]uint, 0, len(data.TagGroups))
+	for _, g := range data.TagGroups {
+		ids = append(ids, g.Id)
 	}
 	return ids
 }

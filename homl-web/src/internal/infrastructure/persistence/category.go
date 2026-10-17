@@ -140,10 +140,11 @@ func (c *CategoriesRepository) Update(ctx context.Context, category *category.Ca
 }
 
 // Delete removes a category. moveTags relocates its tags (synonym links
-// intact) to the user's Other category; otherwise the tags are cascade-
-// deleted and deleteEvents decides whether every event tagged with one of
-// them is deleted too or preserved (only the tags are removed from them).
-// A move whose tag name is already taken in Other is refused as a conflict.
+// intact) and its tag groups to the user's Other category; otherwise the
+// tags and groups are cascade-deleted and deleteEvents decides whether every
+// event tagged with one of the tags is deleted too or preserved (only the
+// tags are removed from them). A move whose tag or group name is already
+// taken in Other is refused as a conflict.
 func (c *CategoriesRepository) Delete(ctx context.Context, idCategory uint, idUser uint64, moveTags bool, deleteEvents bool) error {
 	tx, err := c.DB.BeginTxx(ctx, nil)
 	if err != nil {
@@ -183,6 +184,14 @@ func (c *CategoriesRepository) Delete(ctx context.Context, idCategory uint, idUs
 			// still there and the other two options remain available.
 			return tagNameConflict(err,
 				"A tag of this category already exists in the Other category")
+		}
+
+		// The tag groups go along with their members, which keeps them
+		// valid (a group only holds tags of its own category).
+		_, err = tx.ExecContext(ctx, `UPDATE TagGroups SET idCategory = ? WHERE idCategory = ?;`, idCategoryOther, idCategory)
+		if err != nil {
+			return tagNameConflict(err,
+				"A tag group of this category already exists in the Other category")
 		}
 	} else if deleteEvents {
 		// Delete every event tagged with one of the category's tags (whatever

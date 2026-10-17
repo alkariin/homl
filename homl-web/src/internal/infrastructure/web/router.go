@@ -74,6 +74,7 @@ type Server struct {
 	User        *UserHandler
 	Category    *CategoryHandler
 	Tag         *TagHandler
+	TagGroup    *TagGroupHandler
 	Event       *EventHandler
 	Settings    *SettingsHandler
 	E2EE        *E2EEHandler
@@ -143,6 +144,10 @@ func SetupRouter(s *Server, baseUrl string, timeoutDuration time.Duration, isDev
 	g.PATCH("/tags/:id", authRequired, e2eeFlag, s.Tag.UpdateTag)
 	g.DELETE("/tags/:id", authRequired, e2eeFlag, s.Tag.DeleteTag)
 	g.GET("/tags/:id/usage", authRequired, e2eeFlag, s.Tag.GetTagUsage)
+
+	g.POST("/tagGroups", authRequired, e2eeFlag, s.TagGroup.CreateTagGroup)
+	g.PATCH("/tagGroups/:id", authRequired, e2eeFlag, s.TagGroup.UpdateTagGroup)
+	g.DELETE("/tagGroups/:id", authRequired, e2eeFlag, s.TagGroup.DeleteTagGroup)
 
 	g.GET("/events", authRequired, e2eeFlag, s.Event.GetEvents)
 	g.POST("/events", authRequired, e2eeFlag, s.Event.CreateEvent)

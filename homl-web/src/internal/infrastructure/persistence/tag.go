@@ -70,6 +70,41 @@ func (c *CategoriesRepository) UpdateTag(ctx context.Context, tagNameEncrypt str
 		}
 	}
 
+	// A tag group only holds main tags of its own category
+	// (docs/tag-groups.md). A tag turned synonym hands its memberships over
+	// to its main tag — the ones of the main tag's category — the way a
+	// deleted synonym hands over its events; a tag leaving its category
+	// leaves that category's groups. No-op for a plain rename.
+	if idParentTag != nil {
+		_, err = tx.ExecContext(ctx, `
+			INSERT INTO TagGroupMembers (idGroup, idTag)
+			SELECT m.idGroup, ? FROM TagGroupMembers m
+			INNER JOIN TagGroups g ON g.id = m.idGroup
+			WHERE m.idTag = ?
+			AND g.idCategory = ?
+			AND NOT EXISTS (
+				SELECT 1 FROM TagGroupMembers m2
+				WHERE m2.idGroup = m.idGroup
+				AND m2.idTag = ?
+			)
+		`, *idParentTag, idTag, idCategory, *idParentTag)
+		if err != nil {
+			return err
+		}
+
+		_, err = tx.ExecContext(ctx, "DELETE FROM TagGroupMembers WHERE idTag = ?", idTag)
+	} else {
+		_, err = tx.ExecContext(ctx, `
+			DELETE m FROM TagGroupMembers m
+			INNER JOIN TagGroups g ON g.id = m.idGroup
+			WHERE m.idTag = ?
+			AND g.idCategory <> ?
+		`, idTag, idCategory)
+	}
+	if err != nil {
+		return err
+	}
+
 	return tx.Commit()
 }
 
@@ -79,6 +114,9 @@ func (c *CategoriesRepository) UpdateTag(ctx context.Context, tagNameEncrypt str
 //   - deleting a main tag deletes its whole synonym group; deleteEvents
 //     decides whether every event tagged with the group is deleted too or
 //     preserved (only the tag is removed from them).
+//
+// The tag groups it belonged to lose it (TagGroupMembers cascade) and stay,
+// even emptied.
 func (c *CategoriesRepository) DeleteTag(ctx context.Context, idTag uint, idUser uint64, deleteEvents bool) error {
 	tx, err := c.DB.BeginTxx(ctx, nil)
 	if err != nil {

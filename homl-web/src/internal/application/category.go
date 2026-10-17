@@ -41,6 +41,10 @@ func (c *categoriesService) GetCategories(ctx context.Context, idUser uint64) ([
 	if err != nil {
 		return nil, err
 	}
+	groups, err := c.CategoriesRepository.GetAllTagGroups(ctx, idUser)
+	if err != nil {
+		return nil, err
+	}
 
 	isE2ee := e2ee.Enabled(ctx)
 
@@ -68,6 +72,10 @@ func (c *categoriesService) GetCategories(ctx context.Context, idUser uint64) ([
 		if catTags == nil {
 			catTags = []category.TagDTO{}
 		}
+		catGroups := groups[cat.Id]
+		if catGroups == nil {
+			catGroups = []category.TagGroupDTO{}
+		}
 
 		response := category.GetCategoryResponse{
 			Id:       cat.Id,
@@ -76,6 +84,7 @@ func (c *categoriesService) GetCategories(ctx context.Context, idUser uint64) ([
 			IsLocked: cat.IsLocked,
 			Kind:     cat.Kind,
 			Tags:     catTags,
+			Groups:   catGroups,
 		}
 		responses = append(responses, response)
 	}
@@ -150,10 +159,11 @@ func (c *categoriesService) storedCategoryValue(ctx context.Context, newCategory
 	return c.Crypto.Encrypt(uCategory, newCategory.IdUser)
 }
 
-// DeleteCategory removes a category: moveTags relocates its tags to the Other
-// category (refused with a conflict when a name is already taken there),
-// otherwise deleteEvents decides whether the events whose only non-date tags
-// lived here are deleted too or preserved date-only.
+// DeleteCategory removes a category: moveTags relocates its tags and tag
+// groups to the Other category (refused with a conflict when a name is
+// already taken there), otherwise deleteEvents decides whether the events
+// whose only non-date tags lived here are deleted too or preserved
+// date-only.
 func (c *categoriesService) DeleteCategory(ctx context.Context, idCategory uint, idUser uint64, moveTags bool, deleteEvents bool) error {
 	return c.CategoriesRepository.Delete(ctx, idCategory, idUser, moveTags, deleteEvents)
 }

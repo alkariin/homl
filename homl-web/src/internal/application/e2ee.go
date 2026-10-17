@@ -37,9 +37,10 @@ func NewE2EEService(c *E2EEConfig) E2EEService {
 }
 
 // Migrate validates and applies the whole-dataset swap. On enable every value
-// must be a well-formed client blob and every tag must carry its blind index;
-// on disable the values are plaintext and tag/category names are re-normalized
-// before the repository re-encrypts them with the at-rest scheme.
+// must be a well-formed client blob and every tag and tag group must carry its
+// blind index; on disable the values are plaintext and tag, tag group and
+// category names are re-normalized before the repository re-encrypts them
+// with the at-rest scheme.
 func (s *e2eeService) Migrate(ctx context.Context, idUser uint64, direction string, keyCheck string, data *e2ee.MigrationData) error {
 	switch direction {
 	case E2EEDirectionEnable:
@@ -68,6 +69,13 @@ func (s *e2eeService) Migrate(ctx context.Context, idUser uint64, direction stri
 			data.Tags[i].Tag = titleCase(data.Tags[i].Tag)
 			data.Tags[i].TagIndex = nil
 		}
+		for i := range data.TagGroups {
+			if strings.TrimSpace(data.TagGroups[i].Name) == "" {
+				return apperror.NewBadRequest("A tag group name cannot be empty")
+			}
+			data.TagGroups[i].Name = titleCase(data.TagGroups[i].Name)
+			data.TagGroups[i].NameIndex = nil
+		}
 		return s.E2EERepository.Migrate(ctx, idUser, false, nil, data)
 
 	default:
@@ -89,6 +97,14 @@ func validateE2EEData(data *e2ee.MigrationData) error {
 		}
 		if t.TagIndex == nil || !e2ee.IsIndex(*t.TagIndex) {
 			return apperror.NewBadRequest("A tag is missing a valid tagIndex")
+		}
+	}
+	for _, g := range data.TagGroups {
+		if !e2ee.IsBlob(g.Name) {
+			return apperror.NewBadRequest("A tag group name is not a valid encrypted payload")
+		}
+		if g.NameIndex == nil || !e2ee.IsIndex(*g.NameIndex) {
+			return apperror.NewBadRequest("A tag group is missing a valid nameIndex")
 		}
 	}
 	for _, ev := range data.Events {
