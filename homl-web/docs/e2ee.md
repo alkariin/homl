@@ -207,8 +207,9 @@ atomic metadata commit; the endpoint itself does not change.
   `lib/helpers/encryption.dart` stays what it always was: the ed25519
   device-key helpers of the fingerprint factor, unrelated to E2EE.
 - **Repositories**: for E2EE users, encrypt on write / decrypt on read at the
-  repository layer (`events`, `categories`, `tags`). Filtering by tags sends
-  indexes.
+  repository layer (`events`, `categories`, `tags`; the tag group names go
+  through `categories`, normalized then encrypted, their blind index sent
+  alongside). Filtering by tags sends indexes.
 - **Offline cache**: the client's local store (`homl-ui/lib/data/store/`)
   keeps the events and categories payloads verbatim, so the **ciphertext**
   for E2EE users, sealed once more under a device key; decryption happens in

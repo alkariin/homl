@@ -11,7 +11,8 @@ device can read the data anyway.
 Related: [api.md](api.md) (the routes the import writes through),
 [e2ee.md](e2ee.md), [offline-sync.md](offline-sync.md),
 [default-categories.md](default-categories.md),
-[tag-synonyms.md](tag-synonyms.md), [event-periods.md](event-periods.md).
+[tag-synonyms.md](tag-synonyms.md), [tag-groups.md](tag-groups.md),
+[event-periods.md](event-periods.md).
 
 ## What the file holds
 
@@ -19,6 +20,7 @@ Related: [api.md](api.md) (the routes the import writes through),
 | --- | --- |
 | the categories: name, color, kind | the Dates category and every date tag (month, year, `Ongoing`): they follow from the periods and are rebuilt on import |
 | the tags, each main tag with its synonyms | server ids: everything is referenced by name |
+| the tag groups, each with the names of its tags | a group whose tags were all deleted |
 | the events: start day, end day or "ongoing", description, tags | settings (language, home tab), PIN, fingerprint, password |
 | when it was exported | the E2EE key or recovery phrase |
 
@@ -40,6 +42,9 @@ read back (and checked) by `ExportFile.fromJson`.
       "tags": [
         { "name": "Alice", "synonyms": ["Ali"] },
         { "name": "Bob" }
+      ],
+      "groups": [
+        { "name": "Family", "tags": ["Alice", "Bob"] }
       ]
     },
     {
@@ -76,11 +81,16 @@ read back (and checked) by `ExportFile.fromJson`.
 | `categories[].kind` | optional: `person`, `other`, `custom` (see [default-categories.md](default-categories.md)); a `date` category is ignored on import |
 | `categories[].color` | a hex color the backend accepts (`#rgb`, `#rgba`, `#rrggbb`, `#rrggbbaa`) |
 | `categories[].tags[]` | `name` (non-blank) and optional `synonyms` (non-blank names) |
+| `categories[].groups[]` | optional: `name` (non-blank) and `tags`, at least one name, each listed under the category's `tags` (a synonym stands for its main tag) |
 | `events[].date` | `YYYY-MM-DD`, a calendar day like the backend `DATE` column |
 | `events[].endDate` | optional, inclusive end of a closed period, not before `date`; one on `date` is read as a single day |
 | `events[].isOngoing` | optional, `true` for an open period; never with `endDate` |
 | `events[].description` | optional, plain text |
 | `events[].tags[]` | `{category, tag}`: the tag (main or synonym) of that name in the category of that name, which **must** be listed under `categories` |
+
+The groups came with version 1 as an optional field, so the version did not
+change: an app that predates them reads such a file and imports everything
+but the groups.
 
 Events are written oldest first, the events of one day in the order they were
 created; an import creates them in file order, so the day's order survives
@@ -141,7 +151,8 @@ changes nothing the second time.
 
 1. **Picking and reading.** Any file can be picked; a protected one asks for
    its password (asked again after a wrong one). The confirmation dialog then
-   shows the export date and the counts of events, tags and categories.
+   shows the export date and the counts of events, tags, tag groups and
+   categories.
 2. **Preconditions.** The import compares the file with what the *server*
    holds, so it needs the server, and no offline change waiting in the outbox
    (it would refuse with "send or discard them first"). It reads the
@@ -160,18 +171,22 @@ changes nothing the second time.
    when the account's tag of that name is itself a synonym — synonyms stay one
    level deep). An existing tag keeps its place: an import never turns a main
    tag into a synonym or moves a tag.
-5. **Events.** An event is skipped when the account already has one with the
+5. **Tag groups.** A group is the group of the same name in that category,
+   left as it is; a missing one is created with the category's tags of its
+   names, a synonym standing for its main tag. A tag refused on the way is
+   left out of it, and a group left with no tag at all is skipped.
+6. **Events.** An event is skipped when the account already has one with the
    same start, end, "ongoing" flag, description and non-date tags; each
    account event covers one copy, so two identical events in the file need
    two in the account. The others are created, with their date tags derived as
    usual.
-6. **Refusals.** What the server (or, under E2EE, the client-side mirror of
+7. **Refusals.** What the server (or, under E2EE, the client-side mirror of
    its rules) refuses — a reserved tag name such as a four-digit `1984`, for
    instance — is left out and counted, and the import goes on: a refused tag
    is dropped from the events that carried it, and a refused category takes
-   its tags with it.
-7. **Report.** Added events, tags and categories, the events that were already
-   there, and the items left out.
+   its tags and groups with it.
+8. **Report.** Added events, tags, tag groups and categories, the events that
+   were already there, and the items left out.
 
 **Connection lost.** Each write goes through the regular repositories; one
 that cannot reach the server stops the import at once ("connection lost") —

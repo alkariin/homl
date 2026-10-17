@@ -16,12 +16,13 @@ survives without the server), [api.md](api.md) (the `clientId` of
 | Offline | Online only (a clear "server unreachable") |
 | --- | --- |
 | browsing and searching the data saved on the device | renaming, moving or deleting a tag |
-| creating, editing and deleting events | creating, editing or deleting a category |
+| creating, editing and deleting events | creating, editing or deleting a category or a tag group |
 | creating tags (typed in the form, or a new tag in a category) | settings, PIN, fingerprint, password, account |
 | | enabling / disabling end-to-end encryption |
 
-A tag created offline cannot be renamed, moved or deleted before the server has
-it (`TagPendingFailure`): only its creation waits.
+A tag created offline cannot be renamed, moved, deleted or put in a tag group
+before the server has it (`TagPendingFailure`): only its creation waits.
+Picking a group in a tag input works offline: it only adds tags to the form.
 
 ## The outbox
 

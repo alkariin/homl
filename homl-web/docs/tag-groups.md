@@ -66,6 +66,27 @@ the event-tag links. `POST /e2ee/migrate` carries the group names in
 `tagGroups`, and the purge deletes them with the categories. See
 [e2ee.md](e2ee.md).
 
+## In the app
+
+Details and file pointers: the homl-ui README, "Tag groups".
+
+- **Picking a group.** Both tag inputs suggest the groups with the tags.
+  Picking one (a tap, or its name typed in full then enter) adds its tags
+  that are not there yet; a group with nothing left to add is not offered.
+  On the Insert tab the event gets the tags. On the Search tab each tag
+  becomes a filter, and the search keeps its AND semantics: "Family" finds
+  the events carrying all of its tags. The picker sheet lists the groups too.
+- **A name shared with a tag.** Enter adds the tag, what was typed; the group
+  stays a tap away in the dropdown.
+- **Managing groups.** In the Categories tab, under the tags of a category:
+  "New group", then a tap on a group to edit or delete it. The dialog refuses
+  a name reserved for the dates, and any name a tag or another group of the
+  account already has, whatever its category, so a typed name never means
+  two things. Online only, like every category change; a tag created
+  offline joins a group once it reached the server.
+- **Export and import.** A group travels in the export file with the names
+  of its tags ([data-export.md](data-export.md)).
+
 ## API
 
 See [api.md](api.md#tag-groups): `POST /tagGroups`, `PATCH /tagGroups/:id`,

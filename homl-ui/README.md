@@ -278,6 +278,9 @@ Destructive actions confirm with the counts served by `GET /tags/:id/usage` /
   name — tag names are unique per category;
 - a synonym (tap or long press on its chip) can be renamed, detached or
   deleted — deletion confirms that its events are repointed to the main tag;
+- a **tag group** (see below) is created from the "New group" pill, next to
+  "New tag" (offered once the category has a tag), and edited or deleted
+  from its chip;
 - deleting a category offers to move its tags to the Others category
   (default, so a hasty confirm loses nothing), delete them while keeping the
   events (those left without another non-date tag keep their date only), or
@@ -288,6 +291,40 @@ Destructive actions confirm with the counts served by `GET /tags/:id/usage` /
   category: the toast then says to rename the tag or delete the tags instead
   of moving them. The three outcomes are pinned end to end, from the dialog
   down to the SQL: see [../homl-web/TESTING.md](../homl-web/TESTING.md).
+
+### Tag groups
+
+A tag group is a named set of main tags of one category ("Family" = Alice and
+Bob) that the tag inputs expand into its tags: it is never chipped, never
+linked to an event (`homl-web/docs/tag-groups.md`). In the app:
+
+- the expanded card of a category lists its groups under the tags, each chip
+  marked with a stack icon and followed by the tags it holds ("No tags left"
+  once they were all deleted);
+- the group dialog (`tagGroupDialog`) takes a name and the main tags of the
+  category to hold (filter chips, synonyms not offered; saved in the
+  category's order). It refuses, before anything is sent, a name reserved for
+  the dates and a name already carried by **any** tag or group of the account
+  (normalized like the backend): the name is typed in the same field as the
+  tags, and two things of one name would make it ambiguous. The server only
+  enforces the unique name within the category (`409 TAG_NAME_CONFLICT`,
+  toast "this category already has a group with that name");
+- group management is online only, like the rest of the tab, and a tag
+  created offline cannot join a group before it reaches the server
+  ("this tag is not on the server yet");
+- both tag inputs suggest the groups next to the tags (`tagGroupSuggestions`
+  in `lib/helpers/tag_groups.dart`): the chip of the group, with the tags it
+  adds named on the right instead of a category. Picking it — a tap, or the
+  name typed in full then enter — adds its tags that are not chipped yet, and
+  a group with nothing left to add is no longer offered. On the Insert tab the
+  event gets the tags; on the Search tab each tag becomes a filter, so the
+  search keeps its AND semantics and finds the events carrying them all. When
+  a tag and a group share a name, enter adds the tag (what was typed) and the
+  group stays one tap away in the dropdown;
+- the picker sheet lists the groups too: tapping one hands its tags over, as
+  if they were picked one by one, and closes the sheet once;
+- the app bar mark and the input border follow a group suggestion like a tag
+  of its category (the input reports its first tag).
 
 Both tag inputs carry a **browse button** next to the field (a tonal square
 the height of the field, wearing the Categories tab's tag icon): it opens the
@@ -490,17 +527,17 @@ data to a JSON file and bring such a file back. File format, password
 protection and merge rules: [homl-web/docs/data-export.md](../homl-web/docs/data-export.md).
 
 - `lib/data/transfer/export_file.dart` is the format (`ExportFile`): built
-  from the decrypted categories and events, everything referenced by name,
-  date tags left out; `fromJson` checks the whole file before anything is
+  from the decrypted categories and events, everything referenced by name
+  (the tag groups too, by the names of their tags), date tags left out; `fromJson` checks the whole file before anything is
   written. `export_seal.dart` wraps it under a password (PBKDF2 + AES-GCM).
 - `DataTransferRepository` exports through the other repositories (offline
   too, from the saved copy) and imports through them as well — so E2EE
   encryption, the client-side date tags and the blacklist apply exactly as
   for the forms. The import refuses to start offline or with changes waiting
-  in the outbox, matches categories and tags by name, skips the events the
-  account already has (re-importing a file changes nothing), and stops at
-  the first write the server cannot receive (`ImportInterruptedFailure`):
-  running it again finishes it.
+  in the outbox, matches categories, tags and tag groups by name, skips the
+  events the account already has (re-importing a file changes nothing), and
+  stops at the first write the server cannot receive
+  (`ImportInterruptedFailure`): running it again finishes it.
 - `DataTransferCubit` runs the work and turns failures into toasts; the
   group drives the dialogs (`data_transfer_dialogs.dart`: export options,
   password, confirmation, a progress dialog that cannot be dismissed, the
@@ -556,8 +593,8 @@ out of reach is the next section.
 Away from the network that reaches the server, the app keeps the session,
 runs on the data saved on the device, and keeps working: events can be
 created, edited and deleted, new tags typed; it all waits in an outbox and is
-sent once the server answers again. Tag and category management, settings and
-the Security page stay online-only ("server unreachable"). The protocol side —
+sent once the server answers again. Tag, tag group and category management,
+settings and the Security page stay online-only ("server unreachable"). The protocol side —
 what ends a session, the offline unlock, the trade-off of the offline PIN — is
 in [homl-web/docs/auth-flows.md](../homl-web/docs/auth-flows.md), "Client
 session"; the outbox and the sync in
