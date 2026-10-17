@@ -115,6 +115,26 @@ void main() {
       expect(sinceLabel(de, const PeriodLength(3, PeriodUnit.months)),
           'seit 3 Monaten');
     });
+
+    test('how long ago, on the period badge scale', () {
+      final today = DateTime(2026, 10, 17);
+      expect(agoLabel(en, DateTime(2026, 10, 17), today), 'today');
+      expect(agoLabel(en, DateTime(2026, 10, 16), today), 'yesterday');
+      expect(agoLabel(en, DateTime(2026, 10, 7), today), '10 days ago');
+      // Counted in months from 31 days, in years from 24 months.
+      expect(agoLabel(en, DateTime(2025, 8, 12), today), '14 months ago');
+      expect(agoLabel(en, DateTime(2023, 10, 17), today), '3 years ago');
+      expect(agoLabel(fr, DateTime(2025, 8, 12), today), 'il y a 14 mois');
+      expect(agoLabel(fr, DateTime(2026, 10, 16), today), 'hier');
+      // German declines the noun after "vor" too.
+      expect(agoLabel(de, DateTime(2025, 8, 12), today), 'vor 14 Monaten');
+      expect(agoLabel(de, DateTime(2023, 10, 17), today), 'vor 3 Jahren');
+    });
+
+    test('a day still to come reads today, never a negative duration', () {
+      expect(
+          agoLabel(en, DateTime(2026, 12, 1), DateTime(2026, 10, 17)), 'today');
+    });
   });
 
   group('periodDateTagNames', () {

@@ -796,6 +796,36 @@ abstract class AppLocalizations {
   /// **'Event updated'**
   String get list_eventUpdated;
 
+  /// Title of the strip of events that started on today's date in earlier years.
+  ///
+  /// In en, this message translates to:
+  /// **'On this day'**
+  String get list_onThisDay;
+
+  /// Before how long ago a search last happened, e.g. "Last time: 14 months ago".
+  ///
+  /// In en, this message translates to:
+  /// **'Last time:'**
+  String get list_lastTime;
+
+  /// Instead of how long ago, when one of the results is still going on.
+  ///
+  /// In en, this message translates to:
+  /// **'right now'**
+  String get list_lastTimeNow;
+
+  /// No description provided for @list_eventCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 event} other{{count} events}}'**
+  String list_eventCount(int count);
+
+  /// How many of the search results started this calendar year.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{none this year} other{{count} this year}}'**
+  String list_thisYearCount(int count);
+
   /// No description provided for @event_ongoing.
   ///
   /// In en, this message translates to:
@@ -837,6 +867,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =1{for 1 year} other{for {count} years}}'**
   String event_sinceYears(int count);
+
+  /// How long ago something happened; one key per unit because German declines the noun after 'vor'. 0 = today, 1 = yesterday.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{today} =1{yesterday} other{{count} days ago}}'**
+  String event_daysAgo(int count);
+
+  /// No description provided for @event_monthsAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 month ago} other{{count} months ago}}'**
+  String event_monthsAgo(int count);
+
+  /// No description provided for @event_yearsAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 year ago} other{{count} years ago}}'**
+  String event_yearsAgo(int count);
 
   /// No description provided for @categories_newCategory.
   ///

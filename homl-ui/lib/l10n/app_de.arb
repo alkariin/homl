@@ -151,6 +151,11 @@
   "list_deleteEventTitle": "Ereignis löschen?",
   "list_deleteEventInfo": "Dieses Ereignis und seine Beschreibung werden endgültig gelöscht.",
   "list_eventUpdated": "Ereignis aktualisiert",
+  "list_onThisDay": "An diesem Tag",
+  "list_lastTime": "Zuletzt:",
+  "list_lastTimeNow": "gerade jetzt",
+  "list_eventCount": "{count, plural, =1{1 Ereignis} other{{count} Ereignisse}}",
+  "list_thisYearCount": "{count, plural, =0{keines dieses Jahr} other{{count} dieses Jahr}}",
 
   "event_ongoing": "Laufend",
   "event_durationDays": "{count, plural, =1{1 Tag} other{{count} Tage}}",
@@ -159,6 +164,9 @@
   "event_sinceDays": "{count, plural, =1{seit 1 Tag} other{seit {count} Tagen}}",
   "event_sinceMonths": "{count, plural, =1{seit 1 Monat} other{seit {count} Monaten}}",
   "event_sinceYears": "{count, plural, =1{seit 1 Jahr} other{seit {count} Jahren}}",
+  "event_daysAgo": "{count, plural, =0{heute} =1{gestern} other{vor {count} Tagen}}",
+  "event_monthsAgo": "{count, plural, =1{vor 1 Monat} other{vor {count} Monaten}}",
+  "event_yearsAgo": "{count, plural, =1{vor 1 Jahr} other{vor {count} Jahren}}",
 
   "categories_newCategory": "Neue Kategorie",
   "categories_editCategory": "Kategorie bearbeiten",
