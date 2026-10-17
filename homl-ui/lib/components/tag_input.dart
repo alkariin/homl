@@ -103,6 +103,13 @@ class _TagInputState extends State<TagInput> {
   /// theme's content padding, so the two sit flush.
   static const double _browseButtonSize = 52;
 
+  /// Widest the category name of a suggestion may get. A ListTile hands its
+  /// trailing the whole tile width: a long name wrapped onto the full row
+  /// fails the tile layout ("Trailing widget consumes the entire tile
+  /// width"), which took the dropdown and the screen around it down. Capped,
+  /// it is cut with an ellipsis and the chip keeps the rest of the row.
+  static const double _categoryMaxWidth = 120;
+
   late final TextEditingController _controller =
       widget.controller ?? TextEditingController();
   final FocusNode _focusNode = FocusNode();
@@ -365,11 +372,18 @@ class _TagInputState extends State<TagInput> {
                               ),
                               trailing: option.category == null
                                   ? null
-                                  : Text(
-                                      option.category!,
-                                      style: TextStyle(
-                                          fontSize: 12.5,
-                                          color: ink.withValues(alpha: 0.45)),
+                                  : ConstrainedBox(
+                                      constraints: const BoxConstraints(
+                                          maxWidth: _categoryMaxWidth),
+                                      child: Text(
+                                        option.category!,
+                                        maxLines: 1,
+                                        softWrap: false,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                            fontSize: 12.5,
+                                            color: ink.withValues(alpha: 0.45)),
+                                      ),
                                     ),
                               onTap: () => onSelected(option),
                             );

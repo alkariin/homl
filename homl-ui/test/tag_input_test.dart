@@ -30,6 +30,14 @@ const july = TagChipData(
     color: '#ffff60',
     highlightColor: '#ffff60');
 
+/// A category name wider than the whole suggestion row.
+const swimming = TagChipData(
+    id: 5,
+    name: 'Swimming',
+    color: '#a7ffeb',
+    highlightColor: '#a7ffeb',
+    category: 'Sports and weekend leisure activities');
+
 /// Last value reported to [TagInput.onSuggestionChanged] — what the app bar
 /// mark follows.
 String? suggested;
@@ -37,6 +45,7 @@ int browsed = 0;
 
 Widget wrap(
     {List<TagChipData> tags = const [],
+    List<TagChipData> suggestions = const [info, football, other, july],
     void Function(String name)? onAddTag,
     bool browsable = true}) {
   suggested = null;
@@ -46,7 +55,7 @@ Widget wrap(
       body: TagInput(
         labelText: 'Filter',
         tags: tags,
-        suggestions: const [info, football, other, july],
+        suggestions: suggestions,
         onAddTag: onAddTag ?? (_) {},
         browseLabel: 'Browse tags',
         onBrowse: browsable ? () => browsed++ : null,
@@ -91,6 +100,24 @@ void main() {
     expect(chip.color, '#f28b82');
     expect(find.descendant(of: row, matching: find.text('Hobbies')),
         findsOneWidget);
+  });
+
+  testWidgets('cuts a long category name instead of breaking the row',
+      (tester) async {
+    await tester.pumpWidget(wrap(suggestions: const [swimming]));
+    await tester.enterText(find.byType(TextField), 'swim');
+    await tester.pumpAndSettle();
+
+    // Wrapped across the whole tile, the name failed the ListTile layout and
+    // took the dropdown down with it.
+    expect(tester.takeException(), isNull);
+    final row = find.widgetWithText(ListTile, 'Swimming');
+    expect(row, findsOneWidget);
+    final name =
+        find.descendant(of: row, matching: find.text(swimming.category!));
+    expect(tester.widget<Text>(name).overflow, TextOverflow.ellipsis);
+    // The chip keeps most of the row.
+    expect(tester.getSize(name).width, lessThan(tester.getSize(row).width / 2));
   });
 
   testWidgets('tints the border with the top suggestion category',
