@@ -527,7 +527,9 @@ offline. The matching replicates the backend one (`FindEventsWithTags`):
 While typing, the field autocompletes on the existing tags (prefix matches
 first, then substring matches); each suggestion is drawn as the chip it would
 become, with its category named on the right, so the colors explain
-themselves. The input border takes the category color of
+themselves. That name is capped and cut with an ellipsis: a `ListTile` gives
+its trailing the whole row, and a long name wrapped across it failed the tile
+layout and broke the dropdown. The input border takes the category color of
 the top suggestion — except for tags of the Others category, which keep the
 default styling (`lib/components/tag_input.dart`, `highlightColor` on
 `TagChipData`) — and the app bar mark follows the same suggestion by name
