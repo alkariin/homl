@@ -21,7 +21,10 @@ Where the pieces live, now that it is built: migration
 `application.validatePeriod` on the backend; `lib/helpers/event_period.dart`
 and `periodDateTagNames` (`lib/helpers/date_tags.dart`) on the client, the
 form in `lib/pages/insert/`, the badge in `lib/components/event_card.dart`,
-the sheet in `lib/pages/list/view/event_detail_sheet.dart`. The routes are in
+the sheet in `lib/pages/list/view/event_detail_sheet.dart`, and the
+timeline of the Search tab, which lays the periods out on an axis of years,
+in `lib/pages/list/view/period_timeline.dart` (homl-ui README, "Search tab:
+the timeline"). The routes are in
 [api.md](api.md); what covers it at each layer is in
 [TESTING.md](../TESTING.md). Written as a design before the code and kept as
 its reference afterwards, the way [e2ee.md](e2ee.md) was.

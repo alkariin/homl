@@ -502,7 +502,7 @@ alike, and are never a day behind.
 
 - **On this day** (`lib/helpers/on_this_day.dart`,
   `lib/pages/list/view/on_this_day_strip.dart`), on the whole list only (no
-  term, no range): a horizontal strip of the events that *started* on today's month and day in
+  term, no range) and in the grid view: a horizontal strip of the events that *started* on today's month and day in
   an earlier year, the most recent first, each card under "1 year ago",
   "10 years ago". The cards are the grid's own `EventCard`s, so a tap opens
   the detail sheet. Only the start counts: a period comes back on the
@@ -530,6 +530,42 @@ alike, and are never a day behind.
   as well, so they can be lower than the number of cards. "This year" counts
   the events that started in the current calendar year. No past result, no
   summary.
+
+## Search tab: the timeline
+
+The app bar of the Search tab carries a view switch (`_viewSwitch` in
+`lib/pages/home/view/home.dart`, a Gantt icon, a grid icon once switched):
+the grid of cards, or the **timeline** of the periods among the same
+results (`ListState.timeline`, `ListCubit.toggleTimeline`). The search is
+untouched by the switch, so the timeline follows it: `Work` lays the jobs
+out, `-Trip` drops the trips, a range keeps the periods overlapping it. The
+"Last time" summary stays above it; the "On this day" strip belongs to the
+grid. The choice lasts as long as the session.
+
+- **What it shows** (`timelineOf` in `lib/helpers/timeline.dart`): every
+  closed or open period, one row each, newest first (by start, then by end).
+  An open period runs until today. Single-day events have no length to
+  draw: they are left out and counted under the rows ("2 single-day events
+  are not shown"). No period at all gives a short explanation of what makes
+  one instead.
+- **The axis** spans whole years, from 1 January of the earliest start to
+  the end of the latest year reached, and fits the screen width: no
+  horizontal scrolling. It is pinned on top while the rows scroll, labelled
+  every year when the labels fit and otherwise every 2, 5, 10… years on
+  round ones (`Timeline.tickYears`). Faint year lines run through the rows,
+  and a gold line (a dot on the axis) marks today.
+- **A row** (`lib/pages/list/view/period_timeline.dart`) is named by its
+  tags without the date tags, like a card without room for chips; then by
+  the first line of its description; then by its dates ("Mar 2021 –
+  Jun 2021"). Its length sits on the right, on the period badge scale ("3
+  years", "for 2 years" while it goes on). The bar wears the color of its
+  first tag in a real category; a period with only Others tags, or none, is
+  drawn in the neutral grey, as the pale Others grey would vanish on the
+  light background. An open period fades out on the right. A bar is at least
+  6 px wide, so a few days stay visible on a long axis. A tap opens the
+  event's detail sheet, as a card does.
+- It is slivers (`SliverMainAxisGroup`) in the page's `CustomScrollView`, so
+  the pull to refresh works the same in both views.
 
 ## Sign-up page: a server that takes no new accounts
 
