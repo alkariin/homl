@@ -756,4 +756,170 @@ class AppLocalizationsFr extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get account_exportData => 'Exporter mes données';
+
+  @override
+  String get account_exportDataHint =>
+      'Un fichier avec tes catégories, tags et événements';
+
+  @override
+  String get account_importData => 'Importer des données';
+
+  @override
+  String get account_importDataHint =>
+      'Ajouter le contenu d\'un fichier exporté';
+
+  @override
+  String get export_title => 'Exporter tes données';
+
+  @override
+  String get export_info =>
+      'Le fichier contient tes catégories, tags et événements. Quiconque l\'obtient peut les lire, sauf s\'il est protégé par un mot de passe.';
+
+  @override
+  String get export_passwordSwitch => 'Protéger par un mot de passe';
+
+  @override
+  String get export_password => 'Mot de passe';
+
+  @override
+  String get export_passwordRepeat => 'Répète le mot de passe';
+
+  @override
+  String get export_passwordTooShort => 'Au moins 8 caractères';
+
+  @override
+  String get export_passwordHint =>
+      'Sans ce mot de passe, personne ne peut ouvrir le fichier, pas même toi : il ne peut pas être récupéré.';
+
+  @override
+  String get export_e2eeWarning =>
+      'Ton compte est chiffré de bout en bout : sans mot de passe, ce fichier contient tes données en clair.';
+
+  @override
+  String get export_confirm => 'Exporter';
+
+  @override
+  String get export_saved => 'Export enregistré';
+
+  @override
+  String get export_failed => 'L\'export a échoué, réessaie plus tard';
+
+  @override
+  String get import_passwordTitle => 'Fichier protégé';
+
+  @override
+  String get import_passwordInfo =>
+      'Saisis le mot de passe choisi lors de l\'export.';
+
+  @override
+  String get import_passwordWrong => 'Mot de passe incorrect';
+
+  @override
+  String get import_open => 'Ouvrir';
+
+  @override
+  String get import_invalidFile =>
+      'Ce fichier n\'est pas un export HOML, ou il est endommagé';
+
+  @override
+  String get import_newerVersion =>
+      'Ce fichier vient d\'une version plus récente de HOML : mets l\'app à jour pour l\'importer';
+
+  @override
+  String get import_confirmTitle => 'Importer ce fichier ?';
+
+  @override
+  String import_confirmInfo(String date) {
+    return 'Exporté le $date, il contient :';
+  }
+
+  @override
+  String get import_confirmMerge =>
+      'Tout est ajouté à ton compte : ce qui existe déjà est ignoré, et rien n\'est modifié ni supprimé.';
+
+  @override
+  String import_countCategories(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count catégories',
+      one: '1 catégorie',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String import_countTags(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tags',
+      one: '1 tag',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String import_countEvents(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count événements',
+      one: '1 événement',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get import_confirm => 'Importer';
+
+  @override
+  String import_progress(int done, int total) {
+    return 'Import en cours… $done sur $total';
+  }
+
+  @override
+  String get import_keepOpen =>
+      'Garde l\'app ouverte jusqu\'à la fin de l\'import.';
+
+  @override
+  String get import_doneTitle => 'Import terminé';
+
+  @override
+  String get import_doneAdded => 'Ajouté :';
+
+  @override
+  String get import_doneNothing =>
+      'Rien de nouveau : ton compte contenait déjà tout.';
+
+  @override
+  String import_doneExisting(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count événements étaient déjà là.',
+      one: '1 événement était déjà là.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String import_doneSkipped(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count éléments ont été refusés par le serveur (un nom de tag réservé, par exemple) et laissés de côté.',
+      one:
+          '1 élément a été refusé par le serveur (un nom de tag réservé, par exemple) et laissé de côté.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get import_interrupted =>
+      'Connexion perdue : l\'import s\'est arrêté. Importe à nouveau le même fichier pour le terminer, ce qui est déjà là sera ignoré.';
 }

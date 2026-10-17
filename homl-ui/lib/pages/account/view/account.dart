@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:homl/l10n/app_localizations.dart';
 import 'package:homl/components/pin_dialog.dart';
 import 'package:homl/data/repositories/api.dart';
+import 'package:homl/data/repositories/data_transfer.repository.dart';
 
 import 'package:homl/components/settings_group.dart';
 import 'package:homl/data/repositories/settings.repository.dart';
@@ -13,6 +14,8 @@ import 'package:homl/helpers/colors.dart';
 import 'package:homl/helpers/toast.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
 import 'package:homl/pages/account/bloc/account_cubit.dart';
+import 'package:homl/pages/account/bloc/data_transfer_cubit.dart';
+import 'package:homl/pages/account/view/data_transfer_group.dart';
 import 'package:homl/pages/account/view/e2ee_mnemonic_dialog.dart';
 import 'package:homl/pages/account/view/delete_account_dialog.dart';
 import 'package:homl/pages/account/view/password_dialog.dart';
@@ -40,6 +43,15 @@ class AccountPage extends StatelessWidget {
                 context.read<UsersRepository>(),
                 settingsRepository: context.read<SettingsRepository>())),
         BlocProvider.value(value: homeCubit),
+        // Built on the home page's repositories: an import notifies their
+        // change stream, which reloads the shared home state.
+        BlocProvider(
+            create: (BuildContext context) =>
+                DataTransferCubit(DataTransferRepository(
+                  categoriesRepository: homeCubit.categoriesRepository,
+                  tagsRepository: homeCubit.tagsRepository,
+                  eventsRepository: homeCubit.eventsRepository,
+                ))),
       ],
       child: AccountView(homeCubit),
     );
@@ -238,6 +250,8 @@ class AccountView extends StatelessWidget {
                         child: LinearProgressIndicator(),
                       ),
                   ]),
+                  // A copy of the data to keep, or to bring in.
+                  DataTransferGroup(isE2eeEnabled: state.isE2eeEnabled),
                   // Destructive, so styled apart from the toggles above.
                   SettingsGroup(children: [
                     ListTile(

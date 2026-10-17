@@ -32,7 +32,15 @@ enum AppMessage {
   tagPending,
 
   /// An action that cannot run while changes made offline still wait.
-  pendingChangesFirst;
+  pendingChangesFirst,
+  exportFailed,
+  importInvalidFile,
+
+  /// The file comes from a newer app, in a format this one cannot read.
+  importNewerVersion,
+
+  /// The connection dropped mid-import: importing again finishes it.
+  importInterrupted;
 
   /// The message for a request that failed: "server unreachable" when the
   /// Api just saw the server go away (the change needs a connection), the
@@ -89,6 +97,14 @@ extension AppMessageLocalization on AppMessage {
         return localization.sync_tagPending;
       case AppMessage.pendingChangesFirst:
         return localization.sync_pendingChangesFirst;
+      case AppMessage.exportFailed:
+        return localization.export_failed;
+      case AppMessage.importInvalidFile:
+        return localization.import_invalidFile;
+      case AppMessage.importNewerVersion:
+        return localization.import_newerVersion;
+      case AppMessage.importInterrupted:
+        return localization.import_interrupted;
     }
   }
 }

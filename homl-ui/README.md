@@ -139,7 +139,9 @@ lib/
 ├── data/
 │   ├── models/        # json_serializable DTOs (*.g.dart committed)
 │   ├── repositories/  # one per backend resource + api.dart (Dio client, refresh)
-│   └── store/         # the data saved for offline use, sealed on the device
+│   ├── store/         # the data saved for offline use, sealed on the device
+│   ├── sync/          # the outbox of offline writes and the sync engine
+│   └── transfer/      # the export file format and its password protection
 ├── helpers/           # cross-cutting logic: e2ee, date_tags, event_search, theme, toast…
 ├── l10n/              # .arb sources + generated AppLocalizations
 ├── pages/             # one folder per screen: <page>/bloc (cubit + state) and <page>/view
@@ -441,7 +443,8 @@ offline cache rewrite), and `ListCubit` re-filters from `HomeCubit.stream`.
 
 `lib/pages/account/` is the "Security" screen: password change
 (`password_dialog.dart`), the two local unlock factors (fingerprint / PIN,
-mutually exclusive), the E2EE toggle, then a destructive group with **Logout**
+mutually exclusive), the E2EE toggle, **Export my data** / **Import data**
+(see "Data export & import" below), then a destructive group with **Logout**
 and **Delete my account**.
 
 Deleting the account is irreversible, so it is gated twice: a single dialog
@@ -464,6 +467,33 @@ pick the factor the next app start sends, and one that disagrees with the
 server — a toggle that failed offline — would get the session refused there.
 A PIN the server accepts (here or at unlock) also becomes the one checked
 offline (see "Offline mode" below).
+
+## Data export & import
+
+Two rows of the Security page (`data_transfer_group.dart`) copy the account's
+data to a JSON file and bring such a file back. File format, password
+protection and merge rules: [homl-web/docs/data-export.md](../homl-web/docs/data-export.md).
+
+- `lib/data/transfer/export_file.dart` is the format (`ExportFile`): built
+  from the decrypted categories and events, everything referenced by name,
+  date tags left out; `fromJson` checks the whole file before anything is
+  written. `export_seal.dart` wraps it under a password (PBKDF2 + AES-GCM).
+- `DataTransferRepository` exports through the other repositories (offline
+  too, from the saved copy) and imports through them as well — so E2EE
+  encryption, the client-side date tags and the blacklist apply exactly as
+  for the forms. The import refuses to start offline or with changes waiting
+  in the outbox, matches categories and tags by name, skips the events the
+  account already has (re-importing a file changes nothing), and stops at
+  the first write the server cannot receive (`ImportInterruptedFailure`):
+  running it again finishes it.
+- `DataTransferCubit` runs the work and turns failures into toasts; the
+  group drives the dialogs (`data_transfer_dialogs.dart`: export options,
+  password, confirmation, a progress dialog that cannot be dismissed, the
+  report) and the platform pickers (`file_picker`: the Android document
+  picker, a download on the web).
+- The password switch of the export dialog is on by default for an E2EE
+  account, whose file would otherwise hold its data in clear, and turning it
+  off says so.
 
 ## Offline cache & local search
 

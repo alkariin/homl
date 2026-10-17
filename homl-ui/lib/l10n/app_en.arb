@@ -320,5 +320,78 @@
     "placeholders": {
       "count": { "type": "int" }
     }
-  }
+  },
+
+  "account_exportData": "Export my data",
+  "account_exportDataHint": "A file with your categories, tags and events",
+  "account_importData": "Import data",
+  "account_importDataHint": "Add the content of an export file",
+  "export_title": "Export your data",
+  "export_info": "The file holds your categories, tags and events. Anyone who gets it can read them, unless it is protected with a password.",
+  "export_passwordSwitch": "Protect with a password",
+  "export_password": "Password",
+  "export_passwordRepeat": "Repeat the password",
+  "export_passwordTooShort": "At least 8 characters",
+  "export_passwordHint": "Without this password nobody can open the file, not even you: it cannot be recovered.",
+  "export_e2eeWarning": "Your account is end-to-end encrypted: without a password, this file holds your data in clear.",
+  "export_confirm": "Export",
+  "export_saved": "Export saved",
+  "export_failed": "The export failed, try again later",
+  "import_passwordTitle": "Protected file",
+  "import_passwordInfo": "Enter the password chosen when exporting.",
+  "import_passwordWrong": "Wrong password",
+  "import_open": "Open",
+  "import_invalidFile": "This file is not a HOML export, or it is damaged",
+  "import_newerVersion": "This file comes from a newer version of HOML: update the app to import it",
+  "import_confirmTitle": "Import this file?",
+  "import_confirmInfo": "Exported on {date}, it holds:",
+  "@import_confirmInfo": {
+    "placeholders": {
+      "date": { "type": "String" }
+    }
+  },
+  "import_confirmMerge": "Everything is added to your account: what is already there is skipped, and nothing is changed or deleted.",
+  "import_countCategories": "{count, plural, =1{1 category} other{{count} categories}}",
+  "@import_countCategories": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "import_countTags": "{count, plural, =1{1 tag} other{{count} tags}}",
+  "@import_countTags": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "import_countEvents": "{count, plural, =1{1 event} other{{count} events}}",
+  "@import_countEvents": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "import_confirm": "Import",
+  "import_progress": "Importing… {done} of {total}",
+  "@import_progress": {
+    "placeholders": {
+      "done": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "import_keepOpen": "Keep the app open until the import ends.",
+  "import_doneTitle": "Import finished",
+  "import_doneAdded": "Added:",
+  "import_doneNothing": "Nothing new: your account already held all of it.",
+  "import_doneExisting": "{count, plural, =1{1 event was already there.} other{{count} events were already there.}}",
+  "@import_doneExisting": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "import_doneSkipped": "{count, plural, =1{1 item was refused by the server (a reserved tag name, for example) and left out.} other{{count} items were refused by the server (a reserved tag name, for example) and left out.}}",
+  "@import_doneSkipped": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "import_interrupted": "Connection lost: the import stopped. Import the same file again to finish it, what is already there is skipped."
 }
