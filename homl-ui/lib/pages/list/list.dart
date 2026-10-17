@@ -5,14 +5,20 @@ import 'package:homl/l10n/app_localizations.dart';
 import 'package:homl/components/event_card.dart';
 import 'package:homl/components/tag_input.dart';
 import 'package:homl/data/models/category.dart';
+import 'package:homl/data/models/event.dart';
 import 'package:homl/helpers/categories.dart';
 import 'package:homl/helpers/category_labels.dart';
+import 'package:homl/helpers/colors.dart' as palette;
 import 'package:homl/helpers/date_tags.dart';
+import 'package:homl/helpers/last_time.dart';
+import 'package:homl/helpers/on_this_day.dart';
 import 'package:homl/helpers/tag_groups.dart';
 import 'package:homl/pages/categories/view/category_management.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
 import 'package:homl/pages/list/bloc/list_cubit.dart';
 import 'package:homl/pages/list/view/event_detail_sheet.dart';
+import 'package:homl/pages/list/view/last_time_summary.dart';
+import 'package:homl/pages/list/view/on_this_day_strip.dart';
 
 class ListPage extends StatelessWidget {
   /// Reports the tag being typed to the app bar mark (see [AppBarMark]);
@@ -49,6 +55,33 @@ class ListPage extends StatelessWidget {
       };
 
       return BlocBuilder<ListCubit, ListState>(builder: (context, listState) {
+        // The same card in the grid and in the "On this day" strip.
+        Widget cardFor(Event event) => EventCard(
+              event: event,
+              tagColorResolver: (tagName) =>
+                  homeState.allTagsMap[tagName]?.color,
+              // The tags map comes from the categories fetch: prefer it over
+              // the category carried by the event payload, which a cached
+              // event may have taken before a tag was moved.
+              isDateTag: (tag) {
+                final idCategory =
+                    homeState.allTagsMap[tag.tag]?.idCategory ?? tag.idCategory;
+                return idCategory != null && dateIds.contains(idCategory);
+              },
+              onTap: () => showEventDetailSheet(context, event: event),
+            );
+
+        // Both worked out at render time, like the period lengths: never
+        // stored, so never a day behind. "On this day" over the whole list,
+        // "Last time" over the results of a search.
+        final today = DateTime.now();
+        final memories = listState.filters.isEmpty
+            ? eventsOnThisDay(homeState.events, today)
+            : const <Memory>[];
+        final lastTime = listState.filters.isEmpty
+            ? null
+            : lastTimeOf(listState.events, today);
+
         // The decorative background is shared by the tabs (parallax in the
         // home page).
         return Column(children: [
@@ -116,38 +149,54 @@ class ListPage extends StatelessWidget {
                                                 localization.list_noEvents))),
                                   ],
                                 ))
-                        : GridView.builder(
+                        : CustomScrollView(
                             physics: const AlwaysScrollableScrollPhysics(),
-                            padding: const EdgeInsets.fromLTRB(20, 22, 20, 25),
-                            gridDelegate:
-                                const SliverGridDelegateWithMaxCrossAxisExtent(
-                              maxCrossAxisExtent: 250,
-                              mainAxisSpacing: 20,
-                              crossAxisSpacing: 20,
-                              childAspectRatio: 155 / 160,
-                            ),
-                            itemCount: listState.events.length,
-                            itemBuilder: (context, index) {
-                              final event = listState.events[index];
-                              return EventCard(
-                                event: event,
-                                tagColorResolver: (tagName) =>
-                                    homeState.allTagsMap[tagName]?.color,
-                                // The tags map comes from the categories fetch:
-                                // prefer it over the category carried by the
-                                // event payload, which a cached event may have
-                                // taken before a tag was moved.
-                                isDateTag: (tag) {
-                                  final idCategory = homeState
-                                          .allTagsMap[tag.tag]?.idCategory ??
-                                      tag.idCategory;
-                                  return idCategory != null &&
-                                      dateIds.contains(idCategory);
-                                },
-                                onTap: () =>
-                                    showEventDetailSheet(context, event: event),
-                              );
-                            },
+                            slivers: [
+                              if (memories.isNotEmpty)
+                                SliverToBoxAdapter(
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(top: 22),
+                                    child: Column(children: [
+                                      OnThisDayStrip(
+                                          memories: memories,
+                                          cardBuilder: cardFor),
+                                      Padding(
+                                        padding: const EdgeInsets.fromLTRB(
+                                            20, 18, 20, 0),
+                                        child: Divider(
+                                            height: 1,
+                                            color: palette.borderGrey
+                                                .withValues(alpha: 0.5)),
+                                      ),
+                                    ]),
+                                  ),
+                                ),
+                              if (lastTime != null)
+                                SliverPadding(
+                                  padding:
+                                      const EdgeInsets.fromLTRB(20, 18, 20, 0),
+                                  sliver: SliverToBoxAdapter(
+                                    child: LastTimeSummary(
+                                        lastTime: lastTime, today: today),
+                                  ),
+                                ),
+                              SliverPadding(
+                                padding:
+                                    const EdgeInsets.fromLTRB(20, 22, 20, 25),
+                                sliver: SliverGrid.builder(
+                                  gridDelegate:
+                                      const SliverGridDelegateWithMaxCrossAxisExtent(
+                                    maxCrossAxisExtent: 250,
+                                    mainAxisSpacing: 20,
+                                    crossAxisSpacing: 20,
+                                    childAspectRatio: 155 / 160,
+                                  ),
+                                  itemCount: listState.events.length,
+                                  itemBuilder: (context, index) =>
+                                      cardFor(listState.events[index]),
+                                ),
+                              ),
+                            ],
                           ),
                   ),
           ),

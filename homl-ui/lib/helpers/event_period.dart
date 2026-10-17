@@ -97,3 +97,20 @@ String sinceLabel(AppLocalizations l10n, PeriodLength length) {
       return l10n.event_sinceYears(length.count);
   }
 }
+
+/// "today", "yesterday", "14 months ago" in the app language: how long ago
+/// [day] was, as of [today], on the same scale as the period badge. One key
+/// per unit, as for [sinceLabel]. A day still to come reads "today", like
+/// today itself.
+String agoLabel(AppLocalizations l10n, DateTime day, DateTime today) {
+  final elapsed = ongoingLength(day, today);
+  if (elapsed == null) return l10n.event_daysAgo(0);
+  switch (elapsed.unit) {
+    case PeriodUnit.days:
+      return l10n.event_daysAgo(elapsed.count);
+    case PeriodUnit.months:
+      return l10n.event_monthsAgo(elapsed.count);
+    case PeriodUnit.years:
+      return l10n.event_yearsAgo(elapsed.count);
+  }
+}

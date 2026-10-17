@@ -402,6 +402,37 @@ class AppLocalizationsDe extends AppLocalizations {
   String get list_eventUpdated => 'Ereignis aktualisiert';
 
   @override
+  String get list_onThisDay => 'An diesem Tag';
+
+  @override
+  String get list_lastTime => 'Zuletzt:';
+
+  @override
+  String get list_lastTimeNow => 'gerade jetzt';
+
+  @override
+  String list_eventCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Ereignisse',
+      one: '1 Ereignis',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String list_thisYearCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count dieses Jahr',
+      zero: 'keines dieses Jahr',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get event_ongoing => 'Laufend';
 
   @override
@@ -466,6 +497,40 @@ class AppLocalizationsDe extends AppLocalizations {
       locale: localeName,
       other: 'seit $count Jahren',
       one: 'seit 1 Jahr',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String event_daysAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'vor $count Tagen',
+      one: 'gestern',
+      zero: 'heute',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String event_monthsAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'vor $count Monaten',
+      one: 'vor 1 Monat',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String event_yearsAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'vor $count Jahren',
+      one: 'vor 1 Jahr',
     );
     return '$_temp0';
   }

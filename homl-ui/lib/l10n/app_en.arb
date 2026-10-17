@@ -156,6 +156,31 @@
   "list_deleteEventTitle": "Delete event?",
   "list_deleteEventInfo": "This event and its description will be permanently deleted.",
   "list_eventUpdated": "Event updated",
+  "list_onThisDay": "On this day",
+  "@list_onThisDay": {
+    "description": "Title of the strip of events that started on today's date in earlier years."
+  },
+  "list_lastTime": "Last time:",
+  "@list_lastTime": {
+    "description": "Before how long ago a search last happened, e.g. \"Last time: 14 months ago\"."
+  },
+  "list_lastTimeNow": "right now",
+  "@list_lastTimeNow": {
+    "description": "Instead of how long ago, when one of the results is still going on."
+  },
+  "list_eventCount": "{count, plural, =1{1 event} other{{count} events}}",
+  "@list_eventCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "list_thisYearCount": "{count, plural, =0{none this year} other{{count} this year}}",
+  "@list_thisYearCount": {
+    "description": "How many of the search results started this calendar year.",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
 
   "event_ongoing": "Ongoing",
   "event_durationDays": "{count, plural, =1{1 day} other{{count} days}}",
@@ -191,6 +216,25 @@
   },
   "event_sinceYears": "{count, plural, =1{for 1 year} other{for {count} years}}",
   "@event_sinceYears": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "event_daysAgo": "{count, plural, =0{today} =1{yesterday} other{{count} days ago}}",
+  "@event_daysAgo": {
+    "description": "How long ago something happened; one key per unit because German declines the noun after 'vor'. 0 = today, 1 = yesterday.",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "event_monthsAgo": "{count, plural, =1{1 month ago} other{{count} months ago}}",
+  "@event_monthsAgo": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "event_yearsAgo": "{count, plural, =1{1 year ago} other{{count} years ago}}",
+  "@event_yearsAgo": {
     "placeholders": {
       "count": { "type": "int" }
     }
