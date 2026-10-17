@@ -38,6 +38,26 @@ const swimming = TagChipData(
     highlightColor: '#a7ffeb',
     category: 'Sports and weekend leisure activities');
 
+/// Two tags of the Persons category and a group of both.
+const alice = TagChipData(
+    id: 6,
+    name: 'Alice',
+    color: '#60ccff',
+    highlightColor: '#60ccff',
+    category: 'Persons');
+const bob = TagChipData(
+    id: 7,
+    name: 'Bob',
+    color: '#60ccff',
+    highlightColor: '#60ccff',
+    category: 'Persons');
+const family = TagChipData(
+    id: 1,
+    name: 'Family',
+    color: '#60ccff',
+    highlightColor: '#60ccff',
+    members: ['Alice', 'Bob']);
+
 /// Last value reported to [TagInput.onSuggestionChanged] — what the app bar
 /// mark follows.
 String? suggested;
@@ -230,5 +250,86 @@ void main() {
     // must not offer it again.
     expect(find.widgetWithText(ListTile, 'Football'), findsNothing);
     expect(suggested, isNull);
+  });
+
+  group('a tag group', () {
+    const suggestions = [alice, bob, family, football];
+
+    testWidgets('is suggested with the tags it adds', (tester) async {
+      await tester.pumpWidget(wrap(suggestions: suggestions));
+      await tester.enterText(find.byType(TextField), 'fam');
+      await tester.pumpAndSettle();
+
+      final row = find.widgetWithText(ListTile, 'Family');
+      expect(row, findsOneWidget);
+      final chip = tester
+          .widget<Tag>(find.descendant(of: row, matching: find.byType(Tag)));
+      expect(chip.isGroup, isTrue);
+      expect(chip.color, '#60ccff');
+      expect(find.descendant(of: row, matching: find.text('Alice, Bob')),
+          findsOneWidget);
+      // The app bar mark follows a member, which shares the group's category.
+      expect(suggested, 'Alice');
+      expect(enabledBorderColor(tester), darken(colorFromHex('#60ccff')));
+    });
+
+    testWidgets('typed in full adds its tags, never itself', (tester) async {
+      final added = <String>[];
+      await tester
+          .pumpWidget(wrap(suggestions: suggestions, onAddTag: added.add));
+
+      await tester.enterText(find.byType(TextField), 'family');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+
+      expect(added, ['Alice', 'Bob']);
+      expect(tester.widget<TextField>(find.byType(TextField)).controller!.text,
+          isEmpty);
+    });
+
+    testWidgets('picked in the dropdown adds the tags not chipped yet',
+        (tester) async {
+      final added = <String>[];
+      await tester.pumpWidget(wrap(
+          tags: const [bob], suggestions: suggestions, onAddTag: added.add));
+
+      await tester.enterText(find.byType(TextField), 'fam');
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ListTile, 'Family'));
+      await tester.pumpAndSettle();
+
+      expect(added, ['Alice']);
+      expect(find.byType(ListTile), findsNothing);
+    });
+
+    testWidgets('is not offered once all its tags are chipped', (tester) async {
+      await tester
+          .pumpWidget(wrap(tags: const [alice, bob], suggestions: suggestions));
+      await tester.enterText(find.byType(TextField), 'fam');
+      await tester.pumpAndSettle();
+
+      expect(find.widgetWithText(ListTile, 'Family'), findsNothing);
+      expect(suggested, isNull);
+    });
+
+    testWidgets('loses to a tag of the same name on enter', (tester) async {
+      // A tag and a group may share a name (the server allows it): enter
+      // adds the tag that was typed, the group stays one tap away.
+      const familyTag = TagChipData(
+          id: 8, name: 'Family', color: '#f2e5c2', category: 'Others');
+      final added = <String>[];
+      await tester.pumpWidget(wrap(
+          suggestions: const [family, familyTag, alice, bob],
+          onAddTag: added.add));
+
+      await tester.enterText(find.byType(TextField), 'Family');
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(ListTile, 'Family'), findsNWidgets(2));
+
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+
+      expect(added, ['Family']);
+    });
   });
 }

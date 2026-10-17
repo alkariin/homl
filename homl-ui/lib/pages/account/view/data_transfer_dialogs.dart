@@ -198,6 +198,8 @@ Future<bool> confirmImport(BuildContext context, ExportFile file) async {
             const SizedBox(height: 8),
             _Bullet(localization.import_countEvents(file.events.length)),
             _Bullet(localization.import_countTags(file.tagCount)),
+            if (file.groupCount > 0)
+              _Bullet(localization.import_countGroups(file.groupCount)),
             _Bullet(
                 localization.import_countCategories(file.categories.length)),
             const SizedBox(height: 12),
@@ -271,6 +273,8 @@ Future<void> showImportReport(BuildContext context, ImportReport report) {
                 _Bullet(localization.import_countEvents(report.eventsCreated)),
               if (report.tagsCreated > 0)
                 _Bullet(localization.import_countTags(report.tagsCreated)),
+              if (report.groupsCreated > 0)
+                _Bullet(localization.import_countGroups(report.groupsCreated)),
               if (report.categoriesCreated > 0)
                 _Bullet(localization
                     .import_countCategories(report.categoriesCreated)),

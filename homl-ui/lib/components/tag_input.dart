@@ -30,27 +30,37 @@ class TagChipData {
   /// the color of the chip is explained; nothing is printed when null.
   final String? category;
 
+  /// Set on a tag group suggestion: the stored names of the tags it stands
+  /// for, which picking it adds instead of the group itself (a group is
+  /// never chipped, see homl-web/docs/tag-groups.md). Null on a tag.
+  final List<String>? members;
+
   const TagChipData(
       {required this.id,
       required this.name,
       this.color,
       this.highlightColor,
       this.displayName,
-      this.category});
+      this.category,
+      this.members});
 
   String get label => displayName ?? name;
+
+  bool get isGroup => members != null;
 }
 
-/// Shared tag input: a text field with autocomplete on the existing tags.
-/// Pressing enter (or tapping a suggestion) adds the tag as a chip and clears
-/// the field; a long press on a chip removes it.
+/// Shared tag input: a text field with autocomplete on the existing tags and
+/// tag groups. Pressing enter (or tapping a suggestion) adds the tag as a
+/// chip and clears the field — a group adds its member tags instead; a long
+/// press on a chip removes it.
 class TagInput extends StatefulWidget {
   final String labelText;
 
   /// Chips currently displayed (controlled by the parent).
   final List<TagChipData> tags;
 
-  /// All the known tags, used for the autocomplete.
+  /// All the known tags, used for the autocomplete, and the tag groups
+  /// ([TagChipData.members] set).
   final List<TagChipData> suggestions;
 
   final void Function(String name) onAddTag;
@@ -71,8 +81,9 @@ class TagInput extends StatefulWidget {
   final String? browseLabel;
 
   /// Reports the stored name of the tag being typed — the top suggestion of
-  /// the autocomplete — on every change of the field, and null when it is
-  /// empty or nothing matches it. The app bar mark follows it.
+  /// the autocomplete, or the first member of a group, whose category it
+  /// shares — on every change of the field, and null when it is empty or
+  /// nothing matches it. The app bar mark follows it.
   final void Function(String? tagName)? onSuggestionChanged;
 
   /// Text controller of the field. Owned by the parent when provided (so it
@@ -103,12 +114,13 @@ class _TagInputState extends State<TagInput> {
   /// theme's content padding, so the two sit flush.
   static const double _browseButtonSize = 52;
 
-  /// Widest the category name of a suggestion may get. A ListTile hands its
-  /// trailing the whole tile width: a long name wrapped onto the full row
-  /// fails the tile layout ("Trailing widget consumes the entire tile
-  /// width"), which took the dropdown and the screen around it down. Capped,
-  /// it is cut with an ellipsis and the chip keeps the rest of the row.
-  static const double _categoryMaxWidth = 120;
+  /// Widest the category name of a suggestion (or the tag list of a group)
+  /// may get. A ListTile hands its trailing the whole tile width: a long name
+  /// wrapped onto the full row fails the tile layout ("Trailing widget
+  /// consumes the entire tile width"), which took the dropdown and the screen
+  /// around it down. Capped, it is cut with an ellipsis and the chip keeps
+  /// the rest of the row.
+  static const double _detailMaxWidth = 120;
 
   late final TextEditingController _controller =
       widget.controller ?? TextEditingController();
@@ -127,8 +139,12 @@ class _TagInputState extends State<TagInput> {
     final report = widget.onSuggestionChanged;
     if (report == null) return;
 
-    final suggestions = _filterSuggestions(_controller.value);
-    report(suggestions.isEmpty ? null : suggestions.first.name);
+    final top = _filterSuggestions(_controller.value).firstOrNull;
+    report(top == null
+        ? null
+        : top.isGroup
+            ? top.members!.first
+            : top.name);
   }
 
   @override
@@ -147,8 +163,14 @@ class _TagInputState extends State<TagInput> {
 
     // A typed label that names a known tag is resolved to its stored name, so
     // a French user typing "juillet" adds the "July" date tag instead of
-    // creating a second, untranslated tag.
-    final name = _suggestionFor(trimmed)?.name ?? trimmed;
+    // creating a second, untranslated tag. A typed group name adds the
+    // group's tags.
+    final suggestion = _suggestionFor(trimmed);
+    if (suggestion != null && suggestion.isGroup) {
+      _addGroup(suggestion);
+      return;
+    }
+    final name = suggestion?.name ?? trimmed;
     if (widget.tags
         .any((tag) => tag.name.toLowerCase() == name.toLowerCase())) {
       _clearField();
@@ -156,6 +178,19 @@ class _TagInputState extends State<TagInput> {
     }
 
     widget.onAddTag(name);
+    _clearField();
+    _focusNode.requestFocus();
+  }
+
+  /// Adds the member tags of [group] that are not chipped yet, in the
+  /// group's order. The group itself never becomes a chip.
+  void _addGroup(TagChipData group) {
+    for (final member in group.members!) {
+      if (!widget.tags
+          .any((tag) => tag.name.toLowerCase() == member.toLowerCase())) {
+        widget.onAddTag(member);
+      }
+    }
     _clearField();
     _focusNode.requestFocus();
   }
@@ -175,17 +210,27 @@ class _TagInputState extends State<TagInput> {
     });
   }
 
-  /// Suggestion whose stored name or displayed label is exactly [text].
+  /// Suggestion whose stored name or displayed label is exactly [text]. A
+  /// tag wins over a group of the same name: the group stays one tap away
+  /// in the dropdown, while enter never adds more than what was typed.
   TagChipData? _suggestionFor(String text) {
     final lowered = text.toLowerCase();
-    for (final suggestion in widget.suggestions) {
-      if (suggestion.name.toLowerCase() == lowered ||
-          suggestion.label.toLowerCase() == lowered) {
-        return suggestion;
-      }
-    }
-    return null;
+    bool named(TagChipData suggestion) =>
+        suggestion.name.toLowerCase() == lowered ||
+        suggestion.label.toLowerCase() == lowered;
+
+    return widget.suggestions
+            .where((suggestion) => !suggestion.isGroup)
+            .where(named)
+            .firstOrNull ??
+        widget.suggestions
+            .where((suggestion) => suggestion.isGroup)
+            .where(named)
+            .firstOrNull;
   }
+
+  bool _isChipped(String name) =>
+      widget.tags.any((tag) => tag.name.toLowerCase() == name.toLowerCase());
 
   Iterable<TagChipData> _filterSuggestions(TextEditingValue value) {
     final query = value.text.trim().toLowerCase();
@@ -193,11 +238,14 @@ class _TagInputState extends State<TagInput> {
 
     // Matched on the label as well as the stored name: a translated month tag
     // is reachable by typing it in the app language.
+    // A chipped tag is not offered again, and neither is a group with
+    // nothing left to add (all its tags chipped, or none left at all).
     final candidates = widget.suggestions.where((suggestion) =>
         (suggestion.name.toLowerCase().contains(query) ||
             suggestion.label.toLowerCase().contains(query)) &&
-        !widget.tags.any(
-            (tag) => tag.name.toLowerCase() == suggestion.name.toLowerCase()));
+        (suggestion.isGroup
+            ? !suggestion.members!.every(_isChipped)
+            : !_isChipped(suggestion.name)));
 
     // Tags starting with the query come first, so the top suggestion (which
     // also drives the highlight color below) is the most natural completion.
@@ -276,7 +324,8 @@ class _TagInputState extends State<TagInput> {
                 focusNode: _focusNode,
                 displayStringForOption: (option) => option.label,
                 optionsBuilder: _filterSuggestions,
-                onSelected: (option) => _submit(option.name),
+                onSelected: (option) =>
+                    option.isGroup ? _addGroup(option) : _submit(option.name),
                 fieldViewBuilder:
                     (context, controller, focusNode, onFieldSubmitted) {
                   return ValueListenableBuilder<TextEditingValue>(
@@ -358,7 +407,11 @@ class _TagInputState extends State<TagInput> {
                             // The suggestion is the chip it would become,
                             // with its category named on the right: the
                             // color of the chip, the border and the app bar
-                            // mark then explain themselves.
+                            // mark then explain themselves. A group lists
+                            // the tags it adds there instead.
+                            final detail = option.isGroup
+                                ? option.members!.join(', ')
+                                : option.category;
                             return ListTile(
                               dense: true,
                               contentPadding:
@@ -368,15 +421,16 @@ class _TagInputState extends State<TagInput> {
                                 child: Tag(
                                     id: option.id,
                                     text: option.label,
-                                    color: option.color),
+                                    color: option.color,
+                                    isGroup: option.isGroup),
                               ),
-                              trailing: option.category == null
+                              trailing: detail == null
                                   ? null
                                   : ConstrainedBox(
                                       constraints: const BoxConstraints(
-                                          maxWidth: _categoryMaxWidth),
+                                          maxWidth: _detailMaxWidth),
                                       child: Text(
-                                        option.category!,
+                                        detail,
                                         maxLines: 1,
                                         softWrap: false,
                                         overflow: TextOverflow.ellipsis,

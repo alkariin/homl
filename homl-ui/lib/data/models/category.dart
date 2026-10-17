@@ -1,4 +1,5 @@
 import 'package:homl/data/models/tag.dart';
+import 'package:homl/data/models/tag_group.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 part 'category.g.dart';
@@ -31,13 +32,18 @@ class Category {
   @JsonKey(defaultValue: [])
   final List<Tag> tags;
 
+  /// The category's tag groups. Backends that predate them send nothing.
+  @JsonKey(defaultValue: [])
+  final List<TagGroup> groups;
+
   Category(
       {required this.id,
       required this.category,
       required this.color,
       required this.isLocked,
       this.kind,
-      required this.tags});
+      required this.tags,
+      this.groups = const []});
 
   factory Category.fromJson(Map<String, dynamic> json) =>
       _$CategoryFromJson(json);

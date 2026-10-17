@@ -644,11 +644,57 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get categories_deleteTagNameConflict =>
-      'Einer dieser Tags existiert bereits in Sonstiges. Benenne ihn um oder lösche die Tags, statt sie zu verschieben.';
+      'Ein Tag oder eine Gruppe dieser Kategorie existiert bereits in Sonstiges. Benenne sie um oder lösche die Tags, statt sie zu verschieben.';
 
   @override
   String get categories_tagNameConflict =>
       'Diese Kategorie hat bereits einen Tag mit diesem Namen. Wähle einen anderen.';
+
+  @override
+  String get categories_groups => 'Gruppen';
+
+  @override
+  String get categories_newGroup => 'Neue Gruppe';
+
+  @override
+  String get categories_editGroup => 'Gruppe bearbeiten';
+
+  @override
+  String get categories_deleteGroup => 'Gruppe löschen';
+
+  @override
+  String get categories_groupHint =>
+      'Wenn du den Namen der Gruppe eingibst, werden alle ihre Tags auf einmal hinzugefügt.';
+
+  @override
+  String get categories_groupMembers => 'Tags der Gruppe';
+
+  @override
+  String get categories_groupNeedsMembers => 'Wähle mindestens einen Tag.';
+
+  @override
+  String get categories_groupNameTaken =>
+      'Ein Tag oder eine Gruppe trägt bereits diesen Namen.';
+
+  @override
+  String get categories_groupNameReserved =>
+      'Dieser Name ist für die Daten reserviert.';
+
+  @override
+  String get categories_groupNameConflict =>
+      'Diese Kategorie hat bereits eine Gruppe mit diesem Namen. Wähle einen anderen.';
+
+  @override
+  String get categories_groupEmpty => 'Keine Tags mehr';
+
+  @override
+  String categories_deleteGroupTitle(String group) {
+    return '\"$group\" löschen?';
+  }
+
+  @override
+  String get categories_deleteGroupInfo =>
+      'Nur die Gruppe wird gelöscht: Ihre Tags und deren Ereignisse bleiben.';
 
   @override
   String get offline_title => 'Offline';
@@ -860,6 +906,17 @@ class AppLocalizationsDe extends AppLocalizations {
       locale: localeName,
       other: '$count Tags',
       one: '1 Tag',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String import_countGroups(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Tag-Gruppen',
+      one: '1 Tag-Gruppe',
     );
     return '$_temp0';
   }

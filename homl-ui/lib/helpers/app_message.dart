@@ -20,6 +20,7 @@ enum AppMessage {
   accountDeleteError,
   categoryTagNameConflict,
   tagNameConflict,
+  tagGroupNameConflict,
   serverUnreachable,
 
   /// Written while the server was out of reach: kept in the outbox.
@@ -79,6 +80,8 @@ extension AppMessageLocalization on AppMessage {
         return localization.categories_deleteTagNameConflict;
       case AppMessage.tagNameConflict:
         return localization.categories_tagNameConflict;
+      case AppMessage.tagGroupNameConflict:
+        return localization.categories_groupNameConflict;
       case AppMessage.serverUnreachable:
         return localization.global_serverUnreachable;
       case AppMessage.savedOffline:

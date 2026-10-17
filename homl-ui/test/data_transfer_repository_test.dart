@@ -137,6 +137,24 @@ class _Server implements HttpClientAdapter {
       return _json({'id': id}, 201);
     }
 
+    if (options.path.endsWith('/tagGroups')) {
+      final category =
+          categories.firstWhere((c) => c['id'] == body['idCategory']);
+      final groups = (category['groups'] ??= <Map<String, dynamic>>[]) as List;
+      final key = body['nameIndex'] ?? (body['name'] as String).toLowerCase();
+      if (groups
+          .any((g) => (g['nameIndex'] ?? g['name'].toLowerCase()) == key)) {
+        return _error(409, 'TAG_NAME_CONFLICT');
+      }
+      groups.add({
+        'id': id,
+        'name': body['name'],
+        'members': body['members'],
+        if (body['nameIndex'] != null) 'nameIndex': body['nameIndex'],
+      });
+      return _json({'id': id}, 201);
+    }
+
     if (options.path.endsWith('/events')) {
       final tagIds = [
         ...(body['tagsId'] as List).cast<int>(),
@@ -226,6 +244,40 @@ ExportFile _file() => ExportFile.fromJson({
           ],
         },
       ],
+    });
+
+/// Persons with Alice (alias Ali) and Bob, and two groups: Family names the
+/// synonym Ali, which stands for Alice; Friends is already in the account in
+/// some tests.
+ExportFile _fileWithGroups() => ExportFile.fromJson({
+      'format': 'homl-export',
+      'version': 1,
+      'exportedAt': '2026-10-17T10:00:00.000Z',
+      'categories': [
+        {
+          'name': 'Persons',
+          'kind': 'person',
+          'color': '#60ccff',
+          'tags': [
+            {
+              'name': 'Alice',
+              'synonyms': ['Ali']
+            },
+            {'name': 'Bob'},
+          ],
+          'groups': [
+            {
+              'name': 'Family',
+              'tags': ['Ali', 'Bob']
+            },
+            {
+              'name': 'Friends',
+              'tags': ['Bob']
+            },
+          ],
+        },
+      ],
+      'events': [],
     });
 
 void main() {
@@ -403,6 +455,68 @@ void main() {
       expect(server.events[1]['tags'].map((t) => t['tag']), ['2026']);
     });
 
+    test('creates the groups of the file with their tags', () async {
+      final report = await repository.import(_fileWithGroups());
+
+      final persons =
+          server.categories.firstWhere((c) => c['category'] == 'Persons');
+      final alice = tagsOf('Persons').firstWhere((t) => t['tag'] == 'Alice');
+      final bob = tagsOf('Persons').firstWhere((t) => t['tag'] == 'Bob');
+      final groups = (persons['groups'] as List).cast<Map<String, dynamic>>();
+      expect(groups.map((g) => g['name']), ['Family', 'Friends']);
+      // Ali is a synonym: the group holds its main tag.
+      expect(groups.first['members'], [alice['id'], bob['id']]);
+      expect(report.groupsCreated, 2);
+      expect(report.changedAnything, isTrue);
+
+      // A second run finds them and writes nothing.
+      final writes = server.writes.length;
+      final again = await repository.import(_fileWithGroups());
+      expect(server.writes, hasLength(writes));
+      expect(again.groupsCreated, 0);
+    });
+
+    test('leaves a group of the account as it is', () async {
+      tagsOf('Persons').add({'id': 60, 'tag': 'Carol', 'idParentTag': null});
+      server.categories[1]['groups'] = <Map<String, dynamic>>[
+        {
+          'id': 61,
+          'name': 'friends',
+          'members': [60]
+        }
+      ];
+
+      final report = await repository.import(_fileWithGroups());
+
+      final groups =
+          (server.categories[1]['groups'] as List).cast<Map<String, dynamic>>();
+      expect(groups.map((g) => g['name']), ['friends', 'Family']);
+      expect(groups.first['members'], [60]);
+      expect(report.groupsCreated, 1);
+    });
+
+    test('a group whose tags were all refused is left out', () async {
+      server.refusedTags = {'Bob'};
+
+      final report = await repository.import(_fileWithGroups());
+
+      final groups =
+          (server.categories[1]['groups'] as List).cast<Map<String, dynamic>>();
+      // Family keeps Alice; Friends had only Bob.
+      expect(groups.map((g) => g['name']), ['Family']);
+      expect(report.groupsCreated, 1);
+      expect(report.skipped, 2); // Bob, Friends
+    });
+
+    test('counts the groups in the progress', () async {
+      final steps = <int>[];
+      await repository.import(_fileWithGroups(), onProgress: (done, total) {
+        expect(total, 5); // 3 tags + 2 groups
+        steps.add(done);
+      });
+      expect(steps.last, 5);
+    });
+
     test('reports the progress up to the total', () async {
       final steps = <int>[];
       await repository.import(_file(), onProgress: (done, total) {
@@ -539,6 +653,21 @@ void main() {
       final ongoingIndex = await E2ee().tagIndex('Ongoing');
       expect(tagsOf('Dates').where((t) => t['tagIndex'] == ongoingIndex),
           hasLength(1));
+    });
+
+    test('the group names are encrypted and indexed', () async {
+      await repository.import(_fileWithGroups());
+
+      final groups =
+          (server.categories[1]['groups'] as List).cast<Map<String, dynamic>>();
+      expect(groups.first['name'], startsWith(E2ee.prefix));
+      expect(await E2ee().decrypt(groups.first['name'] as String), 'Family');
+      expect(groups.first['nameIndex'], await E2ee().tagIndex('Family'));
+
+      // Recognized by their index on a second run.
+      final writes = server.writes.length;
+      await repository.import(_fileWithGroups());
+      expect(server.writes, hasLength(writes));
     });
 
     test('a second import recognizes the encrypted events', () async {

@@ -16,6 +16,7 @@ import 'package:homl/helpers/categories.dart';
 import 'package:homl/helpers/category_labels.dart';
 import 'package:homl/helpers/colors.dart';
 import 'package:homl/helpers/date_tags.dart';
+import 'package:homl/helpers/tag_groups.dart';
 import 'package:homl/helpers/e2ee.dart';
 import 'package:homl/helpers/toast.dart';
 import 'package:homl/pages/categories/view/category_management.dart';
@@ -324,17 +325,20 @@ class _InsertViewState extends State<InsertView> {
                             color: homeState.allTagsMap[name]?.color ??
                                 otherCategoryColor))
                         .toList(),
-                    suggestions: homeState.allTagsMap.values
-                        .map((tagView) => TagChipData(
-                            id: tagView.id,
-                            name: tagView.tagName,
-                            displayName:
-                                localizedTagName(tagView.tagName, locale),
-                            color: tagView.color,
-                            category: categoryLabels[tagView.idCategory],
-                            highlightColor:
-                                homeState.markAccentFor(tagView.tagName)))
-                        .toList(),
+                    suggestions: [
+                      ...homeState.allTagsMap.values.map((tagView) =>
+                          TagChipData(
+                              id: tagView.id,
+                              name: tagView.tagName,
+                              displayName:
+                                  localizedTagName(tagView.tagName, locale),
+                              color: tagView.color,
+                              category: categoryLabels[tagView.idCategory],
+                              highlightColor:
+                                  homeState.markAccentFor(tagView.tagName))),
+                      // A group adds its tags to the event.
+                      ...tagGroupSuggestions(homeState.categories),
+                    ],
                     onAddTag: (name) =>
                         context.read<InsertCubit>().addTag(name),
                     onRemoveTag: (tag) =>

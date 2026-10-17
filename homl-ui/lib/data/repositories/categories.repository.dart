@@ -2,12 +2,15 @@
 import 'package:dio/dio.dart';
 import 'package:homl/data/models/category.dart';
 import 'package:homl/data/models/tag.dart';
+import 'package:homl/data/models/tag_group.dart';
 import 'package:homl/data/models/usage.dart';
 import 'package:homl/data/repositories/api.dart';
+import 'package:homl/data/repositories/tags.repository.dart';
 import 'package:homl/data/store/local_store.dart';
 import 'package:homl/data/sync/outbox.dart';
 import 'package:homl/data/sync/projection.dart';
 import 'package:homl/helpers/e2ee.dart';
+import 'package:homl/helpers/event_search.dart' show normalizeTagName;
 
 /// Exception thrown when a categories request fails
 class CategoriesRequestFailure implements Exception {}
@@ -19,6 +22,10 @@ class CategoriesNotFoundFailure implements Exception {}
 /// because one of the names is already taken there (tag names are unique per
 /// category). The other two delete options remain available.
 class CategoryTagNameConflictFailure implements Exception {}
+
+/// Exception thrown when another tag group of the category already has the
+/// name (group names are unique per category). Nothing was written.
+class TagGroupNameConflictFailure implements Exception {}
 
 class CategoriesRepository {
   final Api? _injectedApi;
@@ -87,6 +94,11 @@ class CategoriesRepository {
                 idCategory: tag.idCategory,
                 idParentTag: tag.idParentTag,
               ))),
+          groups: await Future.wait(category.groups.map((group) async =>
+              TagGroup(
+                  id: group.id,
+                  name: await e2ee.decrypt(group.name),
+                  members: group.members))),
         )));
   }
 
@@ -162,6 +174,76 @@ class CategoriesRepository {
       }
       throw CategoriesRequestFailure();
     }
+  }
+
+  /// Returns the id of the created tag group. Online only, like every
+  /// category change: an unreachable server is a [CategoriesRequestFailure].
+  Future<int> createTagGroup(
+      String name, int idCategory, List<int> members) async {
+    final body = {
+      ...await _outgoingGroup(name, members),
+      'idCategory': idCategory,
+    };
+    late Response<Map<String, dynamic>> response;
+    try {
+      response = await apiInstance.api
+          .post<Map<String, dynamic>>('/tagGroups', data: body);
+    } on DioException catch (err) {
+      throw _groupFailure(err);
+    }
+
+    final id = response.data?['id'];
+    if (id is! int) throw CategoriesNotFoundFailure();
+    return id;
+  }
+
+  /// Full-state update: [members] replaces the stored list. A group never
+  /// changes category.
+  Future<void> updateTagGroup(int id, String name, List<int> members) async {
+    final body = await _outgoingGroup(name, members);
+    try {
+      await apiInstance.api.patch<void>('/tagGroups/$id', data: body);
+    } on DioException catch (err) {
+      throw _groupFailure(err);
+    }
+  }
+
+  /// Deletes the group only: its tags and their events stay.
+  Future<void> deleteTagGroup(int id) async {
+    try {
+      await apiInstance.api.delete<void>('/tagGroups/$id');
+    } on DioException catch (_) {
+      throw CategoriesRequestFailure();
+    }
+  }
+
+  /// The name and member fields of a group write. Members are server ids: a
+  /// tag created offline and not sent yet is a [TagPendingFailure]. For E2EE
+  /// users the name is encrypted, its blind index sent alongside, and the
+  /// reserved date names refused here (the server cannot read the name).
+  Future<Map<String, dynamic>> _outgoingGroup(
+      String name, List<int> members) async {
+    final ids = members.map(Outbox.instance.resolve).toList();
+    if (ids.any((id) => id < 0)) throw TagPendingFailure();
+
+    final e2ee = E2ee();
+    if (!e2ee.enabled) return {'name': name, 'members': ids};
+
+    if (e2ee.isBlacklistedTag(name)) throw TagsBlacklistedFailure();
+    return {
+      'name': await e2ee.encrypt(normalizeTagName(name)),
+      'nameIndex': await e2ee.tagIndex(name),
+      'members': ids,
+    };
+  }
+
+  /// Tells a taken group name apart from any other failure, keyed off the
+  /// code like the tag writes.
+  Exception _groupFailure(DioException err) {
+    if (err.response?.data?['error']?['code'] == 'TAG_NAME_CONFLICT') {
+      return TagGroupNameConflictFailure();
+    }
+    return CategoriesRequestFailure();
   }
 
   /// Tag/event counts for the category, for the delete dialog.

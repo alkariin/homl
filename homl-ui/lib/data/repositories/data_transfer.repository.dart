@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:homl/data/models/category.dart';
 import 'package:homl/data/models/event.dart';
 import 'package:homl/data/models/tag.dart';
+import 'package:homl/data/models/tag_group.dart';
 import 'package:homl/data/repositories/categories.repository.dart';
 import 'package:homl/data/repositories/events.repository.dart';
 import 'package:homl/data/repositories/tags.repository.dart';
@@ -40,17 +41,18 @@ class ImportInterruptedFailure implements Exception {
 class ImportReport {
   int categoriesCreated = 0;
   int tagsCreated = 0;
+  int groupsCreated = 0;
   int eventsCreated = 0;
 
   /// Events of the file the account already had.
   int eventsExisting = 0;
 
-  /// Tags and events the server refused (a reserved tag name, say): left
-  /// out, the rest imported anyway.
+  /// Tags, groups and events the server refused (a reserved tag name, say):
+  /// left out, the rest imported anyway.
   int skipped = 0;
 
   bool get changedAnything =>
-      categoriesCreated + tagsCreated + eventsCreated > 0;
+      categoriesCreated + tagsCreated + groupsCreated + eventsCreated > 0;
 }
 
 /// Thrown inside an import when a write was kept in the outbox instead of
@@ -126,11 +128,14 @@ class DataTransferRepository {
   ///   created (the file's `date` category, if any, is ignored);
   /// - a tag is the tag of the same name in that category; a missing one is
   ///   created, a synonym under its main tag;
+  /// - a tag group is the group of the same name in that category; a missing
+  ///   one is created with the tags of its names there (a synonym standing
+  ///   for its main tag);
   /// - an event is skipped when the account has one with the same days,
   ///   description and tags (each such event covers one copy in the file).
   ///
   /// Nothing that exists is changed. [onProgress] gets the items handled so
-  /// far out of the total (tags and events).
+  /// far out of the total (tags, groups and events).
   Future<ImportReport> import(ExportFile file,
       {void Function(int done, int total)? onProgress}) async {
     if (await Outbox.instance.shouldQueue()) {
@@ -152,7 +157,7 @@ class DataTransferRepository {
     }
 
     final report = ImportReport();
-    final total = file.tagCount + file.events.length;
+    final total = file.tagCount + file.groupCount + file.events.length;
     var done = 0;
     void step() => onProgress?.call(++done, total);
     onProgress?.call(0, total);
@@ -171,14 +176,16 @@ class DataTransferRepository {
   }
 }
 
-/// A category of the account during an import: its id and its tags by key,
-/// growing as the import creates them.
+/// A category of the account during an import: its id, its tags by key and
+/// the keys of its tag groups, growing as the import creates them.
 class _Slot {
   final int id;
   final Map<String, Tag> tags;
+  final Set<String> groups;
 
-  _Slot(this.id, Iterable<Tag> tags)
-      : tags = {for (final tag in tags) transferKey(tag.tag): tag};
+  _Slot(this.id, Iterable<Tag> tags, [Iterable<TagGroup> groups = const []])
+      : tags = {for (final tag in tags) transferKey(tag.tag): tag},
+        groups = {for (final group in groups) transferKey(group.name)};
 }
 
 /// The state of one import.
@@ -194,7 +201,7 @@ class _ImportRun {
   /// The account's Others, where the file's `other` category goes.
   late final _Slot? otherSlot = otherCategory == null
       ? null
-      : _Slot(otherCategory!.id, otherCategory!.tags);
+      : _Slot(otherCategory!.id, otherCategory!.tags, otherCategory!.groups);
 
   /// The account's categories other than Dates and Others, by name key.
   final Map<String, _Slot> byName = {};
@@ -217,7 +224,7 @@ class _ImportRun {
       }
       // Two categories of the same name: the import adds to the first.
       byName.putIfAbsent(transferKey(category.category),
-          () => _Slot(category.id, category.tags));
+          () => _Slot(category.id, category.tags, category.groups));
     }
     for (final tag in dateCategory?.tags ?? const <Tag>[]) {
       dateTags[transferKey(tag.tag)] = tag.id;
@@ -244,11 +251,9 @@ class _ImportRun {
   Future<Map<String, _Slot?>> importCategories(
       List<ExportCategory> categories) async {
     final slots = <String, _Slot?>{};
-    void skipTags(ExportCategory category) {
-      for (final tag in category.tags) {
-        for (var i = 0; i <= tag.synonyms.length; i++) {
-          step();
-        }
+    void skipItems(ExportCategory category) {
+      for (var i = 0; i < category.tagCount + category.groups.length; i++) {
+        step();
       }
     }
 
@@ -257,7 +262,7 @@ class _ImportRun {
       final kind = _kindOf(category);
       if (kind == CategoryKind.date.name) {
         slots.putIfAbsent(key, () => null);
-        skipTags(category);
+        skipItems(category);
         continue;
       }
 
@@ -267,10 +272,11 @@ class _ImportRun {
       if (slot == null) {
         slot = await _createCategory(category);
         if (slot == null) {
-          // Refused: its tags are left out with it, and the events lose them.
-          report.skipped += 1 + category.tagCount;
+          // Refused: its tags and groups are left out with it, and the
+          // events lose them.
+          report.skipped += 1 + category.tagCount + category.groups.length;
           slots.putIfAbsent(key, () => null);
-          skipTags(category);
+          skipItems(category);
           continue;
         }
         byName[key] = slot;
@@ -287,8 +293,52 @@ class _ImportRun {
           step();
         }
       }
+
+      for (final group in category.groups) {
+        await _ensureGroup(slot, group);
+        step();
+      }
     }
     return slots;
+  }
+
+  /// Creates [group] in [slot] unless the slot has a group of that name,
+  /// which is left as it is. Its tags are the slot's tags of those names (a
+  /// synonym stands for its main tag); a name refused on the way is left out,
+  /// and a group left with no tag at all is skipped.
+  Future<void> _ensureGroup(_Slot slot, ExportGroup group) async {
+    final key = transferKey(group.name);
+    if (slot.groups.contains(key)) return;
+
+    final members = <int>{
+      for (final name in group.tags)
+        if (slot.tags[transferKey(name)] case final tag?)
+          tag.idParentTag ?? tag.id
+    }.toList();
+    if (members.isEmpty) {
+      report.skipped++;
+      return;
+    }
+
+    try {
+      await repository.categoriesRepository
+          .createTagGroup(group.name, slot.id, members);
+    } on TagGroupNameConflictFailure {
+      report.skipped++;
+      return;
+    } on TagsBlacklistedFailure {
+      report.skipped++;
+      return;
+    } on CategoriesRequestFailure {
+      _checkConnection();
+      report.skipped++;
+      return;
+    } on CategoriesNotFoundFailure {
+      report.skipped++;
+      return;
+    }
+    slot.groups.add(key);
+    report.groupsCreated++;
   }
 
   /// The new category, or null when the server refused it.

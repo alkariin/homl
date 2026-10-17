@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:homl/data/models/category.dart';
 import 'package:homl/data/models/event.dart';
 import 'package:homl/data/models/tag.dart';
+import 'package:homl/data/models/tag_group.dart';
 import 'package:homl/data/transfer/export_file.dart';
 
 final _categories = [
@@ -224,6 +225,24 @@ void main() {
           (json['events'] as List).first['tags'] = [
             {'category': 'Work', 'tag': 'Ali'}
           ],
+      'a group tag its category does not list': (json) =>
+          (json['categories'] as List).first['groups'] = [
+            {
+              'name': 'Family',
+              'tags': ['Alice', 'Carol']
+            }
+          ],
+      'a group without tags': (json) =>
+          (json['categories'] as List).first['groups'] = [
+            {'name': 'Family', 'tags': []}
+          ],
+      'a blank group name': (json) =>
+          (json['categories'] as List).first['groups'] = [
+            {
+              'name': ' ',
+              'tags': ['Alice']
+            }
+          ],
     };
     for (final entry in broken.entries) {
       test('refuses a file with ${entry.key}', () {
@@ -237,6 +256,65 @@ void main() {
     test('refuses something that is not an object', () {
       expect(() => ExportFile.fromJson([1, 2]),
           throwsA(isA<ExportFormatFailure>()));
+    });
+  });
+
+  group('tag groups', () {
+    final persons = _categories[1];
+    final withGroups = [
+      _categories[0],
+      Category(
+          id: persons.id,
+          category: persons.category,
+          color: persons.color,
+          isLocked: persons.isLocked,
+          kind: persons.kind,
+          tags: persons.tags,
+          groups: [
+            TagGroup(id: 1, name: 'Family', members: [5, 7]),
+            // Its only tag was deleted: nothing to keep.
+            TagGroup(id: 2, name: 'Gone', members: [99]),
+          ]),
+      _categories[2],
+    ];
+
+    test('are written by tag name, an empty one left out', () {
+      final file = ExportFile.fromData(withGroups, const [],
+          exportedAt: DateTime.utc(2026, 10, 17));
+      final json = file.toJson();
+
+      final personsJson = (json['categories'] as List)
+          .cast<Map<String, dynamic>>()
+          .firstWhere((c) => c['name'] == 'Persons');
+      expect(personsJson['groups'], [
+        {
+          'name': 'Family',
+          'tags': ['Alice', 'Bob']
+        }
+      ]);
+      expect(file.groupCount, 1);
+      // A category without groups writes no key at all.
+      expect(
+          (json['categories'] as List)
+              .cast<Map<String, dynamic>>()
+              .firstWhere((c) => c['name'] == 'Others')
+              .containsKey('groups'),
+          isFalse);
+    });
+
+    test('are read back, a synonym being a fine group tag', () {
+      final json = _validJson();
+      (json['categories'] as List).first['groups'] = [
+        {
+          'name': 'Family',
+          'tags': ['ali', 'Alice']
+        }
+      ];
+
+      final group = ExportFile.fromJson(json).categories.first.groups.single;
+
+      expect(group.name, 'Family');
+      expect(group.tags, ['ali', 'Alice']);
     });
   });
 }

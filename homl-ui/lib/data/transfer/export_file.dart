@@ -1,6 +1,7 @@
 import 'package:homl/data/models/category.dart';
 import 'package:homl/data/models/event.dart';
 import 'package:homl/helpers/categories.dart';
+import 'package:homl/helpers/tag_groups.dart';
 
 /// A file that is not a homl export, or a damaged one. [reason] is for the
 /// logs: the user only learns that the file cannot be read.
@@ -47,6 +48,9 @@ class ExportFile {
   int get tagCount =>
       categories.fold(0, (sum, category) => sum + category.tagCount);
 
+  int get groupCount =>
+      categories.fold(0, (sum, category) => sum + category.groups.length);
+
   /// Builds the file from what the app shows: [categories] and [events] as
   /// the repositories hand them out (decrypted), [events] in the
   /// `GET /events` order (newest first).
@@ -86,7 +90,14 @@ class ExportFile {
           name: category.category,
           kind: category.kind?.name,
           color: category.color,
-          tags: tags));
+          tags: tags,
+          // A group with no tag left carries nothing worth keeping.
+          groups: [
+            for (final group in category.groups)
+              if (tagGroupMemberNames(category, group) case final members
+                  when members.isNotEmpty)
+                ExportGroup(name: group.name, tags: members)
+          ]));
     }
 
     // Newest first in, oldest first out: reversed, then a stable sort on the
@@ -148,13 +159,25 @@ class ExportFile {
         ExportCategory._fromJson(category)
     ];
 
-    // Category key -> the keys of its tags, to check the events against.
+    // Category key -> the keys of its tags, to check the events and the
+    // groups against.
     final listed = <String, Set<String>>{};
     for (final category in categories) {
       final tags = listed.putIfAbsent(transferKey(category.name), () => {});
       for (final tag in category.tags) {
         tags.add(transferKey(tag.name));
         tags.addAll(tag.synonyms.map(transferKey));
+      }
+    }
+    for (final category in categories) {
+      for (final group in category.groups) {
+        for (final tag in group.tags) {
+          if (!listed[transferKey(category.name)]!.contains(transferKey(tag))) {
+            throw ExportFormatFailure(
+                'the group "${category.name}/${group.name}" holds "$tag", '
+                'which the category does not list');
+          }
+        }
       }
     }
 
@@ -186,9 +209,14 @@ class ExportCategory {
   final String? kind;
   final String color;
   final List<ExportTag> tags;
+  final List<ExportGroup> groups;
 
   const ExportCategory(
-      {required this.name, this.kind, required this.color, required this.tags});
+      {required this.name,
+      this.kind,
+      required this.color,
+      required this.tags,
+      this.groups = const []});
 
   /// Main tags and synonyms together.
   int get tagCount => tags.fold(0, (sum, tag) => sum + 1 + tag.synonyms.length);
@@ -198,6 +226,8 @@ class ExportCategory {
         if (kind != null) 'kind': kind,
         'color': color,
         'tags': [for (final tag in tags) tag.toJson()],
+        if (groups.isNotEmpty)
+          'groups': [for (final group in groups) group.toJson()],
       };
 
   /// What the backend accepts as a category color (go-playground hexcolor).
@@ -220,6 +250,38 @@ class ExportCategory {
       color: color,
       tags: [
         for (final tag in _list(map['tags'], 'tags')) ExportTag._fromJson(tag)
+      ],
+      groups: [
+        if (map['groups'] != null)
+          for (final group in _list(map['groups'], 'groups'))
+            ExportGroup._fromJson(group)
+      ],
+    );
+  }
+}
+
+/// A tag group (homl-web/docs/tag-groups.md): its name and the tags it
+/// stands for, by name, among the tags of its category.
+class ExportGroup {
+  final String name;
+  final List<String> tags;
+
+  const ExportGroup({required this.name, required this.tags});
+
+  Map<String, dynamic> toJson() => {'name': name, 'tags': tags};
+
+  factory ExportGroup._fromJson(Object? json) {
+    final map = _map(json, 'a group');
+    final tags = _list(map['tags'], 'group tags');
+    if (tags.isEmpty) throw const ExportFormatFailure('a group has no tags');
+    return ExportGroup(
+      name: _name(map, 'name'),
+      tags: [
+        for (final tag in tags)
+          if (tag is String && tag.trim().isNotEmpty)
+            tag.trim()
+          else
+            throw const ExportFormatFailure('a group tag is not a name')
       ],
     );
   }
