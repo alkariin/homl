@@ -35,6 +35,7 @@ func TestE2EEMigrate(t *testing.T) {
 		return &e2ee.MigrationData{
 			Categories: []e2ee.MigrationCategory{{Id: 1, Category: testBlob}},
 			Tags:       []e2ee.MigrationTag{{Id: 2, Tag: testBlob, TagIndex: &idx}},
+			TagGroups:  []e2ee.MigrationTagGroup{{Id: 4, Name: testBlob, NameIndex: &idx}},
 			Events:     []e2ee.MigrationEvent{{Id: 3, Description: testBlob}},
 		}
 	}
@@ -77,6 +78,28 @@ func TestE2EEMigrate(t *testing.T) {
 		repo.AssertNotCalled(t, "Migrate", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	})
 
+	t.Run("Enable rejects a plaintext tag group name", func(t *testing.T) {
+		repo := new(mocks.MockE2EERepo)
+		data := validData()
+		data.TagGroups[0].Name = "Family"
+
+		err := newE2EEService(repo).Migrate(ctx, 1, application.E2EEDirectionEnable, testKeyCheck, data)
+
+		assert.Error(t, err)
+		repo.AssertNotCalled(t, "Migrate", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	})
+
+	t.Run("Enable rejects a tag group without nameIndex", func(t *testing.T) {
+		repo := new(mocks.MockE2EERepo)
+		data := validData()
+		data.TagGroups[0].NameIndex = nil
+
+		err := newE2EEService(repo).Migrate(ctx, 1, application.E2EEDirectionEnable, testKeyCheck, data)
+
+		assert.Error(t, err)
+		repo.AssertNotCalled(t, "Migrate", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	})
+
 	t.Run("Enable accepts an empty event description", func(t *testing.T) {
 		repo := new(mocks.MockE2EERepo)
 		data := validData()
@@ -108,6 +131,7 @@ func TestE2EEMigrate(t *testing.T) {
 		data := &e2ee.MigrationData{
 			Categories: []e2ee.MigrationCategory{{Id: 1, Category: "summer TRIPS"}},
 			Tags:       []e2ee.MigrationTag{{Id: 2, Tag: "movie night", TagIndex: &idx}},
+			TagGroups:  []e2ee.MigrationTagGroup{{Id: 4, Name: "close FAMILY", NameIndex: &idx}},
 			Events:     []e2ee.MigrationEvent{{Id: 3, Description: "any text stays as-is"}},
 		}
 
@@ -115,6 +139,8 @@ func TestE2EEMigrate(t *testing.T) {
 			return d.Categories[0].Category == "Summer Trips" &&
 				d.Tags[0].Tag == "Movie Night" &&
 				d.Tags[0].TagIndex == nil &&
+				d.TagGroups[0].Name == "Close Family" &&
+				d.TagGroups[0].NameIndex == nil &&
 				d.Events[0].Description == "any text stays as-is"
 		})).Return(nil)
 
@@ -128,6 +154,18 @@ func TestE2EEMigrate(t *testing.T) {
 		repo := new(mocks.MockE2EERepo)
 		data := &e2ee.MigrationData{
 			Tags: []e2ee.MigrationTag{{Id: 2, Tag: "   "}},
+		}
+
+		err := newE2EEService(repo).Migrate(ctx, 1, application.E2EEDirectionDisable, "", data)
+
+		assert.Error(t, err)
+		repo.AssertNotCalled(t, "Migrate", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	})
+
+	t.Run("Disable rejects an empty tag group name", func(t *testing.T) {
+		repo := new(mocks.MockE2EERepo)
+		data := &e2ee.MigrationData{
+			TagGroups: []e2ee.MigrationTagGroup{{Id: 4, Name: " "}},
 		}
 
 		err := newE2EEService(repo).Migrate(ctx, 1, application.E2EEDirectionDisable, "", data)

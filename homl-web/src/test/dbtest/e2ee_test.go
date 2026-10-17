@@ -51,6 +51,12 @@ func fetchAll(t *testing.T, r *repos, e2eeRepo e2ee.Repository, idUser uint64) *
 		data.Tags = append(data.Tags, e2ee.MigrationTag{Id: id})
 	}
 
+	var groupIds []uint
+	require.NoError(t, r.db.SelectContext(ctx, &groupIds, "SELECT g.id FROM TagGroups g INNER JOIN Categories c ON g.idCategory = c.id WHERE c.idUser = ?", idUser))
+	for _, id := range groupIds {
+		data.TagGroups = append(data.TagGroups, e2ee.MigrationTagGroup{Id: id})
+	}
+
 	var eventIds []uint
 	require.NoError(t, r.db.SelectContext(ctx, &eventIds, "SELECT id FROM Events WHERE idUser = ?", idUser))
 	for _, id := range eventIds {

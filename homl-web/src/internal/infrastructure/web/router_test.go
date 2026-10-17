@@ -66,6 +66,7 @@ type serverMocks struct {
 	categories *mocks.MockCategoriesService
 	events     *mocks.MockEventsService
 	tags       *mocks.MockTagsService
+	tagGroups  *mocks.MockTagGroupsService
 	settings   *mocks.MockSettingsService
 }
 
@@ -75,6 +76,7 @@ func newTestServer() (*gin.Engine, *serverMocks) {
 		categories: new(mocks.MockCategoriesService),
 		events:     new(mocks.MockEventsService),
 		tags:       new(mocks.MockTagsService),
+		tagGroups:  new(mocks.MockTagGroupsService),
 		settings:   new(mocks.MockSettingsService),
 	}
 	authenticator := &TokenAuthenticator{Tokens: testJWT, Sessions: fakeSessions{}}
@@ -85,6 +87,7 @@ func newTestServer() (*gin.Engine, *serverMocks) {
 		User:        &UserHandler{UsersService: sm.users, Tokens: testJWT},
 		Category:    &CategoryHandler{CategoriesService: sm.categories},
 		Tag:         &TagHandler{TagsService: sm.tags},
+		TagGroup:    &TagGroupHandler{TagGroupsService: sm.tagGroups},
 		Event:       &EventHandler{EventsService: sm.events},
 		Settings:    &SettingsHandler{SettingsService: sm.settings},
 	}
@@ -564,6 +567,81 @@ func TestTagEndpointsReportTheNameConflict(t *testing.T) {
 			sm.tags.AssertExpectations(t)
 		})
 	}
+}
+
+/* ------------------------------ Tag groups ------------------------------ */
+
+func TestCreateTagGroupEndpoint(t *testing.T) {
+	router, sm := newTestServer()
+
+	sm.tagGroups.On("CreateTagGroup", testUserID, mock.MatchedBy(func(g *category.TagGroup) bool {
+		return g.Name == "Family" && g.IdCategory == 2 &&
+			len(g.Members) == 2 && g.Members[0] == 10 && g.Members[1] == 11
+	})).Return(uint(5), nil)
+
+	rec := doRequest(router, http.MethodPost, "/tagGroups",
+		`{"name":"Family","idCategory":2,"members":[10,11]}`, authHeader())
+
+	assert.Equal(t, http.StatusCreated, rec.Code)
+	assert.Equal(t, map[string]interface{}{"id": float64(5)}, decodeJSON(t, rec))
+	sm.tagGroups.AssertExpectations(t)
+}
+
+func TestCreateTagGroupRejectsMissingFields(t *testing.T) {
+	for _, body := range []string{
+		`{"idCategory":2,"members":[10]}`,
+		`{"name":"Family","members":[10]}`,
+	} {
+		router, sm := newTestServer()
+
+		rec := doRequest(router, http.MethodPost, "/tagGroups", body, authHeader())
+
+		assert.Equal(t, http.StatusUnprocessableEntity, rec.Code, body)
+		sm.tagGroups.AssertNotCalled(t, "CreateTagGroup", mock.Anything, mock.Anything)
+	}
+}
+
+func TestUpdateTagGroupEndpoint(t *testing.T) {
+	router, sm := newTestServer()
+
+	sm.tagGroups.On("UpdateTagGroup", testUserID, mock.MatchedBy(func(g *category.TagGroup) bool {
+		return g.Id == 5 && g.Name == "Family" && len(g.Members) == 1
+	})).Return(nil)
+
+	rec := doRequest(router, http.MethodPatch, "/tagGroups/5",
+		`{"name":"Family","members":[10]}`, authHeader())
+
+	assert.Equal(t, http.StatusNoContent, rec.Code)
+	sm.tagGroups.AssertExpectations(t)
+}
+
+func TestDeleteTagGroupEndpoint(t *testing.T) {
+	router, sm := newTestServer()
+
+	sm.tagGroups.On("DeleteTagGroup", uint(5), testUserID).Return(nil)
+
+	rec := doRequest(router, http.MethodDelete, "/tagGroups/5", "", authHeader())
+
+	assert.Equal(t, http.StatusNoContent, rec.Code)
+	sm.tagGroups.AssertExpectations(t)
+}
+
+// Group names are unique per category, like tag names, and the refusal
+// carries the same code.
+func TestTagGroupEndpointsReportTheNameConflict(t *testing.T) {
+	router, sm := newTestServer()
+
+	sm.tagGroups.On("CreateTagGroup", testUserID, mock.AnythingOfType("*category.TagGroup")).
+		Return(uint(0), apperror.NewTagNameConflict("A group with this name already exists in this category"))
+
+	rec := doRequest(router, http.MethodPost, "/tagGroups",
+		`{"name":"Family","idCategory":2,"members":[10]}`, authHeader())
+
+	assert.Equal(t, http.StatusConflict, rec.Code)
+	errBody, ok := decodeJSON(t, rec)["error"].(map[string]interface{})
+	assert.True(t, ok)
+	assert.Equal(t, apperror.CodeTagNameConflict, errBody["code"])
+	sm.tagGroups.AssertExpectations(t)
 }
 
 /* ------------------------------- Events --------------------------------- */

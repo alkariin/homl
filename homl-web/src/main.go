@@ -54,6 +54,10 @@ func inject(cfg *config.Config, d *db.DataSources) *gin.Engine {
 		CategoriesRepository: categoriesRepository,
 		Crypto:               aes,
 	})
+	tagGroupsService := application.NewTagGroupsService(&application.TGSConfig{
+		CategoriesRepository: categoriesRepository,
+		Crypto:               aes,
+	})
 	e2eeService := application.NewE2EEService(&application.E2EEConfig{
 		E2EERepository: e2eeRepository,
 	})
@@ -97,6 +101,7 @@ func inject(cfg *config.Config, d *db.DataSources) *gin.Engine {
 		User:     &web.UserHandler{UsersService: usersService, Tokens: jwt},
 		Category: &web.CategoryHandler{CategoriesService: categoriesService},
 		Tag:      &web.TagHandler{TagsService: tagsService},
+		TagGroup: &web.TagGroupHandler{TagGroupsService: tagGroupsService},
 		Event:    &web.EventHandler{EventsService: eventsService},
 		Settings: &web.SettingsHandler{SettingsService: settingsService},
 		E2EE:     &web.E2EEHandler{E2EEService: e2eeService},

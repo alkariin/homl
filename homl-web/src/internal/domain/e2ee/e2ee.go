@@ -80,6 +80,15 @@ type MigrationTag struct {
 	TagIndex *string `json:"tagIndex"`
 }
 
+// MigrationTagGroup carries one tag group name through POST /e2ee/migrate.
+// NameIndex is required on enable and ignored on disable (the column is
+// cleared).
+type MigrationTagGroup struct {
+	Id        uint    `json:"id"`
+	Name      string  `json:"name"`
+	NameIndex *string `json:"nameIndex"`
+}
+
 // MigrationEvent carries one event description through POST /e2ee/migrate.
 type MigrationEvent struct {
 	Id          uint   `json:"id"`
@@ -91,6 +100,7 @@ type MigrationEvent struct {
 type MigrationData struct {
 	Categories []MigrationCategory `json:"categories"`
 	Tags       []MigrationTag      `json:"tags"`
+	TagGroups  []MigrationTagGroup `json:"tagGroups"`
 	Events     []MigrationEvent    `json:"events"`
 }
 
@@ -105,8 +115,8 @@ type Repository interface {
 	// flag already matches the requested direction or when the payload id
 	// sets do not match the stored rows (the client must refetch and retry).
 	Migrate(ctx context.Context, idUser uint64, enable bool, keyCheck *string, data *MigrationData) error
-	// Purge deletes every event, tag and category of the user, reseeds the
-	// default categories and clears the E2EE flag. Last resort when the key
-	// is lost: the account survives, the data does not.
+	// Purge deletes every event, tag, tag group and category of the user,
+	// reseeds the default categories and clears the E2EE flag. Last resort
+	// when the key is lost: the account survives, the data does not.
 	Purge(ctx context.Context, idUser uint64) error
 }

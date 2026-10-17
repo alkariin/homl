@@ -233,3 +233,84 @@ func (m *MockCategoriesRepo) HasSynonyms(ctx context.Context, idTag uint) (bool,
 
 	return r0, r1
 }
+
+func (m *MockCategoriesRepo) GetAllTagGroups(ctx context.Context, idUser uint64) (map[uint][]category.TagGroupDTO, error) {
+	ret := m.Called(idUser)
+
+	var r0 map[uint][]category.TagGroupDTO
+	if ret.Get(0) != nil {
+		r0 = ret.Get(0).(map[uint][]category.TagGroupDTO)
+	}
+
+	var r1 error
+	if ret.Get(1) != nil {
+		r1 = ret.Get(1).(error)
+	}
+
+	return r0, r1
+}
+
+func (m *MockCategoriesRepo) CreateTagGroup(ctx context.Context, nameEncrypt string, nameIndex *string, idCategory uint, members []uint) (uint, error) {
+	ret := m.Called(nameEncrypt, nameIndex, idCategory, members)
+
+	var r0 uint
+	if ret.Get(0) != nil {
+		r0 = ret.Get(0).(uint)
+	}
+
+	var r1 error
+	if ret.Get(1) != nil {
+		r1 = ret.Get(1).(error)
+	}
+
+	return r0, r1
+}
+
+func (m *MockCategoriesRepo) UpdateTagGroup(ctx context.Context, nameEncrypt string, nameIndex *string, idGroup uint, members []uint) error {
+	ret := m.Called(nameEncrypt, nameIndex, idGroup, members)
+
+	var r0 error
+	if ret.Get(0) != nil {
+		r0 = ret.Get(0).(error)
+	}
+
+	return r0
+}
+
+func (m *MockCategoriesRepo) DeleteTagGroup(ctx context.Context, idGroup uint, idUser uint64) error {
+	ret := m.Called(idGroup, idUser)
+
+	var r0 error
+	if ret.Get(0) != nil {
+		r0 = ret.Get(0).(error)
+	}
+
+	return r0
+}
+
+func (m *MockCategoriesRepo) FindTagGroupForUser(ctx context.Context, idGroup uint, idUser uint64) (*category.TagGroup, error) {
+	ret := m.Called(idGroup, idUser)
+
+	var r0 *category.TagGroup
+	if ret.Get(0) != nil {
+		r0 = ret.Get(0).(*category.TagGroup)
+	}
+
+	var r1 error
+	if ret.Get(1) != nil {
+		r1 = ret.Get(1).(error)
+	}
+
+	return r0, r1
+}
+
+func (m *MockCategoriesRepo) CheckMainTagsInCategory(ctx context.Context, tagsId []uint, idCategory uint, idUser uint64) error {
+	ret := m.Called(tagsId, idCategory, idUser)
+
+	var r0 error
+	if ret.Get(0) != nil {
+		r0 = ret.Get(0).(error)
+	}
+
+	return r0
+}

@@ -126,6 +126,10 @@ func TestGetCategories(t *testing.T) {
 			1: {{Id: 10, Tag: "January"}},
 		}
 		mockRepo.On("GetAllCategoriesWithTags", uint64(7)).Return(categories, tags, nil)
+		groups := map[uint][]category.TagGroupDTO{
+			2: {{Id: 5, Name: "Family", Members: []uint{11, 12}}},
+		}
+		mockRepo.On("GetAllTagGroups", uint64(7)).Return(groups, nil)
 
 		res, err := svc.GetCategories(context.Background(), 7)
 
@@ -137,6 +141,9 @@ func TestGetCategories(t *testing.T) {
 		assert.Equal(t, "January", res[0].Tags[0].Tag)
 		assert.Equal(t, uint(2), res[1].Id)
 		assert.Equal(t, "Persons", res[1].Category)
+		// Every category carries its groups, an empty list rather than null.
+		assert.Equal(t, []category.TagGroupDTO{}, res[0].Groups)
+		assert.Equal(t, groups[2], res[1].Groups)
 		mockRepo.AssertExpectations(t)
 	})
 }

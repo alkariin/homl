@@ -206,6 +206,29 @@ func (m *MockTagsService) GetTagUsage(ctx context.Context, idTag uint, idUser ui
 	return r0, errAt(ret, 1)
 }
 
+/* ---------------------------- TagGroupsService --------------------------- */
+
+type MockTagGroupsService struct {
+	mock.Mock
+}
+
+func (m *MockTagGroupsService) CreateTagGroup(ctx context.Context, idUser uint64, g *category.TagGroup) (uint, error) {
+	ret := m.Called(idUser, g)
+	var r0 uint
+	if ret.Get(0) != nil {
+		r0 = ret.Get(0).(uint)
+	}
+	return r0, errAt(ret, 1)
+}
+
+func (m *MockTagGroupsService) UpdateTagGroup(ctx context.Context, idUser uint64, g *category.TagGroup) error {
+	return errAt(m.Called(idUser, g), 0)
+}
+
+func (m *MockTagGroupsService) DeleteTagGroup(ctx context.Context, idGroup uint, idUser uint64) error {
+	return errAt(m.Called(idGroup, idUser), 0)
+}
+
 /* ---------------------------- SettingsService ---------------------------- */
 
 type MockSettingsService struct {

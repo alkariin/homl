@@ -25,6 +25,8 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -83,6 +85,27 @@ func (c *client) do(method, path string, body interface{}) (int, []byte) {
 
 	out, _ := io.ReadAll(resp.Body)
 	return resp.StatusCode, out
+}
+
+// demoSession is one login of the demo account shared by the data tests: the
+// per-IP /login budget (10/min) covers the whole suite, registrations and
+// account deletions included, and it is already spent to the last call.
+var demoSession struct {
+	once         sync.Once
+	token        string
+	refreshToken string
+}
+
+// loginDemo authenticates the client with the shared demo session, logging
+// in on the first call only. Tests that end their session (logout) or rotate
+// its refresh token must log in on their own instead.
+func (c *client) loginDemo() {
+	c.t.Helper()
+	demoSession.once.Do(func() {
+		c.login()
+		demoSession.token, demoSession.refreshToken = c.token, c.refreshToken
+	})
+	c.token, c.refreshToken = demoSession.token, demoSession.refreshToken
 }
 
 func (c *client) login() {
@@ -156,6 +179,11 @@ type categoryResponse struct {
 		Id  uint   `json:"id"`
 		Tag string `json:"tag"`
 	} `json:"tags"`
+	Groups []struct {
+		Id      uint   `json:"id"`
+		Name    string `json:"name"`
+		Members []uint `json:"members"`
+	} `json:"groups"`
 }
 
 // TestCategoryLifecycle creates a category, verifies it shows up in the list,
@@ -163,7 +191,7 @@ type categoryResponse struct {
 // self-cleaning CRUD round-trip against the real DB.
 func TestCategoryLifecycle(t *testing.T) {
 	c := newClient(t)
-	c.login()
+	c.loginDemo()
 
 	// CreateCategory title-cases what it stores, so "E2E-1" would come back
 	// as "E2e-1" and never match. This form is already title-cased and
@@ -210,6 +238,88 @@ func TestCategoryLifecycle(t *testing.T) {
 
 	if findCategory(t, c, name) != nil {
 		t.Fatalf("category %q still present after delete", name)
+	}
+}
+
+// TestTagGroupLifecycle creates a group of two tags in a throwaway category of
+// the demo account, edits it, checks that a tag moved out of the category
+// leaves it, then deletes it; the cleanup deletes the category.
+func TestTagGroupLifecycle(t *testing.T) {
+	c := newClient(t)
+	c.loginDemo()
+
+	// Already title-cased, like TestCategoryLifecycle's name.
+	name := fmt.Sprintf("E2e-Groups-%d", time.Now().UnixNano())
+	idCategory := decodeID(t, c.mustDo(http.MethodPost, "/categories", map[string]string{
+		"category": name, "color": "#abcdef",
+	}, http.StatusCreated))
+	t.Cleanup(func() {
+		c.do(http.MethodDelete, fmt.Sprintf("/categories/%d", idCategory), map[string]bool{"moveTags": false})
+	})
+
+	newTag := func(tag string) uint {
+		return decodeID(t, c.mustDo(http.MethodPost, "/tags", map[string]interface{}{
+			"tag": tag, "idCategory": idCategory,
+		}, http.StatusCreated))
+	}
+	alice, bob, carol := newTag("Alice"), newTag("Bob"), newTag("Carol")
+
+	idGroup := decodeID(t, c.mustDo(http.MethodPost, "/tagGroups", map[string]interface{}{
+		"name": "family", "idCategory": idCategory, "members": []uint{alice, bob},
+	}, http.StatusCreated))
+
+	groupOf := func() (string, []uint) {
+		t.Helper()
+		cat := findCategory(t, c, name)
+		if cat == nil || len(cat.Groups) != 1 || cat.Groups[0].Id != idGroup {
+			t.Fatalf("expected the one group %d in %q, got %+v", idGroup, name, cat)
+		}
+		return cat.Groups[0].Name, cat.Groups[0].Members
+	}
+
+	if got, members := groupOf(); got != "Family" || fmt.Sprint(members) != fmt.Sprint([]uint{alice, bob}) {
+		t.Fatalf("created group: %q %v, want \"Family\" [%d %d]", got, members, alice, bob)
+	}
+
+	// Full-state PATCH, replayed: the second one changes nothing.
+	edit := map[string]interface{}{"name": "Family", "members": []uint{bob, carol}}
+	for attempt := 1; attempt <= 2; attempt++ {
+		c.mustDo(http.MethodPatch, fmt.Sprintf("/tagGroups/%d", idGroup), edit, http.StatusNoContent)
+	}
+	if _, members := groupOf(); fmt.Sprint(members) != fmt.Sprint([]uint{bob, carol}) {
+		t.Fatalf("edited members: %v", members)
+	}
+
+	// A group only holds main tags of its own category.
+	other := c.categoryOfKind("other")
+	if status, body := c.do(http.MethodPatch, fmt.Sprintf("/tagGroups/%d", idGroup), map[string]interface{}{
+		"name": "Family", "members": []uint{other.Id},
+	}); status != http.StatusBadRequest {
+		t.Fatalf("a member outside the category: expected 400, got %d, body %s", status, body)
+	}
+
+	// Its name is unique in the category, like a tag name.
+	status, body := c.do(http.MethodPost, "/tagGroups", map[string]interface{}{
+		"name": "Family", "idCategory": idCategory, "members": []uint{alice},
+	})
+	if status != http.StatusConflict || !strings.Contains(string(body), "TAG_NAME_CONFLICT") {
+		t.Fatalf("a duplicate group name: expected 409 TAG_NAME_CONFLICT, got %d, body %s", status, body)
+	}
+
+	// Moving Carol to another category takes the tag out of the group.
+	c.mustDo(http.MethodPatch, fmt.Sprintf("/tags/%d", carol), map[string]interface{}{
+		"tag": "Carol", "idCategory": other.Id,
+	}, http.StatusNoContent)
+	t.Cleanup(func() {
+		c.do(http.MethodDelete, fmt.Sprintf("/tags/%d", carol), map[string]bool{"deleteEvents": false})
+	})
+	if _, members := groupOf(); fmt.Sprint(members) != fmt.Sprint([]uint{bob}) {
+		t.Fatalf("members after the move: %v, want [%d]", members, bob)
+	}
+
+	c.mustDo(http.MethodDelete, fmt.Sprintf("/tagGroups/%d", idGroup), nil, http.StatusNoContent)
+	if cat := findCategory(t, c, name); cat == nil || len(cat.Groups) != 0 || len(cat.Tags) != 2 {
+		t.Fatalf("after the group deletion: %+v, want no group and both tags", cat)
 	}
 }
 

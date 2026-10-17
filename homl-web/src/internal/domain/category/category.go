@@ -33,6 +33,8 @@ type GetCategoryResponse struct {
 	IsLocked bool     `json:"isLocked"`
 	Kind     Kind     `json:"kind"`
 	Tags     []TagDTO `json:"tags"`
+	// Groups are the category's tag groups (see TagGroup).
+	Groups []TagGroupDTO `json:"groups"`
 }
 
 // TagUsage reports how many events reference a tag's synonym group: Events
@@ -69,11 +71,11 @@ type Repository interface {
 	Create(ctx context.Context, category *Category) (uint, error)
 	Update(ctx context.Context, category *Category) error
 	// Delete removes a category. moveTags moves its tags (synonym links
-	// intact) to the user's Other category; otherwise the tags are deleted
-	// and deleteEvents decides whether the events left without any non-date
-	// tag are deleted too or preserved with their date only. A move is
-	// refused with a conflict when one of the names is already taken in the
-	// Other category.
+	// intact) and its tag groups to the user's Other category; otherwise the
+	// tags and groups are deleted and deleteEvents decides whether the events
+	// left without any non-date tag are deleted too or preserved with their
+	// date only. A move is refused with a conflict when one of the names is
+	// already taken in the Other category.
 	Delete(ctx context.Context, idCategory uint, idUser uint64, moveTags bool, deleteEvents bool) error
 	// GetCategoryUsage counts the tags of a category and the events that
 	// reference them.
@@ -84,7 +86,9 @@ type Repository interface {
 	// refused with a conflict when the name is already taken in the target
 	// category, synonyms following a moved main tag included. UpdateTag is a
 	// full-state write: replaying it with identical values is a no-op, not an
-	// error.
+	// error. It also keeps the tag groups consistent: a tag leaving its
+	// category leaves the groups of that category, and a tag turned synonym
+	// hands its group memberships over to its main tag.
 	CreateTag(ctx context.Context, tagNameEncrypt string, tagIndex *string, idCategory uint, idParentTag *uint) (uint, error)
 	UpdateTag(ctx context.Context, tagNameEncrypt string, tagIndex *string, idCategory uint, idTag uint, idParentTag *uint) error
 	// DeleteTag removes a tag. Deleting a synonym repoints its events to the
@@ -101,4 +105,21 @@ type Repository interface {
 	FindTagIdByTagAndIdCategory(ctx context.Context, encTag string, idCategory uint) (uint, error)
 	FindTagForUser(ctx context.Context, idTag uint, idUser uint64) (*Tag, error)
 	HasSynonyms(ctx context.Context, idTag uint) (bool, error)
+
+	// GetAllTagGroups returns the user's tag groups by category id, members
+	// included.
+	GetAllTagGroups(ctx context.Context, idUser uint64) (map[uint][]TagGroupDTO, error)
+	// CreateTagGroup / UpdateTagGroup store an encrypted group name with its
+	// members; nameIndex is the client-side blind index of E2EE users (nil
+	// otherwise). Both are refused with a conflict when the name is already
+	// taken by another group of the category. UpdateTagGroup is a full-state
+	// write (name and the whole member list): replaying it is a no-op.
+	CreateTagGroup(ctx context.Context, nameEncrypt string, nameIndex *string, idCategory uint, members []uint) (uint, error)
+	UpdateTagGroup(ctx context.Context, nameEncrypt string, nameIndex *string, idGroup uint, members []uint) error
+	DeleteTagGroup(ctx context.Context, idGroup uint, idUser uint64) error
+	// FindTagGroupForUser loads a group (members left out) owned by the user.
+	FindTagGroupForUser(ctx context.Context, idGroup uint, idUser uint64) (*TagGroup, error)
+	// CheckMainTagsInCategory verifies that every id in tagsId is a main tag
+	// (not a synonym) of the given category of the user; it errors otherwise.
+	CheckMainTagsInCategory(ctx context.Context, tagsId []uint, idCategory uint, idUser uint64) error
 }
