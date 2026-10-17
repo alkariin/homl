@@ -750,4 +750,167 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get account_exportData => 'Export my data';
+
+  @override
+  String get account_exportDataHint =>
+      'A file with your categories, tags and events';
+
+  @override
+  String get account_importData => 'Import data';
+
+  @override
+  String get account_importDataHint => 'Add the content of an export file';
+
+  @override
+  String get export_title => 'Export your data';
+
+  @override
+  String get export_info =>
+      'The file holds your categories, tags and events. Anyone who gets it can read them, unless it is protected with a password.';
+
+  @override
+  String get export_passwordSwitch => 'Protect with a password';
+
+  @override
+  String get export_password => 'Password';
+
+  @override
+  String get export_passwordRepeat => 'Repeat the password';
+
+  @override
+  String get export_passwordTooShort => 'At least 8 characters';
+
+  @override
+  String get export_passwordHint =>
+      'Without this password nobody can open the file, not even you: it cannot be recovered.';
+
+  @override
+  String get export_e2eeWarning =>
+      'Your account is end-to-end encrypted: without a password, this file holds your data in clear.';
+
+  @override
+  String get export_confirm => 'Export';
+
+  @override
+  String get export_saved => 'Export saved';
+
+  @override
+  String get export_failed => 'The export failed, try again later';
+
+  @override
+  String get import_passwordTitle => 'Protected file';
+
+  @override
+  String get import_passwordInfo => 'Enter the password chosen when exporting.';
+
+  @override
+  String get import_passwordWrong => 'Wrong password';
+
+  @override
+  String get import_open => 'Open';
+
+  @override
+  String get import_invalidFile =>
+      'This file is not a HOML export, or it is damaged';
+
+  @override
+  String get import_newerVersion =>
+      'This file comes from a newer version of HOML: update the app to import it';
+
+  @override
+  String get import_confirmTitle => 'Import this file?';
+
+  @override
+  String import_confirmInfo(String date) {
+    return 'Exported on $date, it holds:';
+  }
+
+  @override
+  String get import_confirmMerge =>
+      'Everything is added to your account: what is already there is skipped, and nothing is changed or deleted.';
+
+  @override
+  String import_countCategories(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count categories',
+      one: '1 category',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String import_countTags(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tags',
+      one: '1 tag',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String import_countEvents(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count events',
+      one: '1 event',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get import_confirm => 'Import';
+
+  @override
+  String import_progress(int done, int total) {
+    return 'Importing… $done of $total';
+  }
+
+  @override
+  String get import_keepOpen => 'Keep the app open until the import ends.';
+
+  @override
+  String get import_doneTitle => 'Import finished';
+
+  @override
+  String get import_doneAdded => 'Added:';
+
+  @override
+  String get import_doneNothing =>
+      'Nothing new: your account already held all of it.';
+
+  @override
+  String import_doneExisting(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count events were already there.',
+      one: '1 event was already there.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String import_doneSkipped(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count items were refused by the server (a reserved tag name, for example) and left out.',
+      one:
+          '1 item was refused by the server (a reserved tag name, for example) and left out.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get import_interrupted =>
+      'Connection lost: the import stopped. Import the same file again to finish it, what is already there is skipped.';
 }

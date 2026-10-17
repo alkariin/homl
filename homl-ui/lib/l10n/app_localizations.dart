@@ -1221,6 +1221,222 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =1{1 change made offline has not reached the server yet. Logging out loses it.} other{{count} changes made offline have not reached the server yet. Logging out loses them.}}'**
   String logout_pendingInfo(int count);
+
+  /// No description provided for @account_exportData.
+  ///
+  /// In en, this message translates to:
+  /// **'Export my data'**
+  String get account_exportData;
+
+  /// No description provided for @account_exportDataHint.
+  ///
+  /// In en, this message translates to:
+  /// **'A file with your categories, tags and events'**
+  String get account_exportDataHint;
+
+  /// No description provided for @account_importData.
+  ///
+  /// In en, this message translates to:
+  /// **'Import data'**
+  String get account_importData;
+
+  /// No description provided for @account_importDataHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Add the content of an export file'**
+  String get account_importDataHint;
+
+  /// No description provided for @export_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Export your data'**
+  String get export_title;
+
+  /// No description provided for @export_info.
+  ///
+  /// In en, this message translates to:
+  /// **'The file holds your categories, tags and events. Anyone who gets it can read them, unless it is protected with a password.'**
+  String get export_info;
+
+  /// No description provided for @export_passwordSwitch.
+  ///
+  /// In en, this message translates to:
+  /// **'Protect with a password'**
+  String get export_passwordSwitch;
+
+  /// No description provided for @export_password.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get export_password;
+
+  /// No description provided for @export_passwordRepeat.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat the password'**
+  String get export_passwordRepeat;
+
+  /// No description provided for @export_passwordTooShort.
+  ///
+  /// In en, this message translates to:
+  /// **'At least 8 characters'**
+  String get export_passwordTooShort;
+
+  /// No description provided for @export_passwordHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Without this password nobody can open the file, not even you: it cannot be recovered.'**
+  String get export_passwordHint;
+
+  /// No description provided for @export_e2eeWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account is end-to-end encrypted: without a password, this file holds your data in clear.'**
+  String get export_e2eeWarning;
+
+  /// No description provided for @export_confirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Export'**
+  String get export_confirm;
+
+  /// No description provided for @export_saved.
+  ///
+  /// In en, this message translates to:
+  /// **'Export saved'**
+  String get export_saved;
+
+  /// No description provided for @export_failed.
+  ///
+  /// In en, this message translates to:
+  /// **'The export failed, try again later'**
+  String get export_failed;
+
+  /// No description provided for @import_passwordTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Protected file'**
+  String get import_passwordTitle;
+
+  /// No description provided for @import_passwordInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the password chosen when exporting.'**
+  String get import_passwordInfo;
+
+  /// No description provided for @import_passwordWrong.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrong password'**
+  String get import_passwordWrong;
+
+  /// No description provided for @import_open.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get import_open;
+
+  /// No description provided for @import_invalidFile.
+  ///
+  /// In en, this message translates to:
+  /// **'This file is not a HOML export, or it is damaged'**
+  String get import_invalidFile;
+
+  /// No description provided for @import_newerVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'This file comes from a newer version of HOML: update the app to import it'**
+  String get import_newerVersion;
+
+  /// No description provided for @import_confirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Import this file?'**
+  String get import_confirmTitle;
+
+  /// No description provided for @import_confirmInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Exported on {date}, it holds:'**
+  String import_confirmInfo(String date);
+
+  /// No description provided for @import_confirmMerge.
+  ///
+  /// In en, this message translates to:
+  /// **'Everything is added to your account: what is already there is skipped, and nothing is changed or deleted.'**
+  String get import_confirmMerge;
+
+  /// No description provided for @import_countCategories.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 category} other{{count} categories}}'**
+  String import_countCategories(int count);
+
+  /// No description provided for @import_countTags.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 tag} other{{count} tags}}'**
+  String import_countTags(int count);
+
+  /// No description provided for @import_countEvents.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 event} other{{count} events}}'**
+  String import_countEvents(int count);
+
+  /// No description provided for @import_confirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Import'**
+  String get import_confirm;
+
+  /// No description provided for @import_progress.
+  ///
+  /// In en, this message translates to:
+  /// **'Importing… {done} of {total}'**
+  String import_progress(int done, int total);
+
+  /// No description provided for @import_keepOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep the app open until the import ends.'**
+  String get import_keepOpen;
+
+  /// No description provided for @import_doneTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Import finished'**
+  String get import_doneTitle;
+
+  /// No description provided for @import_doneAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'Added:'**
+  String get import_doneAdded;
+
+  /// No description provided for @import_doneNothing.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing new: your account already held all of it.'**
+  String get import_doneNothing;
+
+  /// No description provided for @import_doneExisting.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 event was already there.} other{{count} events were already there.}}'**
+  String import_doneExisting(int count);
+
+  /// No description provided for @import_doneSkipped.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 item was refused by the server (a reserved tag name, for example) and left out.} other{{count} items were refused by the server (a reserved tag name, for example) and left out.}}'**
+  String import_doneSkipped(int count);
+
+  /// No description provided for @import_interrupted.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection lost: the import stopped. Import the same file again to finish it, what is already there is skipped.'**
+  String get import_interrupted;
 }
 
 class _AppLocalizationsDelegate
