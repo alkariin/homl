@@ -401,6 +401,27 @@ class AppLocalizationsFr extends AppLocalizations {
   String get list_pickDates => 'Filtrer par dates';
 
   @override
+  String get list_showTimeline => 'Afficher la frise';
+
+  @override
+  String get list_showGrid => 'Afficher la grille';
+
+  @override
+  String get timeline_empty =>
+      'Aucune période ici. Un événement avec une date de fin, ou encore en cours, apparaît sur la frise.';
+
+  @override
+  String timeline_singleDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count événements d\'un seul jour ne sont pas affichés',
+      one: '1 événement d\'un seul jour n\'est pas affiché',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get list_noEvents => 'Aucun événement trouvé';
 
   @override

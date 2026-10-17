@@ -173,6 +173,37 @@ void main() {
     expect(cubit.state.isSearching, isFalse);
   });
 
+  test('the timeline keeps the search, and a refresh keeps the timeline',
+      () async {
+    homeCubit = MockHomeCubit();
+    final controller = StreamController<HomeState>();
+    whenListen(homeCubit, controller.stream, initialState: loadedState());
+
+    final cubit = ListCubit(homeCubit);
+    cubit.addTypedTerm('foot');
+    cubit.toggleTimeline();
+
+    expect(cubit.state.timeline, isTrue);
+    expect(cubit.state.terms, [const SearchTerm('foot')]);
+    expect(cubit.state.events, [football, foot]);
+
+    // A refresh bringing one more match (an identical state is not
+    // emitted again).
+    final another = event(4, [tag(2, 'Foot', parent: 1)]);
+    controller
+        .add(loadedState().copyWith(events: [football, foot, movie, another]));
+    await expectLater(
+        cubit.stream,
+        emitsThrough(
+            predicate<ListState>((s) => s.timeline && s.events.length == 3)));
+
+    cubit.toggleTimeline();
+    expect(cubit.state.timeline, isFalse);
+
+    await cubit.close();
+    await controller.close();
+  });
+
   test('re-applies the filters when the shared events change', () async {
     homeCubit = MockHomeCubit();
     final controller = StreamController<HomeState>();

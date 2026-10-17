@@ -396,6 +396,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get list_pickDates => 'Filter by dates';
 
   @override
+  String get list_showTimeline => 'Show the timeline';
+
+  @override
+  String get list_showGrid => 'Show the grid';
+
+  @override
+  String get timeline_empty =>
+      'No period here. An event with an end date, or still ongoing, shows up on the timeline.';
+
+  @override
+  String timeline_singleDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count single-day events are not shown',
+      one: '1 single-day event is not shown',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get list_noEvents => 'No events found';
 
   @override

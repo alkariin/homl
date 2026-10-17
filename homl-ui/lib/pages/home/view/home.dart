@@ -156,6 +156,29 @@ class _HomeViewState extends State<HomeView>
     super.dispose();
   }
 
+  /// The Search tab's view switch: the grid of cards, or the timeline of
+  /// the periods among the same results. The icon shows the view a tap
+  /// leads to.
+  Widget _viewSwitch() {
+    return BlocBuilder<ListCubit, ListState>(
+      buildWhen: (previous, current) => previous.timeline != current.timeline,
+      builder: (context, state) {
+        final localization = AppLocalizations.of(context)!;
+        return IconButton(
+          tooltip: state.timeline
+              ? localization.list_showGrid
+              : localization.list_showTimeline,
+          icon: FaIcon(
+              state.timeline
+                  ? FontAwesomeIcons.tableCellsLarge
+                  : FontAwesomeIcons.chartGantt,
+              size: 18),
+          onPressed: () => context.read<ListCubit>().toggleTimeline(),
+        );
+      },
+    );
+  }
+
   /// The app bar mark, fed by the tags of the visible tab: the search
   /// filters, the tags of the event being written, or nothing on the
   /// Categories tab, which has no tag field.
@@ -298,6 +321,7 @@ class _HomeViewState extends State<HomeView>
                 selector: (state) => state.lastSyncedAt,
                 builder: (context, lastSyncedAt) =>
                     OfflineIndicator(lastSyncedAt: lastSyncedAt)),
+            if (_currentIndex == 1) _viewSwitch(),
             _mark(),
             const SizedBox(width: 16)
           ],

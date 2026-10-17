@@ -14,11 +14,16 @@ class ListState extends Equatable {
   /// network); the filtering itself is synchronous.
   final bool loading;
 
+  /// The results are shown as the timeline of their periods rather than the
+  /// grid of cards (the app bar switch on the Search tab).
+  final bool timeline;
+
   const ListState(
       {required this.terms,
       this.range,
       required this.events,
-      required this.loading});
+      required this.loading,
+      this.timeline = false});
 
   ListState.initial() : this(terms: [], events: [], loading: true);
 
@@ -34,5 +39,5 @@ class ListState extends Equatable {
       ];
 
   @override
-  List<Object?> get props => [terms, range, events, loading];
+  List<Object?> get props => [terms, range, events, loading, timeline];
 }
