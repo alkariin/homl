@@ -25,6 +25,6 @@ services:
 
   # Uncomment and adjust when Docker Hub is unreachable (use a registry mirror or local cache).
   # redis:
-  #   image: "registry.corp/redis:alpine"
+  #   image: "registry.corp/redis:8-alpine"
   # mysql:
   #   image: "registry.corp/mysql:8.4"

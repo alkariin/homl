@@ -66,7 +66,7 @@ vendor: ## Refresh vendor/ (set HTTP_PROXY/HTTPS_PROXY if needed)
 
 ##@ Testing
 
-GO_IMAGE ?= golang:1.26-alpine
+GO_IMAGE ?= golang:1.27-alpine
 
 test: ## Run unit + HTTP integration tests (needs a local Go toolchain)
 	cd src && go test ./...
@@ -97,7 +97,7 @@ build: ## Build backend Docker image
 db-up: _network ## Start MySQL + Redis standalone (no backend)
 	docker rm -f redis_container >/dev/null 2>&1 || true
 	docker run --net-alias redis_container --name redis_container \
-	  --net $(DOCKER_NETWORK) --rm -d -p 127.0.0.1:6379:6379 redis:alpine \
+	  --net $(DOCKER_NETWORK) --rm -d -p 127.0.0.1:6379:6379 redis:8-alpine \
 	  /bin/sh -c 'redis-server --appendonly yes --requirepass $(REDIS_PASSWORD)'
 	docker rm -f mysql_container >/dev/null 2>&1 || true
 	docker run --net-alias mysql_container --name mysql_container \

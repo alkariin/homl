@@ -63,7 +63,7 @@ App icons and native splash screens are generated from the logo — see
 
 | Layer | Technology |
 |---|---|
-| API | Go 1.25, Gin, golang-jwt (built on `golang:1.26-alpine`) |
+| API | Go 1.26, Gin, golang-jwt (built on `golang:1.27-alpine`) |
 | Database | MySQL 8.4 |
 | Cache / sessions | Redis |
 | Frontend | Flutter 3, Bloc, Dio |

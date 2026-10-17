@@ -1,4 +1,4 @@
-FROM golang:1.26-alpine AS builder
+FROM golang:1.27-alpine AS builder
 
 WORKDIR /app
 
@@ -16,7 +16,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build \
   -ldflags "-X github.com/alkariin/homl/homl-web/internal/version.Version=${VERSION}" \
   -o /homlback .
 
-FROM alpine:3.20
+FROM alpine:3.24
 
 WORKDIR /app
 COPY --from=builder /homlback /app/homlback
