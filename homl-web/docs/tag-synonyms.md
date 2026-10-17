@@ -55,4 +55,7 @@ The Flutter app's Search tab replicates this matching locally (instant and
 offline-capable): `homl-ui/lib/helpers/event_search.dart` resolves each
 filter name through its synonym group (`idParentTag ?? id` as the group
 root) with the same title-case normalization as `application/text.go`. Any
-change to the backend matching rules must be mirrored there.
+change to the backend matching rules must be mirrored there. The app goes
+further than the backend: an excluded name (`-Foot`) leaves its whole group
+out, and a name no tag bears is searched in the descriptions instead of
+matching nothing (homl-ui README, "Offline cache & local search").
