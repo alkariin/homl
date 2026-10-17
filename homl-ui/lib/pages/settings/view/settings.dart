@@ -1,5 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:homl/l10n/app_localizations.dart';
 import 'package:homl/components/settings_group.dart';
 import 'package:homl/data/repositories/settings.repository.dart';

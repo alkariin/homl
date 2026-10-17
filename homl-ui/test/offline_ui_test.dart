@@ -1,14 +1,15 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:homl/components/pin_dialog.dart';
 import 'package:homl/data/repositories/api.dart';
+import 'package:homl/helpers/localizations.dart';
 import 'package:homl/helpers/server_reachability.dart';
 import 'package:homl/l10n/app_localizations.dart';
 import 'package:homl/pages/home/view/home.dart';
 
 Widget _app(Widget child) => MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      localizationsDelegates: appLocalizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(appBar: AppBar(actions: [child])),
     );
@@ -48,7 +49,7 @@ void main() {
   group('PIN dialog', () {
     Future<void> enterPin(WidgetTester tester, PinAuthResult result) async {
       await tester.pumpWidget(MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
             body: PinDialogView((_) async => result, null)),

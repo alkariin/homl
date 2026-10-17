@@ -1,10 +1,11 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:homl/components/event_card.dart';
 import 'package:homl/components/tag.dart' as components;
 import 'package:homl/data/models/event.dart';
 import 'package:homl/data/models/tag.dart';
+import 'package:homl/helpers/localizations.dart';
 import 'package:homl/l10n/app_localizations.dart';
 
 /// Size of a grid cell on a phone (two columns, see the ListPage delegate).
@@ -39,7 +40,7 @@ void main() {
   Future<void> pumpCard(WidgetTester tester, Event event) async {
     await tester.pumpWidget(MaterialApp(
       // The period badge reads the app strings.
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      localizationsDelegates: appLocalizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
         body: Center(

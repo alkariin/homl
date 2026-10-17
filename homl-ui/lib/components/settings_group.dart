@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// White rounded card grouping settings rows (the drawer pages), hairline
 /// dividers between rows — same card language as the category/event cards,

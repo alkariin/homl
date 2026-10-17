@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -16,6 +16,7 @@ import 'package:homl/data/repositories/events.repository.dart';
 import 'package:homl/data/repositories/settings.repository.dart';
 import 'package:homl/data/repositories/tags.repository.dart';
 import 'package:homl/helpers/date_tags.dart';
+import 'package:homl/helpers/localizations.dart';
 import 'package:homl/l10n/app_localizations.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
 import 'package:homl/pages/insert/insert.dart';
@@ -60,7 +61,7 @@ final event = Event(
 
 void main() {
   group('tag labels', () {
-    // The widget tests get this for free: the flutter_localizations delegate
+    // The widget tests get this for free: the Material localizations delegate
     // initializes the intl data of the locale it loads.
     setUpAll(initializeDateFormatting);
 
@@ -127,7 +128,7 @@ void main() {
     Widget wrapEditForm(Locale locale) {
       return MaterialApp(
         locale: locale,
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: EditEventPage(homeCubit: homeCubit, event: event),
       );
@@ -136,7 +137,7 @@ void main() {
     Widget wrapSearchTab(Locale locale) {
       return MaterialApp(
         locale: locale,
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: MultiBlocProvider(
           providers: [
