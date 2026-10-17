@@ -98,7 +98,11 @@ func inject(cfg *config.Config, d *db.DataSources) *gin.Engine {
 				return d.RedisClient.Ping(ctx).Err()
 			},
 		},
-		User:     &web.UserHandler{UsersService: usersService, Tokens: jwt},
+		User: &web.UserHandler{
+			UsersService:       usersService,
+			Tokens:             jwt,
+			RegistrationClosed: !cfg.RegistrationOpen,
+		},
 		Category: &web.CategoryHandler{CategoriesService: categoriesService},
 		Tag:      &web.TagHandler{TagsService: tagsService},
 		TagGroup: &web.TagGroupHandler{TagGroupsService: tagGroupsService},

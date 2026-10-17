@@ -68,6 +68,9 @@ type serverMocks struct {
 	tags       *mocks.MockTagsService
 	tagGroups  *mocks.MockTagGroupsService
 	settings   *mocks.MockSettingsService
+	// handlers is the server the router was built from, so a test can flip
+	// a handler setting (e.g. RegistrationClosed) after the fact.
+	handlers *Server
 }
 
 func newTestServer() (*gin.Engine, *serverMocks) {
@@ -91,6 +94,7 @@ func newTestServer() (*gin.Engine, *serverMocks) {
 		Event:       &EventHandler{EventsService: sm.events},
 		Settings:    &SettingsHandler{SettingsService: sm.settings},
 	}
+	sm.handlers = server
 	router := SetupRouter(server, "", 5*time.Second, false, "", nil)
 	return router, sm
 }
@@ -142,6 +146,43 @@ func TestRegistrationEndpoint(t *testing.T) {
 	assert.NotEmpty(t, body["access_token"])
 	assert.NotEmpty(t, body["refresh_token"])
 	sm.users.AssertExpectations(t)
+}
+
+func TestRegistrationClosed(t *testing.T) {
+	router, sm := newTestServer()
+	sm.handlers.User.RegistrationClosed = true
+
+	rec := doRequest(router, http.MethodPost, "/registration",
+		`{"username":"someone@example.com","password":"masterdev","language":"fr"}`, "")
+
+	assert.Equal(t, http.StatusForbidden, rec.Code)
+	errBody := decodeJSON(t, rec)["error"].(map[string]interface{})
+	assert.Equal(t, "REGISTRATION_CLOSED", errBody["code"])
+	// Refused before the service is reached: no account is created.
+	sm.users.AssertNotCalled(t, "Registration", mock.Anything, mock.Anything)
+}
+
+func TestRegistrationClosedRefusesEvenAnInvalidBody(t *testing.T) {
+	router, sm := newTestServer()
+	sm.handlers.User.RegistrationClosed = true
+
+	rec := doRequest(router, http.MethodPost, "/registration", `{}`, "")
+
+	assert.Equal(t, http.StatusForbidden, rec.Code)
+}
+
+func TestRegistrationStatus(t *testing.T) {
+	router, sm := newTestServer()
+
+	// Public: no Authorization header.
+	rec := doRequest(router, http.MethodGet, "/registration", "", "")
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, true, decodeJSON(t, rec)["open"])
+
+	sm.handlers.User.RegistrationClosed = true
+	rec = doRequest(router, http.MethodGet, "/registration", "", "")
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, false, decodeJSON(t, rec)["open"])
 }
 
 func TestRegistrationRejectsInvalidLanguage(t *testing.T) {

@@ -28,7 +28,10 @@ users out on a blip.
 
 Registration creates the user and its default categories in one transaction,
 then mints a session; login verifies the bcrypt hash (cost 12) and resets the
-pin lockout counter. Both end in `createSession`: mint an access/refresh JWT
+pin lockout counter. An instance started with `REGISTRATION_OPEN=false`
+refuses every registration up front (`403 REGISTRATION_CLOSED`, before the
+body is read) and answers `{"open": false}` on the public `GET
+/registration`, which the app asks before showing its sign-up form. Both end in `createSession`: mint an access/refresh JWT
 pair and store both uuids in Redis.
 
 ```mermaid

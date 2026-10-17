@@ -73,6 +73,34 @@ func TestValidate(t *testing.T) {
 	})
 }
 
+func TestParseBool(t *testing.T) {
+	t.Run("unset falls back", func(t *testing.T) {
+		for _, value := range []string{"", "  "} {
+			open, err := parseBool("REGISTRATION_OPEN", value, true)
+			assert.NoError(t, err)
+			assert.True(t, open)
+		}
+	})
+
+	t.Run("reads the strconv spellings", func(t *testing.T) {
+		for value, want := range map[string]bool{
+			"true": true, "TRUE": true, "1": true,
+			"false": false, "False": false, "0": false, " false ": false,
+		} {
+			got, err := parseBool("REGISTRATION_OPEN", value, true)
+			assert.NoError(t, err, value)
+			assert.Equal(t, want, got, value)
+		}
+	})
+
+	t.Run("refuses anything else rather than guess", func(t *testing.T) {
+		for _, value := range []string{"no", "off", "closed", "flase"} {
+			_, err := parseBool("REGISTRATION_OPEN", value, true)
+			assert.ErrorContains(t, err, "REGISTRATION_OPEN", value)
+		}
+	})
+}
+
 func TestSplitList(t *testing.T) {
 	assert.Equal(t, []string{"10.0.0.0/8", "172.18.0.5"}, splitList(" 10.0.0.0/8 , 172.18.0.5 ,"))
 	assert.Nil(t, splitList("  "))

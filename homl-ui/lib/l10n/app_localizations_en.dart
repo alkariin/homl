@@ -190,6 +190,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get register_failure => 'Registration failed';
 
   @override
+  String get register_closedTitle => 'Registration is closed';
+
+  @override
+  String get register_closedInfo =>
+      'This server takes no new accounts. Whoever runs it can open registration.';
+
+  @override
+  String get register_backToLogin => 'Back to login';
+
+  @override
   String get settings => 'Settings';
 
   @override

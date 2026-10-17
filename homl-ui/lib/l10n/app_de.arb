@@ -67,6 +67,9 @@
 
   "register_submit": "Registrieren",
   "register_failure": "Registrierung fehlgeschlagen",
+  "register_closedTitle": "Registrierung geschlossen",
+  "register_closedInfo": "Dieser Server nimmt keine neuen Konten an. Wer ihn betreibt, kann die Registrierung öffnen.",
+  "register_backToLogin": "Zurück zur Anmeldung",
 
   "settings": "Einstellungen",
   "settings_language": "Sprache",

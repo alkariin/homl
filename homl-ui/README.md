@@ -531,6 +531,21 @@ alike, and are never a day behind.
   the events that started in the current calendar year. No past result, no
   summary.
 
+## Sign-up page: a server that takes no new accounts
+
+An instance can close registration (`REGISTRATION_OPEN=false`, see
+`homl-web/docs/deployment.md`). The sign-up page (`lib/pages/register/`)
+asks first: `RegisterCubit.checkRegistration()` runs as the page opens and
+calls `GET /registration` (`UsersRepository.isRegistrationOpen`). On
+`{"open": false}` the form gives way to a short explanation and a "Back to
+login" button, before anything is typed. An answer it cannot read —
+offline, or a server older than the route — keeps the form, and the sign-up
+itself has the last word: a `403 REGISTRATION_CLOSED` becomes a
+`RegistrationClosedFailure`, which switches the page to the same
+explanation rather than the generic "Registration failed" toast. The login
+page keeps its "create an account" link either way: the explanation is
+what a visitor of a closed server needs.
+
 ## Security page (drawer): password, PIN, fingerprint, delete account
 
 `lib/pages/account/` is the "Security" screen: password change

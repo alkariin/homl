@@ -86,7 +86,17 @@ of `fr`, `de`, `en`.
 ```
 
 → `200` `{ "access_token": "...", "refresh_token": "..." }` — `409` if the
-username already exists, `422` on validation failure.
+username already exists, `422` on validation failure, `403` with code
+`REGISTRATION_CLOSED` when the instance takes no new accounts
+(`REGISTRATION_OPEN=false`, see [deployment.md](deployment.md#3-first-deploy)).
+That check comes first: a closed instance refuses whatever the body holds.
+
+### GET /registration
+
+Public, not throttled. Whether the instance takes new accounts, so a client
+can say so before showing a sign-up form:
+
+→ `200` `{ "open": true }`
 
 ### POST /login
 

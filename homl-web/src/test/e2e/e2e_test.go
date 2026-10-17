@@ -169,6 +169,23 @@ func TestAuthFlow(t *testing.T) {
 	}
 }
 
+// TestRegistrationStatus reads the public sign-up switch. The stack under
+// test runs with the default REGISTRATION_OPEN, so it is open — the
+// account tests below register throwaway users through it.
+func TestRegistrationStatus(t *testing.T) {
+	noAuth := newClient(t)
+	status, body := noAuth.do(http.MethodGet, "/registration", nil)
+	if status != http.StatusOK {
+		t.Fatalf("GET /registration: status %d, body %s", status, body)
+	}
+	var got struct {
+		Open *bool `json:"open"`
+	}
+	if err := json.Unmarshal(body, &got); err != nil || got.Open == nil || !*got.Open {
+		t.Fatalf("GET /registration: expected {\"open\":true}, got %s", body)
+	}
+}
+
 type categoryResponse struct {
 	Id       uint   `json:"id"`
 	Category string `json:"category"`
