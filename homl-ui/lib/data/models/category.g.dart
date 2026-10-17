@@ -17,6 +17,10 @@ Category _$CategoryFromJson(Map<String, dynamic> json) => Category(
               ?.map((e) => Tag.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
+      groups: (json['groups'] as List<dynamic>?)
+              ?.map((e) => TagGroup.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
     );
 
 Map<String, dynamic> _$CategoryToJson(Category instance) => <String, dynamic>{
@@ -26,6 +30,7 @@ Map<String, dynamic> _$CategoryToJson(Category instance) => <String, dynamic>{
       'isLocked': instance.isLocked,
       'kind': _$CategoryKindEnumMap[instance.kind],
       'tags': instance.tags,
+      'groups': instance.groups,
     };
 
 const _$CategoryKindEnumMap = {

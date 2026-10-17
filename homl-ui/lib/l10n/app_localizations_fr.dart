@@ -643,11 +643,56 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get categories_deleteTagNameConflict =>
-      'Un de ces tags existe déjà dans Autres. Renomme-le, ou supprime les tags au lieu de les déplacer.';
+      'Un de ces tags ou groupes existe déjà dans Autres. Renomme-le, ou supprime les tags au lieu de les déplacer.';
 
   @override
   String get categories_tagNameConflict =>
       'Cette catégorie a déjà un tag portant ce nom. Choisis-en un autre.';
+
+  @override
+  String get categories_groups => 'Groupes';
+
+  @override
+  String get categories_newGroup => 'Nouveau groupe';
+
+  @override
+  String get categories_editGroup => 'Modifier le groupe';
+
+  @override
+  String get categories_deleteGroup => 'Supprimer le groupe';
+
+  @override
+  String get categories_groupHint =>
+      'Taper le nom du groupe ajoute tous ses tags d\'un coup.';
+
+  @override
+  String get categories_groupMembers => 'Tags du groupe';
+
+  @override
+  String get categories_groupNeedsMembers => 'Choisis au moins un tag.';
+
+  @override
+  String get categories_groupNameTaken =>
+      'Un tag ou un groupe porte déjà ce nom.';
+
+  @override
+  String get categories_groupNameReserved => 'Ce nom est réservé aux dates.';
+
+  @override
+  String get categories_groupNameConflict =>
+      'Cette catégorie a déjà un groupe portant ce nom. Choisis-en un autre.';
+
+  @override
+  String get categories_groupEmpty => 'Plus aucun tag';
+
+  @override
+  String categories_deleteGroupTitle(String group) {
+    return 'Supprimer \"$group\" ?';
+  }
+
+  @override
+  String get categories_deleteGroupInfo =>
+      'Seul le groupe disparaît : ses tags et leurs événements restent.';
 
   @override
   String get offline_title => 'Hors ligne';
@@ -858,6 +903,17 @@ class AppLocalizationsFr extends AppLocalizations {
       locale: localeName,
       other: '$count tags',
       one: '1 tag',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String import_countGroups(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count groupes de tags',
+      one: '1 groupe de tags',
     );
     return '$_temp0';
   }

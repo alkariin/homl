@@ -638,11 +638,57 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get categories_deleteTagNameConflict =>
-      'One of these tags already exists in Others. Rename it, or delete the tags instead of moving them.';
+      'One of these tags or groups already exists in Others. Rename it, or delete the tags instead of moving them.';
 
   @override
   String get categories_tagNameConflict =>
       'This category already has a tag with that name. Pick another one.';
+
+  @override
+  String get categories_groups => 'Groups';
+
+  @override
+  String get categories_newGroup => 'New group';
+
+  @override
+  String get categories_editGroup => 'Edit group';
+
+  @override
+  String get categories_deleteGroup => 'Delete group';
+
+  @override
+  String get categories_groupHint =>
+      'Typing the group\'s name adds all its tags at once.';
+
+  @override
+  String get categories_groupMembers => 'Tags of the group';
+
+  @override
+  String get categories_groupNeedsMembers => 'Pick at least one tag.';
+
+  @override
+  String get categories_groupNameTaken =>
+      'A tag or a group already has this name.';
+
+  @override
+  String get categories_groupNameReserved =>
+      'This name is reserved for the dates.';
+
+  @override
+  String get categories_groupNameConflict =>
+      'This category already has a group with that name. Pick another one.';
+
+  @override
+  String get categories_groupEmpty => 'No tags left';
+
+  @override
+  String categories_deleteGroupTitle(String group) {
+    return 'Delete \"$group\"?';
+  }
+
+  @override
+  String get categories_deleteGroupInfo =>
+      'Only the group goes: its tags and their events stay.';
 
   @override
   String get offline_title => 'Offline';
@@ -850,6 +896,17 @@ class AppLocalizationsEn extends AppLocalizations {
       locale: localeName,
       other: '$count tags',
       one: '1 tag',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String import_countGroups(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tag groups',
+      one: '1 tag group',
     );
     return '$_temp0';
   }

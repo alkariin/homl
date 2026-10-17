@@ -6,9 +6,13 @@ import 'package:homl/l10n/app_localizations.dart';
 import 'package:homl/components/tag.dart' as components;
 import 'package:homl/data/models/category.dart';
 import 'package:homl/data/models/tag.dart';
+import 'package:homl/data/models/tag_group.dart';
 import 'package:homl/helpers/category_labels.dart';
 import 'package:homl/helpers/colors.dart';
 import 'package:homl/helpers/date_tags.dart';
+import 'package:homl/helpers/e2ee.dart';
+import 'package:homl/helpers/event_search.dart' show normalizeTagName;
+import 'package:homl/helpers/tag_groups.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
 
 /// True when [category] holds the date tags — the months, years and Ongoing
@@ -18,16 +22,21 @@ bool isDateCategory(Category category) =>
     category.kind == CategoryKind.date ||
     (category.kind == null && category.category == defaultDatesName);
 
-/// Categories list: every category with its tags and synonyms.
+/// Categories list: every category with its tags, synonyms and tag groups.
 ///
 /// Two modes, chosen by [onTagSelected]:
 /// - null (Categories tab): management view — tapping a tag (or long
 ///   pressing its chip) opens its actions menu, categories are editable;
 /// - non-null (tag picker opened from the "#" logo): read-only browser —
 ///   tapping a tag hands it to the callback (e.g. insert it as a search
-///   filter or as an event tag).
+///   filter or as an event tag), tapping a group hands its tags to
+///   [onGroupSelected].
 class CategoryManagementBody extends StatelessWidget {
   final void Function(TagView tag)? onTagSelected;
+
+  /// Picker mode: the tags of the tapped group. The groups are left out of
+  /// the picker when null.
+  final void Function(List<TagView> tags)? onGroupSelected;
 
   /// Lists the Dates category too. False where picking one makes no sense:
   /// an event's date tags come from its period, never from the picker (see
@@ -35,7 +44,10 @@ class CategoryManagementBody extends StatelessWidget {
   final bool showDates;
 
   const CategoryManagementBody(
-      {this.onTagSelected, this.showDates = true, super.key});
+      {this.onTagSelected,
+      this.onGroupSelected,
+      this.showDates = true,
+      super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -49,8 +61,10 @@ class CategoryManagementBody extends StatelessWidget {
             .where((category) =>
                 category.kind != CategoryKind.other || category.tags.isNotEmpty)
             .where((category) => showDates || !isDateCategory(category))
-            .map((category) =>
-                _CategoryTile(category: category, onTagSelected: onTagSelected))
+            .map((category) => _CategoryTile(
+                category: category,
+                onTagSelected: onTagSelected,
+                onGroupSelected: onGroupSelected))
             .toList(),
       );
     });
@@ -92,6 +106,12 @@ void showTagPickerSheet(BuildContext context,
                 Navigator.pop(sheetContext);
                 onTagSelected(tag);
               },
+              // A group stands for its tags: each one is handed over, as if
+              // picked one by one.
+              onGroupSelected: (tags) {
+                Navigator.pop(sheetContext);
+                tags.forEach(onTagSelected);
+              },
             ),
           ),
         ],
@@ -106,8 +126,12 @@ void showTagPickerSheet(BuildContext context,
 class _CategoryTile extends StatefulWidget {
   final Category category;
   final void Function(TagView tag)? onTagSelected;
+  final void Function(List<TagView> tags)? onGroupSelected;
 
-  const _CategoryTile({required this.category, required this.onTagSelected});
+  const _CategoryTile(
+      {required this.category,
+      required this.onTagSelected,
+      required this.onGroupSelected});
 
   @override
   State<_CategoryTile> createState() => _CategoryTileState();
@@ -125,6 +149,10 @@ class _CategoryTileState extends State<_CategoryTile> {
     final isPicker = onTagSelected != null;
     final mainTags =
         category.tags.where((tag) => tag.idParentTag == null).toList();
+    // The picker offers a group only when it can hand its tags over.
+    final groups = isPicker && widget.onGroupSelected == null
+        ? const <TagGroup>[]
+        : category.groups;
 
     // When the backend exposes the category kind, only the Dates tags are
     // off-limits (managed by the backend from the event dates). The Others
@@ -283,16 +311,33 @@ class _CategoryTileState extends State<_CategoryTile> {
                             synonyms: category.tags
                                 .where((tag) => tag.idParentTag == mainTag.id)
                                 .toList())),
+                        if (groups.isNotEmpty) ...[
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 10, 16, 2),
+                            child: Text(
+                              localization.categories_groups,
+                              style: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: ink.withValues(alpha: 0.45)),
+                            ),
+                          ),
+                          ...groups.map((group) => _GroupRow(
+                              category: category,
+                              group: group,
+                              canManage: canManageTags,
+                              onGroupSelected:
+                                  isPicker ? widget.onGroupSelected : null)),
+                        ],
                         if (canManageTags && !isPicker)
                           Padding(
                             padding: const EdgeInsets.fromLTRB(16, 8, 16, 14),
-                            child: Align(
-                              alignment: Alignment.centerLeft,
-                              child: Material(
-                                color: ink.withValues(alpha: 0.06),
-                                shape: const StadiumBorder(),
-                                child: InkWell(
-                                  customBorder: const StadiumBorder(),
+                            child: Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                _AddPill(
+                                  label: localization.categories_newTag,
                                   onTap: () => _textDialog(
                                     context,
                                     title: localization.categories_newTag,
@@ -300,28 +345,15 @@ class _CategoryTileState extends State<_CategoryTile> {
                                     onSubmit: (name) =>
                                         homeCubit.createTag(name, category.id),
                                   ),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 12, vertical: 6),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Icon(Icons.add,
-                                            size: 16, color: ink),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          localization.categories_newTag,
-                                          style: const TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w600,
-                                            color: ink,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
                                 ),
-                              ),
+                                // A group needs tags to hold.
+                                if (mainTags.isNotEmpty)
+                                  _AddPill(
+                                    label: localization.categories_newGroup,
+                                    onTap: () => tagGroupDialog(context,
+                                        category: category),
+                                  ),
+                              ],
                             ),
                           )
                         else
@@ -334,6 +366,176 @@ class _CategoryTileState extends State<_CategoryTile> {
       ),
     );
   }
+}
+
+/// Stadium button adding something to a category (a tag, a group).
+class _AddPill extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+
+  const _AddPill({required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: ink.withValues(alpha: 0.06),
+      shape: const StadiumBorder(),
+      child: InkWell(
+        customBorder: const StadiumBorder(),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.add, size: 16, color: ink),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: ink,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A tag group: its chip, then the tags it stands for.
+class _GroupRow extends StatelessWidget {
+  final Category category;
+  final TagGroup group;
+  final bool canManage;
+
+  /// Picker mode when non-null: a tap hands the group's tags over.
+  final void Function(List<TagView> tags)? onGroupSelected;
+
+  const _GroupRow(
+      {required this.category,
+      required this.group,
+      required this.canManage,
+      required this.onGroupSelected});
+
+  /// The group's tags as the picker hands them out, built from the category
+  /// itself: a name shared with another category's tag must not resolve to
+  /// that other tag.
+  List<TagView> _memberViews() {
+    final byId = {for (final tag in category.tags) tag.id: tag};
+    return [
+      for (final id in group.members)
+        if (byId[id] case final tag?)
+          TagView(tag.id, category.color, tag.tag, category.id, tag.idParentTag)
+    ];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    var localization = AppLocalizations.of(context)!;
+    final members = tagGroupMemberNames(category, group);
+    final onGroupSelected = this.onGroupSelected;
+
+    final VoidCallback? onTap;
+    if (onGroupSelected != null) {
+      onTap = members.isEmpty ? null : () => onGroupSelected(_memberViews());
+    } else {
+      onTap = canManage
+          ? () => _groupActionsDialog(context, category, group)
+          : null;
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+      child: Row(
+        children: [
+          Flexible(
+            child: components.Tag(
+              id: group.id,
+              text: group.name,
+              color: category.color,
+              isGroup: true,
+              onTap: onTap,
+              onDeleteTag: onGroupSelected == null && canManage
+                  ? (_) => _groupActionsDialog(context, category, group)
+                  : null,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              members.isEmpty
+                  ? localization.categories_groupEmpty
+                  : members.join(', '),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style:
+                  TextStyle(fontSize: 12.5, color: ink.withValues(alpha: 0.45)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Tap (or long press) on a group chip: edit it or delete it.
+void _groupActionsDialog(
+    BuildContext context, Category category, TagGroup group) {
+  var localization = AppLocalizations.of(context)!;
+
+  showDialog<void>(
+    context: context,
+    builder: (dialogContext) => SimpleDialog(
+      title: Text(group.name),
+      children: [
+        SimpleDialogOption(
+          child: Text(localization.categories_editGroup),
+          onPressed: () {
+            Navigator.pop(dialogContext);
+            tagGroupDialog(context, category: category, group: group);
+          },
+        ),
+        SimpleDialogOption(
+          child: Text(localization.categories_deleteGroup),
+          onPressed: () {
+            Navigator.pop(dialogContext);
+            _deleteGroupDialog(context, group);
+          },
+        ),
+      ],
+    ),
+  );
+}
+
+/// Confirms a group deletion: only the shortcut goes.
+void _deleteGroupDialog(BuildContext context, TagGroup group) {
+  var localization = AppLocalizations.of(context)!;
+  final homeCubit = context.read<HomeCubit>();
+
+  showDialog<void>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: Text(localization.categories_deleteGroupTitle(group.name)),
+      content: Text(localization.categories_deleteGroupInfo),
+      actions: [
+        TextButton(
+          child: Text(localization.global_cancel),
+          onPressed: () => Navigator.pop(dialogContext),
+        ),
+        TextButton(
+          child: Text(localization.global_delete),
+          onPressed: () {
+            homeCubit.deleteTagGroup(group.id);
+            Navigator.pop(dialogContext);
+          },
+        ),
+      ],
+    ),
+  );
 }
 
 class _TagRow extends StatelessWidget {
@@ -956,6 +1158,170 @@ class _CategoryDialogState extends State<_CategoryDialog> {
             }
             Navigator.pop(context);
           },
+        ),
+      ],
+    );
+  }
+}
+
+/// Tag group create/edit dialog: a name and the main tags of [category] it
+/// stands for. Editing passes the [group].
+void tagGroupDialog(BuildContext context,
+    {required Category category, TagGroup? group}) {
+  final homeCubit = context.read<HomeCubit>();
+
+  showDialog<void>(
+    context: context,
+    builder: (_) => _TagGroupDialog(
+      category: category,
+      group: group,
+      // Every tag and group name of the account: typed in the same field as
+      // the tags, a group named like one of them would be ambiguous there.
+      takenNames: {
+        for (final other in homeCubit.state.categories) ...[
+          for (final tag in other.tags) normalizeTagName(tag.tag),
+          for (final otherGroup in other.groups)
+            if (otherGroup.id != group?.id) normalizeTagName(otherGroup.name),
+        ],
+      },
+      onSubmit: (name, members) => group == null
+          ? homeCubit.createTagGroup(name, category.id, members)
+          : homeCubit.updateTagGroup(group.id, name, members),
+    ),
+  );
+}
+
+class _TagGroupDialog extends StatefulWidget {
+  final Category category;
+  final TagGroup? group;
+
+  /// Normalized names the group cannot take.
+  final Set<String> takenNames;
+  final void Function(String name, List<int> members) onSubmit;
+
+  const _TagGroupDialog(
+      {required this.category,
+      required this.group,
+      required this.takenNames,
+      required this.onSubmit});
+
+  @override
+  State<_TagGroupDialog> createState() => _TagGroupDialogState();
+}
+
+class _TagGroupDialogState extends State<_TagGroupDialog> {
+  // Owned by the dialog state, like the other dialogs of this page.
+  late final TextEditingController _controller =
+      TextEditingController(text: widget.group?.name);
+  late final Set<int> _selected = {...?widget.group?.members};
+
+  late final List<Tag> _mainTags =
+      widget.category.tags.where((tag) => tag.idParentTag == null).toList();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  /// Why the typed name cannot be saved, or null when it can.
+  String? _nameError(AppLocalizations localization) {
+    final name = _controller.text.trim();
+    if (name.isEmpty) return null;
+    if (E2ee().isBlacklistedTag(name)) {
+      return localization.categories_groupNameReserved;
+    }
+    if (widget.takenNames.contains(normalizeTagName(name))) {
+      return localization.categories_groupNameTaken;
+    }
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    var localization = AppLocalizations.of(context)!;
+    final locale = Localizations.localeOf(context).toString();
+    final nameError = _nameError(localization);
+    // Members in the category's order, whatever the order of the taps; a
+    // member deleted meanwhile is simply not listed anymore.
+    final members = [
+      for (final tag in _mainTags)
+        if (_selected.contains(tag.id)) tag.id
+    ];
+    final canSave = _controller.text.trim().isNotEmpty &&
+        nameError == null &&
+        members.isNotEmpty;
+
+    return AlertDialog(
+      title: Text(widget.group == null
+          ? localization.categories_newGroup
+          : localization.categories_editGroup),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: _controller,
+              autofocus: widget.group == null,
+              decoration: InputDecoration(
+                labelText: localization.categories_categoryName,
+                errorText: nameError,
+              ),
+              onChanged: (_) => setState(() {}),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              localization.categories_groupHint,
+              style:
+                  TextStyle(fontSize: 12.5, color: ink.withValues(alpha: 0.55)),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              localization.categories_groupMembers,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final tag in _mainTags)
+                  FilterChip(
+                    label: Text(localizedTagName(tag.tag, locale)),
+                    selected: _selected.contains(tag.id),
+                    selectedColor: colorFromHex(widget.category.color)
+                        .withValues(alpha: 0.45),
+                    onSelected: (selected) => setState(() => selected
+                        ? _selected.add(tag.id)
+                        : _selected.remove(tag.id)),
+                  ),
+              ],
+            ),
+            if (members.isEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                localization.categories_groupNeedsMembers,
+                style: TextStyle(
+                    fontSize: 12.5, color: ink.withValues(alpha: 0.55)),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          child: Text(localization.global_cancel),
+          onPressed: () => Navigator.pop(context),
+        ),
+        TextButton(
+          onPressed: canSave
+              ? () {
+                  widget.onSubmit(_controller.text.trim(), members);
+                  Navigator.pop(context);
+                }
+              : null,
+          child: Text(localization.global_save),
         ),
       ],
     );

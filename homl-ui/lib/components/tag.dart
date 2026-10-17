@@ -18,6 +18,9 @@ class Tag extends StatelessWidget {
   /// Called on long press. When null the tag is not removable (date tag).
   final Function(int id)? onDeleteTag;
   final bool isDate;
+
+  /// A tag group (a shortcut for its tags), marked with a stack icon.
+  final bool isGroup;
   final bool large;
 
   static const double _fontSize = 13.5;
@@ -61,6 +64,7 @@ class Tag extends StatelessWidget {
       this.onTap,
       this.onDeleteTag,
       this.isDate = false,
+      this.isGroup = false,
       this.large = false,
       super.key});
 
@@ -94,9 +98,13 @@ class Tag extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (isDate) ...[
-                FaIcon(FontAwesomeIcons.calendar,
-                    size: large ? 13 : 12, color: label),
+              if (isDate || isGroup) ...[
+                FaIcon(
+                    isDate
+                        ? FontAwesomeIcons.calendar
+                        : FontAwesomeIcons.layerGroup,
+                    size: large ? 13 : 12,
+                    color: label),
                 const SizedBox(width: 5),
               ],
               // A label longer than the room the chip is given (a narrow grid

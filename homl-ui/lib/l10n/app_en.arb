@@ -281,8 +281,26 @@
       "count": { "type": "int" }
     }
   },
-  "categories_deleteTagNameConflict": "One of these tags already exists in Others. Rename it, or delete the tags instead of moving them.",
+  "categories_deleteTagNameConflict": "One of these tags or groups already exists in Others. Rename it, or delete the tags instead of moving them.",
   "categories_tagNameConflict": "This category already has a tag with that name. Pick another one.",
+  "categories_groups": "Groups",
+  "categories_newGroup": "New group",
+  "categories_editGroup": "Edit group",
+  "categories_deleteGroup": "Delete group",
+  "categories_groupHint": "Typing the group's name adds all its tags at once.",
+  "categories_groupMembers": "Tags of the group",
+  "categories_groupNeedsMembers": "Pick at least one tag.",
+  "categories_groupNameTaken": "A tag or a group already has this name.",
+  "categories_groupNameReserved": "This name is reserved for the dates.",
+  "categories_groupNameConflict": "This category already has a group with that name. Pick another one.",
+  "categories_groupEmpty": "No tags left",
+  "categories_deleteGroupTitle": "Delete \"{group}\"?",
+  "@categories_deleteGroupTitle": {
+    "placeholders": {
+      "group": { "type": "String" }
+    }
+  },
+  "categories_deleteGroupInfo": "Only the group goes: its tags and their events stay.",
   "offline_title": "Offline",
   "offline_explanation": "Server unreachable. You are viewing the data saved on this device; changes need a connection. The app reconnects by itself.",
   "offline_explanationSince": "Server unreachable. You are viewing the data saved on this device (last updated {date}); changes need a connection. The app reconnects by itself.",
@@ -359,6 +377,12 @@
   },
   "import_countTags": "{count, plural, =1{1 tag} other{{count} tags}}",
   "@import_countTags": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "import_countGroups": "{count, plural, =1{1 tag group} other{{count} tag groups}}",
+  "@import_countGroups": {
     "placeholders": {
       "count": { "type": "int" }
     }

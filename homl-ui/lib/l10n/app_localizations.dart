@@ -1045,7 +1045,7 @@ abstract class AppLocalizations {
   /// No description provided for @categories_deleteTagNameConflict.
   ///
   /// In en, this message translates to:
-  /// **'One of these tags already exists in Others. Rename it, or delete the tags instead of moving them.'**
+  /// **'One of these tags or groups already exists in Others. Rename it, or delete the tags instead of moving them.'**
   String get categories_deleteTagNameConflict;
 
   /// No description provided for @categories_tagNameConflict.
@@ -1053,6 +1053,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This category already has a tag with that name. Pick another one.'**
   String get categories_tagNameConflict;
+
+  /// No description provided for @categories_groups.
+  ///
+  /// In en, this message translates to:
+  /// **'Groups'**
+  String get categories_groups;
+
+  /// No description provided for @categories_newGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'New group'**
+  String get categories_newGroup;
+
+  /// No description provided for @categories_editGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit group'**
+  String get categories_editGroup;
+
+  /// No description provided for @categories_deleteGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete group'**
+  String get categories_deleteGroup;
+
+  /// No description provided for @categories_groupHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Typing the group\'s name adds all its tags at once.'**
+  String get categories_groupHint;
+
+  /// No description provided for @categories_groupMembers.
+  ///
+  /// In en, this message translates to:
+  /// **'Tags of the group'**
+  String get categories_groupMembers;
+
+  /// No description provided for @categories_groupNeedsMembers.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick at least one tag.'**
+  String get categories_groupNeedsMembers;
+
+  /// No description provided for @categories_groupNameTaken.
+  ///
+  /// In en, this message translates to:
+  /// **'A tag or a group already has this name.'**
+  String get categories_groupNameTaken;
+
+  /// No description provided for @categories_groupNameReserved.
+  ///
+  /// In en, this message translates to:
+  /// **'This name is reserved for the dates.'**
+  String get categories_groupNameReserved;
+
+  /// No description provided for @categories_groupNameConflict.
+  ///
+  /// In en, this message translates to:
+  /// **'This category already has a group with that name. Pick another one.'**
+  String get categories_groupNameConflict;
+
+  /// No description provided for @categories_groupEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No tags left'**
+  String get categories_groupEmpty;
+
+  /// No description provided for @categories_deleteGroupTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete \"{group}\"?'**
+  String categories_deleteGroupTitle(String group);
+
+  /// No description provided for @categories_deleteGroupInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the group goes: its tags and their events stay.'**
+  String get categories_deleteGroupInfo;
 
   /// No description provided for @offline_title.
   ///
@@ -1377,6 +1455,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =1{1 tag} other{{count} tags}}'**
   String import_countTags(int count);
+
+  /// No description provided for @import_countGroups.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 tag group} other{{count} tag groups}}'**
+  String import_countGroups(int count);
 
   /// No description provided for @import_countEvents.
   ///

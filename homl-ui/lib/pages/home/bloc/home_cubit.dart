@@ -107,7 +107,8 @@ class HomeCubit extends Cubit<HomeState> {
                   color: yellowHex,
                   isLocked: category.isLocked,
                   kind: category.kind,
-                  tags: category.tags)
+                  tags: category.tags,
+                  groups: category.groups)
               : category,
       ];
 
@@ -295,6 +296,46 @@ class HomeCubit extends Cubit<HomeState> {
       emit(state.copyWith(modal: AppMessage.requestFailed));
     }
   }
+
+  /// Creates a tag group of [members] (main tags of the category). Online
+  /// only, like the other category changes.
+  Future<void> createTagGroup(
+      String name, int idCategory, List<int> members) async {
+    try {
+      await categoriesRepository.createTagGroup(name, idCategory, members);
+      await _refreshCategories();
+    } catch (error) {
+      emit(state.copyWith(modal: _tagGroupMessage(error)));
+    }
+  }
+
+  /// Full-state update of a group: its name and its whole member list.
+  Future<void> updateTagGroup(int id, String name, List<int> members) async {
+    try {
+      await categoriesRepository.updateTagGroup(id, name, members);
+      await _refreshCategories();
+    } catch (error) {
+      emit(state.copyWith(modal: _tagGroupMessage(error)));
+    }
+  }
+
+  /// Deletes the group only: its tags and their events stay.
+  Future<void> deleteTagGroup(int id) async {
+    try {
+      await categoriesRepository.deleteTagGroup(id);
+      await _refreshCategories();
+    } catch (_) {
+      emit(state.copyWith(modal: AppMessage.requestFailed));
+    }
+  }
+
+  AppMessage _tagGroupMessage(Object error) => switch (error) {
+        // Another group of the category has the name: nothing was written.
+        TagGroupNameConflictFailure() => AppMessage.tagGroupNameConflict,
+        // A member created offline is not on the server yet.
+        TagPendingFailure() => AppMessage.tagPending,
+        _ => AppMessage.requestFailed,
+      };
 
   /// Event counts for the tag's synonym group, or null when the request
   /// fails (an error modal is emitted instead).

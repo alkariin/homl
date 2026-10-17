@@ -16,7 +16,10 @@ class E2eePendingChangesFailure implements Exception {}
 /// Repository of the E2EE lifecycle endpoints (homl-web/docs/e2ee.md):
 /// the atomic whole-dataset migration and the lost-key purge.
 class E2eeRepository {
-  final apiInstance = Api();
+  final Api? _injectedApi;
+  late final Api apiInstance = _injectedApi ?? Api();
+
+  E2eeRepository({Api? api}) : _injectedApi = api;
 
   /// The migrate endpoint conflicts (409) when the dataset changed between
   /// the fetch and the commit: the payload is simply rebuilt and resent.
@@ -127,6 +130,7 @@ class E2eeRepository {
 
     final categories = <Map<String, dynamic>>[];
     final tags = <Map<String, dynamic>>[];
+    final tagGroups = <Map<String, dynamic>>[];
     for (final raw in rawCategories) {
       final category = raw as Map<String, dynamic>;
       categories.add({
@@ -140,6 +144,15 @@ class E2eeRepository {
           'id': tag['id'],
           'tag': await outgoing(name),
           if (enable) 'tagIndex': await e2ee.tagIndex(name),
+        });
+      }
+      for (final rawGroup in (category['groups'] as List<dynamic>? ?? [])) {
+        final group = rawGroup as Map<String, dynamic>;
+        final name = group['name'] as String;
+        tagGroups.add({
+          'id': group['id'],
+          'name': await outgoing(name),
+          if (enable) 'nameIndex': await e2ee.tagIndex(name),
         });
       }
     }
@@ -160,6 +173,7 @@ class E2eeRepository {
       if (enable) 'keyCheck': await e2ee.keyCheck(),
       'categories': categories,
       'tags': tags,
+      'tagGroups': tagGroups,
       'events': events,
     };
   }

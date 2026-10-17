@@ -8,6 +8,7 @@ import 'package:homl/data/models/category.dart';
 import 'package:homl/helpers/categories.dart';
 import 'package:homl/helpers/category_labels.dart';
 import 'package:homl/helpers/date_tags.dart';
+import 'package:homl/helpers/tag_groups.dart';
 import 'package:homl/pages/categories/view/category_management.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
 import 'package:homl/pages/list/bloc/list_cubit.dart';
@@ -63,18 +64,21 @@ class ListPage extends StatelessWidget {
                       displayName: localizedTagName(name, locale),
                       color: homeState.allTagsMap[name]?.color))
                   .toList(),
-              suggestions: homeState.allTagsMap.values
-                  .map((tagView) => TagChipData(
-                      id: tagView.id,
-                      name: tagView.tagName,
-                      displayName: localizedTagName(tagView.tagName, locale),
-                      color: tagView.color,
-                      category: categoryLabels[tagView.idCategory],
-                      highlightColor:
-                          otherCategoryIds.contains(tagView.idCategory)
-                              ? null
-                              : tagView.color))
-                  .toList(),
+              suggestions: [
+                ...homeState.allTagsMap.values.map((tagView) => TagChipData(
+                    id: tagView.id,
+                    name: tagView.tagName,
+                    displayName: localizedTagName(tagView.tagName, locale),
+                    color: tagView.color,
+                    category: categoryLabels[tagView.idCategory],
+                    highlightColor:
+                        otherCategoryIds.contains(tagView.idCategory)
+                            ? null
+                            : tagView.color)),
+                // A group adds each of its tags as a filter: the events
+                // carrying them all.
+                ...tagGroupSuggestions(homeState.categories),
+              ],
               onAddTag: (name) => context.read<ListCubit>().addFilterTag(name),
               onRemoveTag: (tag) =>
                   context.read<ListCubit>().removeFilterTag(tag.name),
