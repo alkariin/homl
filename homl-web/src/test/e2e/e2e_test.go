@@ -262,7 +262,10 @@ func TestTagGroupLifecycle(t *testing.T) {
 			"tag": tag, "idCategory": idCategory,
 		}, http.StatusCreated))
 	}
-	alice, bob, carol := newTag("Alice"), newTag("Bob"), newTag("Carol")
+	// Carol moves to the shared Others category below: a unique name keeps
+	// a leftover of an interrupted run from clashing with it there.
+	carolName := fmt.Sprintf("Carol%d", time.Now().UnixNano()%1000000)
+	alice, bob, carol := newTag("Alice"), newTag("Bob"), newTag(carolName)
 
 	idGroup := decodeID(t, c.mustDo(http.MethodPost, "/tagGroups", map[string]interface{}{
 		"name": "family", "idCategory": idCategory, "members": []uint{alice, bob},
@@ -290,14 +293,6 @@ func TestTagGroupLifecycle(t *testing.T) {
 		t.Fatalf("edited members: %v", members)
 	}
 
-	// A group only holds main tags of its own category.
-	other := c.categoryOfKind("other")
-	if status, body := c.do(http.MethodPatch, fmt.Sprintf("/tagGroups/%d", idGroup), map[string]interface{}{
-		"name": "Family", "members": []uint{other.Id},
-	}); status != http.StatusBadRequest {
-		t.Fatalf("a member outside the category: expected 400, got %d, body %s", status, body)
-	}
-
 	// Its name is unique in the category, like a tag name.
 	status, body := c.do(http.MethodPost, "/tagGroups", map[string]interface{}{
 		"name": "Family", "idCategory": idCategory, "members": []uint{alice},
@@ -307,14 +302,23 @@ func TestTagGroupLifecycle(t *testing.T) {
 	}
 
 	// Moving Carol to another category takes the tag out of the group.
+	other := c.categoryOfKind("other")
 	c.mustDo(http.MethodPatch, fmt.Sprintf("/tags/%d", carol), map[string]interface{}{
-		"tag": "Carol", "idCategory": other.Id,
+		"tag": carolName, "idCategory": other.Id,
 	}, http.StatusNoContent)
 	t.Cleanup(func() {
 		c.do(http.MethodDelete, fmt.Sprintf("/tags/%d", carol), map[string]bool{"deleteEvents": false})
 	})
 	if _, members := groupOf(); fmt.Sprint(members) != fmt.Sprint([]uint{bob}) {
 		t.Fatalf("members after the move: %v, want [%d]", members, bob)
+	}
+
+	// And it cannot join back from there: a group only holds main tags of
+	// its own category.
+	if status, body := c.do(http.MethodPatch, fmt.Sprintf("/tagGroups/%d", idGroup), map[string]interface{}{
+		"name": "Family", "members": []uint{bob, carol},
+	}); status != http.StatusBadRequest {
+		t.Fatalf("a member outside the category: expected 400, got %d, body %s", status, body)
 	}
 
 	c.mustDo(http.MethodDelete, fmt.Sprintf("/tagGroups/%d", idGroup), nil, http.StatusNoContent)
