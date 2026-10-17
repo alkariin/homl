@@ -149,7 +149,7 @@ lib/
 │   ├── store/         # the data saved for offline use, sealed on the device
 │   ├── sync/          # the outbox of offline writes and the sync engine
 │   └── transfer/      # the export file format and its password protection
-├── helpers/           # cross-cutting logic: e2ee, date_tags, event_search, theme, toast…
+├── helpers/           # cross-cutting logic: e2ee, date_tags, event_search, on_this_day, theme…
 ├── l10n/              # .arb sources + generated AppLocalizations
 ├── pages/             # one folder per screen: <page>/bloc (cubit + state) and <page>/view
 │                      # pages/app wires the repository + cubit providers and routes on auth status
@@ -490,6 +490,45 @@ one would put a dozen month chips under it.
 Neither action refreshes the list by hand: both repository calls emit on
 `EventsRepository.changes`, which `HomeCubit` already listens to (refetch +
 offline cache rewrite), and `ListCubit` re-filters from `HomeCubit.stream`.
+
+## Search tab: "On this day" & "Last time"
+
+Two headers above the grid, scrolling with it (`ListPage` is a
+`CustomScrollView`: the header slivers, then the grid). Both are worked out
+by `ListPage` at render time from the events already in memory — nothing is
+stored or asked of the server, so they work offline and for an E2EE account
+alike, and are never a day behind.
+
+- **On this day** (`lib/helpers/on_this_day.dart`,
+  `lib/pages/list/view/on_this_day_strip.dart`), on the whole list only: a
+  horizontal strip of the events that *started* on today's month and day in
+  an earlier year, the most recent first, each card under "1 year ago",
+  "10 years ago". The cards are the grid's own `EventCard`s, so a tap opens
+  the detail sheet. Only the start counts: a period comes back on the
+  anniversary of its first day, never on every day it covers (a five-year
+  period would otherwise fill the strip every day for five years). An event
+  of 29 February comes back on 28 February in the years without one, never on
+  1 March. The current year's events are not memories yet. No memory, no
+  strip.
+- **Last time** (`lib/helpers/last_time.dart`,
+  `lib/pages/list/view/last_time_summary.dart`), once a filter is set: what
+  the results say about the past.
+
+  ```
+  Last time: 14 months ago · Aug 12, 2025
+  23 events · 6 this year
+  ```
+
+  The last time is the latest day the results covered: the day of a
+  single-day event, the end of a closed period. While one of them is still
+  going on — an open period, or a closed one not over yet — it reads
+  "right now" instead. "Ago" uses the period badge scale (days, then months
+  from 31 days, years from 24 months; `agoLabel` in
+  `lib/helpers/event_period.dart`), with "today" and "yesterday". Only the
+  past counts: an event dated after today is a plan, left out of the counts
+  as well, so they can be lower than the number of cards. "This year" counts
+  the events that started in the current calendar year. No past result, no
+  summary.
 
 ## Security page (drawer): password, PIN, fingerprint, delete account
 
