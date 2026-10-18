@@ -201,6 +201,7 @@
   "insert_descriptionLabel": "Description",
   "insert_submit": "Create event",
   "insert_eventCreated": "Event created",
+  "insert_emptyError": "Add a tag or a description",
   "insert_periodSingleDay": "Single day",
   "insert_periodClosed": "Period",
   "insert_periodOngoing": "Ongoing",

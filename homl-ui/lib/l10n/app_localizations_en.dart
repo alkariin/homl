@@ -487,6 +487,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get insert_eventCreated => 'Event created';
 
   @override
+  String get insert_emptyError => 'Add a tag or a description';
+
+  @override
   String get insert_periodSingleDay => 'Single day';
 
   @override

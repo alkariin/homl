@@ -442,9 +442,10 @@ under E2EE), so what the form shows is what the Dates category will hold and
 what the search can filter on. Both chips open the date picker, and both
 follow the picked date (`leading` of `TagInput` takes a list of widgets).
 
-Tags of its own are optional: the two date chips already file every event,
-so one with no other tag — or even no description — saves as it is. Deleting
-a tag can leave events with their date alone anyway, and they stay editable.
+Tags are optional: an event needs a tag **or** a description, and saving one
+with neither says so (`AppMessage.insertEmpty`). Deleting a tag can leave
+events without any tag of their own anyway, and they must stay editable. The
+two date chips never count, they only file the event.
 
 An event is a single day, a closed period or an open one ("still ongoing"),
 picked with the segmented control under the tag input. Its selected segment
