@@ -107,9 +107,10 @@ void main() {
   });
 
   ({Api api, List<AuthenticationStatus> statuses}) build(_Backend backend,
-      {Future<String> Function()? readBiometricKeyPair}) {
+      {Future<String> Function()? readBiometricKeyPair,
+      String baseUrl = 'https://api.test'}) {
     final api = Api.internal(
-        baseUrlOverride: 'https://api.test',
+        baseUrlOverride: baseUrl,
         initFromStorage: false,
         readBiometricKeyPair: readBiometricKeyPair);
     api.api.httpClientAdapter = backend;
@@ -241,6 +242,25 @@ void main() {
   });
 
   group('offline start', () {
+    test('without a server address the login screen shows, nothing is asked',
+        () async {
+      storage['isFingerprintEnabled'] = 'true';
+      var prompts = 0;
+      final backend = _Backend((options) async => _offline(options));
+      final t = build(backend, baseUrl: '', readBiometricKeyPair: () async {
+        prompts++;
+        return 'unused';
+      });
+
+      await t.api.restoreSession();
+      await settle();
+
+      expect(t.statuses, contains(AuthenticationStatus.unauthenticated));
+      expect(t.statuses, isNot(contains(AuthenticationStatus.authenticated)));
+      expect(prompts, 0);
+      expect(backend.requests, isEmpty);
+    });
+
     test('an account without second factor opens the saved data', () async {
       final backend = _Backend((options) async => _offline(options));
       final t = build(backend);

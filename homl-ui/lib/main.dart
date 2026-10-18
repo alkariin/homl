@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'components/logo.dart';
 import 'helpers/bloc_observer.dart';
+import 'helpers/server_address.dart';
 import 'pages/app/bloc/app_cubit.dart';
 import 'pages/app/view/app.dart';
 
@@ -17,6 +18,8 @@ Future<void> main() async {
   // meantime — so the in-app splash starts with the hash already drawn instead
   // of popping it in once the SVG loads.
   await precacheLogo();
+  // The server picked on this device: the Api is built with it.
+  await ServerAddress.load();
   // The saved appearance too: a dark choice on a light system must not show
   // a light frame first.
   runApp(App(themeMode: await AppCubit.loadThemeMode()));

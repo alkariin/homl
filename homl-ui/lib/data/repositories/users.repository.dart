@@ -5,10 +5,12 @@ import 'package:dio/dio.dart';
 import 'package:homl/data/models/device_session.dart';
 import 'package:homl/data/models/user.dart';
 
+import 'package:homl/data/sync/outbox.dart';
 import 'package:homl/helpers/biometric_storage.dart';
 import 'package:homl/helpers/language.dart';
 import 'package:homl/helpers/local_storage_manager.dart';
 import 'package:homl/helpers/pin_verifier.dart';
+import 'package:homl/helpers/server_address.dart';
 
 import 'api.dart';
 
@@ -37,12 +39,41 @@ class UsersRepository {
   /// The Api singleton by default; injectable so the tests can drive the
   /// repository against a fake HTTP adapter (see Api.internal).
   ///
-  /// Resolved lazily on purpose: building the singleton needs API_BASE_URL,
-  /// which the widget/cubit tests do not define — they stub the repository
-  /// methods and must never touch the network.
+  /// Resolved lazily on purpose: building the singleton restores the session
+  /// from the secure storage, which the widget/cubit tests do not have — they
+  /// stub the repository methods and must never touch the network.
   late final Api apiInstance = _injectedApi ?? Api();
 
-  UsersRepository({Api? api}) : _injectedApi = api;
+  /// The homl server check behind [changeServer]; injectable for the tests.
+  final Future<ServerCheck> Function(String apiBaseUrl) _checkServer;
+
+  UsersRepository(
+      {Api? api, Future<ServerCheck> Function(String apiBaseUrl)? checkServer})
+      : _injectedApi = api,
+        _checkServer = checkServer ?? _defaultCheck;
+
+  static Future<ServerCheck> _defaultCheck(String apiBaseUrl) =>
+      checkServer(apiBaseUrl);
+
+  /// Points the app at [apiBaseUrl] (the login screen: signed out), once a
+  /// homl server answered there; the check is returned either way.
+  ///
+  /// Moving to another server wipes what this device kept, the changes not
+  /// sent yet included: account ids repeat from one server to the next, so
+  /// those kept "for the same account's next sign-in" could otherwise reach
+  /// someone else's account there.
+  Future<ServerCheck> changeServer(String apiBaseUrl) async {
+    final check = await _checkServer(apiBaseUrl);
+    if (check.outcome != ServerCheckOutcome.ok) return check;
+
+    if (apiBaseUrl != ServerAddress.current) {
+      await LocalStorageManager.clearDataCaches();
+      Outbox.instance.forget();
+    }
+    await ServerAddress.save(apiBaseUrl);
+    apiInstance.useServer(apiBaseUrl);
+    return check;
+  }
 
   Future<AuthenticationStatus> login(String username, String password) async {
     late Response<dynamic> response;

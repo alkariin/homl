@@ -10,11 +10,15 @@ see [../homl-web/README.md](../homl-web/README.md) for the stack, and
 flutter pub get
 ```
 
-## 2) Run (required API_BASE_URL)
+## 2) Run
 
 ```bash
 flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:8080/api
 ```
+
+`API_BASE_URL` is the server the app starts with. It is optional: without
+it the login screen asks for the server's address before the first sign-in,
+and the address picked there always wins (see "Server address" below).
 
 For Android emulator, use host loopback mapping:
 
@@ -98,8 +102,9 @@ app must target this machine's **LAN IP**. The backend also has to be reachable
 on the LAN (Docker Compose publishes `8080` on `0.0.0.0`, so `make dev` is fine;
 just make sure your firewall allows it).
 
-Cleartext HTTP to the dev backend is enabled for **debug builds only** via
-`android/app/src/debug/AndroidManifest.xml` (`usesCleartextTraffic="true"`).
+Cleartext HTTP is allowed in every build (`usesCleartextTraffic="true"` in
+`android/app/src/main/AndroidManifest.xml`): a server on a home network rarely
+has a certificate. See "Server address" below.
 
 Use the helper `./run-android.sh` (local-only, auto-detects LAN IP + device), or
 run manually:
@@ -639,6 +644,45 @@ grid. The choice lasts as long as the session.
 - It is slivers (`SliverMainAxisGroup`) in the page's `CustomScrollView`, so
   the pull to refresh works the same in both views.
 
+## Server address (login screen)
+
+homl is self-hosted, so the app cannot know its server: the user tells it.
+`lib/helpers/server_address.dart` holds the address in use (`ServerAddress`),
+as an API base URL (`/api` included):
+
+- **Where it comes from.** The address picked on this device
+  (`LocalStorageKey.serverUrl`, read in `main.dart` before the first frame),
+  else the build's `--dart-define=API_BASE_URL`, else none. With none, the
+  login screen's sign-in, sign-up and forgot-password buttons open the server
+  dialog first, and a session left by a build that had a default is not
+  restored (`Api.restoreSession`): there is no server to renew it with.
+- **The dialog** (`lib/pages/login/view/server_dialog.dart`) opens from the
+  address shown under the login form. What is typed goes through
+  `apiBaseUrlFor`: no scheme means `http://` for an IPv4 address or
+  `localhost` and `https://` for a name; `/api` is appended unless already
+  there, so `192.168.1.10:8090` becomes `http://192.168.1.10:8090/api` and a
+  proxy sub-path is kept. An `http://` address shows a warning as it is
+  typed: the password and the session token would cross the network in clear.
+- **The check.** Saving asks the `/healthz` next to the address
+  (`checkServer`) and keeps the address only when a homl server answers —
+  a `503` from a server whose MySQL or Redis is down counts, it is the right
+  address. Otherwise the dialog stays open and says why: nothing answers,
+  something that is not homl answers (a NAS admin page, a router), or the HTTPS
+  certificate is not trusted (self-signed).
+- **Switching** (`UsersRepository.changeServer`, signed out only) points the
+  Api's Dio client at the new address (`Api.useServer`) without a restart.
+  Moving to *another* server also wipes the local store, the changes not sent
+  yet included: account ids repeat from one server to the next, and the
+  outbox kept "for the same account's next sign-in" (see "Offline mode") must
+  not reach a stranger's account that shares the id there.
+- **Lifetime.** The address is a setting of the device: kept across logouts
+  and account deletion (`LocalStorageManager.clearAll` skips it).
+  Settings → About shows it under the versions.
+
+Plain HTTP works in release builds on purpose — Android's main manifest sets
+`usesCleartextTraffic`, iOS sets `NSAllowsLocalNetworking` — so a server kept
+on the home network needs no certificate.
+
 ## Sign-up page: a server that takes no new accounts
 
 An instance can close registration (`REGISTRATION_OPEN=false`, see
@@ -826,7 +870,7 @@ session"; the outbox and the sync in
   lockout; until the PIN was entered once online, the dialog says so instead.
 - **`lib/helpers/server_reachability.dart`** — `ServerReachability`, the
   online / offline flag the Api maintains. A plain singleton that needs no
-  `API_BASE_URL`, so cubits read it to pick their message
+  network stack, so cubits read it to pick their message
   (`AppMessage.requestFailed`) and their tests build without the network stack.
 - **`lib/data/repositories/api.dart`** — tells a network failure (keep the
   session, go offline) from a verdict on the session (a `401` on

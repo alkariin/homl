@@ -56,6 +56,17 @@
 
   "login_forgotPassword": "Passwort vergessen?",
   "login_pinLocked": "Ihre PIN wurde nach zu vielen Versuchen gesperrt. Bitte melden Sie sich mit Ihrem Passwort an.",
+  "login_server": "Server",
+  "login_serverChoose": "Server auswählen",
+  "login_serverLabel": "Serveradresse",
+  "login_serverHint": "z. B. http://192.168.1.10:8090",
+  "login_serverInvalid": "Geben Sie eine Adresse wie http://192.168.1.10:8090 ein",
+  "login_serverNoAnswer": "Unter dieser Adresse antwortet kein Server.",
+  "login_serverNotHoml": "Unter dieser Adresse antwortet etwas, aber kein homl-Server.",
+  "login_serverUntrusted": "Das Zertifikat dieses Servers wird vom Gerät nicht anerkannt.",
+  "login_serverCleartext": "Unverschlüsselte Verbindung: nur im Heimnetz verwenden.",
+  "login_serverConnected": "Verbunden mit homl {version}",
+  "login_serverConnectedNoVersion": "Mit dem Server verbunden",
 
   "forgot_title": "Passwort zurücksetzen",
   "forgot_emailInstructions": "Geben Sie Ihre E-Mail-Adresse ein und wir senden Ihnen einen 6-stelligen Code.",

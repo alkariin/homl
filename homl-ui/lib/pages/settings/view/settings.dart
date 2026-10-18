@@ -6,6 +6,7 @@ import 'package:homl/components/settings_group.dart';
 import 'package:homl/data/repositories/settings.repository.dart';
 import 'package:homl/helpers/app_message.dart';
 import 'package:homl/helpers/toast.dart';
+import 'package:homl/helpers/server_address.dart';
 import 'package:homl/pages/app/bloc/app_cubit.dart';
 import 'package:homl/pages/settings/view/appearance_dialog.dart';
 import 'package:homl/pages/settings/view/home_tab_dialog.dart';
@@ -129,7 +130,10 @@ class SettingsView extends StatelessWidget {
                     ListTile(
                       leading: const Icon(Icons.info_outline),
                       title: Text(localization.settings_about),
-                      subtitle: Text(_versionSummary(localization, state)),
+                      // The address too: the login screen is the only other
+                      // place that shows which server this is.
+                      subtitle: Text('${_versionSummary(localization, state)}'
+                          '\n${displayServerAddress(ServerAddress.current)}'),
                     ),
                   ]),
                 ],

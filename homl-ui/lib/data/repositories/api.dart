@@ -13,6 +13,7 @@ import 'package:homl/helpers/e2ee.dart';
 import 'package:homl/helpers/encryption.dart' as encryption;
 import 'package:homl/helpers/local_storage_manager.dart';
 import 'package:homl/helpers/pin_verifier.dart';
+import 'package:homl/helpers/server_address.dart';
 import 'package:homl/helpers/server_reachability.dart';
 import 'package:homl/helpers/version.dart';
 
@@ -89,12 +90,15 @@ class _RefreshResult {
 class Api {
   static final Api _api = Api._internal();
 
-  static const baseUrl = String.fromEnvironment('API_BASE_URL');
-
   late Dio api;
   String? accessToken;
   late final StreamController<AuthenticationStatus> _controller;
-  late final String _healthzUrl;
+
+  /// The server the requests go to (helpers/server_address.dart); empty
+  /// until one is picked on the login screen when none was built in.
+  String get baseUrl => api.options.baseUrl;
+
+  String get _healthzUrl => healthzUrl(baseUrl);
 
   /// Reads the fingerprint-protected keypair (OS prompt). Injectable: the
   /// tests have no biometric plugin.
@@ -142,6 +146,14 @@ class Api {
   void dispose() {
     _stopProbing();
     _controller.close();
+  }
+
+  /// Sends the requests to [apiBaseUrl] from now on: the server picked on the
+  /// login screen. Signed out only, so nothing in flight belongs to a session
+  /// on the previous one.
+  void useServer(String apiBaseUrl) {
+    api.options.baseUrl = apiBaseUrl;
+    _reachability.markUnknown();
   }
 
   /// Makes [pin] or [biometricKeyPair] the factor of the open session (the
@@ -665,17 +677,10 @@ class Api {
       Future<String> Function()? readBiometricKeyPair})
       : _readBiometricKeyPair =
             readBiometricKeyPair ?? biometric.readBiometricKeyPair {
-    final effectiveBaseUrl = baseUrlOverride ?? baseUrl;
-    if (effectiveBaseUrl.isEmpty) {
-      throw StateError(
-          'API_BASE_URL is not set. Run with --dart-define=API_BASE_URL=<url>');
-    }
-
     _controller = StreamController<AuthenticationStatus>.broadcast();
-    _healthzUrl = healthzUrl(effectiveBaseUrl);
 
     api = Dio(BaseOptions(
-      baseUrl: effectiveBaseUrl,
+      baseUrl: baseUrlOverride ?? ServerAddress.current,
       contentType: Headers.jsonContentType,
       responseType: ResponseType.json,
       // Short, so an offline start reaches the saved data quickly: away from
@@ -789,7 +794,10 @@ class Api {
       final refreshToken =
           await LocalStorageManager.getValue(LocalStorageKey.refreshToken);
 
-      if (refreshToken == null) {
+      // No server to renew it with (a build without a default one, installed
+      // over a build that had it): the login screen asks for the address, and
+      // picking it wipes what was saved (UsersRepository.changeServer).
+      if (refreshToken == null || baseUrl.isEmpty) {
         _controller.add(AuthenticationStatus.unauthenticated);
         return;
       }

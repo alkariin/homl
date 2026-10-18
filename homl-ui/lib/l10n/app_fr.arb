@@ -56,6 +56,17 @@
 
   "login_forgotPassword": "Mot de passe oublié ?",
   "login_pinLocked": "Votre PIN a été bloqué après trop de tentatives. Veuillez vous connecter avec votre mot de passe.",
+  "login_server": "Serveur",
+  "login_serverChoose": "Choisir un serveur",
+  "login_serverLabel": "Adresse du serveur",
+  "login_serverHint": "ex. http://192.168.1.10:8090",
+  "login_serverInvalid": "Saisissez une adresse comme http://192.168.1.10:8090",
+  "login_serverNoAnswer": "Aucun serveur ne répond à cette adresse.",
+  "login_serverNotHoml": "Quelque chose répond à cette adresse, mais ce n'est pas un serveur homl.",
+  "login_serverUntrusted": "Le certificat de ce serveur n'est pas reconnu par l'appareil.",
+  "login_serverCleartext": "Connexion non chiffrée : à utiliser uniquement sur votre réseau domestique.",
+  "login_serverConnected": "Connecté à homl {version}",
+  "login_serverConnectedNoVersion": "Connecté au serveur",
 
   "forgot_title": "Réinitialiser le mot de passe",
   "forgot_emailInstructions": "Entrez votre adresse email et nous vous enverrons un code à 6 chiffres.",

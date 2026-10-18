@@ -125,6 +125,12 @@ it — with the app sending a password on every login and a bearer token on
 every request, HTTPS is not optional the moment the service leaves your
 machine.
 
+**LAN only.** A server that never leaves your home network can do without
+the proxy: publish the API port on the LAN and enter
+`http://<server-ip>:<port>` in the app (§5). The app accepts plain HTTP and
+says the connection is unencrypted — the password and the session token
+cross your Wi-Fi in clear. Leave `TRUSTED_PROXIES` empty then.
+
 Caddy is the shortest path, since it obtains and renews the certificate on its
 own:
 
@@ -186,7 +192,11 @@ docker compose logs homlback | tail -20
 
 ## 5. Building the clients
 
-The Flutter app is built against one API URL, baked in at compile time:
+The app asks for its server on the login screen (see "Server address" in
+[../../homl-ui/README.md](../../homl-ui/README.md)): one build serves any
+instance, and an address that changes needs no rebuild. `API_BASE_URL` sets
+the server it starts with — required in practice for the web build, served
+from the API's own origin:
 
 ```bash
 cd homl-ui
@@ -199,9 +209,10 @@ Serve `build/web` from the same origin you put in `CORS_ORIGIN`. The
 `--no-tree-shake-icons` flag is not optional — see the note in
 [../../homl-ui/README.md](../../homl-ui/README.md).
 
-For Android, the same `--dart-define` applies to `flutter build apk`. A release
-APK is currently signed with the debug key, so it cannot be upgraded by a
-properly signed build later: set up a keystore before distributing one.
+For Android, the same `--dart-define` applies to `flutter build apk`; leave it
+out and users enter the address at the first sign-in. A release APK is
+currently signed with the debug key, so it cannot be upgraded by a properly
+signed build later: set up a keystore before distributing one.
 
 ## 6. Password-reset email
 
@@ -337,4 +348,4 @@ than assume.
 - [ ] `3306` and `6379` not reachable from outside (`ss -ltn` on the host)
 - [ ] SMTP configured, a real reset email received
 - [ ] `scripts/backup.sh` in root's crontab, dumps copied off-host, one restore rehearsed with `scripts/restore.sh`
-- [ ] Client built with the production `API_BASE_URL`
+- [ ] Clients pointed at the server: built with its `API_BASE_URL`, or the address entered on the login screen

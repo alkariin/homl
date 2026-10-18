@@ -37,8 +37,7 @@ class SettingsRepository {
   /// is available.
   Future<Settings?> getSettings() async {
     try {
-      final response =
-          await api.get<Map<String, dynamic>>('${Api.baseUrl}/settings');
+      final response = await api.get<Map<String, dynamic>>('/settings');
 
       if (response.data == null) {
         _settingsController.addError(SettingsNotFoundFailure());
@@ -76,8 +75,7 @@ class SettingsRepository {
 
   Future<void> setSettings(Settings settings) async {
     try {
-      final response =
-          await api.put('${Api.baseUrl}/settings', data: settings.toJson());
+      final response = await api.put('/settings', data: settings.toJson());
 
       if (response.data == null) {
         _settingsController.addError(SettingsNotFoundFailure());
@@ -98,7 +96,7 @@ class SettingsRepository {
   Future<String?> getServerVersion() async {
     try {
       final response = await api.get<Map<String, dynamic>>(
-          healthzUrl(Api.baseUrl),
+          healthzUrl(api.options.baseUrl),
           // /healthz answers 503 with the same body when a dependency is
           // down; the build identity is still worth showing then.
           options: Options(
