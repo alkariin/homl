@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:intl/intl.dart';
+import 'package:homl/helpers/theme.dart';
 import 'package:homl/l10n/app_localizations.dart';
 import 'package:homl/data/repositories/categories.repository.dart';
 import 'package:homl/data/repositories/events.repository.dart';
@@ -14,7 +15,6 @@ import 'package:homl/data/repositories/settings.repository.dart';
 import 'package:homl/data/repositories/tags.repository.dart';
 import 'package:homl/data/sync/outbox.dart';
 import 'package:homl/helpers/app_message.dart';
-import 'package:homl/helpers/colors.dart';
 import 'package:homl/helpers/server_reachability.dart';
 import 'package:homl/helpers/toast.dart';
 import 'package:homl/pages/settings/view/settings.dart';
@@ -230,9 +230,10 @@ class _HomeViewState extends State<HomeView>
           padding: EdgeInsets.fromLTRB(
               12, 10 + MediaQuery.paddingOf(context).top, 4, 16),
           margin: const EdgeInsets.only(bottom: 8),
-          decoration: const BoxDecoration(
-            border:
-                Border(bottom: BorderSide(color: Color(0x14000000), width: 1)),
+          decoration: BoxDecoration(
+            border: Border(
+                bottom: BorderSide(
+                    color: context.homl.ink.withValues(alpha: 0.08), width: 1)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -266,7 +267,8 @@ class _HomeViewState extends State<HomeView>
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                      fontSize: 13, color: ink.withValues(alpha: 0.5)),
+                      fontSize: 13,
+                      color: context.homl.ink.withValues(alpha: 0.5)),
                 ),
               ),
             ],
@@ -379,9 +381,10 @@ class _HomeViewState extends State<HomeView>
           ],
         ),
         bottomNavigationBar: Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            border: Border(top: BorderSide(color: borderGrey, width: 0.5)),
+          decoration: BoxDecoration(
+            color: context.homl.card,
+            border:
+                Border(top: BorderSide(color: context.homl.rule, width: 0.5)),
           ),
           child: BottomNavigationBar(
             currentIndex: _currentIndex,
@@ -389,8 +392,8 @@ class _HomeViewState extends State<HomeView>
             elevation: 0,
             showSelectedLabels: false,
             showUnselectedLabels: false,
-            selectedItemColor: ink,
-            unselectedItemColor: ink.withValues(alpha: 0.3),
+            selectedItemColor: context.homl.ink,
+            unselectedItemColor: context.homl.ink.withValues(alpha: 0.3),
             iconSize: 22,
             onTap: (index) {
               dismissToasts(context);
@@ -416,7 +419,7 @@ class _HomeViewState extends State<HomeView>
             ],
           ),
         ),
-        drawer: Drawer(backgroundColor: Colors.white, child: drawerItems),
+        drawer: Drawer(backgroundColor: context.homl.card, child: drawerItems),
       ),
     );
   }
@@ -441,7 +444,8 @@ class _DrawerListTile extends StatelessWidget {
       leading: Icon(icon, size: 22),
       title: Text(title),
       trailing: Icon(Icons.chevron_right,
-          size: 20, color: ink.withValues(alpha: 0.3)),
+          size: 20,
+          color: context.homl.ink.withValues(alpha: 0.3)),
       onTap: onTap,
     );
   }

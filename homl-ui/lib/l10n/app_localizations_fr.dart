@@ -279,6 +279,21 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settings_selectHomeTab => 'Sélectionner l\'écran d\'accueil';
 
   @override
+  String get settings_appearance => 'Apparence';
+
+  @override
+  String get settings_selectAppearance => 'Sélectionner l\'apparence';
+
+  @override
+  String get settings_themeSystem => 'Comme le système';
+
+  @override
+  String get settings_themeLight => 'Clair';
+
+  @override
+  String get settings_themeDark => 'Sombre';
+
+  @override
   String get settings_about => 'À propos';
 
   @override

@@ -203,7 +203,7 @@ with `--no-tree-shake-icons`.
 
 Every message goes through `showToast` (`lib/helpers/toast.dart`), never
 through `ScaffoldMessenger.showSnackBar` directly. On top of the theme's
-floating white snackbar it owns three behaviours:
+floating snackbar (on the card color) it owns three behaviours:
 
 - **tap to dismiss**: the whole surface reacts to a tap (hence
   `padding: EdgeInsets.zero` on the SnackBar and the padding inside the
@@ -213,7 +213,7 @@ floating white snackbar it owns three behaviours:
   then every keystroke of the corrected password) left a trail of toasts
   still running long after the screen that produced them;
 - **durations**: 3s for confirmations, 5s for errors, `isError: true` for the
-  red ones (auth failures only — everything else stays white).
+  red ones (auth failures only — everything else wears the card color).
 
 Toasts are cleared when the user goes elsewhere, because the messenger lives
 on the `MaterialApp`, above the navigator, and a toast otherwise outlives its
@@ -246,6 +246,51 @@ to do that, but it *also* puts the initial text back and re-notifies
 `onChanged` with it, so the field is cleared again right after
 (`_resetEmptied`): without it an erased description reappeared on blur and the
 parent bloc heard a change the user never made.
+
+## Light & dark themes
+
+**Settings → Appearance** picks *System default* (the default), *Light* or
+*Dark*. The choice applies at once and belongs to the device, not to the
+account: it is saved under `LocalStorageKey.themeMode`, kept across logouts
+(account deletion wipes it with every other key) and read in `main.dart`
+before the first frame, so a dark choice on a light system never shows a
+light frame first (`AppCubit.loadThemeMode` / `updateThemeMode`, the
+`MaterialApp` takes `theme`, `darkTheme` and `themeMode`).
+
+Widgets never paint white or black: the colors that depend on the brightness
+are a `ThemeExtension`, `HomlColors` in `lib/helpers/theme.dart`, read with
+`context.homl` — `ink` (text, icons, the monochrome controls), `card`
+(cards, sheets, dialogs, the app bar, toasts), `background`, `field` (filled
+inputs), `hairline` and `shadow` (around and under a card), `quiet` (the
+selected segment, an off switch) and `rule` (lines that must show).
+`homlTheme(brightness:)` builds both themes from them. The light values are
+the palette the app always had; the dark ones are not black on white turned
+over but a soft white (`#ECECEA`) on deep greys, the cards (`#1D1D1F`) a step
+above the background (`#121213`) so they still read as cards. Under a theme
+without the extension (a bare `MaterialApp` in a widget test),
+`context.homl` falls back to the light colors.
+
+What stays the same in both: the gold accent, the category pastels and the
+red of destructive actions. Tag chips, timeline bars and calendar squares
+are the pastel at low opacity over whatever surface is under them, so they
+dim with it. The square icons of the Categories tab turn over in the dark:
+the pastel itself is the icon, over a dimmer square, where the light theme
+darkens it.
+
+The logo artwork is drawn black and gold (`assets/images/logo.svg`): its
+black strokes are repainted in the theme's ink, so the hash is soft white on
+the dark theme (`_LogoColorMapper` in `lib/components/logo.dart`, which also
+takes a tag's tint for the gold strokes). The mapper compares by value
+because it is part of the SVG cache key: each coloring is parsed once
+instead of on every frame of the mark's animations, and `precacheLogo()`
+parses the colorings the splash starts with, in both brightnesses.
+
+The native splash has a dark variant too (`color_dark` / `image_dark` in
+`pubspec.yaml`, the hash in the dark ink on the dark background, see
+`tool/icons/README.md`). It follows the *system* setting: Android and iOS
+show it before Flutter runs, when the in-app choice cannot be read yet. With
+an appearance forced against the system, the native splash wears the
+system's for that moment.
 
 ## Categories tab: tag & category management
 

@@ -22,6 +22,8 @@ const logoPaths = logoSvg
   .filter((line) => line.trim().startsWith('<path'))
   .join('\n');
 const blackPaths = logoPaths.replaceAll('fill="#D3A934"', 'fill="black"');
+// The dark theme's ink (HomlColors.dark in lib/helpers/theme.dart).
+const inkPaths = blackPaths.replaceAll('fill="black"', 'fill="#ECECEA"');
 
 /** Composes an SVG canvas with the logo paths centered at the given width. */
 function compose({ canvas, logoWidth, paths, background }) {
@@ -64,3 +66,7 @@ render('splash-logo-black.png', `<svg width="${LOGO_W}" height="${LOGO_H}" viewB
 // 174-logical-px logo on the Flutter splash (174dp = 696px here) so the
 // native → in-app hand-off keeps the logo the same size.
 render('splash-logo-black-a12.png', compose({ canvas: 1152, logoWidth: 696, paths: blackPaths }), 1152);
+
+// The same two in the dark theme's ink, shown when the system is dark.
+render('splash-logo-ink.png', `<svg width="${LOGO_W}" height="${LOGO_H}" viewBox="0 0 ${LOGO_W} ${LOGO_H}" fill="none" xmlns="http://www.w3.org/2000/svg">\n${inkPaths}\n</svg>`, 696);
+render('splash-logo-ink-a12.png', compose({ canvas: 1152, logoWidth: 696, paths: inkPaths }), 1152);

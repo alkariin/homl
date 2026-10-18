@@ -1,11 +1,13 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:homl/helpers/theme.dart';
 import 'package:homl/l10n/app_localizations.dart';
 import 'package:homl/components/settings_group.dart';
 import 'package:homl/data/repositories/settings.repository.dart';
 import 'package:homl/helpers/app_message.dart';
-import 'package:homl/helpers/colors.dart';
 import 'package:homl/helpers/toast.dart';
+import 'package:homl/pages/app/bloc/app_cubit.dart';
+import 'package:homl/pages/settings/view/appearance_dialog.dart';
 import 'package:homl/pages/settings/view/home_tab_dialog.dart';
 import 'package:homl/pages/settings/view/language_dialog.dart';
 
@@ -90,9 +92,23 @@ class SettingsView extends StatelessWidget {
                       leading: const Icon(Icons.translate),
                       title: Text(localization.settings_language),
                       trailing: Icon(Icons.chevron_right,
-                          size: 20, color: ink.withValues(alpha: 0.3)),
+                          size: 20,
+                          color: context.homl.ink.withValues(alpha: 0.3)),
                       onTap: () {
                         Navigator.push(context, LanguageDialog.route(context));
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.contrast),
+                      title: Text(localization.settings_appearance),
+                      subtitle: Text(themeModeLabel(localization,
+                          context.watch<AppCubit>().state.themeMode)),
+                      trailing: Icon(Icons.chevron_right,
+                          size: 20,
+                          color: context.homl.ink.withValues(alpha: 0.3)),
+                      onTap: () {
+                        Navigator.push(
+                            context, AppearanceDialog.route(context));
                       },
                     ),
                     ListTile(
@@ -102,7 +118,8 @@ class SettingsView extends StatelessWidget {
                           ? localization.nav_add
                           : localization.nav_search),
                       trailing: Icon(Icons.chevron_right,
-                          size: 20, color: ink.withValues(alpha: 0.3)),
+                          size: 20,
+                          color: context.homl.ink.withValues(alpha: 0.3)),
                       onTap: () {
                         Navigator.push(context, HomeTabDialog.route(context));
                       },

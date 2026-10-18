@@ -26,6 +26,10 @@ enum LocalStorageKey {
   pinVerifier,
   pinOfflineFailures,
 
+  /// The appearance picked in the settings (a [ThemeMode] name): a
+  /// preference of this device, kept across logouts.
+  themeMode,
+
   /// 16-byte E2EE seed (base64). Deliberately NOT removed on logout: it must
   /// survive re-logins on the same device — losing it means losing the data.
   /// Account deletion is the one case that wipes it (see [clearAll]): there

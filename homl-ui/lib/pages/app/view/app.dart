@@ -25,7 +25,10 @@ import 'package:homl/data/sync/outbox.dart';
 import 'package:homl/data/sync/sync_engine.dart';
 
 class App extends StatefulWidget {
-  const App({super.key});
+  /// The appearance saved on this device, read before the first frame.
+  final ThemeMode themeMode;
+
+  const App({this.themeMode = ThemeMode.system, super.key});
 
   @override
   State<App> createState() => _AppState();
@@ -67,7 +70,8 @@ class _AppState extends State<App> {
           BlocProvider(create: (_) => AuthenticationCubit(_settingsRepository)),
           BlocProvider(create: (_) => LoginCubit(_usersRepository)),
           BlocProvider(
-              create: (_) => AppCubit(defaultLanguage, _settingsRepository)),
+              create: (_) => AppCubit(defaultLanguage, _settingsRepository,
+                  themeMode: widget.themeMode)),
         ],
         child: AppView(_apiInstance),
       ),
@@ -154,6 +158,8 @@ class _AppViewState extends State<AppView> with WidgetsBindingObserver {
         scaffoldMessengerKey: _scaffoldMessengerKey,
         navigatorObservers: [_toastObserver],
         theme: homlTheme(),
+        darkTheme: homlTheme(brightness: Brightness.dark),
+        themeMode: state.themeMode,
         localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         locale: Locale(state.locale.text),

@@ -110,6 +110,11 @@
   "settings_selectLanguage": "Select language",
   "settings_homeTab": "Home screen",
   "settings_selectHomeTab": "Select home screen",
+  "settings_appearance": "Appearance",
+  "settings_selectAppearance": "Select appearance",
+  "settings_themeSystem": "System default",
+  "settings_themeLight": "Light",
+  "settings_themeDark": "Dark",
   "settings_about": "About",
   "settings_versionApp": "App {version}",
   "@settings_versionApp": {

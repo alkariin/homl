@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:material_ui/material_ui.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
+import 'package:homl/helpers/theme.dart';
 import 'package:homl/components/tag.dart';
 import 'package:homl/helpers/colors.dart';
 
@@ -325,8 +326,8 @@ class _TagInputState extends State<TagInput> {
       tooltip: tooltip,
       icon: FaIcon(icon, size: 20),
       style: IconButton.styleFrom(
-        backgroundColor: ink.withValues(alpha: 0.06),
-        foregroundColor: ink,
+        backgroundColor: context.homl.ink.withValues(alpha: 0.06),
+        foregroundColor: context.homl.ink,
         padding: EdgeInsets.zero,
         fixedSize: const Size.square(_buttonSize),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -427,7 +428,8 @@ class _TagInputState extends State<TagInput> {
                                   child: FaIcon(
                                       FontAwesomeIcons.magnifyingGlass,
                                       size: 18,
-                                      color: ink.withValues(alpha: 0.45)),
+                                      color: context.homl.ink
+                                          .withValues(alpha: 0.45)),
                                 )
                               : null,
                           suffixIcon: value.text.isEmpty
@@ -436,7 +438,8 @@ class _TagInputState extends State<TagInput> {
                                   icon: FaIcon(
                                       FontAwesomeIcons.solidCircleXmark,
                                       size: 18,
-                                      color: ink.withValues(alpha: 0.35)),
+                                      color: context.homl.ink
+                                          .withValues(alpha: 0.35)),
                                   onPressed: controller.clear,
                                 ),
                         ),
@@ -450,7 +453,7 @@ class _TagInputState extends State<TagInput> {
                     alignment: Alignment.topLeft,
                     child: Material(
                       elevation: 6,
-                      color: Colors.white,
+                      color: context.homl.card,
                       shadowColor: Colors.black.withValues(alpha: 0.25),
                       borderRadius: BorderRadius.circular(12),
                       clipBehavior: Clip.antiAlias,
@@ -495,7 +498,8 @@ class _TagInputState extends State<TagInput> {
                                         overflow: TextOverflow.ellipsis,
                                         style: TextStyle(
                                             fontSize: 12.5,
-                                            color: ink.withValues(alpha: 0.45)),
+                                            color: context.homl.ink
+                                                .withValues(alpha: 0.45)),
                                       ),
                                     ),
                               onTap: () => onSelected(option),

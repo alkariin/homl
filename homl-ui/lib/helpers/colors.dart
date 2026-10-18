@@ -7,9 +7,9 @@ const Color yellow = Color(0xFFD3A934);
 /// Dates category).
 const String yellowHex = "#D3A934";
 const Color blue = Color(0xFF14B7EB);
-const Color background = Color(0xFFFBFBFB);
-const Color borderGrey = Color(0xFFB7B7B7);
-const Color ink = Color(0xFF000000);
+
+// Ink, cards, the background and the rules depend on the brightness: they
+// are the theme's (HomlColors in lib/helpers/theme.dart, `context.homl`).
 
 /// Legacy header color, kept for the pastel category presets below.
 const Color primary = Color(0xfff2e5c2);

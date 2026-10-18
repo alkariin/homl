@@ -1,9 +1,9 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:intl/intl.dart';
 
+import 'package:homl/helpers/theme.dart';
 import 'package:homl/data/sync/outbox.dart';
 import 'package:homl/data/sync/sync_engine.dart';
-import 'package:homl/helpers/colors.dart' as palette;
 import 'package:homl/helpers/e2ee.dart';
 import 'package:homl/helpers/server_reachability.dart';
 import 'package:homl/l10n/app_localizations.dart';
@@ -27,8 +27,11 @@ class PendingChangesButton extends StatelessWidget {
       tooltip: localization.pending_title,
       icon: Badge(
         label: Text('${counts.total}'),
-        backgroundColor:
-            counts.parked > 0 ? Theme.of(context).colorScheme.error : palette.ink,
+        backgroundColor: counts.parked > 0
+            ? Theme.of(context).colorScheme.error
+            : context.homl.ink,
+        // On the ink, the label takes the background: light in the dark theme.
+        textColor: counts.parked > 0 ? null : context.homl.background,
         child: const Icon(Icons.cloud_upload_outlined),
       ),
       onPressed: () => showModalBottomSheet<void>(

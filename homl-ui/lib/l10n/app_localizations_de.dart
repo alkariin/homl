@@ -278,6 +278,21 @@ class AppLocalizationsDe extends AppLocalizations {
   String get settings_selectHomeTab => 'Startbildschirm auswählen';
 
   @override
+  String get settings_appearance => 'Erscheinungsbild';
+
+  @override
+  String get settings_selectAppearance => 'Erscheinungsbild auswählen';
+
+  @override
+  String get settings_themeSystem => 'Wie das System';
+
+  @override
+  String get settings_themeLight => 'Hell';
+
+  @override
+  String get settings_themeDark => 'Dunkel';
+
+  @override
   String get settings_about => 'Über';
 
   @override

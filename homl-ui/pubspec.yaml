@@ -92,15 +92,20 @@ flutter_launcher_icons:
     background_color: "#FFFFFF"
     theme_color: "#D3A934"
 
-# Native splash shown before Flutter starts: the all-black hash on the theme
-# background, handing off seamlessly to the in-app splash animation.
+# Native splash shown before Flutter starts: the all-ink hash on the theme
+# background (black on light, soft white on dark, following the system),
+# handing off seamlessly to the in-app splash animation.
 # Regenerate with: dart run flutter_native_splash:create
 flutter_native_splash:
   color: "#FBFBFB"
   image: tool/icons/out/splash-logo-black.png
+  color_dark: "#121213"
+  image_dark: tool/icons/out/splash-logo-ink.png
   android_12:
     color: "#FBFBFB"
     image: tool/icons/out/splash-logo-black-a12.png
+    color_dark: "#121213"
+    image_dark: tool/icons/out/splash-logo-ink-a12.png
   web: true
 
 # For information on the generic Dart part of this file, see the

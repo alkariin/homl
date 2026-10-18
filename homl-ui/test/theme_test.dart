@@ -37,4 +37,71 @@ void main() {
         .first);
     expect(unselected.color, Colors.transparent);
   });
+
+  testWidgets('the dark theme fills the selected segment with its own grey',
+      (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      theme: homlTheme(brightness: Brightness.dark),
+      home: Scaffold(
+        body: SegmentedButton<int>(
+          showSelectedIcon: false,
+          segments: const [
+            ButtonSegment(value: 0, label: Text('One day')),
+            ButtonSegment(value: 1, label: Text('Period')),
+          ],
+          selected: const {0},
+          onSelectionChanged: (_) {},
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    final selected = tester.widget<Material>(find
+        .ancestor(of: find.text('One day'), matching: find.byType(Material))
+        .first);
+    expect(selected.color, HomlColors.dark.quiet);
+  });
+
+  test('each brightness carries its own colors', () {
+    final light = homlTheme();
+    expect(light.brightness, Brightness.light);
+    expect(light.extension<HomlColors>(), same(HomlColors.light));
+    expect(light.scaffoldBackgroundColor, const Color(0xFFFBFBFB));
+
+    final dark = homlTheme(brightness: Brightness.dark);
+    expect(dark.brightness, Brightness.dark);
+    expect(dark.extension<HomlColors>(), same(HomlColors.dark));
+    expect(dark.scaffoldBackgroundColor, HomlColors.dark.background);
+    // The monochrome controls turn over: light ink on the dark cards.
+    expect(dark.colorScheme.primary, HomlColors.dark.ink);
+    expect(dark.colorScheme.surface, HomlColors.dark.card);
+  });
+
+  testWidgets('a widget reads the colors of the theme in play', (tester) async {
+    late HomlColors colors;
+    await tester.pumpWidget(MaterialApp(
+      theme: homlTheme(),
+      darkTheme: homlTheme(brightness: Brightness.dark),
+      themeMode: ThemeMode.dark,
+      home: Builder(builder: (context) {
+        colors = context.homl;
+        return const SizedBox();
+      }),
+    ));
+
+    expect(colors, same(HomlColors.dark));
+  });
+
+  testWidgets('without the app theme, the colors are the light ones',
+      (tester) async {
+    late HomlColors colors;
+    await tester.pumpWidget(MaterialApp(
+      home: Builder(builder: (context) {
+        colors = context.homl;
+        return const SizedBox();
+      }),
+    ));
+
+    expect(colors, same(HomlColors.light));
+  });
 }

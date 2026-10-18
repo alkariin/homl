@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import 'package:homl/helpers/theme.dart';
 import 'package:homl/l10n/app_localizations.dart';
 
 import 'package:homl/components/app_bar_mark.dart';
@@ -286,12 +287,12 @@ class _InsertViewState extends State<InsertView> {
             child: Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: context.homl.card,
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
+                border: Border.all(color: context.homl.hairline),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
+                    color: context.homl.shadow,
                     blurRadius: 14,
                     offset: const Offset(0, 6),
                   ),
@@ -487,8 +488,8 @@ class _NewTagCategories extends StatelessWidget {
       margin: const EdgeInsets.only(top: 12),
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
-        color: ink.withValues(alpha: 0.03),
-        border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
+        color: context.homl.ink.withValues(alpha: 0.03),
+        border: Border.all(color: context.homl.hairline),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -496,7 +497,8 @@ class _NewTagCategories extends StatelessWidget {
         children: [
           Text(
             localization.insert_newTagCategoryTitle(name),
-            style: TextStyle(fontSize: 13, color: ink.withValues(alpha: 0.6)),
+            style: TextStyle(
+                fontSize: 13, color: context.homl.ink.withValues(alpha: 0.6)),
           ),
           const SizedBox(height: 10),
           Wrap(
@@ -527,9 +529,9 @@ class _CategoryPill extends StatelessWidget {
     final base = colorFromHex(category.color);
 
     return Material(
-      color: Colors.white,
+      color: context.homl.card,
       shape: StadiumBorder(
-          side: BorderSide(color: Colors.black.withValues(alpha: 0.08))),
+          side: BorderSide(color: context.homl.ink.withValues(alpha: 0.08))),
       child: InkWell(
         customBorder: const StadiumBorder(),
         onTap: onTap,
@@ -554,7 +556,7 @@ class _CategoryPill extends StatelessWidget {
                 style: TextStyle(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w500,
-                    color: ink.withValues(alpha: 0.85)),
+                    color: context.homl.ink.withValues(alpha: 0.85)),
               ),
             ],
           ),

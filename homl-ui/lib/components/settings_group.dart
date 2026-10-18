@@ -1,4 +1,5 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:homl/helpers/theme.dart';
 
 /// White rounded card grouping settings rows (the drawer pages), hairline
 /// dividers between rows — same card language as the category/event cards,
@@ -16,7 +17,7 @@ class SettingsGroup extends StatelessWidget {
         rows.add(Container(
           height: 1,
           margin: const EdgeInsets.symmetric(horizontal: 16),
-          color: Colors.black.withValues(alpha: 0.05),
+          color: context.homl.ink.withValues(alpha: 0.05),
         ));
       }
       rows.add(children[i]);
@@ -26,12 +27,12 @@ class SettingsGroup extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 16),
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.homl.card,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
+        border: Border.all(color: context.homl.hairline),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: context.homl.shadow,
             blurRadius: 14,
             offset: const Offset(0, 6),
           ),

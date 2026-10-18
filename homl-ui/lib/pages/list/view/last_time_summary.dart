@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:intl/intl.dart';
+import 'package:homl/helpers/theme.dart';
 import 'package:homl/l10n/app_localizations.dart';
 
 import 'package:homl/helpers/colors.dart' as palette;
@@ -25,7 +26,7 @@ class LastTimeSummary extends StatelessWidget {
   Widget build(BuildContext context) {
     final localization = AppLocalizations.of(context)!;
     final locale = Localizations.localeOf(context).toString();
-    final mutedInk = palette.ink.withValues(alpha: 0.65);
+    final mutedInk = context.homl.ink.withValues(alpha: 0.65);
     final lastDay = lastTime.lastDay;
 
     return Row(
