@@ -531,6 +531,32 @@ alike, and are never a day behind.
   the events that started in the current calendar year. No past result, no
   summary.
 
+## Search tab: the activity calendar
+
+Under the "Last time" summary, a search with a term gets a calendar of its
+activity, GitHub style (`lib/pages/list/view/activity_calendar.dart`,
+`lib/helpers/activity.dart`): a column per week, Monday to Sunday, a square
+per day, the darker the more results that day — one shade per event, four
+and more alike (a journal's days rarely hold many). A period counts on every
+day it covers, an open one until today.
+
+- **The span**: the last twelve months by default, ending today; the menu on
+  the right turns it to any year a result took place in (a past year whole,
+  the current one up to today). It scrolls sideways and opens on the most
+  recent week; month names sit over the week holding their first day,
+  Monday, Wednesday and Friday name their rows.
+- **The color** is the category color of the first tag the search asks for
+  (an excluded one or an Others tag does not count); the app's gold
+  otherwise, for a text search.
+- **A tap on a day** narrows the search to it: the usual date chip appears
+  and the results below follow. The calendar itself keeps showing what the
+  terms find without the day range (`searchEvents` with the terms alone), so
+  picking a day never empties it; the picked days are outlined, and a tap on
+  the day already picked lifts the range. Each square has a tooltip ("2
+  events · Mon, Oct 12, 2026").
+- It is worked out at render time from the events in memory, like the rest
+  of the tab: offline and E2EE alike.
+
 ## Search tab: the timeline
 
 The app bar of the Search tab carries a view switch (`_viewSwitch` in
