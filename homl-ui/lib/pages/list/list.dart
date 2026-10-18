@@ -19,6 +19,7 @@ import 'package:homl/helpers/last_time.dart';
 import 'package:homl/helpers/on_this_day.dart';
 import 'package:homl/helpers/tag_groups.dart';
 import 'package:homl/helpers/timeline.dart';
+import 'package:homl/helpers/date_entry.dart';
 import 'package:homl/pages/categories/view/category_management.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
 import 'package:homl/pages/list/bloc/list_cubit.dart';
@@ -85,6 +86,8 @@ class ListPage extends StatelessWidget {
       context: context,
       firstDate: DateTime(1900),
       lastDate: DateTime(2100),
+      // The pencil also reads "18102026": see helpers/date_entry.dart.
+      calendarDelegate: const DigitsDateCalendarDelegate(),
       initialDateRange: current == null
           ? null
           : DateTimeRange(
