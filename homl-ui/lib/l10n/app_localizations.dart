@@ -892,6 +892,42 @@ abstract class AppLocalizations {
   /// **'Filter by dates'**
   String get list_pickDates;
 
+  /// No description provided for @activity_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity'**
+  String get activity_title;
+
+  /// No description provided for @activity_lastYear.
+  ///
+  /// In en, this message translates to:
+  /// **'Last 12 months'**
+  String get activity_lastYear;
+
+  /// No description provided for @activity_pickYear.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a year'**
+  String get activity_pickYear;
+
+  /// No description provided for @activity_less.
+  ///
+  /// In en, this message translates to:
+  /// **'Less'**
+  String get activity_less;
+
+  /// No description provided for @activity_more.
+  ///
+  /// In en, this message translates to:
+  /// **'More'**
+  String get activity_more;
+
+  /// Tooltip of a day square of the activity calendar.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No event} =1{1 event} other{{count} events}} · {date}'**
+  String activity_day(int count, String date);
+
   /// No description provided for @list_showTimeline.
   ///
   /// In en, this message translates to:

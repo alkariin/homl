@@ -461,6 +461,33 @@ class AppLocalizationsFr extends AppLocalizations {
   String get list_pickDates => 'Filtrer par dates';
 
   @override
+  String get activity_title => 'Activité';
+
+  @override
+  String get activity_lastYear => '12 derniers mois';
+
+  @override
+  String get activity_pickYear => 'Choisir une année';
+
+  @override
+  String get activity_less => 'Moins';
+
+  @override
+  String get activity_more => 'Plus';
+
+  @override
+  String activity_day(int count, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count événements',
+      one: '1 événement',
+      zero: 'Aucun événement',
+    );
+    return '$_temp0 · $date';
+  }
+
+  @override
   String get list_showTimeline => 'Afficher la frise';
 
   @override
