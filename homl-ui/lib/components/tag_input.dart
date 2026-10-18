@@ -412,6 +412,12 @@ class _TagInputState extends State<TagInput> {
                         controller: controller,
                         focusNode: focusNode,
                         textInputAction: TextInputAction.done,
+                        // A tap anywhere else (the title, between the cards)
+                        // puts the keyboard away and gives the screen back;
+                        // mobile platforms keep the focus by default. The
+                        // suggestions belong to the field's tap region, so
+                        // picking one is not "elsewhere".
+                        onTapOutside: (_) => focusNode.unfocus(),
                         decoration: InputDecoration(
                           labelText: widget.labelText,
                           hintText: widget.hintText,
