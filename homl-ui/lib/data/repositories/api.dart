@@ -794,7 +794,10 @@ class Api {
       final refreshToken =
           await LocalStorageManager.getValue(LocalStorageKey.refreshToken);
 
-      if (refreshToken == null) {
+      // No server to renew it with (a build without a default one, installed
+      // over a build that had it): the login screen asks for the address, and
+      // picking it wipes what was saved (UsersRepository.changeServer).
+      if (refreshToken == null || baseUrl.isEmpty) {
         _controller.add(AuthenticationStatus.unauthenticated);
         return;
       }

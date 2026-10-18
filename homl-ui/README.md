@@ -654,7 +654,8 @@ as an API base URL (`/api` included):
   (`LocalStorageKey.serverUrl`, read in `main.dart` before the first frame),
   else the build's `--dart-define=API_BASE_URL`, else none. With none, the
   login screen's sign-in, sign-up and forgot-password buttons open the server
-  dialog first.
+  dialog first, and a session left by a build that had a default is not
+  restored (`Api.restoreSession`): there is no server to renew it with.
 - **The dialog** (`lib/pages/login/view/server_dialog.dart`) opens from the
   address shown under the login form. What is typed goes through
   `apiBaseUrlFor`: no scheme means `http://` for an IPv4 address or
