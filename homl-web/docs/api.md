@@ -54,6 +54,10 @@ the handlers next to it.
   `201` with the id of the new row, `{ "id": 42 }`, so a client can address
   what it just created (an edit or a delete queued behind the creation, say)
   without refetching the whole list.
+- **Client header** — the app sends `X-Homl-Client: <platform> <version>`
+  (`android 0.5.0`) with every request; a login or a refresh records it on
+  the device session (see `GET /sessions`). Optional: without it a session is
+  simply unnamed.
 - **Conditional reads** — `GET /events` and `GET /categories` answer with an
   `ETag`, a fingerprint of the body. A client that kept the body sends the
   fingerprint back in `If-None-Match` (a weak `W/` form or a list work too);
@@ -219,6 +223,30 @@ factor is enabled.
 
 → `200` `{ "isFingerprintEnabled": bool, "isPinEnabled": bool }` — `400` on an
 inconsistent combination.
+
+### GET /sessions
+
+The account's signed-in devices ([auth-flows.md](auth-flows.md#signed-in-devices)),
+the one asking first:
+
+```json
+[ { "id": "789ea138-…", "client": "android 0.5.0", "ip": "192.168.1.20",
+    "createdAt": "2026-10-12T08:03:00Z", "lastSeenAt": "2026-10-18T11:52:00Z",
+    "current": true } ]
+```
+
+`client` is what the app sent in `X-Homl-Client` (empty when it sent
+nothing); `createdAt` is `null` for a session opened before devices were
+recorded.
+
+### DELETE /sessions/:id
+
+Signs that device out: its tokens are revoked, its next request is refused.
+→ `204`, `404` for an id the account has no session under.
+
+### DELETE /sessions
+
+Signs out every device but the one asking. → `204`.
 
 ### DELETE /account
 

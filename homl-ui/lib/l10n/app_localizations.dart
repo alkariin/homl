@@ -268,6 +268,102 @@ abstract class AppLocalizations {
   /// **'Your account has been deleted'**
   String get account_deleted;
 
+  /// No description provided for @account_sessions.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed-in devices'**
+  String get account_sessions;
+
+  /// No description provided for @sessions_thisDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'This device'**
+  String get sessions_thisDevice;
+
+  /// No description provided for @sessions_lastActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Last active {date}'**
+  String sessions_lastActive(String date);
+
+  /// No description provided for @sessions_signedIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed in {date}'**
+  String sessions_signedIn(String date);
+
+  /// No description provided for @sessions_signedInUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed in before devices were listed'**
+  String get sessions_signedInUnknown;
+
+  /// No description provided for @sessions_app.
+  ///
+  /// In en, this message translates to:
+  /// **'app {version}'**
+  String sessions_app(String version);
+
+  /// No description provided for @sessions_unknownDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown device'**
+  String get sessions_unknownDevice;
+
+  /// No description provided for @sessions_signOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out'**
+  String get sessions_signOut;
+
+  /// No description provided for @sessions_signOutTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign this device out?'**
+  String get sessions_signOutTitle;
+
+  /// No description provided for @sessions_signOutInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'It will need the password to sign in again. Its changes not sent yet wait on it until then.'**
+  String get sessions_signOutInfo;
+
+  /// No description provided for @sessions_signOutOthers.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out all other devices'**
+  String get sessions_signOutOthers;
+
+  /// No description provided for @sessions_signOutOthersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out all other devices?'**
+  String get sessions_signOutOthersTitle;
+
+  /// No description provided for @sessions_failed.
+  ///
+  /// In en, this message translates to:
+  /// **'The devices could not be listed: this needs a connection.'**
+  String get sessions_failed;
+
+  /// No description provided for @sessions_retry.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get sessions_retry;
+
+  /// No description provided for @sessions_actionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'That did not work: try again once the server is reachable.'**
+  String get sessions_actionFailed;
+
+  /// No description provided for @sessions_activityNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Last activity is renewed about every ten minutes of use. The address is the one of that moment.'**
+  String get sessions_activityNote;
+
   /// No description provided for @login_usernameLabel.
   ///
   /// In en, this message translates to:

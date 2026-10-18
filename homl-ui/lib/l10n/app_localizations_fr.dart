@@ -101,6 +101,66 @@ class AppLocalizationsFr extends AppLocalizations {
   String get account_deleted => 'Votre compte a été supprimé';
 
   @override
+  String get account_sessions => 'Appareils connectés';
+
+  @override
+  String get sessions_thisDevice => 'Cet appareil';
+
+  @override
+  String sessions_lastActive(String date) {
+    return 'Actif le $date';
+  }
+
+  @override
+  String sessions_signedIn(String date) {
+    return 'Connecté le $date';
+  }
+
+  @override
+  String get sessions_signedInUnknown =>
+      'Connecté avant le suivi des appareils';
+
+  @override
+  String sessions_app(String version) {
+    return 'app $version';
+  }
+
+  @override
+  String get sessions_unknownDevice => 'Appareil inconnu';
+
+  @override
+  String get sessions_signOut => 'Déconnecter';
+
+  @override
+  String get sessions_signOutTitle => 'Déconnecter cet appareil ?';
+
+  @override
+  String get sessions_signOutInfo =>
+      'Il lui faudra le mot de passe pour se reconnecter. Ses modifications pas encore envoyées l\'attendent jusque-là.';
+
+  @override
+  String get sessions_signOutOthers => 'Déconnecter tous les autres appareils';
+
+  @override
+  String get sessions_signOutOthersTitle =>
+      'Déconnecter tous les autres appareils ?';
+
+  @override
+  String get sessions_failed =>
+      'Impossible de lister les appareils : il faut une connexion.';
+
+  @override
+  String get sessions_retry => 'Réessayer';
+
+  @override
+  String get sessions_actionFailed =>
+      'Ça n\'a pas marché : réessaie quand le serveur est joignable.';
+
+  @override
+  String get sessions_activityNote =>
+      'La dernière activité est mise à jour environ toutes les dix minutes d\'utilisation. L\'adresse est celle de ce moment-là.';
+
+  @override
   String get login_usernameLabel => 'identifiant';
 
   @override

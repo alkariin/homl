@@ -101,6 +101,23 @@ func (m *MockUsersService) SecureAuth(ctx context.Context, u *user.User) (*user.
 	return r0, errAt(ret, 1)
 }
 
+func (m *MockUsersService) ListSessions(ctx context.Context, accessDetails *user.AccessDetails) ([]user.Session, error) {
+	ret := m.Called(accessDetails)
+	var r0 []user.Session
+	if ret.Get(0) != nil {
+		r0 = ret.Get(0).([]user.Session)
+	}
+	return r0, errAt(ret, 1)
+}
+
+func (m *MockUsersService) RevokeSession(ctx context.Context, idUser uint64, id string) error {
+	return errAt(m.Called(idUser, id), 0)
+}
+
+func (m *MockUsersService) RevokeOtherSessions(ctx context.Context, accessDetails *user.AccessDetails) error {
+	return errAt(m.Called(accessDetails), 0)
+}
+
 /* --------------------------- CategoriesService --------------------------- */
 
 type MockCategoriesService struct {

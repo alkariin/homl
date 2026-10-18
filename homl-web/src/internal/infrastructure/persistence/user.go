@@ -361,8 +361,14 @@ func (u *UsersRepository) revokeSession(ctx context.Context, uuid string, keyPre
 		return 0, err
 	}
 
+	refreshUuid := partnerUuid
+	if keyPrefix == refreshKeyPrefix {
+		refreshUuid = uuid
+	}
+
 	pipe := u.Redis.TxPipeline()
 	deleted := pipe.Del(ctx, keyPrefix+uuid, partnerPrefix+partnerUuid)
+	pipe.Del(ctx, sessionOfPrefix+refreshUuid)
 	pipe.SRem(ctx, userSessionsKey+strconv.FormatUint(userID, 10), uuid, partnerUuid)
 	if _, err := pipe.Exec(ctx); err != nil {
 		return 0, err
@@ -370,10 +376,6 @@ func (u *UsersRepository) revokeSession(ctx context.Context, uuid string, keyPre
 
 	// A pair whose rotation is still pending takes the token it replaced
 	// along: a logout must not leave that one able to replay the rotation.
-	refreshUuid := partnerUuid
-	if keyPrefix == refreshKeyPrefix {
-		refreshUuid = uuid
-	}
 	if err := u.dropPredecessor(ctx, userID, refreshUuid); err != nil {
 		return 0, err
 	}
@@ -392,16 +394,32 @@ func (u *UsersRepository) dropPredecessor(ctx context.Context, userID uint64, re
 		return err
 	}
 	pipe := u.Redis.TxPipeline()
-	pipe.Del(ctx, rotatedKeyPrefix+previous)
+	pipe.Del(ctx, rotatedKeyPrefix+previous, sessionOfPrefix+previous)
 	pipe.SRem(ctx, userSessionsKey+strconv.FormatUint(userID, 10), previous)
 	_, err = pipe.Exec(ctx)
 	return err
 }
 
 // RevokeSessionByAccess deletes the session pair identified by an access
-// token uuid (logout).
+// token uuid (logout), and forgets its device session.
 func (u *UsersRepository) RevokeSessionByAccess(ctx context.Context, accessUuid string) (int64, error) {
-	return u.revokeSession(ctx, accessUuid, accessKeyPrefix, refreshKeyPrefix)
+	device, err := u.SessionOfAccess(ctx, accessUuid)
+	if err != nil {
+		return 0, err
+	}
+	val, err := u.Redis.Get(ctx, accessKeyPrefix+accessUuid).Result()
+	if err != nil && err != redis.Nil {
+		return 0, err
+	}
+	deleted, err := u.revokeSession(ctx, accessUuid, accessKeyPrefix, refreshKeyPrefix)
+	if err != nil || device == "" {
+		return deleted, err
+	}
+	userID, _, err := parseSessionValue(val)
+	if err != nil {
+		return deleted, err
+	}
+	return deleted, u.endSession(ctx, userID, device)
 }
 
 // RotateSession swaps the refresh token refreshUuid for the new pair td. It
@@ -417,7 +435,7 @@ func (u *UsersRepository) RevokeSessionByAccess(ctx context.Context, accessUuid 
 // hands out td instead. Using the new refresh token settles the rotation and
 // the old one dies for good; revoking the new pair (logout, password change)
 // takes the old one along.
-func (u *UsersRepository) RotateSession(ctx context.Context, userID uint64, refreshUuid string, td *user.TokenDetails) (bool, error) {
+func (u *UsersRepository) RotateSession(ctx context.Context, userID uint64, refreshUuid string, td *user.TokenDetails, info user.SessionInfo) (bool, error) {
 	ttl, ok, err := u.retireRefresh(ctx, userID, refreshUuid)
 	if err != nil || !ok {
 		return false, err
@@ -436,6 +454,12 @@ func (u *UsersRepository) RotateSession(ctx context.Context, userID uint64, refr
 	}
 
 	if err := u.CreateAuth(ctx, userID, td); err != nil {
+		return false, err
+	}
+	// The device session goes on with the new pair. The old token keeps
+	// pointing at it while it may replay the rotation: a replay carries it
+	// over again.
+	if err := u.carrySession(ctx, userID, refreshUuid, td, info); err != nil {
 		return false, err
 	}
 	return true, nil
@@ -524,13 +548,22 @@ func (u *UsersRepository) RevokeAllSessions(ctx context.Context, idUser uint64) 
 		return err
 	}
 
-	keys := make([]string, 0, 4*len(uuids)+1)
+	devicesKey := userDevicesPrefix + strconv.FormatUint(idUser, 10)
+	devices, err := u.Redis.SMembers(ctx, devicesKey).Result()
+	if err != nil {
+		return err
+	}
+
+	keys := make([]string, 0, 5*len(uuids)+len(devices)+2)
 	for _, id := range uuids {
 		// Membership does not record the token type: delete every candidate.
 		keys = append(keys, accessKeyPrefix+id, refreshKeyPrefix+id,
-			rotatedKeyPrefix+id, prevKeyPrefix+id)
+			rotatedKeyPrefix+id, prevKeyPrefix+id, sessionOfPrefix+id)
 	}
-	keys = append(keys, userKey)
+	for _, id := range devices {
+		keys = append(keys, deviceSessionPrefix+id)
+	}
+	keys = append(keys, userKey, devicesKey)
 
 	return u.Redis.Del(ctx, keys...).Err()
 }

@@ -406,6 +406,51 @@ for p in 'rl:reset:*' 'pwdreset:*'; do
 done
 ```
 
+## Signed-in devices
+
+A session's tokens change at every refresh, so a token says nothing lasting
+about the device holding it. A **device session** does: it is opened by a
+login (a registration, a password change or reset too), carried over to the
+new pair at each rotation, and ends with its tokens. The Security page lists
+them and signs one out, or all but the one asking.
+
+| Redis key | Holds |
+| --- | --- |
+| `auth:device:<id>` | a hash: `user`, `refresh` (the newest refresh uuid handed out), `created` and `seen` (unix seconds), `client`, `ip` |
+| `auth:sid:<refresh uuid>` | the device session of that refresh token |
+| `auth:devices:<user_id>` | the set of the user's device session ids |
+
+All three live as long as the newest refresh token, renewed at each rotation.
+
+- **What is recorded** comes from the request (`ClientInfo` in
+  `web/session_handler.go`): the app names itself in the `X-Homl-Client`
+  header — its platform and version, `android 0.5.0`, printable characters
+  only, 64 at most — and the address is gin's `ClientIP()`, the real one only
+  when `TRUSTED_PROXIES` lists the reverse proxy
+  ([deployment.md](deployment.md) §4). Nothing else about the device is kept,
+  and the address is replaced at each refresh. A request without the header
+  (an older app) keeps the name recorded before.
+- **A rotation** carries the session over: the new refresh token points at
+  it, `refresh`, `seen` and `ip` are renewed. The old token keeps pointing at
+  it while it may replay the rotation, so a replay lands in the same session;
+  the pointer goes once the rotation settles.
+- **A session from before this** (logged in before devices were recorded)
+  is taken in at its first refresh, its login time unknown (`createdAt`
+  null).
+- **Listing** (`GET /sessions`) forgets on the way a session whose newest
+  refresh token is gone (logged out, revoked, expired). The device asking —
+  the session of its access token — comes first, marked `current`; the
+  others follow, most recently active first. `seen` is renewed at each
+  refresh, so about every ten minutes of use.
+- **Signing a device out** (`DELETE /sessions/:id`) revokes its newest pair,
+  and with it the token a rotation still pending replaced: its next request
+  is refused, then its refresh, and the app ends the session (keeping its
+  changes not sent yet for the same account's next sign-in, see
+  [offline-sync.md](offline-sync.md)). `DELETE /sessions` does that for every
+  device but the one asking. A logout forgets its own device session; a
+  password change or reset, and an account deletion, forget them all with the
+  tokens (`RevokeAllSessions`).
+
 ## Logout
 
 `POST /logout` clears the pending challenge and deletes the access session

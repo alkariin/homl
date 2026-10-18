@@ -37,7 +37,12 @@ class SettingsGroup extends StatelessWidget {
           ),
         ],
       ),
-      child: Column(children: rows),
+      // The rows paint their background and ink on the nearest Material: a
+      // transparent one above the white card, or the card would hide them.
+      child: Material(
+        type: MaterialType.transparency,
+        child: Column(children: rows),
+      ),
     );
   }
 }

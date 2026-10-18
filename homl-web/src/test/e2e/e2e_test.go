@@ -1002,3 +1002,26 @@ func TestConditionalReads(t *testing.T) {
 		t.Fatalf("GET /events after a write: status %d, etag changed %v", status, after != before)
 	}
 }
+
+// TestSignedInDevices lists the demo session as the current device. Signing
+// the others out is left to the unit tests: run against a dev stack, it
+// would sign out the developer's own devices too.
+func TestSignedInDevices(t *testing.T) {
+	c := newClient(t)
+	c.loginDemo()
+
+	var sessions []struct {
+		Id         string  `json:"id"`
+		Current    bool    `json:"current"`
+		LastSeenAt string  `json:"lastSeenAt"`
+		CreatedAt  *string `json:"createdAt"`
+	}
+	if err := json.Unmarshal(c.mustDo(http.MethodGet, "/sessions", nil, http.StatusOK), &sessions); err != nil {
+		t.Fatalf("decode sessions: %v", err)
+	}
+	if len(sessions) == 0 || !sessions[0].Current || sessions[0].LastSeenAt == "" {
+		t.Fatalf("expected the current session first, got %+v", sessions)
+	}
+
+	c.mustDo(http.MethodDelete, "/sessions/00000000-0000-4000-8000-000000000000", nil, http.StatusNotFound)
+}

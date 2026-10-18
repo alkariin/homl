@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -970,4 +971,58 @@ func TestABrowserMaySendAndReadTheETag(t *testing.T) {
 
 	assert.Contains(t, rec.Header().Get("Access-Control-Allow-Headers"), "If-None-Match")
 	assert.Equal(t, "ETag", rec.Header().Get("Access-Control-Expose-Headers"))
+}
+
+/* ----------------------------- Device sessions --------------------------- */
+
+func TestListSessionsEndpoint(t *testing.T) {
+	router, sm := newTestServer()
+	sm.users.On("ListSessions", mock.MatchedBy(func(ad *user.AccessDetails) bool {
+		return ad.UserId == testUserID && ad.AccessUuid != ""
+	})).Return([]user.Session{{Id: "phone", Client: "android 0.5.0", Current: true}}, nil)
+
+	rec := doRequest(router, http.MethodGet, "/sessions", "", authHeader())
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	var out []map[string]interface{}
+	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &out))
+	assert.Equal(t, "phone", out[0]["id"])
+	assert.Equal(t, true, out[0]["current"])
+	assert.Contains(t, out[0], "createdAt")
+
+	assert.Equal(t, http.StatusUnauthorized, doRequest(router, http.MethodGet, "/sessions", "", "").Code)
+}
+
+func TestRevokeSessionEndpoints(t *testing.T) {
+	router, sm := newTestServer()
+	sm.users.On("RevokeSession", testUserID, "phone").Return(nil)
+	sm.users.On("RevokeSession", testUserID, "nope").Return(apperror.NewNotFound("session", "nope"))
+	sm.users.On("RevokeOtherSessions", mock.Anything).Return(nil)
+
+	assert.Equal(t, http.StatusNoContent, doRequest(router, http.MethodDelete, "/sessions/phone", "", authHeader()).Code)
+	assert.Equal(t, http.StatusNotFound, doRequest(router, http.MethodDelete, "/sessions/nope", "", authHeader()).Code)
+	assert.Equal(t, http.StatusNoContent, doRequest(router, http.MethodDelete, "/sessions", "", authHeader()).Code)
+	sm.users.AssertExpectations(t)
+}
+
+func TestClientInfoReachesTheServices(t *testing.T) {
+	engine := gin.New()
+	engine.Use(ClientInfo())
+	var seen user.SessionInfo
+	engine.GET("/probe", func(c *gin.Context) {
+		seen = user.SessionInfoFrom(c.Request.Context())
+	})
+
+	req, _ := http.NewRequest(http.MethodGet, "/probe", nil)
+	req.Header.Set("X-Homl-Client", "  android 0.5.0\x07  ")
+	req.RemoteAddr = "192.0.2.7:4242"
+	engine.ServeHTTP(httptest.NewRecorder(), req)
+
+	assert.Equal(t, "android 0.5.0", seen.Client, "trimmed, without control characters")
+	assert.Equal(t, "192.0.2.7", seen.IP)
+}
+
+func TestTheClientLabelIsBounded(t *testing.T) {
+	assert.Len(t, []rune(clientLabel(strings.Repeat("\u00e9", 200))), maxClientLength)
+	assert.Equal(t, "", clientLabel(""))
 }

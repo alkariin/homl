@@ -15,6 +15,7 @@ import 'package:homl/helpers/toast.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
 import 'package:homl/pages/account/bloc/account_cubit.dart';
 import 'package:homl/pages/account/bloc/data_transfer_cubit.dart';
+import 'package:homl/pages/account/view/sessions.dart';
 import 'package:homl/pages/account/view/data_transfer_group.dart';
 import 'package:homl/pages/account/view/e2ee_mnemonic_dialog.dart';
 import 'package:homl/pages/account/view/delete_account_dialog.dart';
@@ -202,6 +203,14 @@ class AccountView extends StatelessWidget {
                             .resetPasswordDialogState();
                         Navigator.push(context, PasswordDialog.route(context));
                       },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.devices_outlined),
+                      title: Text(localization.account_sessions),
+                      trailing: Icon(Icons.chevron_right,
+                          size: 20, color: ink.withValues(alpha: 0.3)),
+                      onTap: () =>
+                          Navigator.push(context, SessionsPage.route(context)),
                     ),
                     SwitchListTile(
                       title: Text(localization.account_fingerprintSwitchText),

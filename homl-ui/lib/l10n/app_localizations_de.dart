@@ -102,6 +102,64 @@ class AppLocalizationsDe extends AppLocalizations {
   String get account_deleted => 'Dein Konto wurde gelöscht';
 
   @override
+  String get account_sessions => 'Angemeldete Geräte';
+
+  @override
+  String get sessions_thisDevice => 'Dieses Gerät';
+
+  @override
+  String sessions_lastActive(String date) {
+    return 'Aktiv am $date';
+  }
+
+  @override
+  String sessions_signedIn(String date) {
+    return 'Angemeldet am $date';
+  }
+
+  @override
+  String get sessions_signedInUnknown => 'Angemeldet vor der Geräteliste';
+
+  @override
+  String sessions_app(String version) {
+    return 'App $version';
+  }
+
+  @override
+  String get sessions_unknownDevice => 'Unbekanntes Gerät';
+
+  @override
+  String get sessions_signOut => 'Abmelden';
+
+  @override
+  String get sessions_signOutTitle => 'Dieses Gerät abmelden?';
+
+  @override
+  String get sessions_signOutInfo =>
+      'Es braucht das Passwort, um sich wieder anzumelden. Noch nicht gesendete Änderungen warten bis dahin darauf.';
+
+  @override
+  String get sessions_signOutOthers => 'Alle anderen Geräte abmelden';
+
+  @override
+  String get sessions_signOutOthersTitle => 'Alle anderen Geräte abmelden?';
+
+  @override
+  String get sessions_failed =>
+      'Die Geräte konnten nicht aufgelistet werden: Dafür braucht es eine Verbindung.';
+
+  @override
+  String get sessions_retry => 'Erneut versuchen';
+
+  @override
+  String get sessions_actionFailed =>
+      'Das hat nicht geklappt: Versuche es erneut, sobald der Server erreichbar ist.';
+
+  @override
+  String get sessions_activityNote =>
+      'Die letzte Aktivität wird etwa alle zehn Minuten Nutzung aktualisiert. Die Adresse ist die von diesem Moment.';
+
+  @override
   String get login_usernameLabel => 'Benutzername';
 
   @override

@@ -36,6 +36,14 @@ type UsersService interface {
 	DeleteAccount(ctx context.Context, password string, idUser uint64) error
 	Challenge(ctx context.Context, refreshToken string) (*string, error)
 	SecureAuth(ctx context.Context, u *user.User) (*user.UserResponse, error)
+	// ListSessions returns the user's signed-in devices: the one asking
+	// (accessDetails) first and marked current, then the most recently active.
+	ListSessions(ctx context.Context, accessDetails *user.AccessDetails) ([]user.Session, error)
+	// RevokeSession signs device session id out (404 when the user has none
+	// such).
+	RevokeSession(ctx context.Context, idUser uint64, id string) error
+	// RevokeOtherSessions signs out every device but the one asking.
+	RevokeOtherSessions(ctx context.Context, accessDetails *user.AccessDetails) error
 }
 
 type usersService struct {
@@ -103,8 +111,9 @@ func (u *usersService) Login(ctx context.Context, user *user.User) (map[string]s
 	return u.createSession(ctx, storedUser.ID)
 }
 
-// createSession mints a fresh access/refresh token pair and stores its
-// metadata in the auth store.
+// createSession mints a fresh access/refresh token pair, stores its
+// metadata in the auth store and opens a device session around it, with
+// what the request says about its client.
 func (u *usersService) createSession(ctx context.Context, idUser uint64) (map[string]string, error) {
 	ts, err := u.Tokens.CreateToken(idUser)
 	if err != nil {
@@ -112,6 +121,9 @@ func (u *usersService) createSession(ctx context.Context, idUser uint64) (map[st
 	}
 	err = u.UsersRepository.CreateAuth(ctx, idUser, ts)
 	if err != nil {
+		return nil, err
+	}
+	if err := u.UsersRepository.OpenSession(ctx, idUser, ts, user.SessionInfoFrom(ctx)); err != nil {
 		return nil, err
 	}
 	tokens := map[string]string{
@@ -217,7 +229,7 @@ func (u *usersService) Refresh(ctx context.Context, ri *user.RefreshInput) (map[
 	if err != nil {
 		return nil, apperror.NewStatusForbidden()
 	}
-	rotated, err := u.UsersRepository.RotateSession(ctx, rd.UserId, rd.RefreshUuid, td)
+	rotated, err := u.UsersRepository.RotateSession(ctx, rd.UserId, rd.RefreshUuid, td, user.SessionInfoFrom(ctx))
 	if err != nil {
 		// A store failure is not a verdict on the session: a 401 here would
 		// make the client end a session that is still valid.
@@ -488,4 +500,58 @@ func (u *usersService) SecureAuth(ctx context.Context, usr *user.User) (*user.Us
 	}
 
 	return response, nil
+}
+
+func (u *usersService) ListSessions(ctx context.Context, accessDetails *user.AccessDetails) ([]user.Session, error) {
+	sessions, err := u.UsersRepository.ListSessions(ctx, accessDetails.UserId)
+	if err != nil {
+		return nil, err
+	}
+	current, err := u.UsersRepository.SessionOfAccess(ctx, accessDetails.AccessUuid)
+	if err != nil {
+		return nil, err
+	}
+
+	// The repository sorts by activity; the device asking goes first.
+	ordered := make([]user.Session, 0, len(sessions))
+	for _, session := range sessions {
+		if session.Id == current {
+			session.Current = true
+			ordered = append([]user.Session{session}, ordered...)
+		} else {
+			ordered = append(ordered, session)
+		}
+	}
+	return ordered, nil
+}
+
+func (u *usersService) RevokeSession(ctx context.Context, idUser uint64, id string) error {
+	revoked, err := u.UsersRepository.RevokeSession(ctx, idUser, id)
+	if err != nil {
+		return err
+	}
+	if !revoked {
+		return apperror.NewNotFound("session", id)
+	}
+	return nil
+}
+
+func (u *usersService) RevokeOtherSessions(ctx context.Context, accessDetails *user.AccessDetails) error {
+	sessions, err := u.UsersRepository.ListSessions(ctx, accessDetails.UserId)
+	if err != nil {
+		return err
+	}
+	current, err := u.UsersRepository.SessionOfAccess(ctx, accessDetails.AccessUuid)
+	if err != nil {
+		return err
+	}
+	for _, session := range sessions {
+		if session.Id == current {
+			continue
+		}
+		if _, err := u.UsersRepository.RevokeSession(ctx, accessDetails.UserId, session.Id); err != nil {
+			return err
+		}
+	}
+	return nil
 }

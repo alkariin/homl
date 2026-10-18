@@ -99,6 +99,64 @@ class AppLocalizationsEn extends AppLocalizations {
   String get account_deleted => 'Your account has been deleted';
 
   @override
+  String get account_sessions => 'Signed-in devices';
+
+  @override
+  String get sessions_thisDevice => 'This device';
+
+  @override
+  String sessions_lastActive(String date) {
+    return 'Last active $date';
+  }
+
+  @override
+  String sessions_signedIn(String date) {
+    return 'Signed in $date';
+  }
+
+  @override
+  String get sessions_signedInUnknown => 'Signed in before devices were listed';
+
+  @override
+  String sessions_app(String version) {
+    return 'app $version';
+  }
+
+  @override
+  String get sessions_unknownDevice => 'Unknown device';
+
+  @override
+  String get sessions_signOut => 'Sign out';
+
+  @override
+  String get sessions_signOutTitle => 'Sign this device out?';
+
+  @override
+  String get sessions_signOutInfo =>
+      'It will need the password to sign in again. Its changes not sent yet wait on it until then.';
+
+  @override
+  String get sessions_signOutOthers => 'Sign out all other devices';
+
+  @override
+  String get sessions_signOutOthersTitle => 'Sign out all other devices?';
+
+  @override
+  String get sessions_failed =>
+      'The devices could not be listed: this needs a connection.';
+
+  @override
+  String get sessions_retry => 'Try again';
+
+  @override
+  String get sessions_actionFailed =>
+      'That did not work: try again once the server is reachable.';
+
+  @override
+  String get sessions_activityNote =>
+      'Last activity is renewed about every ten minutes of use. The address is the one of that moment.';
+
+  @override
   String get login_usernameLabel => 'username';
 
   @override

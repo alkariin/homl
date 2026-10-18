@@ -177,8 +177,8 @@ func (m *MockUsersRepo) RevokeSessionByAccess(ctx context.Context, accessUuid st
 	return r0, r1
 }
 
-func (m *MockUsersRepo) RotateSession(ctx context.Context, userID uint64, refreshUuid string, td *user.TokenDetails) (bool, error) {
-	ret := m.Called(userID, refreshUuid, td)
+func (m *MockUsersRepo) RotateSession(ctx context.Context, userID uint64, refreshUuid string, td *user.TokenDetails, info user.SessionInfo) (bool, error) {
+	ret := m.Called(userID, refreshUuid, td, info)
 
 	var r0 bool
 	if ret.Get(0) != nil {
@@ -316,4 +316,40 @@ func (m *MockUsersRepo) DeleteResetCodes(ctx context.Context, idUser uint64) err
 	}
 
 	return r0
+}
+
+func (m *MockUsersRepo) OpenSession(ctx context.Context, userID uint64, td *user.TokenDetails, info user.SessionInfo) error {
+	ret := m.Called(userID, td, info)
+	if ret.Get(0) != nil {
+		return ret.Get(0).(error)
+	}
+	return nil
+}
+
+func (m *MockUsersRepo) ListSessions(ctx context.Context, userID uint64) ([]user.Session, error) {
+	ret := m.Called(userID)
+	var r0 []user.Session
+	if ret.Get(0) != nil {
+		r0 = ret.Get(0).([]user.Session)
+	}
+	if ret.Get(1) != nil {
+		return r0, ret.Get(1).(error)
+	}
+	return r0, nil
+}
+
+func (m *MockUsersRepo) SessionOfAccess(ctx context.Context, accessUuid string) (string, error) {
+	ret := m.Called(accessUuid)
+	if ret.Get(1) != nil {
+		return ret.String(0), ret.Get(1).(error)
+	}
+	return ret.String(0), nil
+}
+
+func (m *MockUsersRepo) RevokeSession(ctx context.Context, userID uint64, id string) (bool, error) {
+	ret := m.Called(userID, id)
+	if ret.Get(1) != nil {
+		return ret.Bool(0), ret.Get(1).(error)
+	}
+	return ret.Bool(0), nil
 }

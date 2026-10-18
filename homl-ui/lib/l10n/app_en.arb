@@ -28,6 +28,37 @@
   "account_deleteAccountWarning": "This permanently deletes your account and all your events, tags and categories, on every device. This cannot be undone. Enter your password to confirm.",
   "account_deleteAccountError": "The account could not be deleted, try again later",
   "account_deleted": "Your account has been deleted",
+  "account_sessions": "Signed-in devices",
+  "sessions_thisDevice": "This device",
+  "sessions_lastActive": "Last active {date}",
+  "@sessions_lastActive": {
+    "placeholders": {
+      "date": { "type": "String" }
+    }
+  },
+  "sessions_signedIn": "Signed in {date}",
+  "@sessions_signedIn": {
+    "placeholders": {
+      "date": { "type": "String" }
+    }
+  },
+  "sessions_signedInUnknown": "Signed in before devices were listed",
+  "sessions_app": "app {version}",
+  "@sessions_app": {
+    "placeholders": {
+      "version": { "type": "String" }
+    }
+  },
+  "sessions_unknownDevice": "Unknown device",
+  "sessions_signOut": "Sign out",
+  "sessions_signOutTitle": "Sign this device out?",
+  "sessions_signOutInfo": "It will need the password to sign in again. Its changes not sent yet wait on it until then.",
+  "sessions_signOutOthers": "Sign out all other devices",
+  "sessions_signOutOthersTitle": "Sign out all other devices?",
+  "sessions_failed": "The devices could not be listed: this needs a connection.",
+  "sessions_retry": "Try again",
+  "sessions_actionFailed": "That did not work: try again once the server is reachable.",
+  "sessions_activityNote": "Last activity is renewed about every ten minutes of use. The address is the one of that moment.",
 
   "login_usernameLabel": "username",
   "login_passwordLabel": "password",

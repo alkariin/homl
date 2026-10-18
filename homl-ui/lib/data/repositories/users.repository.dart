@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:developer';
 
 import 'package:dio/dio.dart';
+import 'package:homl/data/models/device_session.dart';
 import 'package:homl/data/models/user.dart';
 
 import 'package:homl/helpers/biometric_storage.dart';
@@ -25,6 +26,10 @@ class ResetCodeInvalidFailure implements Exception {}
 /// Exception thrown when the server takes no new accounts (its operator set
 /// REGISTRATION_OPEN=false)
 class RegistrationClosedFailure implements Exception {}
+
+/// Exception thrown when the signed-in devices cannot be read or signed out
+/// (the server out of reach, or refusing).
+class SessionsRequestFailure implements Exception {}
 
 class UsersRepository {
   final Api? _injectedApi;
@@ -107,6 +112,39 @@ class UsersRepository {
     apiInstance.updateStatus(AuthenticationStatus.authenticated);
 
     return AuthenticationStatus.authenticated;
+  }
+
+  /// The account's signed-in devices, this one first (`current`).
+  Future<List<DeviceSession>> listSessions() async {
+    try {
+      final response = await apiInstance.api.get<List<dynamic>>('/sessions');
+      return [
+        for (final session in response.data ?? const [])
+          DeviceSession.fromJson(Map<String, dynamic>.from(session as Map)),
+      ];
+    } on DioException catch (_) {
+      throw SessionsRequestFailure();
+    }
+  }
+
+  /// Signs device session [id] out: its next request is refused.
+  Future<void> revokeSession(String id) async {
+    try {
+      await apiInstance.api.delete<void>('/sessions/$id');
+    } on DioException catch (err) {
+      // Gone already: what was asked is done.
+      if (err.response?.statusCode == 404) return;
+      throw SessionsRequestFailure();
+    }
+  }
+
+  /// Signs out every device but this one.
+  Future<void> revokeOtherSessions() async {
+    try {
+      await apiInstance.api.delete<void>('/sessions');
+    } on DioException catch (_) {
+      throw SessionsRequestFailure();
+    }
   }
 
   Future<void> logout() async {

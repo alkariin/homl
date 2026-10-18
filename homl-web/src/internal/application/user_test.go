@@ -130,6 +130,7 @@ func TestLogin(t *testing.T) {
 		stored := &user.User{ID: 1, Username: "demo@homl.local", Password: string(hashed)}
 		mockRepo.On("FindByUsername", "demo@homl.local").Return(stored, nil)
 		mockRepo.On("CreateAuth", uint64(1), mock.AnythingOfType("*user.TokenDetails")).Return(nil)
+		mockRepo.On("OpenSession", uint64(1), mock.AnythingOfType("*user.TokenDetails"), mock.Anything).Return(nil)
 
 		tokens, err := svc.Login(context.Background(), &user.User{Username: "demo@homl.local", Password: password})
 
@@ -292,6 +293,7 @@ func TestConfirmResetPassword(t *testing.T) {
 		mockRepo.On("UpdatePassword", uint64(1), mock.AnythingOfType("string")).Return(nil)
 		mockRepo.On("RevokeAllSessions", uint64(1)).Return(nil)
 		mockRepo.On("CreateAuth", uint64(1), mock.AnythingOfType("*user.TokenDetails")).Return(nil)
+		mockRepo.On("OpenSession", uint64(1), mock.AnythingOfType("*user.TokenDetails"), mock.Anything).Return(nil)
 
 		tokens, err := svc.ConfirmResetPassword(context.Background(), "demo@homl.local", "123456", "NewPass123!")
 
@@ -345,7 +347,7 @@ func TestRefresh(t *testing.T) {
 
 		mockRepo.On("FindById", uint64(1)).Return(&user.User{ID: 1}, nil)
 		var rotatedTo *user.TokenDetails
-		mockRepo.On("RotateSession", uint64(1), refreshUuid, mock.AnythingOfType("*user.TokenDetails")).
+		mockRepo.On("RotateSession", uint64(1), refreshUuid, mock.AnythingOfType("*user.TokenDetails"), mock.Anything).
 			Run(func(args mock.Arguments) { rotatedTo = args.Get(2).(*user.TokenDetails) }).
 			Return(true, nil)
 
@@ -369,7 +371,7 @@ func TestRefresh(t *testing.T) {
 
 		mockRepo.On("FindById", uint64(1)).Return(&user.User{ID: 1}, nil)
 		// Revoked, or rotated by a rotation that has since settled.
-		mockRepo.On("RotateSession", uint64(1), refreshUuid, mock.Anything).Return(false, nil)
+		mockRepo.On("RotateSession", uint64(1), refreshUuid, mock.Anything, mock.Anything).Return(false, nil)
 
 		tokens, err := svc.Refresh(context.Background(), &user.RefreshInput{Refresh_token: refreshToken})
 
@@ -384,7 +386,7 @@ func TestRefresh(t *testing.T) {
 		refreshToken, refreshUuid := mintRefreshToken(t)
 
 		mockRepo.On("FindById", uint64(1)).Return(&user.User{ID: 1}, nil)
-		mockRepo.On("RotateSession", uint64(1), refreshUuid, mock.Anything).Return(false, assert.AnError)
+		mockRepo.On("RotateSession", uint64(1), refreshUuid, mock.Anything, mock.Anything).Return(false, assert.AnError)
 
 		tokens, err := svc.Refresh(context.Background(), &user.RefreshInput{Refresh_token: refreshToken})
 
@@ -431,7 +433,7 @@ func TestRefresh(t *testing.T) {
 				assert.Equal(t, f.message, appErr.Message)
 			}
 			mockRepo.AssertExpectations(t)
-			mockRepo.AssertNotCalled(t, "RotateSession", mock.Anything, mock.Anything, mock.Anything)
+			mockRepo.AssertNotCalled(t, "RotateSession", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 			mockRepo.AssertNotCalled(t, "UpdateChallenge", mock.Anything, mock.Anything)
 			mockRepo.AssertNotCalled(t, "CheckPin", mock.Anything, mock.Anything)
 		})
@@ -457,7 +459,7 @@ func TestRefresh(t *testing.T) {
 			assert.Empty(t, appErr.Code)
 			assert.Empty(t, appErr.Factor)
 		}
-		mockRepo.AssertNotCalled(t, "RotateSession", mock.Anything, mock.Anything, mock.Anything)
+		mockRepo.AssertNotCalled(t, "RotateSession", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	})
 
 	t.Run("Keeps the plain 401 for a token that does not verify", func(t *testing.T) {
@@ -541,6 +543,7 @@ func TestUpdatePassword(t *testing.T) {
 		mockRepo.On("UpdatePassword", uint64(1), mock.AnythingOfType("string")).Return(nil)
 		mockRepo.On("RevokeAllSessions", uint64(1)).Return(nil)
 		mockRepo.On("CreateAuth", uint64(1), mock.AnythingOfType("*user.TokenDetails")).Return(nil)
+		mockRepo.On("OpenSession", uint64(1), mock.AnythingOfType("*user.TokenDetails"), mock.Anything).Return(nil)
 
 		tokens, err := svc.UpdatePassword(context.Background(), "OldPass123!", "NewPass123!", 1)
 
@@ -563,5 +566,71 @@ func TestUpdatePassword(t *testing.T) {
 		assert.Nil(t, tokens)
 		mockRepo.AssertNotCalled(t, "RevokeAllSessions")
 		mockRepo.AssertNotCalled(t, "UpdatePassword")
+	})
+}
+
+func TestDeviceSessions(t *testing.T) {
+	ctx := context.Background()
+	newSvc := func(repo *mocks.MockUsersRepo) application.UsersService {
+		return application.NewUsersService(&application.UserConfig{UsersRepository: repo, Tokens: testTokens})
+	}
+	asking := &user.AccessDetails{UserId: 1, AccessUuid: "access-of-the-laptop"}
+	sessions := []user.Session{
+		{Id: "phone", Client: "android 0.5.0"},
+		{Id: "laptop", Client: "web 0.5.0"},
+		{Id: "tablet", Client: "ios 0.5.0"},
+	}
+
+	t.Run("A login opens one, with what the request says of its client", func(t *testing.T) {
+		const password = "Demo1234!"
+		hashed, _ := bcrypt.GenerateFromPassword([]byte(password), 8)
+		repo := new(mocks.MockUsersRepo)
+		repo.On("FindByUsername", "demo@homl.local").Return(&user.User{ID: 1, Password: string(hashed)}, nil)
+		repo.On("CreateAuth", uint64(1), mock.Anything).Return(nil)
+		info := user.SessionInfo{Client: "android 0.5.0", IP: "10.0.0.2"}
+		repo.On("OpenSession", uint64(1), mock.Anything, info).Return(nil)
+
+		_, err := newSvc(repo).Login(user.WithSessionInfo(ctx, info),
+			&user.User{Username: "demo@homl.local", Password: password})
+
+		assert.NoError(t, err)
+		repo.AssertExpectations(t)
+	})
+
+	t.Run("The device asking comes first, marked current", func(t *testing.T) {
+		repo := new(mocks.MockUsersRepo)
+		repo.On("ListSessions", uint64(1)).Return(sessions, nil)
+		repo.On("SessionOfAccess", "access-of-the-laptop").Return("laptop", nil)
+
+		listed, err := newSvc(repo).ListSessions(ctx, asking)
+
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"laptop", "phone", "tablet"},
+			[]string{listed[0].Id, listed[1].Id, listed[2].Id})
+		assert.True(t, listed[0].Current)
+		assert.False(t, listed[1].Current)
+	})
+
+	t.Run("An unknown session is a 404", func(t *testing.T) {
+		repo := new(mocks.MockUsersRepo)
+		repo.On("RevokeSession", uint64(1), "nope").Return(false, nil)
+
+		err := newSvc(repo).RevokeSession(ctx, 1, "nope")
+
+		assert.Equal(t, http.StatusNotFound, apperror.Status(err))
+	})
+
+	t.Run("Signing the others out keeps the device asking", func(t *testing.T) {
+		repo := new(mocks.MockUsersRepo)
+		repo.On("ListSessions", uint64(1)).Return(sessions, nil)
+		repo.On("SessionOfAccess", "access-of-the-laptop").Return("laptop", nil)
+		repo.On("RevokeSession", uint64(1), "phone").Return(true, nil)
+		repo.On("RevokeSession", uint64(1), "tablet").Return(true, nil)
+
+		err := newSvc(repo).RevokeOtherSessions(ctx, asking)
+
+		assert.NoError(t, err)
+		repo.AssertExpectations(t)
+		repo.AssertNotCalled(t, "RevokeSession", uint64(1), "laptop")
 	})
 }

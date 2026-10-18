@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:homl/helpers/version.dart';
 
@@ -18,6 +19,39 @@ void main() {
           'https://homl.example/healthz');
       expect(
           healthzUrl('https://homl.example'), 'https://homl.example/healthz');
+    });
+  });
+
+  group('clientLabel', () {
+    test('the platform and the version', () {
+      expect(
+          clientLabel(
+              isWeb: false, platform: TargetPlatform.android, version: '0.5.0'),
+          'android 0.5.0');
+      expect(
+          clientLabel(
+              isWeb: false, platform: TargetPlatform.iOS, version: '0.5.0'),
+          'ios 0.5.0');
+      expect(
+          clientLabel(
+              isWeb: false, platform: TargetPlatform.macOS, version: '0.5.0'),
+          'macos 0.5.0');
+    });
+
+    test('a browser is the web, whatever it runs on', () {
+      expect(
+          clientLabel(
+              isWeb: true, platform: TargetPlatform.android, version: '0.5.0'),
+          'web 0.5.0');
+    });
+
+    test('without a version, the platform alone', () {
+      expect(
+          clientLabel(isWeb: false, platform: TargetPlatform.linux), 'linux');
+      expect(
+          clientLabel(
+              isWeb: false, platform: TargetPlatform.windows, version: ''),
+          'windows');
     });
   });
 }

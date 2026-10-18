@@ -4,6 +4,7 @@ import 'dart:developer';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 
 import 'package:homl/data/sync/outbox.dart';
@@ -623,6 +624,24 @@ class Api {
     }
   }
 
+  /// How the app names itself on every request ([clientLabel]).
+  static const clientHeader = 'X-Homl-Client';
+
+  /// Worked out once: the platform, and the version when the package info
+  /// can be read (not in the tests, nor if the plugin fails).
+  static final Future<String> _clientLabel = () async {
+    String? version;
+    try {
+      version = (await PackageInfo.fromPlatform()
+              .timeout(const Duration(seconds: 2)))
+          .version;
+    } catch (_) {
+      // The platform alone still names the device.
+    }
+    return clientLabel(
+        isWeb: kIsWeb, platform: defaultTargetPlatform, version: version);
+  }();
+
   static const _retriedKey = 'homl_retried';
   static const _probeKey = 'homl_probe';
 
@@ -672,7 +691,8 @@ class Api {
     }
 
     // Create interceptor which will manage tokens for each request
-    api.interceptors.add(InterceptorsWrapper(onRequest: (options, handler) {
+    api.interceptors.add(
+        InterceptorsWrapper(onRequest: (options, handler) async {
       if (options.extra[_probeKey] == true) {
         options.connectTimeout = _probeTimeout;
       } else if (_failFast) {
@@ -682,6 +702,7 @@ class Api {
       if (accessToken != null) {
         options.headers['Authorization'] = 'Bearer $accessToken';
       }
+      options.headers[clientHeader] = await _clientLabel;
       return handler.next(options);
     }, onResponse: (response, handler) {
       // Offline was flagged by a failure, yet a regular request just went

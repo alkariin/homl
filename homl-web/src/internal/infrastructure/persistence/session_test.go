@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"strconv"
 	"testing"
 	"time"
 
@@ -50,7 +51,7 @@ func login(t *testing.T, repo *UsersRepository) *user.TokenDetails {
 func rotate(t *testing.T, repo *UsersRepository, from string) (*user.TokenDetails, bool) {
 	t.Helper()
 	pair := newPair()
-	ok, err := repo.RotateSession(context.Background(), sessionUser, from, pair)
+	ok, err := repo.RotateSession(context.Background(), sessionUser, from, pair, user.SessionInfo{})
 	require.NoError(t, err)
 	return pair, ok
 }
@@ -162,7 +163,7 @@ func TestRotationRefusesAnUnknownOrForeignToken(t *testing.T) {
 	_, ok := rotate(t, repo, uuid.NewString())
 	assert.False(t, ok)
 
-	ok, err := repo.RotateSession(context.Background(), sessionUser+1, p0.RefreshUuid, newPair())
+	ok, err := repo.RotateSession(context.Background(), sessionUser+1, p0.RefreshUuid, newPair(), user.SessionInfo{})
 	require.NoError(t, err)
 	assert.False(t, ok)
 	assert.True(t, accessWorks(repo, p0), "a refused rotation changes nothing")
@@ -182,4 +183,200 @@ func TestTheReplayWindowLastsAsLongAsTheOldToken(t *testing.T) {
 	// Past the old token's own expiry, nothing can replay.
 	mr.FastForward(remaining + time.Second)
 	assert.False(t, usable(t, repo, p0.RefreshUuid))
+}
+
+/* ---------------------------- Device sessions ---------------------------- */
+
+// open stores a fresh pair and opens its device session, as a login does.
+func open(t *testing.T, repo *UsersRepository, userID uint64, info user.SessionInfo) *user.TokenDetails {
+	t.Helper()
+	pair := newPair()
+	require.NoError(t, repo.CreateAuth(context.Background(), userID, pair))
+	require.NoError(t, repo.OpenSession(context.Background(), userID, pair, info))
+	return pair
+}
+
+func sessionsOf(t *testing.T, repo *UsersRepository, userID uint64) []user.Session {
+	t.Helper()
+	sessions, err := repo.ListSessions(context.Background(), userID)
+	require.NoError(t, err)
+	return sessions
+}
+
+func sessionOf(t *testing.T, repo *UsersRepository, pair *user.TokenDetails) string {
+	t.Helper()
+	id, err := repo.SessionOfAccess(context.Background(), pair.AccessUuid)
+	require.NoError(t, err)
+	return id
+}
+
+func rotateWith(t *testing.T, repo *UsersRepository, from string, info user.SessionInfo) *user.TokenDetails {
+	t.Helper()
+	pair := newPair()
+	ok, err := repo.RotateSession(context.Background(), sessionUser, from, pair, info)
+	require.NoError(t, err)
+	require.True(t, ok)
+	return pair
+}
+
+func TestALoginOpensADeviceSession(t *testing.T) {
+	repo, _ := newSessionStore(t)
+	p0 := open(t, repo, sessionUser, user.SessionInfo{Client: "android 0.5.0", IP: "10.0.0.2"})
+
+	sessions := sessionsOf(t, repo, sessionUser)
+
+	require.Len(t, sessions, 1)
+	session := sessions[0]
+	assert.Equal(t, "android 0.5.0", session.Client)
+	assert.Equal(t, "10.0.0.2", session.IP)
+	require.NotNil(t, session.CreatedAt)
+	assert.WithinDuration(t, time.Now(), session.LastSeenAt, 2*time.Second)
+	assert.Equal(t, session.Id, sessionOf(t, repo, p0))
+}
+
+func TestARefreshCarriesTheDeviceSession(t *testing.T) {
+	repo, _ := newSessionStore(t)
+	p0 := open(t, repo, sessionUser, user.SessionInfo{Client: "android 0.5.0", IP: "10.0.0.2"})
+	before := sessionsOf(t, repo, sessionUser)[0]
+
+	// An app that does not say what it is keeps the name it had.
+	p1 := rotateWith(t, repo, p0.RefreshUuid, user.SessionInfo{IP: "192.0.2.7"})
+
+	sessions := sessionsOf(t, repo, sessionUser)
+	require.Len(t, sessions, 1)
+	assert.Equal(t, before.Id, sessions[0].Id)
+	assert.Equal(t, "android 0.5.0", sessions[0].Client)
+	assert.Equal(t, "192.0.2.7", sessions[0].IP)
+	assert.Equal(t, before.CreatedAt, sessions[0].CreatedAt)
+	assert.Equal(t, before.Id, sessionOf(t, repo, p1))
+}
+
+func TestASessionFromBeforeIsTakenInAtItsFirstRefresh(t *testing.T) {
+	repo, _ := newSessionStore(t)
+	p0 := login(t, repo)
+	assert.Empty(t, sessionsOf(t, repo, sessionUser))
+
+	p1 := rotateWith(t, repo, p0.RefreshUuid, user.SessionInfo{Client: "web 0.5.0"})
+
+	sessions := sessionsOf(t, repo, sessionUser)
+	require.Len(t, sessions, 1)
+	assert.Nil(t, sessions[0].CreatedAt, "its login time is unknown")
+	assert.Equal(t, "web 0.5.0", sessions[0].Client)
+	assert.Equal(t, sessions[0].Id, sessionOf(t, repo, p1))
+}
+
+func TestAReplayKeepsOneDeviceSession(t *testing.T) {
+	repo, _ := newSessionStore(t)
+	p0 := open(t, repo, sessionUser, user.SessionInfo{Client: "android 0.5.0"})
+	id := sessionOf(t, repo, p0)
+	// The answer to this rotation is lost: the client replays it with p0.
+	rotateWith(t, repo, p0.RefreshUuid, user.SessionInfo{})
+	p2 := rotateWith(t, repo, p0.RefreshUuid, user.SessionInfo{})
+
+	sessions := sessionsOf(t, repo, sessionUser)
+	require.Len(t, sessions, 1)
+	assert.Equal(t, id, sessions[0].Id)
+	assert.Equal(t, id, sessionOf(t, repo, p2))
+
+	// Using the new token settles the rotation: p0 no longer points anywhere.
+	rotateWith(t, repo, p2.RefreshUuid, user.SessionInfo{})
+	assert.Len(t, sessionsOf(t, repo, sessionUser), 1)
+}
+
+func TestRevokingASessionSignsThatDeviceOutOnly(t *testing.T) {
+	repo, _ := newSessionStore(t)
+	phone := open(t, repo, sessionUser, user.SessionInfo{Client: "android 0.5.0"})
+	laptop := open(t, repo, sessionUser, user.SessionInfo{Client: "web 0.5.0"})
+	id := sessionOf(t, repo, phone)
+
+	ok, err := repo.RevokeSession(context.Background(), sessionUser, id)
+
+	require.NoError(t, err)
+	assert.True(t, ok)
+	assert.False(t, accessWorks(repo, phone))
+	assert.False(t, usable(t, repo, phone.RefreshUuid))
+	assert.True(t, accessWorks(repo, laptop))
+	sessions := sessionsOf(t, repo, sessionUser)
+	require.Len(t, sessions, 1)
+	assert.Equal(t, "web 0.5.0", sessions[0].Client)
+}
+
+func TestRevokingASessionTakesAPendingRotationAlong(t *testing.T) {
+	repo, _ := newSessionStore(t)
+	p0 := open(t, repo, sessionUser, user.SessionInfo{})
+	p1 := rotateWith(t, repo, p0.RefreshUuid, user.SessionInfo{})
+
+	ok, err := repo.RevokeSession(context.Background(), sessionUser, sessionOf(t, repo, p1))
+
+	require.NoError(t, err)
+	assert.True(t, ok)
+	assert.False(t, usable(t, repo, p1.RefreshUuid))
+	assert.False(t, usable(t, repo, p0.RefreshUuid), "the replaced token cannot replay")
+}
+
+func TestAnotherUsersSessionCannotBeRevoked(t *testing.T) {
+	repo, _ := newSessionStore(t)
+	p0 := open(t, repo, sessionUser, user.SessionInfo{})
+
+	ok, err := repo.RevokeSession(context.Background(), sessionUser+1, sessionOf(t, repo, p0))
+
+	require.NoError(t, err)
+	assert.False(t, ok)
+	assert.True(t, accessWorks(repo, p0))
+
+	ok, err = repo.RevokeSession(context.Background(), sessionUser, uuid.NewString())
+	require.NoError(t, err)
+	assert.False(t, ok)
+}
+
+func TestALogoutForgetsTheDeviceSession(t *testing.T) {
+	repo, mr := newSessionStore(t)
+	p0 := open(t, repo, sessionUser, user.SessionInfo{})
+	id := sessionOf(t, repo, p0)
+
+	_, err := repo.RevokeSessionByAccess(context.Background(), p0.AccessUuid)
+
+	require.NoError(t, err)
+	assert.Empty(t, sessionsOf(t, repo, sessionUser))
+	assert.False(t, mr.Exists(deviceSessionPrefix+id))
+	assert.False(t, mr.Exists(sessionOfPrefix+p0.RefreshUuid))
+}
+
+func TestRevokeAllForgetsEveryDeviceSession(t *testing.T) {
+	repo, mr := newSessionStore(t)
+	p0 := open(t, repo, sessionUser, user.SessionInfo{})
+	open(t, repo, sessionUser, user.SessionInfo{})
+	rotateWith(t, repo, p0.RefreshUuid, user.SessionInfo{})
+
+	require.NoError(t, repo.RevokeAllSessions(context.Background(), sessionUser))
+
+	assert.Empty(t, sessionsOf(t, repo, sessionUser))
+	for _, key := range mr.Keys() {
+		assert.NotContains(t, key, "auth:", "nothing of the user's sessions is left")
+	}
+}
+
+func TestListingForgetsASessionWhoseTokensAreGone(t *testing.T) {
+	repo, mr := newSessionStore(t)
+	p0 := open(t, repo, sessionUser, user.SessionInfo{})
+	id := sessionOf(t, repo, p0)
+	// Expired, or deleted by hand: the refresh token is gone.
+	mr.Del(refreshKeyPrefix + p0.RefreshUuid)
+
+	assert.Empty(t, sessionsOf(t, repo, sessionUser))
+	assert.False(t, mr.Exists(deviceSessionPrefix+id))
+}
+
+func TestSessionsAreListedMostRecentFirst(t *testing.T) {
+	repo, mr := newSessionStore(t)
+	older := open(t, repo, sessionUser, user.SessionInfo{Client: "older"})
+	open(t, repo, sessionUser, user.SessionInfo{Client: "newer"})
+	// Last seen an hour ago.
+	mr.HSet(deviceSessionPrefix+sessionOf(t, repo, older), "seen",
+		strconv.FormatInt(time.Now().Add(-time.Hour).Unix(), 10))
+
+	sessions := sessionsOf(t, repo, sessionUser)
+
+	require.Len(t, sessions, 2)
+	assert.Equal(t, "newer", sessions[0].Client)
 }
