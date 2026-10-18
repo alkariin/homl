@@ -59,16 +59,17 @@ flutter doctor            # Android toolchain should be [✓]
 
 ### Gradle toolchain
 
-The Android build pins its toolchain in `android/settings.gradle` (AGP 8.11.1,
-Kotlin 2.4.0) and `android/gradle/wrapper/gradle-wrapper.properties` (Gradle
-8.14.6); all three are downloaded on first build. Flutter 3.47 warns that it
-will soon drop these (it asks for Gradle 9.1+ and AGP 9.0.1+), but anything
-newer is blocked by biometric_storage 5: it compiles against API 31, which AGP
+The Android build scripts use the Kotlin DSL (`*.gradle.kts`), like the
+Flutter template. They pin the toolchain in `android/settings.gradle.kts` (AGP
+8.11.1, Kotlin 2.4.0), and `android/gradle/wrapper/gradle-wrapper.properties`
+pins Gradle 8.14.6; all three are downloaded on first build. Flutter 3.47
+warns that it will soon drop these (it asks for Gradle 9.1+ and AGP 9.0.1+),
+but anything newer is blocked by biometric_storage 5: it compiles against API 31, which AGP
 8.12+ rejects in `checkDebugAarMetadata`, and it applies the Kotlin Gradle
 plugin (and kapt) itself, so AGP 9's built-in Kotlin must stay off, while
 file_picker 11 skips that plugin on AGP 9 and expects built-in Kotlin (the
 build then fails on a missing `FilePickerPlugin`). biometric_storage 6, still
-in dev releases, fixes both. `android/app/build.gradle` uses
+in dev releases, fixes both. `android/app/build.gradle.kts` uses
 `flutter.ndkVersion`, so the NDK follows the Flutter SDK (28.2 today) and is
 pulled by `sdkmanager` automatically. Once that blocker is gone, follow
 Flutter's "will soon be dropped" warnings: bump those two files to the minimum
