@@ -46,6 +46,7 @@ the handlers next to it.
   | `PIN_INCORRECT` | 401 | `attemptsRemaining` | `POST /refresh` |
   | `PIN_LOCKED` | 401 | — | `POST /refresh` |
   | `RESET_CODE_INVALID` | 401 | — | `POST /confirmResetPassword` |
+  | `REGISTRATION_CLOSED` | 403 | — | `POST /registration` |
   | `TAG_NAME_CONFLICT` | 409 | — | `POST /tags`, `PATCH /tags/:id`, `POST /tagGroups`, `PATCH /tagGroups/:id`, `DELETE /categories/:id` |
 
 - **Creations** — `POST /categories`, `POST /tags`, `POST /tagGroups` and
@@ -53,6 +54,17 @@ the handlers next to it.
   `201` with the id of the new row, `{ "id": 42 }`, so a client can address
   what it just created (an edit or a delete queued behind the creation, say)
   without refetching the whole list.
+- **Conditional reads** — `GET /events` and `GET /categories` answer with an
+  `ETag`, a fingerprint of the body. A client that kept the body sends the
+  fingerprint back in `If-None-Match` (a weak `W/` form or a list work too);
+  when the data has not changed the answer is `304 Not Modified` with no body,
+  and the client uses its copy. The fingerprint is taken on the body itself,
+  built in full every time: no write path has to keep anything up to date,
+  so a change — a write, a cascade, an E2EE migration — can never be missed.
+  Those answers also say `Cache-Control: no-store`: the data must not land in
+  a browser cache in clear (the app keeps its own sealed copy). CORS lets a
+  browser send `If-None-Match` and read `ETag`. Any other status passes
+  through untouched, without an `ETag`.
 
 ## Auth & account
 
