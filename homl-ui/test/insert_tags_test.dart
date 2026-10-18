@@ -134,6 +134,62 @@ void main() {
     expect(find.textContaining('choose a category'), findsNothing);
   });
 
+  testWidgets(
+      'a tag typed in lowercase is created in its canonical form and wears '
+      'its category color', (tester) async {
+    // The categories as the server answers once the tag exists.
+    var current = categories;
+    when(() => categoriesRepository.getCategories())
+        .thenAnswer((_) async => current);
+    when(() => tagsRepository.createTag('Roadtrip', 2,
+        idParentTag: any(named: 'idParentTag'))).thenAnswer((_) async {
+      current = [
+        for (final category in categories)
+          category.id == 2
+              ? Category(
+                  id: 2,
+                  category: 'Hobbies',
+                  color: '#f28b82',
+                  isLocked: false,
+                  kind: CategoryKind.custom,
+                  tags: [
+                    ...category.tags,
+                    Tag(id: 42, tag: 'Roadtrip', idCategory: 2),
+                  ])
+              : category,
+      ];
+      return 42;
+    });
+
+    await tester.pumpWidget(wrap());
+    await tester.pumpAndSettle();
+
+    await tester.enterText(tagField(), 'roadtrip');
+    await tester.pumpAndSettle();
+    expect(find.text('New tag "Roadtrip": choose a category'), findsOneWidget);
+
+    await tester.tap(find.text('Hobbies'));
+    await tester.pumpAndSettle();
+
+    final chip = tester.widget<components.Tag>(
+        find.widgetWithText(components.Tag, 'Roadtrip'));
+    expect(chip.color, '#f28b82');
+  });
+
+  testWidgets('an existing tag typed in lowercase wears its category color',
+      (tester) async {
+    await tester.pumpWidget(wrap());
+    await tester.pumpAndSettle();
+
+    await tester.enterText(tagField(), 'football');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+
+    final chip = tester.widget<components.Tag>(
+        find.widgetWithText(components.Tag, 'Football'));
+    expect(chip.color, '#f28b82');
+  });
+
   testWidgets('a pending free tag wears the Others category grey',
       (tester) async {
     await tester.pumpWidget(wrap());
