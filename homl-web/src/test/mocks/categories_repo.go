@@ -132,6 +132,22 @@ func (m *MockCategoriesRepo) GetCategoryUsage(ctx context.Context, idCategory ui
 	return r0, r1
 }
 
+func (m *MockCategoriesRepo) FindIdByClientId(ctx context.Context, clientId string, idUser uint64) (uint, bool, error) {
+	ret := m.Called(clientId, idUser)
+
+	var r0 uint
+	if ret.Get(0) != nil {
+		r0 = ret.Get(0).(uint)
+	}
+
+	var r2 error
+	if ret.Get(2) != nil {
+		r2 = ret.Get(2).(error)
+	}
+
+	return r0, ret.Bool(1), r2
+}
+
 func (m *MockCategoriesRepo) CreateTag(ctx context.Context, tagNameEncrypt string, tagIndex *string, idCategory uint, idParentTag *uint) (uint, error) {
 	ret := m.Called(tagNameEncrypt, tagIndex, idCategory, idParentTag)
 

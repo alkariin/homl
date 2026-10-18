@@ -44,39 +44,59 @@ func (h *CategoryHandler) GetCategories(c *gin.Context) {
 /** input:
  * {
  *   category: string,
- *	 color: string
+ *	 color: string,
+ *   clientId?: string (UUID; a replay with the same one answers 200 with
+ *              the category it created first, and changes nothing)
  * }
  * output:
  * { id: uint }
  */
 func (h *CategoryHandler) CreateCategory(c *gin.Context) {
-	var category *category.Category
-	err := c.ShouldBindJSON(&category)
+	var body struct {
+		Category string  `json:"category"`
+		Color    string  `json:"color"`
+		ClientId *string `json:"clientId" validate:"omitempty,uuid"`
+	}
+	err := c.ShouldBindJSON(&body)
 	if err != nil {
 		SendGinMyCustomError(c, err, apperror.NewStatusUnprocessableEntity())
 		return
 	}
 
-	v1 := GinInputParams{Field: category.Category, Validation: categoryValidation}
-	v2 := GinInputParams{Field: category.Color, Validation: colorValidation}
+	v1 := GinInputParams{Field: body.Category, Validation: categoryValidation}
+	v2 := GinInputParams{Field: body.Color, Validation: colorValidation}
 	if CheckGinInput(v1, v2) {
 		SendGinError(c, apperror.NewStatusUnprocessableEntity())
 		return
 	}
+	if err := CheckGinInputStruct(&body); err != nil {
+		SendGinMyCustomError(c, err, apperror.NewStatusUnprocessableEntity())
+		return
+	}
 
-	category.IdUser, err = UserIDFromContext(c)
+	idUser, err := UserIDFromContext(c)
 	if err != nil {
 		SendGinError(c, err)
 		return
 	}
 
-	idCategory, err := h.CategoriesService.CreateCategory(c.Request.Context(), category)
+	idCategory, created, err := h.CategoriesService.CreateCategory(c.Request.Context(), &category.Category{
+		Category: body.Category,
+		Color:    body.Color,
+		IdUser:   idUser,
+		ClientId: body.ClientId,
+	})
 	if err != nil {
 		SendGinError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"id": idCategory})
+	// A replay (same clientId) created nothing: 200 with the first category.
+	status := http.StatusCreated
+	if !created {
+		status = http.StatusOK
+	}
+	c.JSON(status, gin.H{"id": idCategory})
 }
 
 /** input:

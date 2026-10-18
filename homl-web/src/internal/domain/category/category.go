@@ -2,7 +2,10 @@
 // entities, DTOs and the persistence port.
 package category
 
-import "context"
+import (
+	"context"
+	"errors"
+)
 
 // Kind identifies the role of a category. Every user gets a date, person and
 // other category at registration; date and other are locked, person is a
@@ -24,7 +27,15 @@ type Category struct {
 	IsLocked bool   `json:"isLocked" db:"isLocked"`
 	Kind     Kind   `json:"kind" db:"kind"`
 	IdUser   uint64 `json:"idUser" db:"idUser"`
+	// ClientId is the UUID the client chose for a category it creates, so a
+	// create replayed after a lost answer finds the first row instead of
+	// making a second one (nil: none sent). Never echoed in responses.
+	ClientId *string `json:"-" db:"clientId"`
 }
+
+// ErrDuplicateClientId reports a create whose clientId another create of the
+// same user already used (two replays racing): the first row stands.
+var ErrDuplicateClientId = errors.New("category clientId already used")
 
 type GetCategoryResponse struct {
 	Id       uint     `json:"id"`
@@ -67,8 +78,12 @@ type Repository interface {
 	// kind (date, person or other).
 	FindIdByKind(ctx context.Context, idUser uint64, kind Kind) (uint, error)
 	GetAllCategoriesWithTags(ctx context.Context, idUser uint64) (map[uint]Category, map[uint][]TagDTO, error)
-	// Create inserts a category and returns its id.
+	// Create inserts a category and returns its id. ErrDuplicateClientId
+	// when category.ClientId is already used.
 	Create(ctx context.Context, category *Category) (uint, error)
+	// FindIdByClientId returns the id of the user's category created with
+	// clientId (found false when there is none).
+	FindIdByClientId(ctx context.Context, clientId string, idUser uint64) (id uint, found bool, err error)
 	Update(ctx context.Context, category *Category) error
 	// Delete removes a category. moveTags moves its tags (synonym links
 	// intact) and its tag groups to the user's Other category; otherwise the

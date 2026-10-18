@@ -83,12 +83,10 @@ class EventsRepository {
     }
 
     final categories = await LocalStore.instance.load(StoreEntry.categories);
+    final saved = (categories?.payload as List<dynamic>?) ?? const [];
     final projected = projectEvents(
-        payload,
-        projectCategories(
-            (categories?.payload as List<dynamic>?) ?? const [], ops),
-        ops,
-        clientDateTags: E2ee().enabled);
+        payload, projectCategories(saved, ops), ops,
+        clientDateTags: E2ee().enabled, serverCategories: saved);
     return projected.map(Event.fromJson).toList();
   }
 
@@ -198,14 +196,15 @@ class EventsRepository {
   /// send it.
   Future<WriteOutcome> _queue(
       Future<void> Function(({String? keyCheck, String? generation}) stamps)
-          enqueue) async {
+          enqueue,
+      {bool notify = true}) async {
     try {
       await enqueue(await writeStamps());
     } catch (_) {
       // Not even saved on the device: the write failed.
       throw EventsRequestFailure();
     }
-    _changesController.add(null);
+    if (notify) _changesController.add(null);
     SyncEngine.instance.kick();
     return WriteOutcome.queued;
   }
@@ -270,7 +269,7 @@ class EventsRepository {
     }
 
     // An id created offline may have been sent meanwhile.
-    final target = Outbox.instance.resolve(id);
+    final target = Outbox.instance.resolveEvent(id);
     if (target < 0 ||
         tagsId.any((tag) => tag < 0) ||
         await Outbox.instance.shouldQueue()) {
@@ -288,14 +287,20 @@ class EventsRepository {
     return WriteOutcome.sent;
   }
 
-  Future<WriteOutcome> deleteEvent(int id) async {
+  /// [notify] false keeps [changes] quiet, for a caller deleting many events
+  /// in a row (see [createEvent]).
+  Future<WriteOutcome> deleteEvent(int id, {bool notify = true}) async {
     Future<WriteOutcome> queue(int target) async {
       final base = target > 0 ? await _serverCopy(target) : null;
-      return _queue((stamps) => Outbox.instance.deleteEvent(target,
-          base: base, keyCheck: stamps.keyCheck, generation: stamps.generation));
+      return _queue(
+          (stamps) => Outbox.instance.deleteEvent(target,
+              base: base,
+              keyCheck: stamps.keyCheck,
+              generation: stamps.generation),
+          notify: notify);
     }
 
-    final target = Outbox.instance.resolve(id);
+    final target = Outbox.instance.resolveEvent(id);
     if (target < 0 || await Outbox.instance.shouldQueue()) {
       return queue(target);
     }
@@ -307,7 +312,7 @@ class EventsRepository {
       throw EventsRequestFailure();
     }
 
-    _changesController.add(null);
+    if (notify) _changesController.add(null);
     return WriteOutcome.sent;
   }
 

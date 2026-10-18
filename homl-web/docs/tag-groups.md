@@ -83,8 +83,8 @@ Details and file pointers: the homl-ui README, "Tag groups".
   "New group", then a tap on a group to edit or delete it. The dialog refuses
   a name reserved for the dates, and any name a tag or another group of the
   account already has, whatever its category, so a typed name never means
-  two things. Online only, like every category change; a tag created
-  offline joins a group once it reached the server.
+  two things. Works offline too: the change waits on the device, and a tag
+  created offline can join a group at once ([offline-sync.md](offline-sync.md)).
 - **Export and import.** A group travels in the export file with the names
   of its tags ([data-export.md](data-export.md)).
 

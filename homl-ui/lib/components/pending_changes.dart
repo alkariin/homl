@@ -75,11 +75,25 @@ class _PendingChangesSheetState extends State<PendingChangesSheet> {
     if (mounted) setState(() => _items = items);
   }
 
-  /// A line telling which event or tag the op is about, in clear.
+  /// A line telling which event, tag, category or group the op is about, in
+  /// clear. A deletion names it as the server had it.
   Future<String> _summary(OutboxOp op, String locale) async {
-    final source = op.kind == OpKind.deleteEvent ? op.base : op.body;
+    final deletes = op.kind == OpKind.deleteEvent ||
+        op.kind == OpKind.deleteTag ||
+        op.kind == OpKind.deleteCategory ||
+        op.kind == OpKind.deleteGroup;
+    final source = deletes ? op.base : op.body;
     if (source == null) return '';
-    if (op.kind == OpKind.createTag) return _plain(source['tag']);
+    switch (op.kind.entity) {
+      case OpEntity.tag:
+        return _plain(source['tag']);
+      case OpEntity.category:
+        return _plain(source['category']);
+      case OpEntity.group:
+        return _plain(source['name']);
+      case OpEntity.event:
+        break;
+    }
 
     final description = await _plain(source['description']);
     final date = source['date'] is String
@@ -114,6 +128,14 @@ class _PendingChangesSheetState extends State<PendingChangesSheet> {
         OpKind.updateEvent => l10n.pending_updateEvent,
         OpKind.deleteEvent => l10n.pending_deleteEvent,
         OpKind.createTag => l10n.pending_createTag,
+        OpKind.updateTag => l10n.pending_updateTag,
+        OpKind.deleteTag => l10n.pending_deleteTag,
+        OpKind.createCategory => l10n.pending_createCategory,
+        OpKind.updateCategory => l10n.pending_updateCategory,
+        OpKind.deleteCategory => l10n.pending_deleteCategory,
+        OpKind.createGroup => l10n.pending_createGroup,
+        OpKind.updateGroup => l10n.pending_updateGroup,
+        OpKind.deleteGroup => l10n.pending_deleteGroup,
       };
 
   String _statusLabel(AppLocalizations l10n, ParkReason? reason) =>
@@ -121,6 +143,7 @@ class _PendingChangesSheetState extends State<PendingChangesSheet> {
         null => l10n.pending_waiting,
         ParkReason.refused => l10n.pending_refused,
         ParkReason.missingTag => l10n.pending_missingTag,
+        ParkReason.missingParent => l10n.pending_missingParent,
         ParkReason.encryptionChanged => l10n.pending_encryptionChanged,
         ParkReason.dataReplaced => l10n.pending_dataReplaced,
       };

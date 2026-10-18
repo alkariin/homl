@@ -309,9 +309,9 @@ linked to an event (`homl-web/docs/tag-groups.md`). In the app:
   tags, and two things of one name would make it ambiguous. The server only
   enforces the unique name within the category (`409 TAG_NAME_CONFLICT`,
   toast "this category already has a group with that name");
-- group management is online only, like the rest of the tab, and a tag
-  created offline cannot join a group before it reaches the server
-  ("this tag is not on the server yet");
+- group management works offline like the rest of the tab: a group waits in
+  the outbox, a tag created offline can join it at once (the group goes once
+  the tag has its server id);
 - both tag inputs suggest the groups next to the tags (`tagGroupSuggestions`
   in `lib/helpers/tag_groups.dart`): the chip of the group, with the tags it
   adds named on the right instead of a category. Picking it — a tap, or the
@@ -718,10 +718,10 @@ out of reach is the next section.
 ## Offline mode (server out of reach)
 
 Away from the network that reaches the server, the app keeps the session,
-runs on the data saved on the device, and keeps working: events can be
-created, edited and deleted, new tags typed; it all waits in an outbox and is
-sent once the server answers again. Tag, tag group and category management,
-settings and the Security page stay online-only ("server unreachable"). The protocol side —
+runs on the data saved on the device, and keeps working: events, tags,
+synonyms, tag groups and categories can be created, edited and deleted; it all
+waits in an outbox and is sent once the server answers again. Settings, the
+Security page and the import stay online-only ("server unreachable"). The protocol side —
 what ends a session, the offline unlock, the trade-off of the offline PIN — is
 in [homl-web/docs/auth-flows.md](../homl-web/docs/auth-flows.md), "Client
 session"; the outbox and the sync in
@@ -782,10 +782,22 @@ session"; the outbox and the sync in
   The form then says "saved on this device". `projection.dart` shows the
   saved data with the waiting changes applied (a small clock on their cards);
   `SyncEngine` sends them once the server answers, merging an edit with what
-  changed on another device meanwhile (an edit wins over a deletion either
-  way, the same field changed on both sides keeps this device's value — each
-  case says so). The app bar counts the waiting changes; its sheet lists them
-  and lets the user discard one, or try again those the server refused.
+  changed on another device meanwhile (for events, an edit wins over a
+  deletion either way; a tag, category or group edited here but deleted
+  elsewhere stays deleted, since the server already took it off its events;
+  the same field changed on both sides keeps this device's value — each case
+  says so). The app bar counts the waiting changes; its sheet lists them and
+  lets the user discard one (with what was made with it), or try again those
+  the server refused.
+- **Managing offline**: `TagsRepository` and `CategoriesRepository` queue a
+  change the way `EventsRepository` does, with the server's last copy as its
+  base (`serverTag`, `serverCategory`, `serverGroup` in
+  `offline_writes.dart`) and "saved on this device" as the message. A deletion
+  "with its events" cannot wait as it is (`DeleteEventsOfflineFailure`):
+  `HomeCubit` deletes the events the screen shows one by one, then the tag or
+  category alone, so another device's events added meanwhile are never
+  deleted unseen. The delete dialogs count from the data on the device while
+  changes wait or the server is away (`lib/helpers/local_usage.dart`).
   Logging out with changes waiting asks first; enabling or disabling E2EE
   waits until they are sent.
 

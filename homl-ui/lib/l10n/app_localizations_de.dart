@@ -823,7 +823,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get sync_kept =>
-      'Ein Ereignis, das du gelöscht hast, wurde auf einem anderen Gerät geändert: Es wurde behalten.';
+      'Etwas, das du gelöscht hattest, wurde auf einem anderen Gerät geändert: Es wurde behalten.';
 
   @override
   String get sync_conflicts =>
@@ -834,8 +834,8 @@ class AppLocalizationsDe extends AppLocalizations {
       'Einige Änderungen konnten nicht gesendet werden: Sieh dir die wartenden Änderungen an.';
 
   @override
-  String get sync_tagPending =>
-      'Dieser Tag ist noch nicht auf dem Server: Versuche es erneut, sobald deine Änderungen gesendet sind.';
+  String get sync_dropped =>
+      'Eine offline gemachte Änderung wurde verworfen: Was sie änderte, war auf einem anderen Gerät gelöscht worden.';
 
   @override
   String get sync_pendingChangesFirst =>
@@ -870,6 +870,30 @@ class AppLocalizationsDe extends AppLocalizations {
   String get pending_createTag => 'Neuer Tag';
 
   @override
+  String get pending_updateTag => 'Bearbeiteter Tag';
+
+  @override
+  String get pending_deleteTag => 'Gelöschter Tag';
+
+  @override
+  String get pending_createCategory => 'Neue Kategorie';
+
+  @override
+  String get pending_updateCategory => 'Bearbeitete Kategorie';
+
+  @override
+  String get pending_deleteCategory => 'Gelöschte Kategorie';
+
+  @override
+  String get pending_createGroup => 'Neue Tag-Gruppe';
+
+  @override
+  String get pending_updateGroup => 'Bearbeitete Tag-Gruppe';
+
+  @override
+  String get pending_deleteGroup => 'Gelöschte Tag-Gruppe';
+
+  @override
   String get pending_waiting => 'Wartet';
 
   @override
@@ -878,6 +902,10 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get pending_missingTag =>
       'Verwendet einen Tag, der nicht erstellt werden konnte';
+
+  @override
+  String get pending_missingParent =>
+      'Braucht eine Kategorie oder Gruppe, die nicht erstellt werden konnte';
 
   @override
   String get pending_encryptionChanged =>

@@ -19,6 +19,10 @@ class _Backend implements HttpClientAdapter {
   bool reachable = true;
   final List<RequestOptions> writes = [];
 
+  /// Reads go through, writes fail like a dropped connection.
+  bool failWrites = false;
+  final List<RequestOptions> failedWrites = [];
+
   List<Map<String, dynamic>> events = [
     {
       'id': 5,
@@ -60,6 +64,11 @@ class _Backend implements HttpClientAdapter {
     }
     if (options.method == 'GET' && options.path.endsWith('/categories')) {
       return _json(categories, 200);
+    }
+    if (failWrites) {
+      failedWrites.add(options);
+      throw DioException.connectionError(
+          requestOptions: options, reason: 'connection reset');
     }
     writes.add(options);
     if (options.method == 'POST') return _json({'id': 77}, 201);
@@ -216,12 +225,31 @@ void main() {
     expect(categories.single.tags.map((t) => t.tag), ['Football', 'Tram']);
   });
 
-  test('a tag not on the server yet cannot be renamed or deleted', () async {
+  test('a tag not on the server yet can be renamed: its creation carries it',
+      () async {
     goOffline();
     final id = await tags.createTag('Tram', 3);
 
-    expect(() => tags.updateTag(id, 'Bus', 3), throwsA(isA<TagPendingFailure>()));
-    expect(() => tags.deleteTag(id), throwsA(isA<TagPendingFailure>()));
+    expect(await tags.updateTag(id, 'Bus', 3), WriteOutcome.queued);
+
+    final op = (await Outbox.instance.ops()).single;
+    expect(op.kind, OpKind.createTag);
+    expect(op.body['tag'], 'Bus');
+    final categories = await CategoriesRepository(api: api).getCategories();
+    expect(categories.single.tags.map((t) => t.tag), ['Football', 'Bus']);
+  });
+
+  test('a tag not on the server yet can be deleted: created, then deleted',
+      () async {
+    goOffline();
+    final id = await tags.createTag('Tram', 3);
+
+    expect(await tags.deleteTag(id), WriteOutcome.queued);
+
+    expect((await Outbox.instance.ops()).map((op) => op.kind),
+        [OpKind.createTag, OpKind.deleteTag]);
+    final categories = await CategoriesRepository(api: api).getCategories();
+    expect(categories.single.tags.map((t) => t.tag), ['Football']);
   });
 
   test('behind waiting changes, an online write waits its turn', () async {
@@ -238,5 +266,103 @@ void main() {
     expect(outcome, WriteOutcome.queued);
     expect((await Outbox.instance.ops()).map((op) => op.body['description']),
         ['first', 'second']);
+  });
+
+  group('tags, categories and groups offline', () {
+    late CategoriesRepository categories;
+    setUp(() => categories = CategoriesRepository(api: api));
+
+    test('a category created offline shows at once, a tag can go in it',
+        () async {
+      goOffline();
+
+      final id = await categories.createCategory('Trips', '#a7ffeb');
+      final tram = await tags.createTag('Tram', id);
+
+      expect(id, lessThan(0));
+      expect(tram, lessThan(0));
+      final shown = await categories.getCategories();
+      expect(shown.last.category, 'Trips');
+      expect(shown.last.tags.single.tag, 'Tram');
+      final ops = await Outbox.instance.ops();
+      expect(ops.first.kind, OpKind.createCategory);
+      expect(ops.last.body['idCategory'], id);
+    });
+
+    test('a category created online carries a clientId', () async {
+      await categories.createCategory('Trips', '#a7ffeb');
+
+      final body = backend.writes.single.data as Map;
+      expect(body['clientId'], isA<String>());
+      expect(await Outbox.instance.ops(), isEmpty);
+    });
+
+    test('a category the server could not get waits with the same clientId',
+        () async {
+      // Reachable for the reads, gone for the write: the creation is queued
+      // under the id the direct attempt used (its answer may be lost).
+      backend.failWrites = true;
+
+      final id = await categories.createCategory('Trips', '#a7ffeb');
+
+      expect(id, lessThan(0));
+      final op = (await Outbox.instance.ops()).single;
+      expect(op.id, (backend.failedWrites.single.data as Map)['clientId']);
+    });
+
+    test('a tag renamed offline is renamed on its events, with its base',
+        () async {
+      goOffline();
+
+      expect(await tags.updateTag(10, 'Soccer', 3), WriteOutcome.queued);
+
+      final op = (await Outbox.instance.ops()).single;
+      expect(op.base, {'tag': 'Football', 'idCategory': 3, 'idParentTag': null});
+      final shown = await events.getEvents();
+      expect(shown.single.tags.single.tag, 'Soccer');
+    });
+
+    test('a deletion with its events cannot wait as it is', () async {
+      goOffline();
+
+      await expectLater(tags.deleteTag(10, deleteEvents: true),
+          throwsA(isA<DeleteEventsOfflineFailure>()));
+      await expectLater(
+          categories.deleteCategory(3, deleteEvents: true),
+          throwsA(isA<DeleteEventsOfflineFailure>()));
+      expect(await Outbox.instance.ops(), isEmpty);
+
+      // Moving the tags deletes nothing: it waits as it is.
+      expect(await categories.deleteCategory(3, moveTags: true),
+          WriteOutcome.queued);
+    });
+
+    test('a tag deleted offline leaves its events', () async {
+      goOffline();
+
+      expect(await tags.deleteTag(10), WriteOutcome.queued);
+
+      final shown = await events.getEvents();
+      expect(shown.single.description, 'on the server');
+      expect(shown.single.tags, isEmpty);
+      expect((await categories.getCategories()).single.tags, isEmpty);
+    });
+
+    test('groups wait offline, members created offline included', () async {
+      goOffline();
+      final tram = await tags.createTag('Tram', 3);
+
+      final group = await categories.createTagGroup('Rails', 3, [10, tram]);
+      expect(group, lessThan(0));
+      expect(await categories.updateTagGroup(group, 'Trains', [tram]),
+          WriteOutcome.queued);
+
+      final ops = await Outbox.instance.ops();
+      expect(ops.map((op) => op.kind), [OpKind.createTag, OpKind.createGroup]);
+      expect(ops.last.body['name'], 'Trains');
+      final shown = (await categories.getCategories()).single;
+      expect(shown.groups.single.name, 'Trains');
+      expect(shown.groups.single.members, [tram]);
+    });
   });
 }

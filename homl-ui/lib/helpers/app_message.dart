@@ -30,7 +30,9 @@ enum AppMessage {
   syncKept,
   syncConflicts,
   syncParked,
-  tagPending,
+
+  /// A change made here was about something deleted on another device.
+  syncDropped,
 
   /// An action that cannot run while changes made offline still wait.
   pendingChangesFirst,
@@ -96,8 +98,8 @@ extension AppMessageLocalization on AppMessage {
         return localization.sync_conflicts;
       case AppMessage.syncParked:
         return localization.sync_parked;
-      case AppMessage.tagPending:
-        return localization.sync_tagPending;
+      case AppMessage.syncDropped:
+        return localization.sync_dropped;
       case AppMessage.pendingChangesFirst:
         return localization.sync_pendingChangesFirst;
       case AppMessage.exportFailed:

@@ -817,7 +817,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sync_kept =>
-      'An event you deleted had been changed on another device: it was kept.';
+      'Something you deleted had been changed on another device: it was kept.';
 
   @override
   String get sync_conflicts =>
@@ -828,8 +828,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'Some changes could not be sent: see the changes waiting.';
 
   @override
-  String get sync_tagPending =>
-      'This tag is not on the server yet: try again once your changes are sent.';
+  String get sync_dropped =>
+      'A change you made offline was dropped: what it changed had been deleted on another device.';
 
   @override
   String get sync_pendingChangesFirst =>
@@ -864,6 +864,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pending_createTag => 'New tag';
 
   @override
+  String get pending_updateTag => 'Edited tag';
+
+  @override
+  String get pending_deleteTag => 'Deleted tag';
+
+  @override
+  String get pending_createCategory => 'New category';
+
+  @override
+  String get pending_updateCategory => 'Edited category';
+
+  @override
+  String get pending_deleteCategory => 'Deleted category';
+
+  @override
+  String get pending_createGroup => 'New tag group';
+
+  @override
+  String get pending_updateGroup => 'Edited tag group';
+
+  @override
+  String get pending_deleteGroup => 'Deleted tag group';
+
+  @override
   String get pending_waiting => 'Waiting';
 
   @override
@@ -871,6 +895,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pending_missingTag => 'Uses a tag that could not be created';
+
+  @override
+  String get pending_missingParent =>
+      'Needs a category or group that could not be created';
 
   @override
   String get pending_encryptionChanged =>
