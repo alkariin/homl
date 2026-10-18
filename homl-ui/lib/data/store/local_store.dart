@@ -22,7 +22,12 @@ class StoredPayload {
   /// storage, which did not record it.
   final DateTime? savedAt;
 
-  const StoredPayload(this.payload, this.savedAt);
+  /// The server's fingerprint of [payload] (its `ETag`), sent back to ask
+  /// whether it changed (data/store/conditional_get.dart); null when the
+  /// server gave none.
+  final String? etag;
+
+  const StoredPayload(this.payload, this.savedAt, [this.etag]);
 }
 
 /// The data saved on this device, so the app works offline: one entry per
@@ -73,12 +78,14 @@ class LocalStore {
   String _blobName(StoreEntry entry) => '${entry.name}.bin';
 
   /// Saves [payload] (JSON-encodable) as [entry], for the account currently
-  /// signed in. [strict]: a failure throws instead of being logged.
-  Future<void> save(StoreEntry entry, Object? payload, {bool strict = false}) =>
+  /// signed in, with the server's [etag] of it when there is one. [strict]:
+  /// a failure throws instead of being logged.
+  Future<void> save(StoreEntry entry, Object? payload,
+          {bool strict = false, String? etag}) =>
       _serialized(() async {
         try {
           await _migrateLegacy();
-          await _write(entry, payload, DateTime.now());
+          await _write(entry, payload, DateTime.now(), etag);
         } catch (error) {
           log('Could not save ${entry.name}', name: 'LocalStore', error: error);
           if (strict) rethrow;
@@ -123,11 +130,13 @@ class LocalStore {
         }
       });
 
-  Future<void> _write(StoreEntry entry, Object? payload, DateTime? savedAt) async {
+  Future<void> _write(StoreEntry entry, Object? payload, DateTime? savedAt,
+      [String? etag]) async {
     final key = await _deviceKey(create: true);
     final plaintext = utf8.encode(jsonEncode({
       'owner': await _currentOwner(),
       'savedAt': savedAt?.toUtc().toIso8601String(),
+      if (etag != null) 'etag': etag,
       'payload': payload,
     }));
     final box = await _aes.encrypt(plaintext,
@@ -164,8 +173,10 @@ class LocalStore {
     }
 
     final savedAt = stored['savedAt'];
-    return StoredPayload(stored['payload'],
-        savedAt is String ? DateTime.tryParse(savedAt)?.toLocal() : null);
+    return StoredPayload(
+        stored['payload'],
+        savedAt is String ? DateTime.tryParse(savedAt)?.toLocal() : null,
+        stored['etag'] as String?);
   }
 
   Future<void> _wipe() async {

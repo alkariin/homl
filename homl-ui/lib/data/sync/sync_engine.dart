@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
 import 'package:homl/data/repositories/api.dart';
+import 'package:homl/data/store/conditional_get.dart';
 import 'package:homl/data/store/local_store.dart';
 import 'package:homl/data/sync/outbox.dart';
 import 'package:homl/helpers/e2ee.dart';
@@ -256,12 +257,14 @@ class SyncEngine {
   Future<_Fresh?> _readServer() async {
     try {
       final settings = await _dio.get<dynamic>('/settings');
-      final categories = await _dio.get<dynamic>('/categories');
-      final events = await _dio.get<dynamic>('/events');
+      // Conditional: unchanged since the saved copy, the server sends none.
+      final categories =
+          await fetchSaved(_dio, '/categories', StoreEntry.categories);
+      final events = await fetchSaved(_dio, '/events', StoreEntry.events);
       return _Fresh(
           Map<String, dynamic>.from(settings.data as Map),
           [
-            for (final category in categories.data as List)
+            for (final category in categories)
               {
                 ...Map<String, dynamic>.from(category as Map),
                 'tags': [
@@ -279,7 +282,7 @@ class SyncEngine {
               }
           ],
           {
-            for (final event in events.data as List)
+            for (final event in events)
               (event as Map)['id'] as int: Map<String, dynamic>.from(event)
           });
     } catch (error) {
@@ -969,10 +972,9 @@ class SyncEngine {
   /// screen until the next pull.
   Future<void> _saveSnapshot() async {
     try {
-      final categories = await _dio.get<dynamic>('/categories');
-      final events = await _dio.get<dynamic>('/events');
-      await LocalStore.instance.save(StoreEntry.categories, categories.data);
-      await LocalStore.instance.save(StoreEntry.events, events.data);
+      // Saved by the conditional reads themselves, with their ETag.
+      await fetchSaved(_dio, '/categories', StoreEntry.categories);
+      await fetchSaved(_dio, '/events', StoreEntry.events);
     } catch (error) {
       log('Could not refresh the saved data', name: 'SyncEngine', error: error);
     }

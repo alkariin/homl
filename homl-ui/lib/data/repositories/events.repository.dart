@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:homl/data/models/event.dart';
 import 'package:homl/data/models/tag.dart';
 import 'package:homl/data/repositories/api.dart';
+import 'package:homl/data/store/conditional_get.dart';
 import 'package:homl/data/store/local_store.dart';
 import 'package:homl/data/sync/offline_writes.dart';
 import 'package:homl/data/sync/outbox.dart';
@@ -44,14 +45,17 @@ class EventsRepository {
   /// unless [cacheFallback] is false, for a caller that must compare against
   /// the server itself (the import). Tag filtering happens locally (see
   /// helpers/event_search.dart).
+  ///
+  /// The request is conditional (data/store/conditional_get.dart): when
+  /// nothing changed since the saved copy, the server answers with no body
+  /// and the saved copy is used.
   Future<List<Event>> getEvents({bool cacheFallback = true}) async {
-    late Response<List<dynamic>> response;
+    late List<dynamic> payload;
     try {
-      response = await apiInstance.api.get<List<dynamic>>('/events');
-
-      if (response.data == null) {
-        throw EventsNotFoundFailure();
-      }
+      // The store gets the payload BEFORE decryption on purpose: for E2EE
+      // users it must only ever hold ciphertext (homl-web/docs/e2ee.md).
+      payload =
+          await fetchSaved(apiInstance.api, '/events', StoreEntry.events);
     } on DioException catch (_) {
       final cached = cacheFallback ? await getCachedEvents() : null;
       if (cached != null) {
@@ -59,13 +63,11 @@ class EventsRepository {
       }
       throw EventsRequestFailure();
     }
-
-    // The store gets the payload BEFORE decryption on purpose: for E2EE users
-    // it must only ever hold ciphertext (homl-web/docs/e2ee.md).
-    await LocalStore.instance.save(StoreEntry.events, response.data);
+    // Fetched or confirmed unchanged: either way the data is the server's
+    // as of now.
     _lastSyncedAt = DateTime.now();
 
-    return _decryptEvents(await _project(response.data!));
+    return _decryptEvents(await _project(payload));
   }
 
   /// The server payload with the waiting changes applied, parsed.

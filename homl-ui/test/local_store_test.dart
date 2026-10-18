@@ -77,6 +77,15 @@ void main() {
         isFalse);
   });
 
+  test('keeps the server fingerprint of a payload with it', () async {
+    await store.save(StoreEntry.events, events, etag: '"abc"');
+    expect((await store.load(StoreEntry.events))!.etag, '"abc"');
+
+    // A payload saved without one has none: the next read is a plain one.
+    await store.save(StoreEntry.events, events);
+    expect((await store.load(StoreEntry.events))!.etag, isNull);
+  });
+
   test('keeps the entries sealed: nothing readable at rest', () async {
     await store.save(StoreEntry.events, events);
 

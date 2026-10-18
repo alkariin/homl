@@ -689,11 +689,13 @@ class Api {
       // then gets its token through the usual 401 → refresh with the factor
       // held by the session. Not the auth paths: a session reopening goes
       // online once its refresh lands (see _postRefresh), not at its
-      // challenge. JSON or 204 only: a captive portal answering for the
+      // challenge. JSON, 204 or 304 only: a captive portal answering for the
       // server with its login page does not count.
       final options = response.requestOptions;
       final isAuthPath = _noRefreshPaths.any(options.path.endsWith);
+      // A 304 answers the fingerprint of a body only our server sent.
       final isOurs = response.statusCode == 204 ||
+          response.statusCode == 304 ||
           (response.headers.value(Headers.contentTypeHeader) ?? '')
               .contains('json');
       if (options.extra[_probeKey] != true &&

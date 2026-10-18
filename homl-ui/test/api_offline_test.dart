@@ -532,6 +532,16 @@ void main() {
       expect(ServerReachability.instance.value, Reachability.online);
     });
 
+    test('answered "not modified" brings it back online too', () async {
+      // Only our server knows the fingerprint the request carried.
+      backend.reply = (options) async => ResponseBody.fromString('', 304);
+
+      await api.api.get<dynamic>('/data',
+          options: Options(validateStatus: (status) => status == 304));
+
+      expect(ServerReachability.instance.value, Reachability.online);
+    });
+
     test('answered by a captive portal does not', () async {
       backend.reply = (options) async =>
           ResponseBody.fromString('<html>Sign in to the Wi-Fi</html>', 200,

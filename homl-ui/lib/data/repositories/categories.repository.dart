@@ -5,6 +5,7 @@ import 'package:homl/data/models/tag_group.dart';
 import 'package:homl/data/models/usage.dart';
 import 'package:homl/data/repositories/api.dart';
 import 'package:homl/data/repositories/tags.repository.dart';
+import 'package:homl/data/store/conditional_get.dart';
 import 'package:homl/data/store/local_store.dart';
 import 'package:homl/data/sync/offline_writes.dart';
 import 'package:homl/data/sync/outbox.dart';
@@ -39,14 +40,17 @@ class CategoriesRepository {
   /// working offline: when the request fails, the saved copy is returned
   /// instead when there is one — unless [cacheFallback] is false, for a
   /// caller that must compare against the server itself (the import).
+  ///
+  /// The request is conditional (data/store/conditional_get.dart): when
+  /// nothing changed since the saved copy, the server answers with no body
+  /// and the saved copy is used.
   Future<List<Category>> getCategories({bool cacheFallback = true}) async {
-    late Response<List<dynamic>> response;
+    late List<dynamic> payload;
     try {
-      response = await apiInstance.api.get<List<dynamic>>('/categories');
-
-      if (response.data == null) {
-        throw CategoriesNotFoundFailure();
-      }
+      // The store gets the payload BEFORE decryption on purpose: for E2EE
+      // users it must only ever hold ciphertext (homl-web/docs/e2ee.md).
+      payload = await fetchSaved(
+          apiInstance.api, '/categories', StoreEntry.categories);
     } on DioException catch (_) {
       final cached = cacheFallback ? await getCachedCategories() : null;
       if (cached != null) {
@@ -55,11 +59,7 @@ class CategoriesRepository {
       throw CategoriesRequestFailure();
     }
 
-    // The store gets the payload BEFORE decryption on purpose: for E2EE users
-    // it must only ever hold ciphertext (homl-web/docs/e2ee.md).
-    await LocalStore.instance.save(StoreEntry.categories, response.data);
-
-    return _decryptCategories(await _project(response.data!));
+    return _decryptCategories(await _project(payload));
   }
 
   /// The server payload with the category, tag and group changes made
