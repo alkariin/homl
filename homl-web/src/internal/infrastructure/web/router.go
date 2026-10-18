@@ -113,6 +113,8 @@ func SetupRouter(s *Server, baseUrl string, timeoutDuration time.Duration, isDev
 	// Data routes branch on the user's E2EE mode (docs/e2ee.md): the flag is
 	// resolved once per request, after authentication.
 	e2eeFlag := E2EEFlagMiddleware(s.E2EEFlags)
+	// The two big reads answer 304 when the client holds them already.
+	etag := ETag()
 
 	// Per-IP throttling on the unauthenticated auth endpoints (anti-bruteforce
 	// / anti-email-bombing). Tuned per endpoint.
@@ -136,7 +138,7 @@ func SetupRouter(s *Server, baseUrl string, timeoutDuration time.Duration, isDev
 	// leaked access token must not buy unlimited password guesses here.
 	g.DELETE("/account", loginLimit, authRequired, s.User.DeleteAccount)
 
-	g.GET("/categories", authRequired, e2eeFlag, s.Category.GetCategories)
+	g.GET("/categories", authRequired, e2eeFlag, etag, s.Category.GetCategories)
 	g.POST("/categories", authRequired, e2eeFlag, s.Category.CreateCategory)
 	g.PATCH("/categories/:id", authRequired, e2eeFlag, s.Category.UpdateCategory)
 	g.DELETE("/categories/:id", authRequired, e2eeFlag, s.Category.DeleteCategory)
@@ -151,7 +153,7 @@ func SetupRouter(s *Server, baseUrl string, timeoutDuration time.Duration, isDev
 	g.PATCH("/tagGroups/:id", authRequired, e2eeFlag, s.TagGroup.UpdateTagGroup)
 	g.DELETE("/tagGroups/:id", authRequired, e2eeFlag, s.TagGroup.DeleteTagGroup)
 
-	g.GET("/events", authRequired, e2eeFlag, s.Event.GetEvents)
+	g.GET("/events", authRequired, e2eeFlag, etag, s.Event.GetEvents)
 	g.POST("/events", authRequired, e2eeFlag, s.Event.CreateEvent)
 	g.PATCH("/events/:id", authRequired, e2eeFlag, s.Event.UpdateEvent)
 	g.DELETE("/events/:id", authRequired, e2eeFlag, s.Event.DeleteEvent)
