@@ -113,7 +113,12 @@ func (e *eventsService) GetEvents(ctx context.Context, idUser uint64, tags []str
 		// The whole event is copied, not field by field: a field added to
 		// Event (the period ones were) must reach the wire without anyone
 		// having to remember this loop.
-		response := event.GetEventsResponse{Event: evt, Tags: resTags[evt.Id]}
+		tags := resTags[evt.Id]
+		if tags == nil {
+			// An event without any tag: `"tags": []` on the wire, never null.
+			tags = []category.Tag{}
+		}
+		response := event.GetEventsResponse{Event: evt, Tags: tags}
 		response.Description = decDescription
 		responses = append(responses, response)
 	}

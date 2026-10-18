@@ -7,6 +7,7 @@ import 'package:homl/data/models/tag.dart';
 import 'package:homl/data/repositories/events.repository.dart';
 import 'package:homl/data/sync/offline_writes.dart';
 import 'package:homl/data/repositories/tags.repository.dart';
+import 'package:homl/helpers/app_message.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart' show TagView;
 import 'package:homl/pages/insert/bloc/insert_cubit.dart';
 
@@ -259,6 +260,78 @@ void main() {
           endDate: null,
           isOngoing: true,
           tagsId: [2])).called(1);
+    });
+  });
+
+  group('tags are optional', () {
+    void stubCreate() => when(() => eventsRepository.createEvent(
+        description: any(named: 'description'),
+        date: any(named: 'date'),
+        endDate: any(named: 'endDate'),
+        isOngoing: any(named: 'isOngoing'),
+        tagsId: any(named: 'tagsId'))).thenAnswer((_) async => WriteOutcome.sent);
+
+    test('a description alone is enough to create an event', () async {
+      stubCreate();
+      final cubit = InsertCubit(eventsRepository, tagsRepository);
+      cubit.updateDescription('dentist');
+
+      await cubit.submitEvent(categories, knownTags);
+
+      verify(() => eventsRepository.createEvent(
+          description: 'dentist',
+          date: any(named: 'date'),
+          endDate: null,
+          isOngoing: false,
+          tagsId: [])).called(1);
+      expect(cubit.state.status, InsertStatus.success);
+    });
+
+    test('neither a tag nor a description is refused', () async {
+      final cubit = InsertCubit(eventsRepository, tagsRepository);
+      // Blank counts as empty.
+      cubit.updateDescription('   ');
+
+      await cubit.submitEvent(categories, knownTags);
+
+      expect(cubit.state.modal, AppMessage.insertEmpty);
+      verifyNever(() => eventsRepository.createEvent(
+          description: any(named: 'description'),
+          date: any(named: 'date'),
+          endDate: any(named: 'endDate'),
+          isOngoing: any(named: 'isOngoing'),
+          tagsId: any(named: 'tagsId')));
+    });
+
+    test('an event left with its date tags alone can still be edited',
+        () async {
+      // What remains once its last tag was deleted, events kept.
+      final dateOnly = Event(
+          id: 8,
+          description: 'kept',
+          date: DateTime(2026, 3, 15),
+          isOngoing: false,
+          tags: [Tag(id: 10, tag: 'March', idCategory: 1)]);
+      when(() => eventsRepository.updateEvent(
+          id: 8,
+          description: 'kept, and edited',
+          date: DateTime(2026, 3, 15),
+          endDate: null,
+          isOngoing: false,
+          tagsId: [])).thenAnswer((_) async => WriteOutcome.sent);
+      final cubit = InsertCubit(eventsRepository, tagsRepository,
+          editing: dateOnly, dateCategoryIds: {1});
+      cubit.updateDescription('kept, and edited');
+
+      await cubit.submitEvent(categories, knownTags);
+
+      verify(() => eventsRepository.updateEvent(
+          id: 8,
+          description: 'kept, and edited',
+          date: DateTime(2026, 3, 15),
+          endDate: null,
+          isOngoing: false,
+          tagsId: [])).called(1);
     });
   });
 }

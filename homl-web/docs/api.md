@@ -468,6 +468,10 @@ the top:
 ]
 ```
 
+Tags are optional: an event left without any tag — its last one deleted, or
+an E2EE event created without date tags — is listed all the same, with
+`"tags": []` (never `null`). A `tags` filter never matches it.
+
 `date` is a calendar day, not an instant: the column is a MySQL `DATE`, so
 the time part of the RFC 3339 value is truncated (`2026-08-31T22:00:00Z` is
 stored as `2026-08-31`). Clients must send the picked day as UTC midnight
