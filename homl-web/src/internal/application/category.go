@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"errors"
 	"sort"
 
 	"github.com/alkariin/homl/homl-web/internal/apperror"
@@ -12,8 +13,10 @@ import (
 // CategoriesService is the use-case port of the Category aggregate.
 type CategoriesService interface {
 	GetCategories(ctx context.Context, idUser uint64) ([]category.GetCategoryResponse, error)
-	// CreateCategory returns the id of the created category.
-	CreateCategory(ctx context.Context, c *category.Category) (uint, error)
+	// CreateCategory returns the id of the created category, and whether it
+	// was created by this call: false for a replay of an earlier create with
+	// the same ClientId, which hands back the first category untouched.
+	CreateCategory(ctx context.Context, c *category.Category) (uint, bool, error)
 	UpdateCategory(ctx context.Context, c *category.Category) error
 	DeleteCategory(ctx context.Context, idCategory uint, idUser uint64, moveTags bool, deleteEvents bool) error
 	GetCategoryUsage(ctx context.Context, idCategory uint, idUser uint64) (*category.CategoryUsage, error)
@@ -91,10 +94,20 @@ func (c *categoriesService) GetCategories(ctx context.Context, idUser uint64) ([
 	return responses, nil
 }
 
-func (c *categoriesService) CreateCategory(ctx context.Context, newCategory *category.Category) (uint, error) {
+func (c *categoriesService) CreateCategory(ctx context.Context, newCategory *category.Category) (uint, bool, error) {
+	// A client that lost the answer to a create sends it again with the
+	// same ClientId: hand back the first category, touch nothing (the body
+	// of a replay is not even validated).
+	if newCategory.ClientId != nil {
+		id, found, err := c.CategoriesRepository.FindIdByClientId(ctx, *newCategory.ClientId, newCategory.IdUser)
+		if err != nil || found {
+			return id, false, err
+		}
+	}
+
 	encCategory, err := c.storedCategoryValue(ctx, newCategory, true)
 	if err != nil {
-		return 0, err
+		return 0, false, err
 	}
 
 	cat := &category.Category{
@@ -103,9 +116,26 @@ func (c *categoriesService) CreateCategory(ctx context.Context, newCategory *cat
 		Color:    newCategory.Color,
 		IsLocked: false,
 		IdUser:   newCategory.IdUser,
+		ClientId: newCategory.ClientId,
 	}
 
-	return c.CategoriesRepository.Create(ctx, cat)
+	id, err := c.CategoriesRepository.Create(ctx, cat)
+	if errors.Is(err, category.ErrDuplicateClientId) {
+		// Two replays raced and the other one inserted first: its row
+		// stands.
+		existing, found, findErr := c.CategoriesRepository.FindIdByClientId(ctx, *newCategory.ClientId, newCategory.IdUser)
+		if findErr != nil {
+			return 0, false, findErr
+		}
+		if !found {
+			return 0, false, err
+		}
+		return existing, false, nil
+	}
+	if err != nil {
+		return 0, false, err
+	}
+	return id, true, nil
 }
 
 func (c *categoriesService) UpdateCategory(ctx context.Context, newCategory *category.Category) error {

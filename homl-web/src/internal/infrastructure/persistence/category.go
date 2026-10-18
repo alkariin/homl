@@ -3,12 +3,14 @@ package persistence
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"strconv"
 
 	"github.com/alkariin/homl/homl-web/internal/apperror"
 	"github.com/alkariin/homl/homl-web/internal/application"
 	"github.com/alkariin/homl/homl-web/internal/domain/category"
 	"github.com/alkariin/homl/homl-web/internal/domain/e2ee"
+	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -111,11 +113,17 @@ func (c *CategoriesRepository) Create(ctx context.Context, cat *category.Categor
 	if kind == "" {
 		kind = category.KindCustom
 	}
+	// A nil ClientId binds as NULL, which never collides.
 	res, err := c.DB.ExecContext(ctx,
-		"INSERT INTO Categories (category, color, isLocked, kind, idUser) VALUES (?, ?, ?, ?, ?)",
-		cat.Category, cat.Color, cat.IsLocked, kind, cat.IdUser,
+		"INSERT INTO Categories (category, color, isLocked, kind, clientId, idUser) VALUES (?, ?, ?, ?, ?, ?)",
+		cat.Category, cat.Color, cat.IsLocked, kind, cat.ClientId, cat.IdUser,
 	)
 	if err != nil {
+		// The only unique key besides the id is (idUser, clientId).
+		var mysqlErr *mysql.MySQLError
+		if cat.ClientId != nil && errors.As(err, &mysqlErr) && mysqlErr.Number == mysqlDuplicateEntry {
+			return 0, category.ErrDuplicateClientId
+		}
 		return 0, err
 	}
 
@@ -125,6 +133,18 @@ func (c *CategoriesRepository) Create(ctx context.Context, cat *category.Categor
 	}
 
 	return uint(idCategory), nil
+}
+
+func (c *CategoriesRepository) FindIdByClientId(ctx context.Context, clientId string, idUser uint64) (uint, bool, error) {
+	var id uint
+	err := c.DB.GetContext(ctx, &id, "SELECT id FROM Categories WHERE idUser = ? AND clientId = ?", idUser, clientId)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, false, nil
+	}
+	if err != nil {
+		return 0, false, err
+	}
+	return id, true, nil
 }
 
 func (c *CategoriesRepository) Update(ctx context.Context, category *category.Category) error {
