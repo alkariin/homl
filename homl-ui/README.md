@@ -824,6 +824,11 @@ What the field takes (`SearchTerm.parse`):
   only ever wears the included tags (`ListState.chosenTagNames`): an excluded
   tag is not what the search is about. The empty field shows an example
   (`-Bob, "beach"`), the `-` first so it survives a cut on a narrow phone.
+- **The keyboard** goes away on a tap anywhere outside the field — the
+  title, between the cards — so the results get the screen back
+  (`onTapOutside` in `TagInput`; mobile platforms keep the focus by default).
+  The suggestions are part of the field's tap region: picking one keeps it.
+  The tag field of the Insert tab behaves the same.
   The tag sheet adds tags by name (`ListCubit.addTag`), so a tag whose name
   starts with a `-` is still searchable from there.
 

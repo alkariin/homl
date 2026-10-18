@@ -145,6 +145,34 @@ void main() {
         tester.widget<components.Tag>(find.ancestor(
             of: find.text(label), matching: find.byType(components.Tag)));
 
+    testWidgets('a tap anywhere else puts the keyboard away', (tester) async {
+      await pumpPage(tester, events);
+      bool focused() => tester
+          .widget<EditableText>(find.byType(EditableText))
+          .focusNode
+          .hasFocus;
+
+      await tester.tap(find.byType(TextField));
+      await tester.pump();
+      expect(focused(), isTrue);
+
+      await tester.tapAt(const Offset(4, 596));
+      await tester.pump();
+      expect(focused(), isFalse);
+    });
+
+    testWidgets('picking a suggestion is not a tap elsewhere', (tester) async {
+      await pumpPage(tester, events);
+
+      await tester.tap(find.byType(TextField));
+      await tester.enterText(find.byType(TextField), 'denti');
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Dentist').last);
+      await tester.pumpAndSettle();
+
+      expect(listCubit.state.terms, [const SearchTerm('Dentist')]);
+    });
+
     testWidgets('a typed - excludes the tag', (tester) async {
       await pumpPage(tester, events);
 
