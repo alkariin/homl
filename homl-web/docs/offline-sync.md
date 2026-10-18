@@ -9,7 +9,8 @@ offline writes exactly as to online ones.
 
 Related: [auth-flows.md](auth-flows.md) ("Client session": how the session
 survives without the server), [api.md](api.md) (the `clientId` of
-`POST /events`, `dataGeneration` in the settings), [e2ee.md](e2ee.md) §6.
+`POST /events` and `POST /categories`, `dataGeneration` in the settings),
+[e2ee.md](e2ee.md) §6.
 
 ## What works offline
 
