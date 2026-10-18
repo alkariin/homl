@@ -7,6 +7,7 @@ import 'package:homl/data/sync/outbox.dart';
 import 'package:homl/data/sync/projection.dart';
 import 'package:homl/data/sync/sync_engine.dart';
 import 'package:homl/helpers/e2ee.dart';
+import 'package:homl/helpers/event_search.dart' show normalizeTagName;
 
 /// Exception thrown when a tags request fails
 class TagsRequestFailure implements Exception {}
@@ -146,21 +147,28 @@ class TagsRepository {
     return TagsRequestFailure();
   }
 
-  /// Builds the tag fields of a write payload. Plaintext name as-is for
-  /// regular users; encrypted name + blind index for E2EE users, with the
-  /// blacklist enforced client-side (the server cannot read the name).
+  /// Builds the tag fields of a write payload: plaintext name for regular
+  /// users; encrypted name + blind index for E2EE users, with the blacklist
+  /// enforced client-side (the server cannot read the name).
+  ///
+  /// The name goes in the canonical form the backend stores ("movie NIGHT"
+  /// → "Movie Night", see [normalizeTagName]), wherever it was typed: the
+  /// backend title-cases a plaintext name itself, but an E2EE one is a blob
+  /// to it, and a write waiting in the outbox shows the name as sent.
   Future<Map<String, dynamic>> _outgoingTag(String text,
       {bool isDateTag = false}) async {
+    // The date tags are the backend's English names, already canonical.
+    final name = isDateTag ? text : normalizeTagName(text);
     final e2ee = E2ee();
-    if (!e2ee.enabled) return {'tag': text};
+    if (!e2ee.enabled) return {'tag': name};
 
-    if (!isDateTag && e2ee.isBlacklistedTag(text)) {
+    if (!isDateTag && e2ee.isBlacklistedTag(name)) {
       throw TagsBlacklistedFailure();
     }
 
     return {
-      'tag': await e2ee.encrypt(text),
-      'tagIndex': await e2ee.tagIndex(text),
+      'tag': await e2ee.encrypt(name),
+      'tagIndex': await e2ee.tagIndex(name),
     };
   }
 

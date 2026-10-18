@@ -11,6 +11,7 @@ import 'package:homl/helpers/app_message.dart';
 import 'package:homl/helpers/date_tags.dart';
 import 'package:homl/helpers/e2ee.dart';
 import 'package:homl/helpers/event_period.dart' show dayOf;
+import 'package:homl/helpers/event_search.dart' show normalizeTagName;
 import 'package:homl/pages/home/bloc/home_cubit.dart' show TagView;
 
 part 'insert_state.dart';
@@ -87,14 +88,16 @@ class InsertCubit extends Cubit<InsertState> {
     return null;
   }
 
+  /// Chips [name] in the canonical form the tags are stored in, so the chip
+  /// reads like the tag it becomes and finds its category color.
   void addTag(String name) {
-    final trimmed = name.trim();
-    if (trimmed.isEmpty ||
-        state.tagNames.any((t) => t.toLowerCase() == trimmed.toLowerCase())) {
+    final canonical = normalizeTagName(name.trim());
+    if (canonical.isEmpty ||
+        state.tagNames.any((t) => t.toLowerCase() == canonical.toLowerCase())) {
       return;
     }
 
-    emit(state.copyWith(tagNames: [...state.tagNames, trimmed]));
+    emit(state.copyWith(tagNames: [...state.tagNames, canonical]));
   }
 
   void removeTag(String name) {

@@ -20,6 +20,7 @@ import 'package:homl/helpers/date_tags.dart';
 import 'package:homl/helpers/tag_groups.dart';
 import 'package:homl/helpers/e2ee.dart';
 import 'package:homl/helpers/toast.dart';
+import 'package:homl/helpers/event_search.dart' show normalizeTagName;
 import 'package:homl/pages/categories/view/category_management.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
 import 'package:homl/pages/insert/bloc/insert_cubit.dart';
@@ -160,12 +161,13 @@ class _InsertViewState extends State<InsertView> {
         .keys
         .any((name) => name.toLowerCase() == pending.toLowerCase());
 
+    // Named as it will be stored ("roadtrip" → "Roadtrip").
     _newTagName.value = pending.isEmpty ||
             tagName != null ||
             known ||
             E2ee().isBlacklistedTag(pending)
         ? null
-        : pending;
+        : normalizeTagName(pending);
   }
 
   /// Creates the typed tag in the picked category and chips it on the event,
@@ -280,6 +282,15 @@ class _InsertViewState extends State<InsertView> {
             }
           }
 
+          // A chip carries the canonical name; a tag stored in another case
+          // (an E2EE name sent before the names were normalized) is still
+          // the same tag, with the same color.
+          TagView? knownTag(String name) =>
+              homeState.allTagsMap[name] ??
+              homeState.allTagsMap.values
+                  .where((tag) => tag.tagName.toLowerCase() == name.toLowerCase())
+                  .firstOrNull;
+
           // The decorative background is shared by the tabs (parallax in
           // the home page); the edit route wraps this view with its own.
           return SingleChildScrollView(
@@ -320,11 +331,10 @@ class _InsertViewState extends State<InsertView> {
                     onSuggestionChanged: _onSuggestion,
                     tags: state.tagNames
                         .map((name) => TagChipData(
-                            id: homeState.allTagsMap[name]?.id ?? -1,
+                            id: knownTag(name)?.id ?? -1,
                             name: name,
                             displayName: localizedTagName(name, locale),
-                            color: homeState.allTagsMap[name]?.color ??
-                                otherCategoryColor))
+                            color: knownTag(name)?.color ?? otherCategoryColor))
                         .toList(),
                     suggestions: [
                       ...homeState.allTagsMap.values.map((tagView) =>

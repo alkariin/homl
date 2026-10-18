@@ -263,6 +263,16 @@ void main() {
     });
   });
 
+  test('a tag is chipped in its canonical form, once', () {
+    final cubit = InsertCubit(eventsRepository, tagsRepository);
+
+    cubit.addTag('movie NIGHT');
+    cubit.addTag('Movie Night');
+    cubit.addTag(' football ');
+
+    expect(cubit.state.tagNames, ['Movie Night', 'Football']);
+  });
+
   group('tags are optional', () {
     void stubCreate() => when(() => eventsRepository.createEvent(
         description: any(named: 'description'),

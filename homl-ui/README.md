@@ -394,6 +394,13 @@ the autocomplete has nothing to offer, so the two never fight for the room
 under the field, and ignoring it still works: submitting files the tag under
 Others, as it always did.
 
+A tag name reads the same wherever it was typed: the app sends it in the
+backend's canonical title case (`normalizeTagName`, applied in
+`TagsRepository._outgoingTag` to every creation and rename) and chips it that
+way (`InsertCubit.addTag`), so "roadtrip" shows as "Roadtrip" right away and
+finds its category color. The backend title-cases a plaintext name anyway,
+but an E2EE name is a blob to it: only the app can normalize it.
+
 Submitting a new event slides back to the Search tab (`InsertView.onCreated`,
 wired to the home PageView) — the created event is the natural next focus.
 Edits pop back to the list instead.
