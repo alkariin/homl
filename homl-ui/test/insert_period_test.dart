@@ -159,6 +159,28 @@ void main() {
     expect(find.textContaining('→'), findsNothing);
   });
 
+  testWidgets('the date typed as digits only is understood', (tester) async {
+    await pumpEditForm(tester);
+
+    // The month chip opens the picker; its pencil switches to typing, on a
+    // number keyboard that may have no "/".
+    await tester.tap(chip('juillet'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.edit_outlined));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+        find.descendant(
+            of: find.byType(DatePickerDialog),
+            matching: find.byType(TextField)),
+        '18102026');
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(DatePickerDialog), findsNothing);
+    expect(chip('octobre'), findsOneWidget);
+    expect(chip('2026'), findsOneWidget);
+  });
+
   testWidgets('picking an end makes a closed period with its end chip',
       (tester) async {
     await pumpEditForm(tester);

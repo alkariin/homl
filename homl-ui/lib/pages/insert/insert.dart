@@ -21,6 +21,7 @@ import 'package:homl/helpers/tag_groups.dart';
 import 'package:homl/helpers/e2ee.dart';
 import 'package:homl/helpers/toast.dart';
 import 'package:homl/helpers/event_search.dart' show normalizeTagName;
+import 'package:homl/helpers/date_entry.dart';
 import 'package:homl/pages/categories/view/category_management.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
 import 'package:homl/pages/insert/bloc/insert_cubit.dart';
@@ -260,6 +261,8 @@ class _InsertViewState extends State<InsertView> {
               initialDate: state.date,
               firstDate: DateTime(1900),
               lastDate: DateTime(2100),
+              // The pencil also reads "18102026": see helpers/date_entry.dart.
+              calendarDelegate: const DigitsDateCalendarDelegate(),
             );
             if (picked != null) {
               insertCubit.updateDate(picked);
@@ -276,6 +279,7 @@ class _InsertViewState extends State<InsertView> {
               initialDate: state.endDate ?? state.date,
               firstDate: state.date,
               lastDate: DateTime(2100),
+              calendarDelegate: const DigitsDateCalendarDelegate(),
             );
             if (picked != null) {
               insertCubit.updateEndDate(picked);
