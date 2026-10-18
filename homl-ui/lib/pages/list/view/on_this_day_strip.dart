@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:homl/helpers/theme.dart';
 import 'package:homl/l10n/app_localizations.dart';
 
 import 'package:homl/data/models/event.dart';
@@ -28,7 +29,7 @@ class OnThisDayStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final localization = AppLocalizations.of(context)!;
-    final mutedInk = palette.ink.withValues(alpha: 0.65);
+    final mutedInk = context.homl.ink.withValues(alpha: 0.65);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

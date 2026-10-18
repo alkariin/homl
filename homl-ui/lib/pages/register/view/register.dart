@@ -3,12 +3,12 @@ import 'dart:async';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:homl/helpers/theme.dart';
 import 'package:homl/l10n/app_localizations.dart';
 
 import 'package:homl/components/button.dart';
 import 'package:homl/components/input.dart';
 import 'package:homl/data/repositories/users.repository.dart';
-import 'package:homl/helpers/colors.dart' as palette;
 import 'package:homl/helpers/language.dart';
 import 'package:homl/helpers/toast.dart';
 import 'package:homl/helpers/validations.dart';
@@ -136,7 +136,7 @@ class _RegistrationClosed extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         FaIcon(FontAwesomeIcons.lock,
-            size: 28, color: palette.ink.withValues(alpha: 0.6)),
+            size: 28, color: context.homl.ink.withValues(alpha: 0.6)),
         const SizedBox(height: 16),
         Text(
           localization.register_closedTitle,
@@ -150,7 +150,7 @@ class _RegistrationClosed extends StatelessWidget {
           style: TextStyle(
               fontSize: 14,
               height: 1.4,
-              color: palette.ink.withValues(alpha: 0.65)),
+              color: context.homl.ink.withValues(alpha: 0.65)),
         ),
         const SizedBox(height: 24),
         Button(

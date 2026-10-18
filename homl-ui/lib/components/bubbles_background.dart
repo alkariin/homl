@@ -1,8 +1,9 @@
 import 'package:material_ui/material_ui.dart';
 
 import 'package:homl/helpers/colors.dart';
+import 'package:homl/helpers/theme.dart';
 
-/// Decorative page background: two large diagonal sweeps (white and
+/// Decorative page background: two large diagonal sweeps (the card color and
 /// translucent yellow) plus a soft yellow glow in the top-right corner.
 ///
 /// Everything is sized relative to the available space, like a background
@@ -41,8 +42,8 @@ class BubblesBackground extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Colors.white,
-                  Colors.white.withValues(alpha: 0.6),
+                  context.homl.card,
+                  context.homl.card.withValues(alpha: 0.6),
                 ],
               ),
             ),

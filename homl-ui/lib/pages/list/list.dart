@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import 'package:homl/helpers/theme.dart';
 import 'package:homl/l10n/app_localizations.dart';
 
 import 'package:homl/components/event_card.dart';
@@ -293,7 +294,7 @@ class ListPage extends StatelessWidget {
                                             20, 18, 20, 0),
                                         child: Divider(
                                             height: 1,
-                                            color: palette.borderGrey
+                                            color: context.homl.rule
                                                 .withValues(alpha: 0.5)),
                                       ),
                                     ]),

@@ -3,12 +3,12 @@ import 'dart:async';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import 'package:homl/helpers/theme.dart';
 import 'package:homl/l10n/app_localizations.dart';
 
 import 'package:homl/components/settings_group.dart';
 import 'package:homl/data/models/device_session.dart';
 import 'package:homl/data/repositories/users.repository.dart';
-import 'package:homl/helpers/colors.dart';
 import 'package:homl/helpers/toast.dart';
 import 'package:homl/pages/account/bloc/sessions_cubit.dart';
 
@@ -137,7 +137,8 @@ class _SessionsView extends StatelessWidget {
                     child: Text(
                       localization.sessions_activityNote,
                       style: TextStyle(
-                          fontSize: 12.5, color: ink.withValues(alpha: 0.55)),
+                          fontSize: 12.5,
+                          color: context.homl.ink.withValues(alpha: 0.55)),
                     ),
                   ),
                 ],

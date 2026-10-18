@@ -2,31 +2,66 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import 'package:homl/helpers/colors.dart';
+import 'package:homl/helpers/theme.dart';
 
-/// Repaints the gold strokes of the logo artwork (drawn in [yellow], which is
-/// the palette's #D3A934) in another color, leaving the black strokes alone.
-class _GoldTintMapper extends ColorMapper {
-  final Color tint;
+/// The ink the logo artwork is drawn with (assets/images/logo.svg).
+const Color _artworkInk = Color(0xFF000000);
 
-  const _GoldTintMapper(this.tint);
+/// Repaints the logo artwork: its gold strokes (drawn in [yellow], which is
+/// the palette's #D3A934) in [gold], its black ones in [ink].
+class _LogoColorMapper extends ColorMapper {
+  final Color gold;
+  final Color ink;
+
+  const _LogoColorMapper({required this.gold, required this.ink});
 
   @override
   Color substitute(
           String? id, String elementName, String attributeName, Color color) =>
-      color == yellow ? tint : color;
+      color == yellow
+          ? gold
+          : color == _artworkInk
+              ? ink
+              : color;
+
+  // Part of the SVG cache key: equal mappers share one parsed artwork
+  // instead of parsing it again on every frame of an animation.
+  @override
+  bool operator ==(Object other) =>
+      other is _LogoColorMapper && other.gold == gold && other.ink == ink;
+
+  @override
+  int get hashCode => Object.hash(gold, ink);
 }
 
-Widget _hash(Color? tint) => SvgPicture.asset(
+/// The artwork with its gold strokes in [tint] (null keeps the gold) and its
+/// black ones in [ink].
+SvgAssetLoader _loader(Color? tint, Color ink) => SvgAssetLoader(
       'assets/images/logo.svg',
-      fit: BoxFit.contain,
-      colorMapper: tint == null ? null : _GoldTintMapper(tint),
+      colorMapper: tint == null && ink == _artworkInk
+          ? null
+          : _LogoColorMapper(gold: tint ?? yellow, ink: ink),
     );
+
+Widget _hash(Color? tint, Color ink) =>
+    SvgPicture(_loader(tint, ink), fit: BoxFit.contain);
+
+/// Parses the artwork the splash starts with, in both brightnesses (all ink,
+/// then the gold revealed over it), so its first frame already shows the
+/// hash instead of popping it in once the SVG loads.
+Future<void> precacheLogo() => Future.wait([
+      for (final ink in [HomlColors.light.ink, HomlColors.dark.ink])
+        for (final tint in [null, ink])
+          svg.cache.putIfAbsent(_loader(tint, ink).cacheKey(null),
+              () => _loader(tint, ink).loadBytes(null)),
+    ]);
 
 /// The homl "#" logo: the two-tone hash from the design export
 /// (assets/images/logo.svg).
 ///
-/// [tint] recolors the gold strokes only — the black ones stay black. Null
-/// keeps the normal two-tone artwork, which is the resting state of the mark.
+/// [tint] recolors the gold strokes only — the others stay in the theme's
+/// ink (black, or the soft white of the dark theme). Null keeps the normal
+/// two-tone artwork, which is the resting state of the mark.
 class HomlLogo extends StatelessWidget {
   final double size;
   final Color? tint;
@@ -35,7 +70,8 @@ class HomlLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(width: size, height: size, child: _hash(tint));
+    return SizedBox(
+        width: size, height: size, child: _hash(tint, context.homl.ink));
   }
 }
 
@@ -63,13 +99,14 @@ class HomlLogoSweep extends StatelessWidget {
     if (progress >= 1.0) return HomlLogo(size: size, tint: to);
 
     final front = progress * (1 + _fade);
+    final ink = context.homl.ink;
     return SizedBox(
       width: size,
       height: size,
       child: Stack(
         alignment: Alignment.center,
         children: [
-          Positioned.fill(child: _hash(from)),
+          Positioned.fill(child: _hash(from, ink)),
           Positioned.fill(
             child: ShaderMask(
               blendMode: BlendMode.dstIn,
@@ -82,7 +119,7 @@ class HomlLogoSweep extends StatelessWidget {
                   front.clamp(0.0, 1.0),
                 ],
               ).createShader(rect),
-              child: _hash(to),
+              child: _hash(to, ink),
             ),
           ),
         ],
@@ -151,6 +188,7 @@ class _HomlMarkState extends State<HomlMark>
           animation: _controller,
           builder: (context, _) {
             final progress = _controller.value;
+            final ink = context.homl.ink;
             if (progress >= 1.0) {
               return HomlLogo(size: widget.size, tint: _to);
             }
@@ -164,9 +202,10 @@ class _HomlMarkState extends State<HomlMark>
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  Positioned.fill(child: _hash(_from)),
+                  Positioned.fill(child: _hash(_from, ink)),
                   Positioned.fill(
-                      child: Opacity(opacity: progress, child: _hash(_to))),
+                      child:
+                          Opacity(opacity: progress, child: _hash(_to, ink))),
                 ],
               ),
             );

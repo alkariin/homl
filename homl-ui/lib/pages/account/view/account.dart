@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:homl/helpers/theme.dart';
 import 'package:homl/l10n/app_localizations.dart';
 import 'package:homl/components/pin_dialog.dart';
 import 'package:homl/data/repositories/api.dart';
@@ -10,7 +11,6 @@ import 'package:homl/data/repositories/settings.repository.dart';
 import 'package:homl/data/repositories/users.repository.dart';
 import 'package:homl/data/sync/outbox.dart';
 import 'package:homl/helpers/app_message.dart';
-import 'package:homl/helpers/colors.dart';
 import 'package:homl/helpers/toast.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
 import 'package:homl/pages/account/bloc/account_cubit.dart';
@@ -196,7 +196,8 @@ class AccountView extends StatelessWidget {
                       leading: const Icon(Icons.key_outlined),
                       title: Text(localization.account_updatePassword),
                       trailing: Icon(Icons.chevron_right,
-                          size: 20, color: ink.withValues(alpha: 0.3)),
+                          size: 20,
+                          color: context.homl.ink.withValues(alpha: 0.3)),
                       onTap: () {
                         context
                             .read<AccountCubit>()
@@ -208,7 +209,8 @@ class AccountView extends StatelessWidget {
                       leading: const Icon(Icons.devices_outlined),
                       title: Text(localization.account_sessions),
                       trailing: Icon(Icons.chevron_right,
-                          size: 20, color: ink.withValues(alpha: 0.3)),
+                          size: 20,
+                          color: context.homl.ink.withValues(alpha: 0.3)),
                       onTap: () =>
                           Navigator.push(context, SessionsPage.route(context)),
                     ),

@@ -273,6 +273,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settings_selectHomeTab => 'Select home screen';
 
   @override
+  String get settings_appearance => 'Appearance';
+
+  @override
+  String get settings_selectAppearance => 'Select appearance';
+
+  @override
+  String get settings_themeSystem => 'System default';
+
+  @override
+  String get settings_themeLight => 'Light';
+
+  @override
+  String get settings_themeDark => 'Dark';
+
+  @override
   String get settings_about => 'About';
 
   @override

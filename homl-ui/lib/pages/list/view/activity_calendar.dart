@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:intl/intl.dart';
+import 'package:homl/helpers/theme.dart';
 import 'package:homl/l10n/app_localizations.dart';
 
 import 'package:homl/data/models/event.dart';
@@ -50,7 +51,7 @@ class _ActivityCalendarState extends State<ActivityCalendar> {
   static const double _step = ActivityCalendar.cell + ActivityCalendar.gap;
 
   Color _shade(int level) {
-    if (level == 0) return palette.ink.withValues(alpha: 0.06);
+    if (level == 0) return context.homl.ink.withValues(alpha: 0.06);
     final base = widget.color == null
         ? palette.yellow
         : palette.darken(palette.colorFromHex(widget.color!), .1);
@@ -61,7 +62,7 @@ class _ActivityCalendarState extends State<ActivityCalendar> {
   Widget build(BuildContext context) {
     final localization = AppLocalizations.of(context)!;
     final locale = Localizations.localeOf(context).toString();
-    final muted = palette.ink.withValues(alpha: 0.55);
+    final muted = context.homl.ink.withValues(alpha: 0.55);
     final labelStyle = TextStyle(fontSize: 10.5, color: muted);
 
     final years = activeYears(widget.events, widget.today);
@@ -90,8 +91,9 @@ class _ActivityCalendarState extends State<ActivityCalendar> {
             decoration: BoxDecoration(
               color: _shade(activityLevel(count)),
               borderRadius: BorderRadius.circular(2.5),
-              border:
-                  selected ? Border.all(color: palette.ink, width: 1.2) : null,
+              border: selected
+                  ? Border.all(color: context.homl.ink, width: 1.2)
+                  : null,
             ),
           ),
         ),

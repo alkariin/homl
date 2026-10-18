@@ -2,12 +2,12 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:intl/intl.dart';
+import 'package:homl/helpers/theme.dart';
 import 'package:homl/l10n/app_localizations.dart';
 
 import 'package:homl/components/tag.dart' as components;
 import 'package:homl/data/models/event.dart';
 import 'package:homl/helpers/categories.dart';
-import 'package:homl/helpers/colors.dart' as palette;
 import 'package:homl/helpers/date_tags.dart';
 import 'package:homl/helpers/event_period.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
@@ -195,7 +195,7 @@ class _PeriodHeader extends StatelessWidget {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
-                color: palette.ink.withValues(alpha: 0.65),
+                color: context.homl.ink.withValues(alpha: 0.65),
               ),
             ),
           ),

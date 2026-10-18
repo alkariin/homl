@@ -1,4 +1,5 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:homl/helpers/theme.dart';
 import 'package:homl/data/repositories/api.dart';
 import 'package:homl/l10n/app_localizations.dart';
 import 'package:pinput/pinput.dart';
@@ -80,10 +81,7 @@ class _PinDialogViewState extends State<PinDialogView> {
     final defaultPinTheme = PinTheme(
       width: 56,
       height: 56,
-      textStyle: const TextStyle(
-        fontSize: 22,
-        color: Color.fromRGBO(30, 60, 87, 1),
-      ),
+      textStyle: TextStyle(fontSize: 22, color: context.homl.ink),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(19),
         border: Border.all(color: borderColor),

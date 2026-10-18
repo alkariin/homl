@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:homl/helpers/theme.dart';
 import 'package:homl/l10n/app_localizations.dart';
 import 'package:pinput/pinput.dart';
 
@@ -129,10 +130,7 @@ class _CodeStep extends StatelessWidget {
     final defaultPinTheme = PinTheme(
       width: 48,
       height: 56,
-      textStyle: const TextStyle(
-        fontSize: 22,
-        color: Color.fromRGBO(30, 60, 87, 1),
-      ),
+      textStyle: TextStyle(fontSize: 22, color: context.homl.ink),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: const Color.fromRGBO(23, 171, 144, 0.4)),

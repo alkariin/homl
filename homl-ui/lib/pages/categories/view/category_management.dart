@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:homl/helpers/theme.dart';
 import 'package:homl/l10n/app_localizations.dart';
 
 import 'package:homl/components/tag.dart' as components;
@@ -172,17 +173,20 @@ class _CategoryTileState extends State<_CategoryTile> {
     }
 
     final base = colorFromHex(category.color);
+    // On the dark cards the pastel itself is the light ink of the icon, over
+    // a dimmer square: darkened, it would sink into it.
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.homl.card,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
+        border: Border.all(color: context.homl.hairline),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: context.homl.shadow,
             blurRadius: 14,
             offset: const Offset(0, 6),
           ),
@@ -202,12 +206,12 @@ class _CategoryTileState extends State<_CategoryTile> {
                       width: 42,
                       height: 42,
                       decoration: BoxDecoration(
-                        color: base.withValues(alpha: 0.45),
+                        color: base.withValues(alpha: isDark ? 0.22 : 0.45),
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: Center(
                         child: FaIcon(FontAwesomeIcons.tag,
-                            size: 15, color: darken(base, .4)),
+                            size: 15, color: isDark ? base : darken(base, .4)),
                       ),
                     ),
                     const SizedBox(width: 13),
@@ -225,7 +229,8 @@ class _CategoryTileState extends State<_CategoryTile> {
                             localization.categories_tagCount(mainTags.length),
                             style: TextStyle(
                                 fontSize: 12.5,
-                                color: ink.withValues(alpha: 0.45)),
+                                color:
+                                    context.homl.ink.withValues(alpha: 0.45)),
                           ),
                         ],
                       ),
@@ -233,7 +238,8 @@ class _CategoryTileState extends State<_CategoryTile> {
                     if (!isPicker && !category.isLocked)
                       PopupMenuButton<String>(
                         icon: FaIcon(FontAwesomeIcons.ellipsisVertical,
-                            size: 15, color: ink.withValues(alpha: 0.45)),
+                            size: 15,
+                            color: context.homl.ink.withValues(alpha: 0.45)),
                         onSelected: (action) {
                           if (action == 'edit') {
                             categoryDialog(
@@ -256,7 +262,8 @@ class _CategoryTileState extends State<_CategoryTile> {
                               children: [
                                 FaIcon(FontAwesomeIcons.pen,
                                     size: 14,
-                                    color: ink.withValues(alpha: 0.6)),
+                                    color: context.homl.ink
+                                        .withValues(alpha: 0.6)),
                                 const SizedBox(width: 12),
                                 Text(localization.categories_editCategory),
                               ],
@@ -281,7 +288,7 @@ class _CategoryTileState extends State<_CategoryTile> {
                       turns: _expanded ? 0.5 : 0,
                       duration: const Duration(milliseconds: 200),
                       child: Icon(Icons.expand_more,
-                          color: ink.withValues(alpha: 0.35)),
+                          color: context.homl.ink.withValues(alpha: 0.35)),
                     ),
                     const SizedBox(width: 4),
                   ],
@@ -300,7 +307,7 @@ class _CategoryTileState extends State<_CategoryTile> {
                         Container(
                           height: 1,
                           margin: const EdgeInsets.symmetric(horizontal: 14),
-                          color: Colors.black.withValues(alpha: 0.05),
+                          color: context.homl.ink.withValues(alpha: 0.05),
                         ),
                         const SizedBox(height: 10),
                         ...mainTags.map((mainTag) => _TagRow(
@@ -319,7 +326,8 @@ class _CategoryTileState extends State<_CategoryTile> {
                               style: TextStyle(
                                   fontSize: 12.5,
                                   fontWeight: FontWeight.w600,
-                                  color: ink.withValues(alpha: 0.45)),
+                                  color:
+                                      context.homl.ink.withValues(alpha: 0.45)),
                             ),
                           ),
                           ...groups.map((group) => _GroupRow(
@@ -378,7 +386,7 @@ class _AddPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: ink.withValues(alpha: 0.06),
+      color: context.homl.ink.withValues(alpha: 0.06),
       shape: const StadiumBorder(),
       child: InkWell(
         customBorder: const StadiumBorder(),
@@ -388,14 +396,14 @@ class _AddPill extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.add, size: 16, color: ink),
+              Icon(Icons.add, size: 16, color: context.homl.ink),
               const SizedBox(width: 4),
               Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: ink,
+                  color: context.homl.ink,
                 ),
               ),
             ],
@@ -472,8 +480,9 @@ class _GroupRow extends StatelessWidget {
                   : members.join(', '),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style:
-                  TextStyle(fontSize: 12.5, color: ink.withValues(alpha: 0.45)),
+              style: TextStyle(
+                  fontSize: 12.5,
+                  color: context.homl.ink.withValues(alpha: 0.45)),
             ),
           ),
         ],
@@ -1273,8 +1282,9 @@ class _TagGroupDialogState extends State<_TagGroupDialog> {
             const SizedBox(height: 8),
             Text(
               localization.categories_groupHint,
-              style:
-                  TextStyle(fontSize: 12.5, color: ink.withValues(alpha: 0.55)),
+              style: TextStyle(
+                  fontSize: 12.5,
+                  color: context.homl.ink.withValues(alpha: 0.55)),
             ),
             const SizedBox(height: 16),
             Text(
@@ -1303,7 +1313,8 @@ class _TagGroupDialogState extends State<_TagGroupDialog> {
               Text(
                 localization.categories_groupNeedsMembers,
                 style: TextStyle(
-                    fontSize: 12.5, color: ink.withValues(alpha: 0.55)),
+                    fontSize: 12.5,
+                    color: context.homl.ink.withValues(alpha: 0.55)),
               ),
             ],
           ],

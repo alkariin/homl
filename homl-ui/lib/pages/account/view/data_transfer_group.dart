@@ -6,10 +6,10 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import 'package:homl/helpers/theme.dart';
 import 'package:homl/components/settings_group.dart';
 import 'package:homl/data/transfer/export_file.dart';
 import 'package:homl/helpers/app_message.dart';
-import 'package:homl/helpers/colors.dart';
 import 'package:homl/helpers/toast.dart';
 import 'package:homl/l10n/app_localizations.dart';
 import 'package:homl/pages/account/bloc/data_transfer_cubit.dart';
@@ -121,7 +121,7 @@ class DataTransferGroup extends StatelessWidget {
           title: Text(localization.account_exportData),
           subtitle: Text(localization.account_exportDataHint),
           trailing: Icon(Icons.chevron_right,
-              size: 20, color: ink.withValues(alpha: 0.3)),
+              size: 20, color: context.homl.ink.withValues(alpha: 0.3)),
           enabled: !state.busy,
           onTap: () => _export(context),
         ),
@@ -130,7 +130,7 @@ class DataTransferGroup extends StatelessWidget {
           title: Text(localization.account_importData),
           subtitle: Text(localization.account_importDataHint),
           trailing: Icon(Icons.chevron_right,
-              size: 20, color: ink.withValues(alpha: 0.3)),
+              size: 20, color: context.homl.ink.withValues(alpha: 0.3)),
           enabled: !state.busy,
           onTap: () => _import(context),
         ),

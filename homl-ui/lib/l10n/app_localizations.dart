@@ -568,6 +568,36 @@ abstract class AppLocalizations {
   /// **'Select home screen'**
   String get settings_selectHomeTab;
 
+  /// No description provided for @settings_appearance.
+  ///
+  /// In en, this message translates to:
+  /// **'Appearance'**
+  String get settings_appearance;
+
+  /// No description provided for @settings_selectAppearance.
+  ///
+  /// In en, this message translates to:
+  /// **'Select appearance'**
+  String get settings_selectAppearance;
+
+  /// No description provided for @settings_themeSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'System default'**
+  String get settings_themeSystem;
+
+  /// No description provided for @settings_themeLight.
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get settings_themeLight;
+
+  /// No description provided for @settings_themeDark.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark'**
+  String get settings_themeDark;
+
   /// No description provided for @settings_about.
   ///
   /// In en, this message translates to:

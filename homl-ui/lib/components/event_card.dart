@@ -1,10 +1,10 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:intl/intl.dart';
 
+import 'package:homl/helpers/theme.dart';
 import 'package:homl/components/tag.dart' as components;
 import 'package:homl/data/models/event.dart';
 import 'package:homl/data/models/tag.dart';
-import 'package:homl/helpers/colors.dart' as palette;
 import 'package:homl/helpers/event_period.dart';
 import 'package:homl/l10n/app_localizations.dart';
 
@@ -50,12 +50,12 @@ class EventCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.homl.card,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
+        border: Border.all(color: context.homl.hairline),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: context.homl.shadow,
             blurRadius: 14,
             offset: const Offset(0, 6),
           ),
@@ -82,7 +82,8 @@ class EventCard extends StatelessWidget {
                       child: Tooltip(
                         message: AppLocalizations.of(context)!.pending_waiting,
                         child: Icon(Icons.schedule,
-                            size: 14, color: palette.ink.withValues(alpha: 0.45)),
+                            size: 14,
+                            color: context.homl.ink.withValues(alpha: 0.45)),
                       ),
                     ),
                   ])
@@ -229,7 +230,7 @@ class _PeriodBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
-        color: palette.ink.withValues(alpha: 0.06),
+        color: context.homl.ink.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
@@ -239,7 +240,7 @@ class _PeriodBadge extends StatelessWidget {
         style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w600,
-          color: palette.ink.withValues(alpha: 0.6),
+          color: context.homl.ink.withValues(alpha: 0.6),
         ),
       ),
     );

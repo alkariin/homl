@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:material_ui/material_ui.dart';
 import 'package:intl/intl.dart';
+import 'package:homl/helpers/theme.dart';
 import 'package:homl/l10n/app_localizations.dart';
 
 import 'package:homl/data/models/event.dart';
@@ -45,7 +46,7 @@ class PeriodTimeline extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final localization = AppLocalizations.of(context)!;
-    final mutedInk = palette.ink.withValues(alpha: 0.55);
+    final mutedInk = context.homl.ink.withValues(alpha: 0.55);
 
     if (timeline.isEmpty) {
       return SliverFillRemaining(
@@ -133,11 +134,11 @@ class _AxisHeader extends SliverPersistentHeaderDelegate {
   @override
   Widget build(
       BuildContext context, double shrinkOffset, bool overlapsContent) {
-    final mutedInk = palette.ink.withValues(alpha: 0.55);
+    final mutedInk = context.homl.ink.withValues(alpha: 0.55);
 
     return Container(
       // Opaque enough to read over the rows scrolling under it.
-      color: palette.background.withValues(alpha: 0.94),
+      color: context.homl.background.withValues(alpha: 0.94),
       padding:
           const EdgeInsets.symmetric(horizontal: PeriodTimeline.sidePadding),
       child: LayoutBuilder(builder: (context, constraints) {
@@ -148,7 +149,7 @@ class _AxisHeader extends SliverPersistentHeaderDelegate {
             right: 0,
             bottom: 0,
             child: Container(
-                height: 1, color: palette.ink.withValues(alpha: 0.12)),
+                height: 1, color: context.homl.ink.withValues(alpha: 0.12)),
           ),
           for (final (year, position) in ticks) ...[
             Positioned(
@@ -157,7 +158,7 @@ class _AxisHeader extends SliverPersistentHeaderDelegate {
               child: Container(
                   width: 1,
                   height: 6,
-                  color: palette.ink.withValues(alpha: 0.3)),
+                  color: context.homl.ink.withValues(alpha: 0.3)),
             ),
             Positioned(
               // A label at the far right is pulled back inside the axis.
@@ -247,13 +248,16 @@ class _SpanRow extends StatelessWidget {
     final localization = AppLocalizations.of(context)!;
     final locale = Localizations.localeOf(context).toString();
     final base =
-        color == null ? palette.borderGrey : palette.colorFromHex(color!);
+        color == null ? context.homl.rule : palette.colorFromHex(color!);
 
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
       child: CustomPaint(
-        painter: _GridPainter(lines: gridLines, today: todayPosition),
+        painter: _GridPainter(
+            lines: gridLines,
+            today: todayPosition,
+            lineColor: context.homl.ink.withValues(alpha: 0.06)),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Column(
@@ -273,7 +277,8 @@ class _SpanRow extends StatelessWidget {
                 Text(
                   _length(localization),
                   style: TextStyle(
-                      fontSize: 12, color: palette.ink.withValues(alpha: 0.55)),
+                      fontSize: 12,
+                      color: context.homl.ink.withValues(alpha: 0.55)),
                 ),
               ]),
               const SizedBox(height: 5),
@@ -339,12 +344,16 @@ class _GridPainter extends CustomPainter {
   final List<double> lines;
   final double? today;
 
-  const _GridPainter({required this.lines, required this.today});
+  /// The year lines' color: faint ink of the current brightness.
+  final Color lineColor;
+
+  const _GridPainter(
+      {required this.lines, required this.today, required this.lineColor});
 
   @override
   void paint(Canvas canvas, Size size) {
     final grid = Paint()
-      ..color = palette.ink.withValues(alpha: 0.06)
+      ..color = lineColor
       ..strokeWidth = 1;
     for (final position in lines) {
       final x = position * size.width;
@@ -363,5 +372,7 @@ class _GridPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_GridPainter oldDelegate) =>
-      oldDelegate.today != today || oldDelegate.lines != lines;
+      oldDelegate.today != today ||
+      oldDelegate.lines != lines ||
+      oldDelegate.lineColor != lineColor;
 }

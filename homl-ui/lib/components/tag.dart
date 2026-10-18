@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
+import 'package:homl/helpers/theme.dart';
 import 'package:homl/helpers/colors.dart' as palette;
 
 /// Tag chip: rounded rectangle tinted with the category color, label in
@@ -76,7 +77,7 @@ class Tag extends StatelessWidget {
   Widget build(BuildContext context) {
     final Color base =
         color != null ? palette.colorFromHex(color!) : palette.yellow;
-    final Color label = palette.ink.withValues(alpha: 0.75);
+    final Color label = context.homl.ink.withValues(alpha: 0.75);
 
     return Material(
       color: Colors.transparent,

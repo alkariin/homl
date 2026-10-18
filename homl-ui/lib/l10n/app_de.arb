@@ -92,6 +92,11 @@
   "settings_selectLanguage": "Sprache auswählen",
   "settings_homeTab": "Startbildschirm",
   "settings_selectHomeTab": "Startbildschirm auswählen",
+  "settings_appearance": "Erscheinungsbild",
+  "settings_selectAppearance": "Erscheinungsbild auswählen",
+  "settings_themeSystem": "Wie das System",
+  "settings_themeLight": "Hell",
+  "settings_themeDark": "Dunkel",
   "settings_about": "Über",
   "settings_versionApp": "App {version}",
   "@settings_versionApp": {
