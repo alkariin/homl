@@ -180,6 +180,24 @@ each case shows a message.
 shows a red count; the sheet of waiting changes lists each one with its
 reason, and lets the user try again or discard it.
 
+## Reading again
+
+The app reads the server often: at every start, on a pull to refresh, back in
+the foreground after a minute, and twice per sync (before sending, and to save
+the result). The two big reads, `GET /events` and `GET /categories`, are
+conditional ([api.md](api.md), "Conditional reads"): the app saves each body
+with the `ETag` the server gave it (`LocalStore`, sealed with the rest) and
+sends it back in `If-None-Match`. When nothing changed the server answers
+`304` with no body and the saved copy is used (`fetchSaved` in
+`homl-ui/lib/data/store/conditional_get.dart`); when anything changed, the
+whole body comes, as before.
+
+This is not a delta sync on purpose: the server fingerprints what it would
+send, so no write path has to record its changes and none can be forgotten.
+The common case — reopening the app with nothing new — costs one request and
+no data; a change elsewhere costs one full read. A saved copy without an
+`ETag` (an older server, a save that failed) just means a plain read.
+
 ## Sessions
 
 - **Logout** with changes waiting asks first: they are lost with the session.

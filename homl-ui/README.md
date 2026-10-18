@@ -733,7 +733,9 @@ session"; the outbox and the sync in
   credentials" when a request fails for that reason. The app reconnects by
   itself and the icon goes away. Online, pulling the Search list down fetches
   everything again, and coming back to the app after a minute or more does it
-  by itself (`HomeCubit.refresh` / `refreshIfStale`).
+  by itself (`HomeCubit.refresh` / `refreshIfStale`). Those reads are
+  conditional (`lib/data/store/conditional_get.dart`): the server answers
+  "not modified", with no data, when nothing changed since the saved copy.
 - **Unlock** respects each account's own factor. No second factor: the saved
   data opens directly. Fingerprint: the same OS prompt as online (releasing the
   keypair is the proof of presence). PIN: the PIN is checked against a hash of
@@ -761,8 +763,9 @@ session"; the outbox and the sync in
   (`localStoreKey`), the entry name bound as associated data. Each entry
   records the account it belongs to (the `user_id` of the refresh token):
   one saved by another account is never shown, the whole store is wiped
-  instead. `wipe()` deletes the key first, so a file whose deletion failed is
-  unreadable anyway. Failures read as "nothing saved" — it is a cache. The
+  instead. An entry also keeps the server's `ETag` of its payload, sent back
+  to ask whether it changed. `wipe()` deletes the key first, so a file whose
+  deletion failed is unreadable anyway. Failures read as "nothing saved" — it is a cache. The
   payloads the app used to keep in the secure storage are carried over once.
 - **`lib/data/store/blob_store*.dart`** — where the sealed entries live: one
   file per entry under the app support directory (`store/<entry>.bin`, written
