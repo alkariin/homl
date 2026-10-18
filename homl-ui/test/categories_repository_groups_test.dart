@@ -129,12 +129,16 @@ void main() {
         throwsA(isA<CategoriesRequestFailure>()));
   });
 
-  test('a tag created offline cannot be a member yet', () async {
+  test('a group with a tag created offline waits behind it', () async {
     // A negative id is a tag waiting in the outbox: the server has no such
-    // row to link.
-    await expectLater(repository.createTagGroup('Family', 3, [10, -1]),
-        throwsA(isA<TagPendingFailure>()));
+    // row to link yet, so the group waits too, under a temporary id.
+    final id = await repository.createTagGroup('Family', 3, [10, -1]);
+
+    expect(id, lessThan(0));
     expect(adapter.requests, isEmpty);
+    final op = (await Outbox.instance.ops()).single;
+    expect(op.kind, OpKind.createGroup);
+    expect(op.body['members'], [10, -1]);
   });
 
   group('E2EE account', () {

@@ -52,7 +52,8 @@ void main() {
         .setMockMethodCallHandler(storageChannel, null);
   });
 
-  Map<String, dynamic> event(String description, {List<int> tags = const [1]}) =>
+  Map<String, dynamic> event(String description,
+          {List<int> tags = const [1]}) =>
       {
         'description': description,
         'date': '2026-10-13T00:00:00.000Z',
@@ -207,5 +208,185 @@ void main() {
     expect(outbox.currentCounts.total, 0);
 
     expect(await outbox.ops(), hasLength(1));
+  });
+
+  group('tags, categories and groups', () {
+    Map<String, dynamic> tag(String name, int idCategory, {int? parent}) =>
+        {'tag': name, 'idCategory': idCategory, 'idParentTag': parent};
+
+    test('editing one created offline rewrites its creation', () async {
+      final id = await outbox.createTag(tag('Tram', 3));
+      await outbox.updateTag(id, tag('Bus', 3));
+      final category = await outbox.createCategory(
+          {'category': 'Trips', 'color': '#ffffff'},
+          clientId: 'c1');
+      await outbox.updateCategory(
+          category, {'category': 'Travels', 'color': '#000000'});
+
+      final ops = await outbox.ops();
+      expect(
+          ops.map((op) => op.kind), [OpKind.createTag, OpKind.createCategory]);
+      expect(ops[0].body['tag'], 'Bus');
+      expect(ops[1].id, 'c1');
+      expect(ops[1].body['category'], 'Travels');
+    });
+
+    test('a detached synonym stays detached once folded', () async {
+      final id = await outbox.createTag(tag('Foot', 3, parent: 10));
+      await outbox.updateTag(id, tag('Foot', 3));
+
+      expect((await outbox.ops()).single.body['idParentTag'], isNull);
+    });
+
+    test('two edits make one with the first base; a deletion replaces them',
+        () async {
+      await outbox.updateTag(12, tag('Bus', 3), base: tag('Tram', 3));
+      await outbox.updateTag(12, tag('Coach', 3), base: tag('Bus', 3));
+      var ops = await outbox.ops();
+      expect(ops.single.body['tag'], 'Coach');
+      expect(ops.single.base!['tag'], 'Tram');
+
+      await outbox.deleteTag(12, {'idParentTag': null}, base: tag('Coach', 3));
+      ops = await outbox.ops();
+      expect(ops.single.kind, OpKind.deleteTag);
+      expect(ops.single.base!['tag'], 'Tram');
+    });
+
+    test('one created offline and deleted is created, then deleted', () async {
+      final id = await outbox.createGroup({
+        'name': 'Family',
+        'idCategory': 2,
+        'members': [10]
+      });
+      await outbox.deleteGroup(id);
+
+      final ops = await outbox.ops();
+      expect(
+          ops.map((op) => op.kind), [OpKind.createGroup, OpKind.deleteGroup]);
+      expect(ops.last.target, id);
+    });
+
+    test('the same server id names different things in each kind', () async {
+      await outbox.updateTag(5, tag('Bus', 3), base: tag('Tram', 3));
+      await outbox.updateCategory(5, {'category': 'Trips', 'color': '#ffffff'});
+      await outbox.updateEvent(5, event('edited'), base: serverEvent);
+      // Deleting event 5 leaves tag 5 and category 5 alone.
+      await outbox.deleteEvent(5, base: serverEvent);
+
+      final ops = await outbox.ops();
+      expect(ops.map((op) => op.kind), [
+        OpKind.updateTag,
+        OpKind.updateCategory,
+        OpKind.deleteEvent,
+      ]);
+    });
+
+    test('a category created offline gets its id everywhere it is used',
+        () async {
+      final category = await outbox
+          .createCategory({'category': 'Trips', 'color': '#ffffff'});
+      final tram = await outbox.createTag(tag('Tram', category));
+      final group = await outbox.createGroup({
+        'name': 'Rails',
+        'idCategory': category,
+        'members': [tram]
+      });
+      await outbox.createEvent(event('ride', tags: [tram]));
+
+      var ops = await outbox.ops();
+      await outbox.nextToSend();
+      await outbox.complete(ops[0], serverId: 40);
+      expect(outbox.resolve(category), 40);
+      ops = await outbox.ops();
+      expect(ops[0].body['idCategory'], 40);
+      expect(ops[1].body['idCategory'], 40);
+
+      await outbox.nextToSend();
+      await outbox.complete(ops[0], serverId: 41);
+      ops = await outbox.ops();
+      expect(ops[0].body['members'], [41]);
+      expect(ops[1].body['tagsId'], [41]);
+      expect(outbox.resolve(group), group);
+    });
+
+    test('an event created again rewrites the events only', () async {
+      await outbox.updateEvent(5, event('edited'), base: serverEvent);
+      await outbox.createEvent(event('uses tag 5', tags: [5]));
+      await outbox.updateTag(5, tag('Bus', 3), base: tag('Tram', 3));
+
+      final op = await outbox.nextToSend();
+      // Deleted elsewhere, created again under 90 with the edit.
+      await outbox.complete(op!, serverId: 90);
+
+      expect(outbox.resolveEvent(5), 90);
+      expect(outbox.resolve(5), 5);
+      final ops = await outbox.ops();
+      expect(ops[0].body['tagsId'], [5]);
+      expect(ops[1].target, 5);
+    });
+
+    test('a parked category holds back what needs it, for the right reason',
+        () async {
+      final category = await outbox
+          .createCategory({'category': 'Trips', 'color': '#ffffff'});
+      await outbox.updateCategory(
+          category, {'category': 'Travels', 'color': '#ffffff'});
+      final tram = await outbox.createTag(tag('Tram', category));
+      await outbox.createEvent(event('ride', tags: [tram]));
+      await outbox.createEvent(event('unrelated'));
+
+      var ops = await outbox.ops();
+      await outbox.park(ops[0], ParkReason.refused);
+
+      ops = await outbox.ops();
+      // The edit folded into the creation: one op for the category.
+      expect(ops.map((op) => op.parked), [
+        ParkReason.refused,
+        ParkReason.missingParent,
+        ParkReason.missingTag,
+        null,
+      ]);
+
+      // A later change needing the parked category is parked at once.
+      await outbox.createGroup({
+        'name': 'Rails',
+        'idCategory': category,
+        'members': [10]
+      });
+      expect((await outbox.ops()).last.parked, ParkReason.missingParent);
+    });
+
+    test('discarding a category drops what was made with it, in turn',
+        () async {
+      final category = await outbox
+          .createCategory({'category': 'Trips', 'color': '#ffffff'});
+      final tram = await outbox.createTag(tag('Tram', category));
+      await outbox.createEvent(event('ride', tags: [tram]));
+      await outbox.createEvent(event('unrelated'));
+
+      final ops = await outbox.ops();
+      await outbox.discard(ops[0].id);
+
+      expect((await outbox.ops()).map((op) => op.body['description']),
+          ['unrelated']);
+    });
+
+    test('an older outbox still reads, and the new kinds round-trip', () async {
+      await outbox.createCategory({'category': 'Trips', 'color': '#ffffff'});
+      await outbox.deleteCategory(3, {
+        'moveTags': true
+      }, base: {
+        'category': 'Old',
+        'color': '#000000',
+        'tags': [1]
+      });
+      outbox.forget();
+
+      final ops = await outbox.ops();
+      expect(ops.map((op) => op.kind),
+          [OpKind.createCategory, OpKind.deleteCategory]);
+      expect(ops.last.body['moveTags'], isTrue);
+      expect(ops.last.base!['tags'], [1]);
+    });
   });
 }

@@ -19,8 +19,13 @@ class SyncReport {
   /// the edit (the edit wins).
   final int restored;
 
-  /// Events deleted here and edited on another device: kept (the edit wins).
+  /// Things deleted here and edited on another device: kept (the edit wins).
   final int kept;
+
+  /// Tags, categories or groups edited here and deleted on another device:
+  /// the change was dropped (the deletion wins — the server already took
+  /// the tag off its events).
+  final int dropped;
 
   /// Events where the same field changed here and elsewhere: this device's
   /// value won.
@@ -33,11 +38,17 @@ class SyncReport {
       {this.sent = 0,
       this.restored = 0,
       this.kept = 0,
+      this.dropped = 0,
       this.conflicts = 0,
       this.parked = 0});
 
   bool get isEmpty =>
-      sent == 0 && restored == 0 && kept == 0 && conflicts == 0 && parked == 0;
+      sent == 0 &&
+      restored == 0 &&
+      kept == 0 &&
+      dropped == 0 &&
+      conflicts == 0 &&
+      parked == 0;
 }
 
 /// What sending one op came to.
@@ -62,6 +73,44 @@ class _Fresh {
         for (final category in categories)
           for (final tag in category['tags'] as List) (tag as Map)['id'] as int
       };
+
+  /// Tag [id] and the category holding it.
+  (Map<String, dynamic>, Map<String, dynamic>)? tag(Object? id) {
+    for (final category in categories) {
+      for (final tag in category['tags'] as List) {
+        if ((tag as Map)['id'] == id) {
+          return (category, tag as Map<String, dynamic>);
+        }
+      }
+    }
+    return null;
+  }
+
+  /// Tag group [id] and the category holding it.
+  (Map<String, dynamic>, Map<String, dynamic>)? group(Object? id) {
+    for (final category in categories) {
+      for (final group in (category['groups'] as List?) ?? const []) {
+        if ((group as Map)['id'] == id) {
+          return (category, group as Map<String, dynamic>);
+        }
+      }
+    }
+    return null;
+  }
+
+  /// Takes [next]'s state: a deletion on the server changed more than the
+  /// op itself (tags off events, synonyms with their main tag…).
+  void replaceWith(_Fresh next) {
+    settings
+      ..clear()
+      ..addAll(next.settings);
+    categories
+      ..clear()
+      ..addAll(next.categories);
+    events
+      ..clear()
+      ..addAll(next.events);
+  }
 
   Set<int> get dateCategoryTagIds => {
         for (final category in categories)
@@ -155,7 +204,7 @@ class SyncEngine {
     final fresh = await _readServer();
     if (fresh == null) return;
 
-    var sent = 0, restored = 0, kept = 0, conflicts = 0;
+    var sent = 0, restored = 0, kept = 0, dropped = 0, conflicts = 0;
     final parkedBefore = Outbox.instance.currentCounts.parked;
 
     await _parkStale(ops, fresh);
@@ -165,24 +214,26 @@ class SyncEngine {
       if (op == null) break;
 
       final (step, effect) = await _send(op, fresh);
+      // A stop may follow a change that went through (the server went away
+      // right after it): it counts all the same.
+      switch (effect) {
+        case _Effect.sent:
+          sent++;
+        case _Effect.sentWithConflict:
+          sent++;
+          conflicts++;
+        case _Effect.restored:
+          restored++;
+        case _Effect.kept:
+          kept++;
+        case _Effect.dropped:
+          dropped++;
+        case _Effect.none:
+          break;
+      }
       if (step == _Step.stop) {
         Outbox.instance.abortSend();
         break;
-      }
-      if (step == _Step.done) {
-        switch (effect) {
-          case _Effect.sent:
-            sent++;
-          case _Effect.sentWithConflict:
-            sent++;
-            conflicts++;
-          case _Effect.restored:
-            restored++;
-          case _Effect.kept:
-            kept++;
-          case _Effect.none:
-            break;
-        }
       }
     }
 
@@ -191,6 +242,7 @@ class SyncEngine {
         sent: sent,
         restored: restored,
         kept: kept,
+        dropped: dropped,
         conflicts: conflicts,
         parked: parked > 0 ? parked : 0);
     if (report.isEmpty) return;
@@ -215,6 +267,14 @@ class SyncEngine {
                 'tags': [
                   for (final tag in (category['tags'] as List?) ?? const [])
                     Map<String, dynamic>.from(tag as Map)
+                ],
+                // Copied too: the engine keeps them up to date as ops land.
+                'groups': [
+                  for (final group in (category['groups'] as List?) ?? const [])
+                    {
+                      ...Map<String, dynamic>.from(group as Map),
+                      'members': [...(group['members'] as List? ?? const [])],
+                    }
                 ],
               }
           ],
@@ -249,6 +309,16 @@ class SyncEngine {
   }
 
   Future<(_Step, _Effect)> _send(OutboxOp op, _Fresh fresh) async {
+    // A tag, category or group change needing something created offline
+    // that never reached the server (its creation is parked or was
+    // discarded): it could only fail.
+    if (op.kind.entity != OpEntity.event && op.dependencies.isNotEmpty) {
+      final missingTag = op.tagDependencies.isNotEmpty ||
+          (op.kind.entity == OpEntity.tag && op.target < 0);
+      await Outbox.instance.park(
+          op, missingTag ? ParkReason.missingTag : ParkReason.missingParent);
+      return (_Step.parked, _Effect.none);
+    }
     try {
       switch (op.kind) {
         case OpKind.createTag:
@@ -259,6 +329,22 @@ class SyncEngine {
           return await _updateEvent(op, fresh);
         case OpKind.deleteEvent:
           return await _deleteEvent(op, fresh);
+        case OpKind.updateTag:
+          return await _updateTag(op, fresh);
+        case OpKind.deleteTag:
+          return await _deleteTag(op, fresh);
+        case OpKind.createCategory:
+          return await _createCategory(op, fresh);
+        case OpKind.updateCategory:
+          return await _updateCategory(op, fresh);
+        case OpKind.deleteCategory:
+          return await _deleteCategory(op, fresh);
+        case OpKind.createGroup:
+          return await _createGroup(op, fresh);
+        case OpKind.updateGroup:
+          return await _updateGroup(op, fresh);
+        case OpKind.deleteGroup:
+          return await _deleteGroup(op, fresh);
       }
     } on DioException catch (error) {
       return (await _onRefusal(op, error), _Effect.none);
@@ -419,6 +505,357 @@ class SyncEngine {
     return (_Step.done, _Effect.sent);
   }
 
+  /// Reads the server again after a change that did more than itself (a
+  /// deletion taking tags off events, a move taking synonyms along). False
+  /// when it cannot: the sync stops, the rest goes next time.
+  Future<bool> _reload(_Fresh fresh) async {
+    final next = await _readServer();
+    if (next == null) return false;
+    fresh.replaceWith(next);
+    return true;
+  }
+
+  /// [op] went through, and the server state was read again after it; a
+  /// failed read stops the sync after counting the change.
+  Future<(_Step, _Effect)> _doneReloading(
+      OutboxOp op, _Fresh fresh, _Effect effect) async {
+    await Outbox.instance.complete(op);
+    return (await _reload(fresh) ? _Step.done : _Step.stop, effect);
+  }
+
+  /// The change was about something deleted on another device: the
+  /// deletion wins, the change is dropped.
+  Future<(_Step, _Effect)> _dropped(OutboxOp op) async {
+    await Outbox.instance.complete(op);
+    return (_Step.done, _Effect.dropped);
+  }
+
+  /// Whether this device's value of a field wins against the server's: it
+  /// changed here since [before]. Both sides changing it to different values
+  /// is a conflict, which this device wins too ([onConflict] is called).
+  static bool _mine(Object? before, Object? theirs, Object? ours,
+      void Function() onConflict) {
+    final oursChanged = ours != before;
+    if (oursChanged && theirs != before && ours != theirs) onConflict();
+    return oursChanged;
+  }
+
+  /// Sends a category created offline, under its op id as `clientId`: a
+  /// replay after a lost answer gets the first one back.
+  Future<(_Step, _Effect)> _createCategory(OutboxOp op, _Fresh fresh) async {
+    final response = await _dio
+        .post<dynamic>('/categories', data: {...op.body, 'clientId': op.id});
+    final data = response.data;
+    final id = data is Map ? data['id'] as int? : null;
+    if (id == null) {
+      await Outbox.instance.park(op, ParkReason.refused);
+      return (_Step.parked, _Effect.none);
+    }
+    fresh.categories.add({
+      'id': id,
+      'category': op.body['category'],
+      'color': op.body['color'],
+      'isLocked': false,
+      'kind': 'custom',
+      'tags': <Map<String, dynamic>>[],
+      'groups': <Map<String, dynamic>>[],
+    });
+    await Outbox.instance.complete(op, serverId: id);
+    return (_Step.done, _Effect.sent);
+  }
+
+  /// A name and color change, merged field by field with what changed
+  /// elsewhere.
+  Future<(_Step, _Effect)> _updateCategory(OutboxOp op, _Fresh fresh) async {
+    final server = fresh.category(op.target);
+    if (server == null) return _dropped(op);
+
+    final base = op.base;
+    var conflict = false;
+    void onConflict() => conflict = true;
+    final nameMine = base == null ||
+        _mine(await _plain(base['category']), await _plain(server['category']),
+            await _plain(op.body['category']), onConflict);
+    final colorMine = base == null ||
+        _mine(base['color'], server['color'], op.body['color'], onConflict);
+    final body = {
+      'category': nameMine ? op.body['category'] : server['category'],
+      'color': colorMine ? op.body['color'] : server['color'],
+    };
+
+    try {
+      await _dio.patch<dynamic>('/categories/${op.target}', data: body);
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) return _dropped(op);
+      rethrow;
+    }
+    server.addAll(body);
+    await Outbox.instance.complete(op);
+    return (_Step.done, conflict ? _Effect.sentWithConflict : _Effect.sent);
+  }
+
+  /// A category deletion, unless the category changed elsewhere since this
+  /// device last saw it — renamed, recolored, or given a tag this device
+  /// never showed: the edit wins, it stays. Never with its events: those
+  /// were deleted one by one before (DeleteEventsOfflineFailure).
+  Future<(_Step, _Effect)> _deleteCategory(OutboxOp op, _Fresh fresh) async {
+    final server = fresh.category(op.target);
+    if (server == null) {
+      await Outbox.instance.complete(op);
+      return (_Step.done, _Effect.none);
+    }
+    final base = op.base;
+    if (base != null) {
+      final known = ((base['tags'] as List?) ?? const []).toSet();
+      final edited =
+          await _plain(base['category']) != await _plain(server['category']) ||
+              base['color'] != server['color'] ||
+              (server['tags'] as List)
+                  .any((tag) => !known.contains((tag as Map)['id']));
+      if (edited) {
+        await Outbox.instance.complete(op);
+        return (_Step.done, _Effect.kept);
+      }
+    }
+
+    try {
+      await _dio.delete<dynamic>('/categories/${op.target}', data: {
+        'moveTags': op.body['moveTags'] == true,
+        'deleteEvents': false,
+      });
+    } on DioException catch (error) {
+      // Gone already: done. A move refused for a name taken in Others is a
+      // refusal like any other: parked.
+      if (error.response?.statusCode != 404) rethrow;
+    }
+    return _doneReloading(op, fresh, _Effect.sent);
+  }
+
+  /// A rename, a move or a synonym link change, merged field by field with
+  /// what changed elsewhere. A destination category or main tag deleted
+  /// elsewhere meanwhile cannot be reached: parked.
+  Future<(_Step, _Effect)> _updateTag(OutboxOp op, _Fresh fresh) async {
+    final found = fresh.tag(op.target);
+    if (found == null) return _dropped(op);
+    final (category, server) = found;
+
+    final local = op.body;
+    final base = op.base;
+    var conflict = false;
+    void onConflict() => conflict = true;
+    final nameMine = base == null ||
+        _mine(await _plain(base['tag']), await _plain(server['tag']),
+            await _plain(local['tag']), onConflict);
+    final categoryMine = base == null ||
+        _mine(base['idCategory'], category['id'], local['idCategory'],
+            onConflict);
+    final parentMine = base == null ||
+        _mine(base['idParentTag'], server['idParentTag'], local['idParentTag'],
+            onConflict);
+
+    final idCategory = categoryMine ? local['idCategory'] : category['id'];
+    final idParentTag =
+        parentMine ? local['idParentTag'] : server['idParentTag'];
+    if (fresh.category(idCategory) == null ||
+        (idParentTag != null && fresh.tag(idParentTag) == null)) {
+      await Outbox.instance.park(op, ParkReason.refused);
+      return (_Step.parked, _Effect.none);
+    }
+
+    final names = nameMine ? local : server;
+    final body = {
+      'tag': names['tag'],
+      if (names['tagIndex'] != null) 'tagIndex': names['tagIndex'],
+      'idCategory': idCategory,
+      if (idParentTag != null) 'idParentTag': idParentTag,
+    };
+    try {
+      await _dio.patch<dynamic>('/tags/${op.target}', data: body);
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) return _dropped(op);
+      // A name taken in the category meanwhile: parked, the user decides.
+      rethrow;
+    }
+    return _doneReloading(
+        op, fresh, conflict ? _Effect.sentWithConflict : _Effect.sent);
+  }
+
+  /// A tag deletion — which keeps the events, those deleted with it went
+  /// one by one before — unless the tag changed elsewhere since this device
+  /// last saw it: the edit wins, it stays.
+  Future<(_Step, _Effect)> _deleteTag(OutboxOp op, _Fresh fresh) async {
+    final found = fresh.tag(op.target);
+    if (found == null) {
+      await Outbox.instance.complete(op);
+      return (_Step.done, _Effect.none);
+    }
+    final (category, server) = found;
+    final base = op.base;
+    if (base != null &&
+        (await _plain(base['tag']) != await _plain(server['tag']) ||
+            base['idCategory'] != category['id'] ||
+            base['idParentTag'] != server['idParentTag'])) {
+      await Outbox.instance.complete(op);
+      return (_Step.done, _Effect.kept);
+    }
+
+    try {
+      await _dio
+          .delete<dynamic>('/tags/${op.target}', data: {'deleteEvents': false});
+    } on DioException catch (error) {
+      if (error.response?.statusCode != 404) rethrow;
+    }
+    return _doneReloading(op, fresh, _Effect.sent);
+  }
+
+  /// The members of a group body still on the server as main tags of
+  /// [category] (one deleted, moved or turned synonym elsewhere is left out:
+  /// the server would refuse it).
+  static List<int> _membersStillThere(
+      Map<String, dynamic> body, Map<String, dynamic> category) {
+    final mainTags = {
+      for (final tag in category['tags'] as List)
+        if ((tag as Map)['idParentTag'] == null) tag['id'] as int,
+    };
+    return [
+      for (final id in ((body['members'] as List?) ?? const []).cast<int>())
+        if (mainTags.contains(id)) id,
+    ];
+  }
+
+  /// The id of the group of [category] named like [name] (both may be
+  /// ciphertext: compared in clear, case-insensitively).
+  Future<int?> _groupNamed(Map<String, dynamic> category, Object? name) async {
+    final wanted = (await _plain(name)).toLowerCase();
+    for (final group in (category['groups'] as List?) ?? const []) {
+      if ((await _plain((group as Map)['name'])).toLowerCase() == wanted) {
+        return group['id'] as int;
+      }
+    }
+    return null;
+  }
+
+  /// Sends a group created offline. A group of that name in the category
+  /// (created meanwhile, or this very op whose answer was lost) is used
+  /// instead, like a tag.
+  Future<(_Step, _Effect)> _createGroup(OutboxOp op, _Fresh fresh) async {
+    final category = fresh.category(op.body['idCategory']);
+    final members = category == null
+        ? const <int>[]
+        : _membersStillThere(op.body, category);
+    if (category == null || members.isEmpty) {
+      // Its category was deleted elsewhere, or none of its tags is left.
+      await Outbox.instance.park(op, ParkReason.refused);
+      return (_Step.parked, _Effect.none);
+    }
+
+    final existing = await _groupNamed(category, op.body['name']);
+    if (existing != null) {
+      await Outbox.instance.complete(op, serverId: existing);
+      return (_Step.done, _Effect.none);
+    }
+
+    try {
+      final response = await _dio
+          .post<dynamic>('/tagGroups', data: {...op.body, 'members': members});
+      final id = (response.data as Map)['id'] as int;
+      ((category['groups'] as List?) ?? (category['groups'] = [])).add({
+        'id': id,
+        'name': op.body['name'],
+        'members': members,
+      });
+      await Outbox.instance.complete(op, serverId: id);
+      return (_Step.done, _Effect.sent);
+    } on DioException catch (error) {
+      final data = error.response?.data;
+      final body = data is Map ? data['error'] : null;
+      if ((body is Map ? body['code'] : null) != 'TAG_NAME_CONFLICT') rethrow;
+      if (!await _reload(fresh)) return (_Step.stop, _Effect.none);
+      final created = fresh.category(op.body['idCategory']);
+      final id =
+          created == null ? null : await _groupNamed(created, op.body['name']);
+      if (id == null) rethrow;
+      await Outbox.instance.complete(op, serverId: id);
+      return (_Step.done, _Effect.none);
+    }
+  }
+
+  /// A name and members change, merged with what changed elsewhere (the
+  /// members as a whole, like the tags of an event).
+  Future<(_Step, _Effect)> _updateGroup(OutboxOp op, _Fresh fresh) async {
+    final found = fresh.group(op.target);
+    if (found == null) return _dropped(op);
+    final (category, server) = found;
+
+    final local = op.body;
+    final base = op.base;
+    var conflict = false;
+    void onConflict() => conflict = true;
+    final nameMine = base == null ||
+        _mine(await _plain(base['name']), await _plain(server['name']),
+            await _plain(local['name']), onConflict);
+    final membersMine = base == null ||
+        _mine(_setKey(_ids(base['members'])), _setKey(_ids(server['members'])),
+            _setKey(_ids(local['members'])), onConflict);
+
+    final names = nameMine ? local : server;
+    final members = _membersStillThere(
+        {'members': membersMine ? local['members'] : server['members']},
+        category);
+    if (members.isEmpty) {
+      await Outbox.instance.park(op, ParkReason.refused);
+      return (_Step.parked, _Effect.none);
+    }
+    final body = {
+      'name': names['name'],
+      if (names['nameIndex'] != null) 'nameIndex': names['nameIndex'],
+      'members': members,
+    };
+    try {
+      await _dio.patch<dynamic>('/tagGroups/${op.target}', data: body);
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) return _dropped(op);
+      rethrow;
+    }
+    server
+      ..['name'] = body['name']
+      ..['members'] = members;
+    await Outbox.instance.complete(op);
+    return (_Step.done, conflict ? _Effect.sentWithConflict : _Effect.sent);
+  }
+
+  /// A group deletion, unless it changed elsewhere since this device last
+  /// saw it: the edit wins, it stays.
+  Future<(_Step, _Effect)> _deleteGroup(OutboxOp op, _Fresh fresh) async {
+    final found = fresh.group(op.target);
+    if (found == null) {
+      await Outbox.instance.complete(op);
+      return (_Step.done, _Effect.none);
+    }
+    final (category, server) = found;
+    final base = op.base;
+    if (base != null &&
+        (await _plain(base['name']) != await _plain(server['name']) ||
+            _setKey(_ids(base['members'])) !=
+                _setKey(_ids(server['members'])))) {
+      await Outbox.instance.complete(op);
+      return (_Step.done, _Effect.kept);
+    }
+
+    try {
+      await _dio.delete<dynamic>('/tagGroups/${op.target}');
+    } on DioException catch (error) {
+      if (error.response?.statusCode != 404) rethrow;
+    }
+    (category['groups'] as List)
+        .removeWhere((group) => (group as Map)['id'] == op.target);
+    await Outbox.instance.complete(op);
+    return (_Step.done, _Effect.sent);
+  }
+
+  static Set<int> _ids(Object? list) =>
+      {...((list as List?) ?? const []).cast<int>()};
+
   /// The three things an edit can change, comparable whatever their shape (a
   /// server event, or a request body).
   Future<_Fields> _fields(Map<String, dynamic> event, _Fresh fresh) async {
@@ -552,7 +989,7 @@ class SyncEngine {
   }
 }
 
-enum _Effect { none, sent, sentWithConflict, restored, kept }
+enum _Effect { none, sent, sentWithConflict, restored, kept, dropped }
 
 class _Fields {
   final String description;

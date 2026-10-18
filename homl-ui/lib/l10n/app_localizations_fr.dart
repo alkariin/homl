@@ -822,7 +822,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get sync_kept =>
-      'Un événement que tu as supprimé avait été modifié sur un autre appareil : il a été gardé.';
+      'Un élément que tu avais supprimé avait été modifié sur un autre appareil : il a été gardé.';
 
   @override
   String get sync_conflicts =>
@@ -833,8 +833,8 @@ class AppLocalizationsFr extends AppLocalizations {
       'Certaines modifications n\'ont pas pu être envoyées : vois les modifications en attente.';
 
   @override
-  String get sync_tagPending =>
-      'Ce tag n\'est pas encore sur le serveur : réessaie une fois tes modifications envoyées.';
+  String get sync_dropped =>
+      'Une modification faite hors ligne a été abandonnée : ce qu\'elle modifiait avait été supprimé sur un autre appareil.';
 
   @override
   String get sync_pendingChangesFirst =>
@@ -869,6 +869,30 @@ class AppLocalizationsFr extends AppLocalizations {
   String get pending_createTag => 'Nouveau tag';
 
   @override
+  String get pending_updateTag => 'Tag modifié';
+
+  @override
+  String get pending_deleteTag => 'Tag supprimé';
+
+  @override
+  String get pending_createCategory => 'Nouvelle catégorie';
+
+  @override
+  String get pending_updateCategory => 'Catégorie modifiée';
+
+  @override
+  String get pending_deleteCategory => 'Catégorie supprimée';
+
+  @override
+  String get pending_createGroup => 'Nouveau groupe de tags';
+
+  @override
+  String get pending_updateGroup => 'Groupe de tags modifié';
+
+  @override
+  String get pending_deleteGroup => 'Groupe de tags supprimé';
+
+  @override
   String get pending_waiting => 'En attente';
 
   @override
@@ -876,6 +900,10 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get pending_missingTag => 'Utilise un tag qui n\'a pas pu être créé';
+
+  @override
+  String get pending_missingParent =>
+      'A besoin d\'une catégorie ou d\'un groupe qui n\'a pas pu être créé';
 
   @override
   String get pending_encryptionChanged =>

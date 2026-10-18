@@ -8,7 +8,58 @@ import 'package:homl/data/store/local_store.dart';
 import 'package:homl/helpers/server_reachability.dart';
 
 /// What an [OutboxOp] does once sent.
-enum OpKind { createTag, createEvent, updateEvent, deleteEvent }
+enum OpKind {
+  createTag,
+  createEvent,
+  updateEvent,
+  deleteEvent,
+  updateTag,
+  deleteTag,
+  createCategory,
+  updateCategory,
+  deleteCategory,
+  createGroup,
+  updateGroup,
+  deleteGroup,
+}
+
+/// What an op is about. A server id only names one thing within one of
+/// these (an event and a tag may both be number 12); the temporary ids are
+/// unique across all of them, drawn from one counter.
+enum OpEntity { event, tag, category, group }
+
+extension OpKindTraits on OpKind {
+  OpEntity get entity => switch (this) {
+        OpKind.createEvent ||
+        OpKind.updateEvent ||
+        OpKind.deleteEvent =>
+          OpEntity.event,
+        OpKind.createTag ||
+        OpKind.updateTag ||
+        OpKind.deleteTag =>
+          OpEntity.tag,
+        OpKind.createCategory ||
+        OpKind.updateCategory ||
+        OpKind.deleteCategory =>
+          OpEntity.category,
+        OpKind.createGroup ||
+        OpKind.updateGroup ||
+        OpKind.deleteGroup =>
+          OpEntity.group,
+      };
+
+  bool get isCreate =>
+      this == OpKind.createEvent ||
+      this == OpKind.createTag ||
+      this == OpKind.createCategory ||
+      this == OpKind.createGroup;
+
+  bool get isUpdate =>
+      this == OpKind.updateEvent ||
+      this == OpKind.updateTag ||
+      this == OpKind.updateCategory ||
+      this == OpKind.updateGroup;
+}
 
 /// Why an op is held back until the user decides (see the pending changes
 /// sheet). A parked op is never sent and never dropped on its own.
@@ -18,6 +69,10 @@ enum ParkReason {
 
   /// It uses a tag whose own creation could not be sent.
   missingTag,
+
+  /// It needs a category or a tag group whose own creation could not be
+  /// sent.
+  missingParent,
 
   /// The account's end-to-end encryption changed since the op was written:
   /// its payload is encoded for the old state.
@@ -36,15 +91,19 @@ class OutboxOp {
   final String id;
   final OpKind kind;
 
-  /// The event or tag the op is about. Negative: created offline, not on the
-  /// server yet (replaced by the real id once its creation is sent).
+  /// The event, tag, category or group the op is about ([OpKindTraits.entity]
+  /// says which). Negative: created offline, not on the server yet (replaced
+  /// by the real id once its creation is sent).
   int target;
 
-  /// The request body: event fields with `tagsId`, or tag fields.
+  /// The request body: event fields with `tagsId`, tag fields, category
+  /// fields, or group fields with `members`. A deletion keeps there what the
+  /// screens need to show it (the parent of a deleted synonym, whether a
+  /// category's tags move to Others); the engine builds its request itself.
   Map<String, dynamic> body;
 
-  /// For an update or a delete of an event the server already had: the event
-  /// as the server last sent it before the first offline change, to tell what
+  /// For an update or a delete of something the server already had: it as
+  /// the server last sent it before the first offline change, to tell what
   /// changed on this device from what changed elsewhere.
   final Map<String, dynamic>? base;
 
@@ -94,12 +153,28 @@ class OutboxOp {
             : ParkReason.values.byName(json['parked'] as String),
       );
 
-  bool get createsSomething =>
-      kind == OpKind.createTag || kind == OpKind.createEvent;
+  bool get createsSomething => kind.isCreate;
 
-  /// Temporary tag ids this op needs on the server first.
-  Iterable<int> get tagDependencies =>
-      ((body['tagsId'] as List?) ?? const []).cast<int>().where((id) => id < 0);
+  /// Temporary tag ids this op needs on the server first: the tags of an
+  /// event, the members of a group, the main tag of a synonym.
+  Iterable<int> get tagDependencies sync* {
+    for (final key in const ['tagsId', 'members']) {
+      for (final id in ((body[key] as List?) ?? const []).cast<int>()) {
+        if (id < 0) yield id;
+      }
+    }
+    final parent = body['idParentTag'];
+    if (parent is int && parent < 0) yield parent;
+  }
+
+  /// Every temporary id this op needs on the server first: its tags, its
+  /// category, and what it changes when that was created offline.
+  Iterable<int> get dependencies sync* {
+    if (!kind.isCreate && target < 0) yield target;
+    yield* tagDependencies;
+    final category = body['idCategory'];
+    if (category is int && category < 0) yield category;
+  }
 }
 
 /// How many changes wait, and how many of them are parked.
@@ -129,9 +204,14 @@ class Outbox {
   List<OutboxOp>? _ops;
   int _nextTempId = -2;
 
-  /// Temporary ids already replaced by server ids: a screen opened on an
-  /// event created offline may still hold its temporary id.
+  /// Temporary ids already replaced by server ids: a screen opened on
+  /// something created offline may still hold its temporary id.
   final Map<int, int> _remap = {};
+
+  /// Events deleted elsewhere and created again by an edit made here: the
+  /// old server id points at the new one. Kept apart from [_remap] because a
+  /// server id only names an event among events.
+  final Map<int, int> _eventRemap = {};
 
   String? _sending;
   Future<void> _tail = Future.value();
@@ -221,100 +301,232 @@ class Outbox {
     }
   }
 
-  /// The server id an id created offline became, or [id] itself.
-  int resolve(int id) => _remap[id] ?? id;
+  /// The server id a tag, category or group created offline became, or [id]
+  /// itself. Not for events: see [resolveEvent].
+  int resolve(int id) => id < 0 ? (_remap[id] ?? id) : id;
+
+  /// The server id of event [id]: the one its offline creation got, or the
+  /// one it was created again under after a deletion elsewhere.
+  int resolveEvent(int id) =>
+      id < 0 ? (_remap[id] ?? id) : (_eventRemap[id] ?? id);
 
   int _newTempId() => _nextTempId--;
+
+  /// Queues a creation and returns its temporary id. [clientId]: the one a
+  /// direct attempt already used (its answer may have been lost).
+  Future<int> _create(OpKind kind, Map<String, dynamic> body,
+          {String? clientId, String? keyCheck, String? generation}) =>
+      _mutate((ops) {
+        final id = _newTempId();
+        _add(
+            ops,
+            OutboxOp(
+                id: clientId ?? newClientId(),
+                kind: kind,
+                target: id,
+                body: body,
+                keyCheck: keyCheck,
+                generation: generation));
+        return id;
+      });
+
+  /// Adds [op], parked from the start when something it needs is held back
+  /// already: sent, it could only fail.
+  void _add(List<OutboxOp> ops, OutboxOp op) {
+    final blocked = <int, ParkReason>{
+      for (final other in ops)
+        if (other.parked != null && other.kind.isCreate)
+          other.target: other.parked!,
+    };
+    op.parked = _blockedReason(op, blocked);
+    ops.add(op);
+  }
+
+  /// Why [op] cannot go while the creations in [blocked] are held back:
+  /// the reason of what it changes, a missing tag, or a missing category or
+  /// group. Null when it needs none of them.
+  ParkReason? _blockedReason(OutboxOp op, Map<int, ParkReason> blocked) {
+    if (!op.kind.isCreate && blocked.containsKey(op.target)) {
+      return blocked[op.target];
+    }
+    if (op.tagDependencies.any(blocked.containsKey)) {
+      return ParkReason.missingTag;
+    }
+    if (op.dependencies.any(blocked.containsKey)) {
+      return ParkReason.missingParent;
+    }
+    return null;
+  }
 
   /// Queues the creation of a tag and returns its temporary id.
   Future<int> createTag(Map<String, dynamic> body,
           {String? keyCheck, String? generation}) =>
-      _mutate((ops) {
-        final id = _newTempId();
-        ops.add(OutboxOp(
-            id: newClientId(),
-            kind: OpKind.createTag,
-            target: id,
-            body: body,
-            keyCheck: keyCheck,
-            generation: generation));
-        return id;
-      });
+      _create(OpKind.createTag, body,
+          keyCheck: keyCheck, generation: generation);
 
   /// Queues the creation of an event and returns its temporary id. [clientId]:
   /// the one a direct attempt already used (its answer may have been lost).
   Future<int> createEvent(Map<String, dynamic> body,
           {String? clientId, String? keyCheck, String? generation}) =>
-      _mutate((ops) {
-        final id = _newTempId();
-        ops.add(OutboxOp(
-            id: clientId ?? newClientId(),
-            kind: OpKind.createEvent,
-            target: id,
-            body: body,
-            keyCheck: keyCheck,
-            generation: generation));
-        return id;
-      });
+      _create(OpKind.createEvent, body,
+          clientId: clientId, keyCheck: keyCheck, generation: generation);
 
-  /// Queues a full-state update of event [id]. [base]: the event as the server
-  /// last sent it (ignored when an earlier change of this event waits: its
-  /// base is the one that counts).
-  Future<void> updateEvent(int id, Map<String, dynamic> body,
+  /// Queues the creation of a category and returns its temporary id. The op
+  /// id is its `clientId`, so a replay after a lost answer finds the first
+  /// one.
+  Future<int> createCategory(Map<String, dynamic> body,
+          {String? clientId, String? keyCheck, String? generation}) =>
+      _create(OpKind.createCategory, body,
+          clientId: clientId, keyCheck: keyCheck, generation: generation);
+
+  /// Queues the creation of a tag group and returns its temporary id.
+  Future<int> createGroup(Map<String, dynamic> body,
+          {String? keyCheck, String? generation}) =>
+      _create(OpKind.createGroup, body,
+          keyCheck: keyCheck, generation: generation);
+
+  /// Queues a full-state update of [id]. [base]: it as the server last sent
+  /// it (ignored when an earlier change of it waits: its base is the one
+  /// that counts).
+  Future<void> _update(OpKind kind, int id, Map<String, dynamic> body,
           {Map<String, dynamic>? base, String? keyCheck, String? generation}) =>
       _mutate((ops) {
-        final target = resolve(id);
+        final entity = kind.entity;
+        final target =
+            entity == OpEntity.event ? resolveEvent(id) : resolve(id);
         for (final op in ops) {
-          if (op.target != target || op.id == _sending || op.parked != null) {
+          if (op.kind.entity != entity ||
+              op.target != target ||
+              op.id == _sending ||
+              op.parked != null) {
             continue;
           }
-          if (op.kind == OpKind.createEvent || op.kind == OpKind.updateEvent) {
+          if (op.kind.isCreate || op.kind.isUpdate) {
             // Not sent yet: the creation (or the earlier edit) simply carries
             // the new state.
             op.body = {...op.body, ...body};
             return;
           }
         }
-        ops.add(OutboxOp(
-            id: newClientId(),
-            kind: OpKind.updateEvent,
-            target: target,
-            body: body,
-            base: _earliestBase(ops, target) ?? base,
-            keyCheck: keyCheck,
-            generation: generation));
+        _add(
+            ops,
+            OutboxOp(
+                id: newClientId(),
+                kind: kind,
+                target: target,
+                body: body,
+                base: _earliestBase(ops, target, entity) ?? base,
+                keyCheck: keyCheck,
+                generation: generation));
       });
+
+  /// Queues a full-state update of event [id].
+  Future<void> updateEvent(int id, Map<String, dynamic> body,
+          {Map<String, dynamic>? base, String? keyCheck, String? generation}) =>
+      _update(OpKind.updateEvent, id, body,
+          base: base, keyCheck: keyCheck, generation: generation);
+
+  /// Queues a full-state update of tag [id]: name, category and main tag,
+  /// `idParentTag` null for a main tag.
+  Future<void> updateTag(int id, Map<String, dynamic> body,
+          {Map<String, dynamic>? base, String? keyCheck, String? generation}) =>
+      _update(OpKind.updateTag, id, body,
+          base: base, keyCheck: keyCheck, generation: generation);
+
+  /// Queues a full-state update of category [id]: its name and color.
+  Future<void> updateCategory(int id, Map<String, dynamic> body,
+          {Map<String, dynamic>? base, String? keyCheck, String? generation}) =>
+      _update(OpKind.updateCategory, id, body,
+          base: base, keyCheck: keyCheck, generation: generation);
+
+  /// Queues a full-state update of tag group [id]: its name and members.
+  Future<void> updateGroup(int id, Map<String, dynamic> body,
+          {Map<String, dynamic>? base, String? keyCheck, String? generation}) =>
+      _update(OpKind.updateGroup, id, body,
+          base: base, keyCheck: keyCheck, generation: generation);
 
   /// Queues the deletion of event [id]. An event created offline and not
   /// sent yet just disappears from the outbox, with its pending edits.
   Future<void> deleteEvent(int id,
           {Map<String, dynamic>? base, String? keyCheck, String? generation}) =>
       _mutate((ops) {
-        final target = resolve(id);
-        final earliestBase = _earliestBase(ops, target) ?? base;
-        final createWaits = ops.any((op) =>
+        final target = resolveEvent(id);
+        final earliestBase = _earliestBase(ops, target, OpEntity.event) ?? base;
+        bool isThisEvent(OutboxOp op) =>
+            op.kind.entity == OpEntity.event &&
             op.target == target &&
-            op.kind == OpKind.createEvent &&
-            op.id != _sending);
+            op.id != _sending;
+        final createWaits =
+            ops.any((op) => isThisEvent(op) && op.kind == OpKind.createEvent);
         // Every waiting change of this event goes: the deletion replaces it.
-        ops.removeWhere((op) =>
-            op.target == target &&
-            op.id != _sending &&
-            op.kind != OpKind.createTag);
+        ops.removeWhere(isThisEvent);
         if (createWaits) return;
-        ops.add(OutboxOp(
-            id: newClientId(),
-            kind: OpKind.deleteEvent,
-            target: target,
-            body: const {},
-            base: earliestBase,
-            keyCheck: keyCheck,
-            generation: generation));
+        _add(
+            ops,
+            OutboxOp(
+                id: newClientId(),
+                kind: OpKind.deleteEvent,
+                target: target,
+                body: const {},
+                base: earliestBase,
+                keyCheck: keyCheck,
+                generation: generation));
       });
 
-  Map<String, dynamic>? _earliestBase(List<OutboxOp> ops, int target) {
+  /// Queues the deletion of a tag, category or group. Its waiting edits go:
+  /// the deletion replaces them. One created offline is still created first,
+  /// then deleted: what was made with it meanwhile (tags in a category,
+  /// events using a tag) gets the server's treatment of the deletion.
+  Future<void> _delete(OpKind kind, int id, Map<String, dynamic> body,
+          {Map<String, dynamic>? base, String? keyCheck, String? generation}) =>
+      _mutate((ops) {
+        final entity = kind.entity;
+        final target = resolve(id);
+        final earliestBase = _earliestBase(ops, target, entity) ?? base;
+        ops.removeWhere((op) =>
+            op.kind.entity == entity &&
+            op.kind.isUpdate &&
+            op.target == target &&
+            op.id != _sending &&
+            op.parked == null);
+        _add(
+            ops,
+            OutboxOp(
+                id: newClientId(),
+                kind: kind,
+                target: target,
+                body: body,
+                base: earliestBase,
+                keyCheck: keyCheck,
+                generation: generation));
+      });
+
+  /// Queues the deletion of tag [id], which keeps its events (a deletion
+  /// with the events is split by the caller: see DeleteEventsOfflineFailure).
+  /// [body] carries `idParentTag`: a deleted synonym hands its events to it.
+  Future<void> deleteTag(int id, Map<String, dynamic> body,
+          {Map<String, dynamic>? base, String? keyCheck, String? generation}) =>
+      _delete(OpKind.deleteTag, id, body,
+          base: base, keyCheck: keyCheck, generation: generation);
+
+  /// Queues the deletion of category [id]; [body] carries `moveTags`.
+  Future<void> deleteCategory(int id, Map<String, dynamic> body,
+          {Map<String, dynamic>? base, String? keyCheck, String? generation}) =>
+      _delete(OpKind.deleteCategory, id, body,
+          base: base, keyCheck: keyCheck, generation: generation);
+
+  /// Queues the deletion of tag group [id] (its tags and their events stay).
+  Future<void> deleteGroup(int id,
+          {Map<String, dynamic>? base, String? keyCheck, String? generation}) =>
+      _delete(OpKind.deleteGroup, id, const {},
+          base: base, keyCheck: keyCheck, generation: generation);
+
+  Map<String, dynamic>? _earliestBase(
+      List<OutboxOp> ops, int target, OpEntity entity) {
     for (final op in ops) {
-      if (op.target == target && op.base != null) return op.base;
+      if (op.kind.entity == entity && op.target == target && op.base != null) {
+        return op.base;
+      }
     }
     return null;
   }
@@ -340,45 +552,66 @@ class Outbox {
         _sending = null;
         ops.removeWhere((candidate) => candidate.id == op.id);
         if (serverId != null && op.target != serverId) {
-          _rewrite(ops, op.target, serverId);
+          _rewrite(ops, op.target, serverId, op.kind.entity);
         }
       });
 
-  /// Points every waiting op at [to] instead of [from] (a creation got its
-  /// server id, or an event deleted elsewhere was created again).
-  void _rewrite(List<OutboxOp> ops, int from, int to) {
-    _remap[from] = to;
-    _remap.updateAll((_, value) => value == from ? to : value);
+  /// Points every waiting op at [to] instead of [from]: a creation got its
+  /// server id (a temporary id, unique, rewritten wherever it is used), or
+  /// an event deleted elsewhere was created again (a server id, rewritten in
+  /// the event ops only).
+  void _rewrite(List<OutboxOp> ops, int from, int to, OpEntity entity) {
+    if (from < 0) {
+      _remap[from] = to;
+    } else {
+      _eventRemap[from] = to;
+      _eventRemap.updateAll((_, value) => value == from ? to : value);
+    }
     for (final op in ops) {
-      if (op.target == from) op.target = to;
-      final tags = op.body['tagsId'];
-      if (tags is List && tags.contains(from)) {
-        op.body = {
-          ...op.body,
-          'tagsId': [for (final id in tags) id == from ? to : id],
-        };
+      if (op.target == from && (from < 0 || op.kind.entity == entity)) {
+        op.target = to;
       }
+      if (from < 0) op.body = _rewriteBody(op.body, from, to);
     }
   }
 
+  /// [body] with the temporary id [from] replaced by [to] wherever it is
+  /// used: the tags of an event, the members of a group, the main tag of a
+  /// synonym, the category of a tag or a group.
+  static Map<String, dynamic> _rewriteBody(
+      Map<String, dynamic> body, int from, int to) {
+    var result = body;
+    for (final key in const ['tagsId', 'members']) {
+      final ids = result[key];
+      if (ids is List && ids.contains(from)) {
+        result = {
+          ...result,
+          key: [for (final id in ids) id == from ? to : id],
+        };
+      }
+    }
+    for (final key in const ['idParentTag', 'idCategory']) {
+      if (result[key] == from) result = {...result, key: to};
+    }
+    return result;
+  }
+
   /// Holds [op] back for [reason], and with it every waiting op that needs
-  /// what it creates.
+  /// what it creates (a change of it keeps its reason; something using a
+  /// tag it creates is a missing tag, anything else a missing parent).
   Future<void> park(OutboxOp op, ParkReason reason) => _mutate((ops) {
         _sending = null;
-        final blocked = <int>{};
+        final blocked = <int, ParkReason>{};
         for (final candidate in ops) {
-          final dependsOnBlocked = blocked.contains(candidate.target) ||
-              candidate.tagDependencies.any(blocked.contains);
+          ParkReason? why;
           if (candidate.id == op.id) {
-            candidate.parked = reason;
-            if (candidate.createsSomething) blocked.add(candidate.target);
-          } else if (dependsOnBlocked && candidate.parked == null) {
-            candidate.parked = candidate.kind == OpKind.createTag ||
-                    candidate.tagDependencies.any(blocked.contains)
-                ? ParkReason.missingTag
-                : reason;
-            if (candidate.createsSomething) blocked.add(candidate.target);
+            why = reason;
+          } else if (candidate.parked == null) {
+            why = _blockedReason(candidate, blocked);
           }
+          if (why == null) continue;
+          candidate.parked = why;
+          if (candidate.kind.isCreate) blocked[candidate.target] = why;
         }
       });
 
@@ -403,16 +636,21 @@ class Outbox {
       });
 
   /// Drops [opId] for good (the user discarded it), with the ops that need
-  /// what it creates.
+  /// what it creates — and, in turn, what needs theirs.
   Future<void> discard(String opId) => _mutate((ops) {
         final gone = <int>{};
+        final kept = <OutboxOp>[];
+        // In order: what an op needs was queued before it.
         for (final op in ops) {
-          if (op.id == opId && op.createsSomething) gone.add(op.target);
+          if (op.id == opId || op.dependencies.any(gone.contains)) {
+            if (op.kind.isCreate) gone.add(op.target);
+          } else {
+            kept.add(op);
+          }
         }
-        ops.removeWhere((op) =>
-            op.id == opId ||
-            gone.contains(op.target) ||
-            op.tagDependencies.any(gone.contains));
+        ops
+          ..clear()
+          ..addAll(kept);
       });
 
   /// Drops every waiting change (logout confirmed by the user).
@@ -424,6 +662,7 @@ class Outbox {
     _ops = null;
     _sending = null;
     _remap.clear();
+    _eventRemap.clear();
     _nextTempId = -2;
     _counts.add(const OutboxCounts(0, 0));
   }

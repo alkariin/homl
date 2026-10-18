@@ -1,8 +1,10 @@
 import 'package:dio/dio.dart';
 import 'package:homl/data/models/usage.dart';
 import 'package:homl/data/repositories/api.dart';
+import 'package:homl/data/store/local_store.dart';
 import 'package:homl/data/sync/offline_writes.dart';
 import 'package:homl/data/sync/outbox.dart';
+import 'package:homl/data/sync/projection.dart';
 import 'package:homl/data/sync/sync_engine.dart';
 import 'package:homl/helpers/e2ee.dart';
 
@@ -19,10 +21,6 @@ class TagsBlacklistedFailure implements Exception {}
 /// Exception thrown when a write would put two tags of the same name in one
 /// category (names are unique per category). Nothing was written.
 class TagNameConflictFailure implements Exception {}
-
-/// Exception thrown when a tag created offline is renamed, moved or deleted
-/// before the server has it: only its creation can wait in the outbox.
-class TagPendingFailure implements Exception {}
 
 class TagsRepository {
   final Api? _injectedApi;
@@ -41,8 +39,9 @@ class TagsRepository {
       {int? idParentTag, bool isDateTag = false}) async {
     final body = {
       ...await _outgoingTag(text, isDateTag: isDateTag),
-      'idCategory': idCategory,
-      if (idParentTag != null) 'idParentTag': Outbox.instance.resolve(idParentTag),
+      'idCategory': Outbox.instance.resolve(idCategory),
+      if (idParentTag != null)
+        'idParentTag': Outbox.instance.resolve(idParentTag),
     };
 
     Future<int> queue() async {
@@ -58,7 +57,10 @@ class TagsRepository {
       return id;
     }
 
-    if ((body['idParentTag'] as int? ?? 0) < 0 ||
+    // A category or a main tag created offline: the server does not have it
+    // yet, the tag waits behind it.
+    if ((body['idCategory'] as int) < 0 ||
+        (body['idParentTag'] as int? ?? 0) < 0 ||
         await Outbox.instance.shouldQueue()) {
       return queue();
     }
@@ -79,29 +81,60 @@ class TagsRepository {
     return response.data!['id'] as int;
   }
 
-  /// The server id of [id], or [TagPendingFailure] for a tag created offline
-  /// that the server does not have yet.
-  int _onServer(int id) {
-    final resolved = Outbox.instance.resolve(id);
-    if (resolved < 0) throw TagPendingFailure();
-    return resolved;
+  /// Saves a change in the outbox and lets the engine try to send it.
+  Future<WriteOutcome> _queue(
+      Future<void> Function(({String? keyCheck, String? generation}) stamps)
+          enqueue) async {
+    try {
+      await enqueue(await writeStamps());
+    } catch (_) {
+      // Not even saved on the device: the write failed.
+      throw TagsRequestFailure();
+    }
+    SyncEngine.instance.kick();
+    return WriteOutcome.queued;
   }
 
-  /// Full-state update: omitting [idParentTag] detaches the tag from its
-  /// parent (it becomes a main tag again).
-  Future<void> updateTag(int id, String text, int idCategory,
+  /// Full-state update: a null [idParentTag] detaches the tag from its
+  /// parent (it becomes a main tag again). Waits in the outbox when the
+  /// server is out of reach, or when it needs something created offline.
+  Future<WriteOutcome> updateTag(int id, String text, int idCategory,
       {int? idParentTag}) async {
-    final target = _onServer(id);
-    final parent = idParentTag == null ? null : _onServer(idParentTag);
+    final target = Outbox.instance.resolve(id);
+    final body = {
+      ...await _outgoingTag(text),
+      'idCategory': Outbox.instance.resolve(idCategory),
+      // Explicit, even null: the outbox folds edits by merging bodies, and
+      // a missing key would keep the main tag of an earlier state.
+      'idParentTag':
+          idParentTag == null ? null : Outbox.instance.resolve(idParentTag),
+    };
+
+    Future<WriteOutcome> queue() async {
+      final base = target > 0 ? await serverTag(target) : null;
+      return _queue((stamps) => Outbox.instance.updateTag(target, body,
+          base: base,
+          keyCheck: stamps.keyCheck,
+          generation: stamps.generation));
+    }
+
+    if (target < 0 ||
+        (body['idCategory'] as int) < 0 ||
+        ((body['idParentTag'] as int?) ?? 0) < 0 ||
+        await Outbox.instance.shouldQueue()) {
+      return queue();
+    }
+
     try {
       await apiInstance.api.patch<void>('/tags/$target', data: {
-        ...await _outgoingTag(text),
-        'idCategory': idCategory,
-        if (parent != null) 'idParentTag': parent,
+        for (final entry in body.entries)
+          if (entry.value != null) entry.key: entry.value,
       });
     } on DioException catch (err) {
+      if (Api.isUnreachable(err)) return queue();
       throw _tagFailure(err);
     }
+    return WriteOutcome.sent;
   }
 
   /// Tells a taken tag name apart from any other failure. Keyed off the
@@ -132,22 +165,61 @@ class TagsRepository {
   }
 
   /// Deleting a synonym repoints its events to the main tag. Deleting a main
-  /// tag deletes its whole synonym group; [deleteEvents] also deletes the
-  /// events whose only non-date tags belonged to the group.
-  Future<void> deleteTag(int id, {bool deleteEvents = false}) async {
-    final target = _onServer(id);
+  /// tag deletes its whole synonym group; [deleteEvents] also deletes every
+  /// event tagged with the group.
+  ///
+  /// When it has to wait in the outbox, a deletion with [deleteEvents] is
+  /// refused with [DeleteEventsOfflineFailure] before anything is queued:
+  /// the caller deletes the events it knows, then the tag alone.
+  Future<WriteOutcome> deleteTag(int id, {bool deleteEvents = false}) async {
+    final target = Outbox.instance.resolve(id);
+
+    Future<WriteOutcome> queue() async {
+      if (deleteEvents) throw DeleteEventsOfflineFailure();
+      final base = target > 0 ? await serverTag(target) : null;
+      // The main tag the screens hand a deleted synonym's events to.
+      final parent = (await _shownTag(target))?['idParentTag'];
+      return _queue((stamps) => Outbox.instance.deleteTag(
+          target, {'idParentTag': parent},
+          base: base,
+          keyCheck: stamps.keyCheck,
+          generation: stamps.generation));
+    }
+
+    if (target < 0 || await Outbox.instance.shouldQueue()) return queue();
+
     try {
       await apiInstance.api.delete<void>('/tags/$target', data: {
         'deleteEvents': deleteEvents,
       });
-    } on DioException catch (_) {
+    } on DioException catch (err) {
+      if (Api.isUnreachable(err)) return queue();
       throw TagsRequestFailure();
     }
+    return WriteOutcome.sent;
   }
 
-  /// Event counts for the tag's synonym group, for the delete dialog.
+  /// Tag [id] as the screens show it: the saved categories with the waiting
+  /// changes applied.
+  Future<Map<String, dynamic>?> _shownTag(int id) async {
+    final stored = await LocalStore.instance.load(StoreEntry.categories);
+    final payload = stored?.payload;
+    final categories = projectCategories(
+        payload is List ? payload : const [], await Outbox.instance.ops());
+    for (final category in categories) {
+      for (final tag in category['tags'] as List) {
+        if ((tag as Map)['id'] == id) return Map<String, dynamic>.from(tag);
+      }
+    }
+    return null;
+  }
+
+  /// Event counts for the tag's synonym group, for the delete dialog. Only
+  /// for a tag the server has: offline, the counts come from the events on
+  /// the device (HomeCubit.fetchTagUsage).
   Future<TagUsage> getTagUsage(int id) async {
-    final target = _onServer(id);
+    final target = Outbox.instance.resolve(id);
+    if (target < 0) throw TagsRequestFailure();
     try {
       final response = await apiInstance.api
           .get<Map<String, dynamic>>('/tags/$target/usage');
