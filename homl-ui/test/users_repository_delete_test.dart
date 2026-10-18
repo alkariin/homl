@@ -125,7 +125,10 @@ void main() {
     expect(t.adapter.calls, 1);
     expect(t.adapter.lastBody, {'password': 'Delete1234!'});
     // The E2EE seed and the PIN keypair are the ones logout keeps on purpose.
-    expect(storage, isEmpty);
+    // The server address stays: a setting of the device, not of the account.
+    expect(storage, {
+      LocalStorageKey.serverUrl.name: 'value-${LocalStorageKey.serverUrl.name}'
+    });
     expect(t.api.accessToken, isNull);
     expect(statuses, contains(AuthenticationStatus.accountDeleted));
 

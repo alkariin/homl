@@ -194,6 +194,45 @@ class AppLocalizationsFr extends AppLocalizations {
       'Votre PIN a été bloqué après trop de tentatives. Veuillez vous connecter avec votre mot de passe.';
 
   @override
+  String get login_server => 'Serveur';
+
+  @override
+  String get login_serverChoose => 'Choisir un serveur';
+
+  @override
+  String get login_serverLabel => 'Adresse du serveur';
+
+  @override
+  String get login_serverHint => 'ex. http://192.168.1.10:8090';
+
+  @override
+  String get login_serverInvalid =>
+      'Saisissez une adresse comme http://192.168.1.10:8090';
+
+  @override
+  String get login_serverNoAnswer => 'Aucun serveur ne répond à cette adresse.';
+
+  @override
+  String get login_serverNotHoml =>
+      'Quelque chose répond à cette adresse, mais ce n\'est pas un serveur homl.';
+
+  @override
+  String get login_serverUntrusted =>
+      'Le certificat de ce serveur n\'est pas reconnu par l\'appareil.';
+
+  @override
+  String get login_serverCleartext =>
+      'Connexion non chiffrée : à utiliser uniquement sur votre réseau domestique.';
+
+  @override
+  String login_serverConnected(String version) {
+    return 'Connecté à homl $version';
+  }
+
+  @override
+  String get login_serverConnectedNoVersion => 'Connecté au serveur';
+
+  @override
   String get forgot_title => 'Réinitialiser le mot de passe';
 
   @override

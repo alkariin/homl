@@ -190,6 +190,45 @@ class AppLocalizationsEn extends AppLocalizations {
       'Your PIN has been locked after too many attempts. Please log in with your password.';
 
   @override
+  String get login_server => 'Server';
+
+  @override
+  String get login_serverChoose => 'Choose a server';
+
+  @override
+  String get login_serverLabel => 'Server address';
+
+  @override
+  String get login_serverHint => 'e.g. http://192.168.1.10:8090';
+
+  @override
+  String get login_serverInvalid =>
+      'Enter an address such as http://192.168.1.10:8090';
+
+  @override
+  String get login_serverNoAnswer => 'No server answers at this address.';
+
+  @override
+  String get login_serverNotHoml =>
+      'Something answers at this address, but it is not a homl server.';
+
+  @override
+  String get login_serverUntrusted =>
+      'This server\'s certificate is not trusted by the device.';
+
+  @override
+  String get login_serverCleartext =>
+      'Unencrypted connection: use it on your home network only.';
+
+  @override
+  String login_serverConnected(String version) {
+    return 'Connected to homl $version';
+  }
+
+  @override
+  String get login_serverConnectedNoVersion => 'Connected to the server';
+
+  @override
   String get forgot_title => 'Reset password';
 
   @override

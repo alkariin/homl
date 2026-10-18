@@ -30,6 +30,10 @@ enum LocalStorageKey {
   /// preference of this device, kept across logouts.
   themeMode,
 
+  /// The API base URL picked on the login screen (helpers/server_address.dart).
+  /// Kept across logouts and account deletion: the server is still there.
+  serverUrl,
+
   /// 16-byte E2EE seed (base64). Deliberately NOT removed on logout: it must
   /// survive re-logins on the same device — losing it means losing the data.
   /// Account deletion is the one case that wipes it (see [clearAll]): there
@@ -94,10 +98,11 @@ class LocalStorageManager {
   /// Removes every key this app owns, and the [LocalStore]. Account deletion
   /// only: unlike logout it also drops [LocalStorageKey.e2eeMasterKey], the
   /// PIN keypair and the fingerprint flag, because the account they unlock no
-  /// longer exists.
+  /// longer exists. The server address stays: the server does.
   static Future<void> clearAll() async {
     await LocalStore.instance.wipe();
     for (final key in LocalStorageKey.values) {
+      if (key == LocalStorageKey.serverUrl) continue;
       await remove(key);
     }
   }

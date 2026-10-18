@@ -3,11 +3,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:homl/components/button.dart';
 import 'package:homl/components/input.dart';
+import 'package:homl/helpers/server_address.dart';
 import 'package:homl/helpers/toast.dart';
 import 'package:homl/helpers/validations.dart';
 import 'package:homl/l10n/app_localizations.dart';
 import 'package:homl/pages/forgot_password/view/forgot_password.dart';
 import 'package:homl/pages/login/bloc/login_cubit.dart';
+import 'package:homl/pages/login/view/server_dialog.dart';
 import 'package:homl/pages/register/view/register.dart';
 
 class LoginPage extends StatelessWidget {
@@ -50,6 +52,28 @@ class _LoginViewState extends State<LoginView> {
         cubit.submit();
       }
     }
+  }
+
+  /// Opens the server dialog; says which server answered once it is kept.
+  Future<ServerCheck?> _pickServer() async {
+    final localization = AppLocalizations.of(context)!;
+    final check = await ServerDialog.show(context);
+    if (!mounted || check == null) return check;
+    // The address shown under the form.
+    setState(() {});
+    showToast(
+        context,
+        check.version == null
+            ? localization.login_serverConnectedNoVersion
+            : localization.login_serverConnected(check.version!));
+    return check;
+  }
+
+  /// Runs [action] once there is a server to talk to: a build without a
+  /// default one asks for it first.
+  Future<void> _withServer(VoidCallback action) async {
+    if (!ServerAddress.isSet && await _pickServer() == null) return;
+    if (mounted) action();
   }
 
   @override
@@ -111,19 +135,28 @@ class _LoginViewState extends State<LoginView> {
                           text: localization.login_submit,
                           onPressed: () {
                             if (_formKey.currentState!.validate()) {
-                              context.read<LoginCubit>().submit();
+                              _withServer(
+                                  () => context.read<LoginCubit>().submit());
                             }
                           },
                         ),
                   TextButton(
-                      onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                              builder: (context) => const RegisterPage())),
+                      onPressed: () => _withServer(() => Navigator.of(context)
+                          .push(MaterialPageRoute(
+                              builder: (context) => const RegisterPage()))),
                       child: Text(localization.login_register)),
                   TextButton(
-                      onPressed: () => Navigator.of(context)
-                          .push(ForgotPasswordPage.route()),
-                      child: Text(localization.login_forgotPassword))
+                      onPressed: () => _withServer(() => Navigator.of(context)
+                          .push(ForgotPasswordPage.route())),
+                      child: Text(localization.login_forgotPassword)),
+                  const Padding(padding: EdgeInsets.all(8)),
+                  TextButton.icon(
+                      key: const Key('login_server'),
+                      onPressed: _pickServer,
+                      icon: const Icon(Icons.dns_outlined, size: 18),
+                      label: Text(ServerAddress.isSet
+                          ? displayServerAddress(ServerAddress.current)
+                          : localization.login_serverChoose)),
                 ],
               ),
             ),

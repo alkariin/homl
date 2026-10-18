@@ -16,7 +16,7 @@ enum Reachability {
 
 /// Whether the backend answers, as last observed by the Api.
 ///
-/// A plain singleton that needs no API_BASE_URL, unlike the Api: the cubits
+/// A plain singleton that needs no network stack, unlike the Api: the cubits
 /// read it when a request fails (to say "server unreachable" rather than
 /// "unexpected error") and their tests must be able to build them without
 /// the network stack.

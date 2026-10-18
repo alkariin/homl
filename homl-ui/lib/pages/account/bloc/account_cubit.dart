@@ -21,7 +21,7 @@ class AccountCubit extends Cubit<AccountState> {
 
   /// Both optional so the existing tests keep constructing the cubit with the
   /// users repository only. The E2EE repository is created lazily (it builds
-  /// the Api singleton, which needs API_BASE_URL) so plain account tests do
+  /// the Api singleton, which restores the session) so plain account tests do
   /// not depend on it. Production passes the app-level settings repository so
   /// the settings stream (HomeCubit, SettingsCubit) sees the new E2EE flag.
   final SettingsRepository? settingsRepository;

@@ -424,6 +424,72 @@ abstract class AppLocalizations {
   /// **'Your PIN has been locked after too many attempts. Please log in with your password.'**
   String get login_pinLocked;
 
+  /// No description provided for @login_server.
+  ///
+  /// In en, this message translates to:
+  /// **'Server'**
+  String get login_server;
+
+  /// No description provided for @login_serverChoose.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a server'**
+  String get login_serverChoose;
+
+  /// No description provided for @login_serverLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Server address'**
+  String get login_serverLabel;
+
+  /// No description provided for @login_serverHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. http://192.168.1.10:8090'**
+  String get login_serverHint;
+
+  /// No description provided for @login_serverInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter an address such as http://192.168.1.10:8090'**
+  String get login_serverInvalid;
+
+  /// No description provided for @login_serverNoAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'No server answers at this address.'**
+  String get login_serverNoAnswer;
+
+  /// No description provided for @login_serverNotHoml.
+  ///
+  /// In en, this message translates to:
+  /// **'Something answers at this address, but it is not a homl server.'**
+  String get login_serverNotHoml;
+
+  /// No description provided for @login_serverUntrusted.
+  ///
+  /// In en, this message translates to:
+  /// **'This server\'s certificate is not trusted by the device.'**
+  String get login_serverUntrusted;
+
+  /// No description provided for @login_serverCleartext.
+  ///
+  /// In en, this message translates to:
+  /// **'Unencrypted connection: use it on your home network only.'**
+  String get login_serverCleartext;
+
+  /// No description provided for @login_serverConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected to homl {version}'**
+  String login_serverConnected(String version);
+
+  /// No description provided for @login_serverConnectedNoVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected to the server'**
+  String get login_serverConnectedNoVersion;
+
   /// No description provided for @forgot_title.
   ///
   /// In en, this message translates to:
