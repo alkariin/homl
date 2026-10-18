@@ -98,10 +98,26 @@ type Repository interface {
 	// refresh token is first used, the old one may replay the rotation, which
 	// revokes the pair handed out before: a client that lost the answer still
 	// holds only the old token.
-	RotateSession(ctx context.Context, userID uint64, refreshUuid string, td *TokenDetails) (bool, error)
+	// The device session of refreshUuid carries over to td, renewed with
+	// info.
+	RotateSession(ctx context.Context, userID uint64, refreshUuid string, td *TokenDetails, info SessionInfo) (bool, error)
 	// RevokeAllSessions deletes every live session of the user, so stolen
-	// tokens do not survive a password change or reset.
+	// tokens do not survive a password change or reset; the device sessions
+	// go with them.
 	RevokeAllSessions(ctx context.Context, idUser uint64) error
+	// OpenSession records a new device session around the pair td (a login,
+	// a registration, a password change or reset).
+	OpenSession(ctx context.Context, userID uint64, td *TokenDetails, info SessionInfo) error
+	// ListSessions returns the user's live device sessions, forgetting on
+	// the way the ones whose tokens are gone.
+	ListSessions(ctx context.Context, userID uint64) ([]Session, error)
+	// SessionOfAccess returns the id of the device session an access token
+	// belongs to, "" when none is recorded.
+	SessionOfAccess(ctx context.Context, accessUuid string) (string, error)
+	// RevokeSession signs device session id of the user out: its tokens, and
+	// any rotation still pending on them. False when the user has no such
+	// session.
+	RevokeSession(ctx context.Context, userID uint64, id string) (bool, error)
 	// RefreshSessionExists reports whether a refresh token uuid can still be
 	// used: a live session, or a rotation still pending that it may replay.
 	RefreshSessionExists(ctx context.Context, refreshUuid string) (bool, error)

@@ -108,6 +108,9 @@ func SetupRouter(s *Server, baseUrl string, timeoutDuration time.Duration, isDev
 	g := router.Group(baseUrl)
 	g.Use(MaxBodySize(maxRequestBodyBytes))
 	g.Use(Timeout(timeoutDuration, apperror.NewServiceUnavailable()))
+	// What each request says about its client, for the device session a
+	// login or a refresh records.
+	g.Use(ClientInfo())
 
 	authRequired := TokenAuthMiddleware(s.Auth)
 	// Data routes branch on the user's E2EE mode (docs/e2ee.md): the flag is
@@ -134,6 +137,9 @@ func SetupRouter(s *Server, baseUrl string, timeoutDuration time.Duration, isDev
 	g.POST("/confirmResetPassword", resetLimit, s.User.ConfirmResetPassword)
 	g.POST("/challenge", challengeLimit, s.User.Challenge)
 	g.PUT("/secureAuth", authRequired, s.User.SecureAuth)
+	g.GET("/sessions", authRequired, s.User.ListSessions)
+	g.DELETE("/sessions", authRequired, s.User.RevokeOtherSessions)
+	g.DELETE("/sessions/:id", authRequired, s.User.RevokeSession)
 	// Destructive and password-gated, so it shares the per-IP /login budget: a
 	// leaked access token must not buy unlimited password guesses here.
 	g.DELETE("/account", loginLimit, authRequired, s.User.DeleteAccount)
