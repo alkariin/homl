@@ -946,11 +946,11 @@ abstract class AppLocalizations {
   /// **'Event created'**
   String get insert_eventCreated;
 
-  /// No description provided for @insert_noTagsError.
+  /// No description provided for @insert_emptyError.
   ///
   /// In en, this message translates to:
-  /// **'Add at least one tag'**
-  String get insert_noTagsError;
+  /// **'Add a tag or a description'**
+  String get insert_emptyError;
 
   /// No description provided for @insert_periodSingleDay.
   ///
