@@ -135,13 +135,7 @@ class InsertCubit extends Cubit<InsertState> {
   Future<void> submitEvent(
       List<Category> categories, Map<String, TagView> knownTags) async {
     if (state.status == InsertStatus.submitting) return;
-    // Tags are optional (an event also loses its last one when that tag is
-    // deleted), but an event with neither a tag nor a description says
-    // nothing: one of the two is needed.
-    if (state.tagNames.isEmpty && state.description.trim().isEmpty) {
-      emit(state.copyWith(modal: AppMessage.insertEmpty));
-      return;
-    }
+    // No tag of its own is required: the date tags file every event.
 
     emit(state.copyWith(status: InsertStatus.submitting));
 

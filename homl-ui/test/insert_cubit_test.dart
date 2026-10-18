@@ -7,7 +7,6 @@ import 'package:homl/data/models/tag.dart';
 import 'package:homl/data/repositories/events.repository.dart';
 import 'package:homl/data/sync/offline_writes.dart';
 import 'package:homl/data/repositories/tags.repository.dart';
-import 'package:homl/helpers/app_message.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart' show TagView;
 import 'package:homl/pages/insert/bloc/insert_cubit.dart';
 
@@ -271,36 +270,21 @@ void main() {
         isOngoing: any(named: 'isOngoing'),
         tagsId: any(named: 'tagsId'))).thenAnswer((_) async => WriteOutcome.sent);
 
-    test('a description alone is enough to create an event', () async {
+    test('an event needs no tag of its own, nor a description', () async {
       stubCreate();
       final cubit = InsertCubit(eventsRepository, tagsRepository);
-      cubit.updateDescription('dentist');
 
       await cubit.submitEvent(categories, knownTags);
 
+      // The backend files it under its month and year.
       verify(() => eventsRepository.createEvent(
-          description: 'dentist',
+          description: '',
           date: any(named: 'date'),
           endDate: null,
           isOngoing: false,
           tagsId: [])).called(1);
       expect(cubit.state.status, InsertStatus.success);
-    });
-
-    test('neither a tag nor a description is refused', () async {
-      final cubit = InsertCubit(eventsRepository, tagsRepository);
-      // Blank counts as empty.
-      cubit.updateDescription('   ');
-
-      await cubit.submitEvent(categories, knownTags);
-
-      expect(cubit.state.modal, AppMessage.insertEmpty);
-      verifyNever(() => eventsRepository.createEvent(
-          description: any(named: 'description'),
-          date: any(named: 'date'),
-          endDate: any(named: 'endDate'),
-          isOngoing: any(named: 'isOngoing'),
-          tagsId: any(named: 'tagsId')));
+      expect(cubit.state.modal, isNull);
     });
 
     test('an event left with its date tags alone can still be edited',

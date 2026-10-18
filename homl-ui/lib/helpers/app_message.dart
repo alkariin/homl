@@ -8,7 +8,6 @@ import 'package:homl/l10n/app_localizations.dart';
 /// changes). The views translate the code with the current context.
 enum AppMessage {
   unexpectedError,
-  insertEmpty,
   fingerprintUnavailable,
   pinEnabled,
   pinDisabled,
@@ -58,8 +57,6 @@ extension AppMessageLocalization on AppMessage {
     switch (this) {
       case AppMessage.unexpectedError:
         return localization.global_unexpectedError;
-      case AppMessage.insertEmpty:
-        return localization.insert_emptyError;
       case AppMessage.fingerprintUnavailable:
         return localization.account_fingerprintSwitchError;
       case AppMessage.pinEnabled:
