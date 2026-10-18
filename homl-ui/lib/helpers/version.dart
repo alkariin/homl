@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 /// Where the backend's `/healthz` lives, derived from the API base URL.
 ///
 /// The Go router mounts `/healthz` at the server root and the API under
@@ -16,4 +18,21 @@ String healthzUrl(String apiBaseUrl) {
   return uri
       .replace(path: '$path/healthz', query: null, fragment: null)
       .toString();
+}
+
+/// How the app names itself to the server — its platform and version,
+/// "android 0.5.0" — sent with every request (the `X-Homl-Client` header):
+/// the server shows it in the list of signed-in devices
+/// (homl-web/docs/auth-flows.md, "Signed-in devices"). Nothing else about the
+/// device is sent. [version] null (unreadable) leaves the platform alone.
+String clientLabel(
+    {required bool isWeb, required TargetPlatform platform, String? version}) {
+  final name = isWeb
+      ? 'web'
+      : switch (platform) {
+          TargetPlatform.iOS => 'ios',
+          TargetPlatform.macOS => 'macos',
+          _ => platform.name,
+        };
+  return version == null || version.isEmpty ? name : '$name $version';
 }
