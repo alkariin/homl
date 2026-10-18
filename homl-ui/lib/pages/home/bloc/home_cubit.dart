@@ -19,6 +19,7 @@ import 'package:homl/data/sync/sync_engine.dart';
 import 'package:homl/helpers/app_message.dart';
 import 'package:homl/helpers/categories.dart';
 import 'package:homl/helpers/colors.dart';
+import 'package:homl/helpers/local_usage.dart';
 import 'package:homl/helpers/server_reachability.dart';
 import 'package:rxdart/rxdart.dart';
 
@@ -86,11 +87,13 @@ class HomeCubit extends Cubit<HomeState> {
         ? AppMessage.syncParked
         : report.restored > 0
             ? AppMessage.syncRestored
-            : report.kept > 0
-                ? AppMessage.syncKept
-                : report.conflicts > 0
-                    ? AppMessage.syncConflicts
-                    : AppMessage.syncSent;
+            : report.dropped > 0
+                ? AppMessage.syncDropped
+                : report.kept > 0
+                    ? AppMessage.syncKept
+                    : report.conflicts > 0
+                        ? AppMessage.syncConflicts
+                        : AppMessage.syncSent;
     emit(state.copyWith(modal: message));
   }
 
@@ -249,33 +252,69 @@ class HomeCubit extends Cubit<HomeState> {
     }
   }
 
+  /// The server is out of reach, or changes made offline still wait: what
+  /// it would answer is not what the screens show.
+  bool get _changesWait =>
+      ServerReachability.instance.isOffline ||
+      Outbox.instance.currentCounts.pending > 0;
+
+  /// Says that a change waits on this device for the server.
+  void _sayIfQueued(WriteOutcome outcome) {
+    if (outcome == WriteOutcome.queued && !isClosed) {
+      emit(state.copyWith(modal: AppMessage.savedOffline));
+    }
+  }
+
+  /// Offline, a deletion "with its events" deletes the events this device
+  /// shows, one ordinary deletion each (one edited elsewhere meanwhile is
+  /// kept), before the tag or category goes alone: the server must not
+  /// delete events added elsewhere that nobody here has seen
+  /// (homl-web/docs/offline-sync.md).
+  Future<void> _deleteShownEvents(Set<int> tags) async {
+    final ids = [
+      for (final event in state.events)
+        if (event.tags.any((tag) => tags.contains(tag.id))) event.id,
+    ];
+    for (final id in ids) {
+      await eventsRepository.deleteEvent(id, notify: false);
+    }
+    if (ids.isNotEmpty) eventsRepository.notifyChanged();
+  }
+
   Future<void> updateTag(int id, String text, int idCategory,
       {int? idParentTag}) async {
     try {
-      await tagsRepository.updateTag(id, text, idCategory,
+      final outcome = await tagsRepository.updateTag(id, text, idCategory,
           idParentTag: idParentTag);
+      // Event payloads embed the tag's name and category: refresh them too.
+      await refreshEvents();
       await _refreshCategories();
+      _sayIfQueued(outcome);
     } on TagNameConflictFailure {
       // Renaming onto a taken name, or moving into a category that already
       // has one: nothing changed, the tag is still where it was.
       emit(state.copyWith(modal: AppMessage.tagNameConflict));
-    } on TagPendingFailure {
-      emit(state.copyWith(modal: AppMessage.tagPending));
     } catch (_) {
       emit(state.copyWith(modal: AppMessage.requestFailed));
     }
   }
 
-  /// [deleteEvents] only matters for main tags: it also deletes the events
-  /// whose only non-date tags belonged to the deleted synonym group.
+  /// [deleteEvents] only matters for main tags: it also deletes every event
+  /// tagged with the deleted synonym group.
   Future<void> deleteTag(int id, {bool deleteEvents = false}) async {
     try {
-      await tagsRepository.deleteTag(id, deleteEvents: deleteEvents);
+      WriteOutcome outcome;
+      try {
+        outcome =
+            await tagsRepository.deleteTag(id, deleteEvents: deleteEvents);
+      } on DeleteEventsOfflineFailure {
+        await _deleteShownEvents(synonymGroup(state.categories, id));
+        outcome = await tagsRepository.deleteTag(id);
+      }
       // The events changed too: deleted, or stripped of the removed tags.
       await refreshEvents();
       await _refreshCategories();
-    } on TagPendingFailure {
-      emit(state.copyWith(modal: AppMessage.tagPending));
+      _sayIfQueued(outcome);
     } catch (_) {
       emit(state.copyWith(modal: AppMessage.requestFailed));
     }
@@ -283,27 +322,17 @@ class HomeCubit extends Cubit<HomeState> {
 
   /// Moves a main tag (with its synonyms, handled by the backend) to another
   /// category, keeping its name and synonym links.
-  Future<void> moveTag(Tag tag, int idCategory) async {
-    try {
-      await tagsRepository.updateTag(tag.id, tag.tag, idCategory,
-          idParentTag: tag.idParentTag);
-      // Event payloads embed the tag's category: refresh them too.
-      await refreshEvents();
-      await _refreshCategories();
-    } on TagPendingFailure {
-      emit(state.copyWith(modal: AppMessage.tagPending));
-    } catch (_) {
-      emit(state.copyWith(modal: AppMessage.requestFailed));
-    }
-  }
+  Future<void> moveTag(Tag tag, int idCategory) =>
+      updateTag(tag.id, tag.tag, idCategory, idParentTag: tag.idParentTag);
 
-  /// Creates a tag group of [members] (main tags of the category). Online
-  /// only, like the other category changes.
+  /// Creates a tag group of [members] (main tags of the category).
   Future<void> createTagGroup(
       String name, int idCategory, List<int> members) async {
     try {
-      await categoriesRepository.createTagGroup(name, idCategory, members);
+      final id =
+          await categoriesRepository.createTagGroup(name, idCategory, members);
       await _refreshCategories();
+      _sayIfQueued(id < 0 ? WriteOutcome.queued : WriteOutcome.sent);
     } catch (error) {
       emit(state.copyWith(modal: _tagGroupMessage(error)));
     }
@@ -312,8 +341,10 @@ class HomeCubit extends Cubit<HomeState> {
   /// Full-state update of a group: its name and its whole member list.
   Future<void> updateTagGroup(int id, String name, List<int> members) async {
     try {
-      await categoriesRepository.updateTagGroup(id, name, members);
+      final outcome =
+          await categoriesRepository.updateTagGroup(id, name, members);
       await _refreshCategories();
+      _sayIfQueued(outcome);
     } catch (error) {
       emit(state.copyWith(modal: _tagGroupMessage(error)));
     }
@@ -322,8 +353,9 @@ class HomeCubit extends Cubit<HomeState> {
   /// Deletes the group only: its tags and their events stay.
   Future<void> deleteTagGroup(int id) async {
     try {
-      await categoriesRepository.deleteTagGroup(id);
+      final outcome = await categoriesRepository.deleteTagGroup(id);
       await _refreshCategories();
+      _sayIfQueued(outcome);
     } catch (_) {
       emit(state.copyWith(modal: AppMessage.requestFailed));
     }
@@ -332,31 +364,40 @@ class HomeCubit extends Cubit<HomeState> {
   AppMessage _tagGroupMessage(Object error) => switch (error) {
         // Another group of the category has the name: nothing was written.
         TagGroupNameConflictFailure() => AppMessage.tagGroupNameConflict,
-        // A member created offline is not on the server yet.
-        TagPendingFailure() => AppMessage.tagPending,
         _ => AppMessage.requestFailed,
       };
 
   /// Event counts for the tag's synonym group, or null when the request
-  /// fails (an error modal is emitted instead).
+  /// fails (an error modal is emitted instead). Without the server, they
+  /// come from the events on this device.
   Future<TagUsage?> fetchTagUsage(int id) async {
+    if (id < 0 || _changesWait) {
+      return localTagUsage(state.events, state.categories, id);
+    }
     try {
       return await tagsRepository.getTagUsage(id);
-    } on TagPendingFailure {
-      emit(state.copyWith(modal: AppMessage.tagPending));
-      return null;
     } catch (_) {
+      if (ServerReachability.instance.isOffline) {
+        return localTagUsage(state.events, state.categories, id);
+      }
       emit(state.copyWith(modal: AppMessage.requestFailed));
       return null;
     }
   }
 
   /// Tag/event counts for a category, or null when the request fails (an
-  /// error modal is emitted instead).
+  /// error modal is emitted instead). Without the server, they come from the
+  /// data on this device.
   Future<CategoryUsage?> fetchCategoryUsage(int id) async {
+    if (id < 0 || _changesWait) {
+      return localCategoryUsage(state.events, state.categories, id);
+    }
     try {
       return await categoriesRepository.getCategoryUsage(id);
     } catch (_) {
+      if (ServerReachability.instance.isOffline) {
+        return localCategoryUsage(state.events, state.categories, id);
+      }
       emit(state.copyWith(modal: AppMessage.requestFailed));
       return null;
     }
@@ -364,8 +405,9 @@ class HomeCubit extends Cubit<HomeState> {
 
   Future<void> createCategory(String name, String color) async {
     try {
-      await categoriesRepository.createCategory(name, color);
+      final id = await categoriesRepository.createCategory(name, color);
       await _refreshCategories();
+      _sayIfQueued(id < 0 ? WriteOutcome.queued : WriteOutcome.sent);
     } catch (_) {
       emit(state.copyWith(modal: AppMessage.requestFailed));
     }
@@ -373,24 +415,37 @@ class HomeCubit extends Cubit<HomeState> {
 
   Future<void> updateCategory(int id, String name, String color) async {
     try {
-      await categoriesRepository.updateCategory(id, name, color);
+      final outcome =
+          await categoriesRepository.updateCategory(id, name, color);
       await _refreshCategories();
+      _sayIfQueued(outcome);
     } catch (_) {
       emit(state.copyWith(modal: AppMessage.requestFailed));
     }
   }
 
   /// [moveTags] moves the tags to the Other category; otherwise the tags are
-  /// deleted and [deleteEvents] also deletes the events whose only non-date
-  /// tags lived in this category.
+  /// deleted and [deleteEvents] also deletes every event tagged with one of
+  /// them.
   Future<void> deleteCategory(int id,
       {bool moveTags = false, bool deleteEvents = false}) async {
     try {
-      await categoriesRepository.deleteCategory(id,
-          moveTags: moveTags, deleteEvents: deleteEvents);
+      WriteOutcome outcome;
+      try {
+        outcome = await categoriesRepository.deleteCategory(id,
+            moveTags: moveTags, deleteEvents: deleteEvents);
+      } on DeleteEventsOfflineFailure {
+        await _deleteShownEvents({
+          for (final category in state.categories)
+            if (category.id == id)
+              for (final tag in category.tags) tag.id,
+        });
+        outcome = await categoriesRepository.deleteCategory(id);
+      }
       // The events changed too: deleted, or stripped of the removed tags.
       await refreshEvents();
       await _refreshCategories();
+      _sayIfQueued(outcome);
     } on CategoryTagNameConflictFailure {
       // Nothing was deleted: say why, so the user can rename the tag or pick
       // one of the two other options instead of retrying blindly.

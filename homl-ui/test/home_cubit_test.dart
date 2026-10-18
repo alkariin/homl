@@ -145,6 +145,8 @@ void main() {
       (const SyncReport(sent: 1, conflicts: 1), AppMessage.syncConflicts),
       (const SyncReport(kept: 1, conflicts: 1), AppMessage.syncKept),
       (const SyncReport(restored: 1, kept: 1), AppMessage.syncRestored),
+      (const SyncReport(dropped: 1, kept: 1), AppMessage.syncDropped),
+      (const SyncReport(restored: 1, dropped: 1), AppMessage.syncRestored),
       (const SyncReport(sent: 3, parked: 1, restored: 1), AppMessage.syncParked),
     ]) {
       test('reloads and says ${message.name}', () async {
@@ -273,7 +275,7 @@ void main() {
         .thenAnswer((_) async => cachedCategories);
     when(() => categoriesRepository.deleteCategory(any(),
         moveTags: any(named: 'moveTags'),
-        deleteEvents: any(named: 'deleteEvents'))).thenAnswer((_) async {});
+        deleteEvents: any(named: 'deleteEvents'))).thenAnswer((_) async => WriteOutcome.sent);
 
     final cubit = buildCubit();
     await expectLater(
@@ -436,5 +438,129 @@ void main() {
     expect(cubit.state.modal, isNull);
 
     await cubit.close();
+  });
+
+  group('managing offline', () {
+    // Persons (2): Alice (20) with her synonym Ally (21), Bob (22). Event 7
+    // has Ally, event 8 Bob, event 9 Alice and Bob.
+    final persons = Category(
+        id: 2,
+        category: 'Persons',
+        color: '#f28b82',
+        isLocked: false,
+        kind: CategoryKind.person,
+        tags: [
+          Tag(id: 20, tag: 'Alice', idCategory: 2),
+          Tag(id: 21, tag: 'Ally', idCategory: 2, idParentTag: 20),
+          Tag(id: 22, tag: 'Bob', idCategory: 2),
+        ]);
+    Event event(int id, List<Tag> tags) => Event(
+        id: id,
+        description: 'event $id',
+        date: DateTime(2026),
+        isOngoing: false,
+        tags: tags);
+    final people = [
+      event(7, [persons.tags[1]]),
+      event(8, [persons.tags[2]]),
+      event(9, [persons.tags[0], persons.tags[2]]),
+    ];
+
+    Future<HomeCubit> loaded() async {
+      when(() => eventsRepository.getCachedEvents())
+          .thenAnswer((_) async => people);
+      when(() => categoriesRepository.getCachedCategories())
+          .thenAnswer((_) async => [persons]);
+      when(() => eventsRepository.getEvents()).thenAnswer((_) async => people);
+      when(() => categoriesRepository.getCategories())
+          .thenAnswer((_) async => [persons]);
+      when(() => eventsRepository.deleteEvent(any(),
+          notify: any(named: 'notify'))).thenAnswer((_) async => WriteOutcome.queued);
+      when(() => eventsRepository.notifyChanged()).thenReturn(null);
+      final cubit = buildCubit();
+      await expectLater(cubit.stream,
+          emitsThrough(predicate<HomeState>((s) => s.initialized)));
+      return cubit;
+    }
+
+    test('a tag deleted with its events offline: the shown events go first',
+        () async {
+      final cubit = await loaded();
+      when(() => tagsRepository.deleteTag(20, deleteEvents: true))
+          .thenThrow(DeleteEventsOfflineFailure());
+      when(() => tagsRepository.deleteTag(20))
+          .thenAnswer((_) async => WriteOutcome.queued);
+
+      await cubit.deleteTag(20, deleteEvents: true);
+
+      // Alice's synonym group is Alice and Ally: events 7 and 9, not 8.
+      verify(() => eventsRepository.deleteEvent(7, notify: false)).called(1);
+      verify(() => eventsRepository.deleteEvent(9, notify: false)).called(1);
+      verifyNever(() => eventsRepository.deleteEvent(8,
+          notify: any(named: 'notify')));
+      verify(() => eventsRepository.notifyChanged()).called(1);
+      verify(() => tagsRepository.deleteTag(20)).called(1);
+      expect(cubit.state.modal, AppMessage.savedOffline);
+    });
+
+    test('a category deleted with its events offline: the same', () async {
+      final cubit = await loaded();
+      when(() => categoriesRepository.deleteCategory(2,
+              moveTags: false, deleteEvents: true))
+          .thenThrow(DeleteEventsOfflineFailure());
+      when(() => categoriesRepository.deleteCategory(2))
+          .thenAnswer((_) async => WriteOutcome.queued);
+
+      await cubit.deleteCategory(2, deleteEvents: true);
+
+      for (final id in [7, 8, 9]) {
+        verify(() => eventsRepository.deleteEvent(id, notify: false))
+            .called(1);
+      }
+      verify(() => categoriesRepository.deleteCategory(2)).called(1);
+    });
+
+    test('online, a deletion with its events is the server\'s', () async {
+      final cubit = await loaded();
+      when(() => tagsRepository.deleteTag(20, deleteEvents: true))
+          .thenAnswer((_) async => WriteOutcome.sent);
+
+      await cubit.deleteTag(20, deleteEvents: true);
+
+      verifyNever(() => eventsRepository.deleteEvent(any(),
+          notify: any(named: 'notify')));
+      expect(cubit.state.modal, isNull);
+    });
+
+    test('offline, the delete dialog counts come from the device', () async {
+      final cubit = await loaded();
+      ServerReachability.instance.markOffline();
+
+      final tag = await cubit.fetchTagUsage(20);
+      final category = await cubit.fetchCategoryUsage(2);
+
+      expect(tag!.events, 2);
+      // Event 9 also has Bob: only event 7 would be left date-only.
+      expect(tag.exclusiveEvents, 1);
+      expect(category!.tags, 3);
+      expect(category.events, 3);
+      expect(category.exclusiveEvents, 3);
+      verifyNever(() => tagsRepository.getTagUsage(any()));
+    });
+
+    test('a change waiting for the server is said to be saved', () async {
+      final cubit = await loaded();
+      when(() => categoriesRepository.updateCategory(any(), any(), any()))
+          .thenAnswer((_) async => WriteOutcome.queued);
+      when(() => categoriesRepository.createCategory(any(), any()))
+          .thenAnswer((_) async => -3);
+
+      await cubit.updateCategory(2, 'People', '#000000');
+      expect(cubit.state.modal, AppMessage.savedOffline);
+
+      cubit.endModal();
+      await cubit.createCategory('Trips', '#a7ffeb');
+      expect(cubit.state.modal, AppMessage.savedOffline);
+    });
   });
 }

@@ -1,4 +1,3 @@
-
 import 'package:dio/dio.dart';
 import 'package:homl/data/models/category.dart';
 import 'package:homl/data/models/tag.dart';
@@ -7,8 +6,10 @@ import 'package:homl/data/models/usage.dart';
 import 'package:homl/data/repositories/api.dart';
 import 'package:homl/data/repositories/tags.repository.dart';
 import 'package:homl/data/store/local_store.dart';
+import 'package:homl/data/sync/offline_writes.dart';
 import 'package:homl/data/sync/outbox.dart';
 import 'package:homl/data/sync/projection.dart';
+import 'package:homl/data/sync/sync_engine.dart';
 import 'package:homl/helpers/e2ee.dart';
 import 'package:homl/helpers/event_search.dart' show normalizeTagName;
 
@@ -61,7 +62,8 @@ class CategoriesRepository {
     return _decryptCategories(await _project(response.data!));
   }
 
-  /// The server payload with the tags created offline in their category.
+  /// The server payload with the category, tag and group changes made
+  /// offline applied.
   Future<List<Category>> _project(List<dynamic> payload) async {
     List<OutboxOp> ops;
     try {
@@ -69,8 +71,7 @@ class CategoriesRepository {
     } catch (_) {
       ops = const [];
     }
-    final projected =
-        ops.isEmpty ? payload : projectCategories(payload, ops);
+    final projected = ops.isEmpty ? payload : projectCategories(payload, ops);
     return projected
         .map((e) => Category.fromJson(e as Map<String, dynamic>))
         .toList();
@@ -120,16 +121,50 @@ class CategoriesRepository {
     }
   }
 
-  /// Returns the id of the created category.
+  /// Saves a change in the outbox and lets the engine try to send it.
+  Future<WriteOutcome> _queue(
+      Future<void> Function(({String? keyCheck, String? generation}) stamps)
+          enqueue) async {
+    try {
+      await enqueue(await writeStamps());
+    } catch (_) {
+      // Not even saved on the device: the write failed.
+      throw CategoriesRequestFailure();
+    }
+    SyncEngine.instance.kick();
+    return WriteOutcome.queued;
+  }
+
+  /// Returns the id of the created category: a temporary (negative) one
+  /// when it waits in the outbox, the server out of reach. Tags and groups
+  /// can be created in it right away.
   Future<int> createCategory(String category, String color) async {
+    final body = {
+      'category': await _outgoingName(category),
+      'color': color,
+    };
+    // Sent with the id the outbox would replay it under: an answer lost on
+    // the way back must not end up as two categories (names are not unique).
+    final clientId = newClientId();
+
+    Future<int> queue() async {
+      late int id;
+      await _queue((stamps) async => id = await Outbox.instance.createCategory(
+          body,
+          clientId: clientId,
+          keyCheck: stamps.keyCheck,
+          generation: stamps.generation));
+      return id;
+    }
+
+    if (await Outbox.instance.shouldQueue()) return queue();
+
     late Response<Map<String, dynamic>> response;
     try {
-      response = await apiInstance.api
-          .post<Map<String, dynamic>>('/categories', data: {
-        'category': await _outgoingName(category),
-        'color': color,
-      });
-    } on DioException catch (_) {
+      response = await apiInstance.api.post<Map<String, dynamic>>('/categories',
+          data: {...body, 'clientId': clientId});
+    } on DioException catch (err) {
+      if (Api.isUnreachable(err)) return queue();
       throw CategoriesRequestFailure();
     }
 
@@ -138,15 +173,31 @@ class CategoriesRepository {
     return id;
   }
 
-  Future<void> updateCategory(int id, String category, String color) async {
+  Future<WriteOutcome> updateCategory(
+      int id, String category, String color) async {
+    final target = Outbox.instance.resolve(id);
+    final body = {
+      'category': await _outgoingName(category),
+      'color': color,
+    };
+
+    Future<WriteOutcome> queue() async {
+      final base = target > 0 ? await serverCategory(target) : null;
+      return _queue((stamps) => Outbox.instance.updateCategory(target, body,
+          base: base,
+          keyCheck: stamps.keyCheck,
+          generation: stamps.generation));
+    }
+
+    if (target < 0 || await Outbox.instance.shouldQueue()) return queue();
+
     try {
-      await apiInstance.api.patch<void>('/categories/$id', data: {
-        'category': await _outgoingName(category),
-        'color': color,
-      });
-    } on DioException catch (_) {
+      await apiInstance.api.patch<void>('/categories/$target', data: body);
+    } on DioException catch (err) {
+      if (Api.isUnreachable(err)) return queue();
       throw CategoriesRequestFailure();
     }
+    return WriteOutcome.sent;
   }
 
   /// Encrypts an outgoing category name for E2EE users.
@@ -156,16 +207,35 @@ class CategoriesRepository {
   }
 
   /// [moveTags] moves the tags to the Other category; otherwise the tags are
-  /// deleted and [deleteEvents] also deletes the events whose only non-date
-  /// tags lived in this category.
-  Future<void> deleteCategory(int id,
+  /// deleted and [deleteEvents] also deletes every event tagged with one of
+  /// them.
+  ///
+  /// When it has to wait in the outbox, a deletion with [deleteEvents] is
+  /// refused with [DeleteEventsOfflineFailure] before anything is queued:
+  /// the caller deletes the events it knows, then the category alone.
+  Future<WriteOutcome> deleteCategory(int id,
       {bool moveTags = false, bool deleteEvents = false}) async {
+    final target = Outbox.instance.resolve(id);
+
+    Future<WriteOutcome> queue() async {
+      if (deleteEvents && !moveTags) throw DeleteEventsOfflineFailure();
+      final base = target > 0 ? await serverCategory(target) : null;
+      return _queue((stamps) => Outbox.instance.deleteCategory(
+          target, {'moveTags': moveTags},
+          base: base,
+          keyCheck: stamps.keyCheck,
+          generation: stamps.generation));
+    }
+
+    if (target < 0 || await Outbox.instance.shouldQueue()) return queue();
+
     try {
-      await apiInstance.api.delete<void>('/categories/$id', data: {
+      await apiInstance.api.delete<void>('/categories/$target', data: {
         'moveTags': moveTags,
         'deleteEvents': deleteEvents,
       });
     } on DioException catch (err) {
+      if (Api.isUnreachable(err)) return queue();
       // Keyed off the code, never the message string: the backend refuses a
       // move whose tag name is already taken in Others, and nothing was
       // deleted (the whole delete is one transaction).
@@ -174,21 +244,40 @@ class CategoriesRepository {
       }
       throw CategoriesRequestFailure();
     }
+    return WriteOutcome.sent;
   }
 
-  /// Returns the id of the created tag group. Online only, like every
-  /// category change: an unreachable server is a [CategoriesRequestFailure].
+  /// Returns the id of the created tag group: a temporary (negative) one
+  /// when it waits in the outbox — the server out of reach, or its category
+  /// or one of its tags created offline.
   Future<int> createTagGroup(
       String name, int idCategory, List<int> members) async {
     final body = {
       ...await _outgoingGroup(name, members),
-      'idCategory': idCategory,
+      'idCategory': Outbox.instance.resolve(idCategory),
     };
+
+    Future<int> queue() async {
+      late int id;
+      await _queue((stamps) async => id = await Outbox.instance.createGroup(
+          body,
+          keyCheck: stamps.keyCheck,
+          generation: stamps.generation));
+      return id;
+    }
+
+    if ((body['idCategory'] as int) < 0 ||
+        _hasPendingMember(body) ||
+        await Outbox.instance.shouldQueue()) {
+      return queue();
+    }
+
     late Response<Map<String, dynamic>> response;
     try {
       response = await apiInstance.api
           .post<Map<String, dynamic>>('/tagGroups', data: body);
     } on DioException catch (err) {
+      if (Api.isUnreachable(err)) return queue();
       throw _groupFailure(err);
     }
 
@@ -199,32 +288,68 @@ class CategoriesRepository {
 
   /// Full-state update: [members] replaces the stored list. A group never
   /// changes category.
-  Future<void> updateTagGroup(int id, String name, List<int> members) async {
+  Future<WriteOutcome> updateTagGroup(
+      int id, String name, List<int> members) async {
+    final target = Outbox.instance.resolve(id);
     final body = await _outgoingGroup(name, members);
+
+    Future<WriteOutcome> queue() async {
+      final base = target > 0 ? await serverGroup(target) : null;
+      return _queue((stamps) => Outbox.instance.updateGroup(target, body,
+          base: base,
+          keyCheck: stamps.keyCheck,
+          generation: stamps.generation));
+    }
+
+    if (target < 0 ||
+        _hasPendingMember(body) ||
+        await Outbox.instance.shouldQueue()) {
+      return queue();
+    }
+
     try {
-      await apiInstance.api.patch<void>('/tagGroups/$id', data: body);
+      await apiInstance.api.patch<void>('/tagGroups/$target', data: body);
     } on DioException catch (err) {
+      if (Api.isUnreachable(err)) return queue();
       throw _groupFailure(err);
     }
+    return WriteOutcome.sent;
   }
 
   /// Deletes the group only: its tags and their events stay.
-  Future<void> deleteTagGroup(int id) async {
+  Future<WriteOutcome> deleteTagGroup(int id) async {
+    final target = Outbox.instance.resolve(id);
+
+    Future<WriteOutcome> queue() async {
+      final base = target > 0 ? await serverGroup(target) : null;
+      return _queue((stamps) => Outbox.instance.deleteGroup(target,
+          base: base,
+          keyCheck: stamps.keyCheck,
+          generation: stamps.generation));
+    }
+
+    if (target < 0 || await Outbox.instance.shouldQueue()) return queue();
+
     try {
-      await apiInstance.api.delete<void>('/tagGroups/$id');
-    } on DioException catch (_) {
+      await apiInstance.api.delete<void>('/tagGroups/$target');
+    } on DioException catch (err) {
+      if (Api.isUnreachable(err)) return queue();
       throw CategoriesRequestFailure();
     }
+    return WriteOutcome.sent;
   }
 
-  /// The name and member fields of a group write. Members are server ids: a
-  /// tag created offline and not sent yet is a [TagPendingFailure]. For E2EE
-  /// users the name is encrypted, its blind index sent alongside, and the
-  /// reserved date names refused here (the server cannot read the name).
+  static bool _hasPendingMember(Map<String, dynamic> body) =>
+      (body['members'] as List).cast<int>().any((id) => id < 0);
+
+  /// The name and member fields of a group write. Members created offline
+  /// keep their temporary id: the group then waits behind them in the
+  /// outbox. For E2EE users the name is encrypted, its blind index sent
+  /// alongside, and the reserved date names refused here (the server cannot
+  /// read the name).
   Future<Map<String, dynamic>> _outgoingGroup(
       String name, List<int> members) async {
     final ids = members.map(Outbox.instance.resolve).toList();
-    if (ids.any((id) => id < 0)) throw TagPendingFailure();
 
     final e2ee = E2ee();
     if (!e2ee.enabled) return {'name': name, 'members': ids};
@@ -246,11 +371,15 @@ class CategoriesRepository {
     return CategoriesRequestFailure();
   }
 
-  /// Tag/event counts for the category, for the delete dialog.
+  /// Tag/event counts for the category, for the delete dialog. Only for a
+  /// category the server has: offline, the counts come from the data on the
+  /// device (HomeCubit.fetchCategoryUsage).
   Future<CategoryUsage> getCategoryUsage(int id) async {
+    final target = Outbox.instance.resolve(id);
+    if (target < 0) throw CategoriesRequestFailure();
     try {
       final response = await apiInstance.api
-          .get<Map<String, dynamic>>('/categories/$id/usage');
+          .get<Map<String, dynamic>>('/categories/$target/usage');
       if (response.data == null) {
         throw CategoriesNotFoundFailure();
       }

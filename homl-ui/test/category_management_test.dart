@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
+import 'package:homl/data/sync/offline_writes.dart';
 import 'package:homl/components/tag.dart' as components;
 import 'package:homl/data/models/category.dart';
 import 'package:homl/data/models/settings.dart';
@@ -205,7 +206,7 @@ void main() {
   testWidgets('tags of the Others category are manageable and movable',
       (tester) async {
     when(() => tagsRepository.updateTag(any(), any(), any(),
-        idParentTag: any(named: 'idParentTag'))).thenAnswer((_) async {});
+        idParentTag: any(named: 'idParentTag'))).thenAnswer((_) async => WriteOutcome.sent);
 
     await tester.pumpWidget(wrap());
     await tester.pumpAndSettle();
@@ -235,7 +236,7 @@ void main() {
     when(() => tagsRepository.getTagUsage(4))
         .thenAnswer((_) async => TagUsage(events: 2, exclusiveEvents: 0));
     when(() => tagsRepository.deleteTag(any(),
-        deleteEvents: any(named: 'deleteEvents'))).thenAnswer((_) async {});
+        deleteEvents: any(named: 'deleteEvents'))).thenAnswer((_) async => WriteOutcome.sent);
 
     await tester.pumpWidget(wrap());
     await tester.pumpAndSettle();
@@ -265,7 +266,7 @@ void main() {
     when(() => tagsRepository.getTagUsage(4))
         .thenAnswer((_) async => TagUsage(events: 3, exclusiveEvents: 1));
     when(() => tagsRepository.deleteTag(any(),
-        deleteEvents: any(named: 'deleteEvents'))).thenAnswer((_) async {});
+        deleteEvents: any(named: 'deleteEvents'))).thenAnswer((_) async => WriteOutcome.sent);
 
     await tester.pumpWidget(wrap());
     await tester.pumpAndSettle();
@@ -301,7 +302,7 @@ void main() {
       when(() => categoriesRepository.deleteCategory(any(),
               moveTags: any(named: 'moveTags'),
               deleteEvents: any(named: 'deleteEvents')))
-          .thenAnswer((_) async {});
+          .thenAnswer((_) async => WriteOutcome.sent);
     }
 
     /// Opens the delete dialog of the Hobbies category through its ⋮ menu.

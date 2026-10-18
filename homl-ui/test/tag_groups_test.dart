@@ -9,6 +9,7 @@ import 'package:homl/data/models/settings.dart';
 import 'package:homl/data/models/tag.dart';
 import 'package:homl/data/models/tag_group.dart';
 import 'package:homl/data/repositories/categories.repository.dart';
+import 'package:homl/data/sync/offline_writes.dart';
 import 'package:homl/data/repositories/events.repository.dart';
 import 'package:homl/data/repositories/settings.repository.dart';
 import 'package:homl/data/repositories/tags.repository.dart';
@@ -83,9 +84,9 @@ void main() {
     when(() => categoriesRepository.createTagGroup(any(), any(), any()))
         .thenAnswer((_) async => 6);
     when(() => categoriesRepository.updateTagGroup(any(), any(), any()))
-        .thenAnswer((_) async {});
+        .thenAnswer((_) async => WriteOutcome.sent);
     when(() => categoriesRepository.deleteTagGroup(any()))
-        .thenAnswer((_) async {});
+        .thenAnswer((_) async => WriteOutcome.sent);
 
     cubit = HomeCubit(settingsRepository, eventsRepository,
         categoriesRepository, MockTagsRepository(), 'user');
@@ -265,12 +266,21 @@ void main() {
     expect(cubit.state.modal, AppMessage.tagGroupNameConflict);
   });
 
-  test('a member created offline is said to be pending', () async {
+  test('a group change waiting for the server is said to be saved', () async {
     when(() => categoriesRepository.updateTagGroup(any(), any(), any()))
-        .thenThrow(TagPendingFailure());
+        .thenAnswer((_) async => WriteOutcome.queued);
 
     await cubit.updateTagGroup(5, 'Family', [-1]);
 
-    expect(cubit.state.modal, AppMessage.tagPending);
+    expect(cubit.state.modal, AppMessage.savedOffline);
+  });
+
+  test('a group created offline is said to be saved', () async {
+    when(() => categoriesRepository.createTagGroup(any(), any(), any()))
+        .thenAnswer((_) async => -4);
+
+    await cubit.createTagGroup('Family', 1, [10]);
+
+    expect(cubit.state.modal, AppMessage.savedOffline);
   });
 }

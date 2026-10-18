@@ -1273,7 +1273,7 @@ abstract class AppLocalizations {
   /// No description provided for @sync_kept.
   ///
   /// In en, this message translates to:
-  /// **'An event you deleted had been changed on another device: it was kept.'**
+  /// **'Something you deleted had been changed on another device: it was kept.'**
   String get sync_kept;
 
   /// No description provided for @sync_conflicts.
@@ -1288,11 +1288,11 @@ abstract class AppLocalizations {
   /// **'Some changes could not be sent: see the changes waiting.'**
   String get sync_parked;
 
-  /// No description provided for @sync_tagPending.
+  /// No description provided for @sync_dropped.
   ///
   /// In en, this message translates to:
-  /// **'This tag is not on the server yet: try again once your changes are sent.'**
-  String get sync_tagPending;
+  /// **'A change you made offline was dropped: what it changed had been deleted on another device.'**
+  String get sync_dropped;
 
   /// No description provided for @sync_pendingChangesFirst.
   ///
@@ -1354,6 +1354,54 @@ abstract class AppLocalizations {
   /// **'New tag'**
   String get pending_createTag;
 
+  /// No description provided for @pending_updateTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Edited tag'**
+  String get pending_updateTag;
+
+  /// No description provided for @pending_deleteTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted tag'**
+  String get pending_deleteTag;
+
+  /// No description provided for @pending_createCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'New category'**
+  String get pending_createCategory;
+
+  /// No description provided for @pending_updateCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Edited category'**
+  String get pending_updateCategory;
+
+  /// No description provided for @pending_deleteCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted category'**
+  String get pending_deleteCategory;
+
+  /// No description provided for @pending_createGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'New tag group'**
+  String get pending_createGroup;
+
+  /// No description provided for @pending_updateGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Edited tag group'**
+  String get pending_updateGroup;
+
+  /// No description provided for @pending_deleteGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted tag group'**
+  String get pending_deleteGroup;
+
   /// No description provided for @pending_waiting.
   ///
   /// In en, this message translates to:
@@ -1371,6 +1419,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Uses a tag that could not be created'**
   String get pending_missingTag;
+
+  /// No description provided for @pending_missingParent.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs a category or group that could not be created'**
+  String get pending_missingParent;
 
   /// No description provided for @pending_encryptionChanged.
   ///

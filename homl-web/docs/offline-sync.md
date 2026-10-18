@@ -16,14 +16,24 @@ survives without the server), [api.md](api.md) (the `clientId` of
 
 | Offline | Online only (a clear "server unreachable") |
 | --- | --- |
-| browsing and searching the data saved on the device | renaming, moving or deleting a tag |
-| creating, editing and deleting events | creating, editing or deleting a category or a tag group |
-| creating tags (typed in the form, or a new tag in a category) | settings, PIN, fingerprint, password, account |
-| | enabling / disabling end-to-end encryption |
+| browsing and searching the data saved on the device | settings, PIN, fingerprint, password, account |
+| creating, editing and deleting events | enabling / disabling end-to-end encryption |
+| creating, renaming, moving and deleting tags, synonyms included | importing a file |
+| creating, editing and deleting categories and tag groups | |
 
-A tag created offline cannot be renamed, moved, deleted or put in a tag group
-before the server has it (`TagPendingFailure`): only its creation waits.
-Picking a group in a tag input works offline: it only adds tags to the form.
+Anything created offline can be used, changed or deleted at once, before the
+server has it: a tag in a category created offline, a group of tags created
+offline, an event using them.
+
+**Deleting "with its events" offline** deletes the events this device shows,
+one ordinary event deletion each, then the tag or category alone (keeping
+whatever events remain). Sent as it is, the server would delete every event
+carrying the tag when it gets the request — including events added on
+another device meanwhile, which nobody here ever saw. Split this way, only
+what was on screen goes, and an event edited elsewhere meanwhile is kept like
+any other deletion of an edited event. The delete dialogs count from the data
+on the device too (`localTagUsage`, `localCategoryUsage`): offline, those are
+exactly the events the deletion takes.
 
 ## The outbox
 
@@ -35,21 +45,37 @@ for, in wire format: an E2EE account's text is already encrypted.
 
 | Op | Target | Body | Base |
 | --- | --- | --- | --- |
-| `createTag` | its temporary id | `tag` (+ `tagIndex` under E2EE), `idCategory`, `idParentTag` | — |
 | `createEvent` | its temporary id | event fields + `tagsId` | — |
 | `updateEvent` | the event id | full state (the PATCH body) | the event as the server had it before the first offline change |
 | `deleteEvent` | the event id | — | same |
+| `createTag` | its temporary id | `tag` (+ `tagIndex` under E2EE), `idCategory`, `idParentTag` | — |
+| `updateTag` | the tag id | full state: `tag` (+ `tagIndex`), `idCategory`, `idParentTag` (null: a main tag) | the tag as the server had it: name, category, main tag |
+| `deleteTag` | the tag id | `idParentTag`: the main tag a deleted synonym hands its events to, for the screens | same |
+| `createCategory` | its temporary id | `category`, `color`; the op id is its `clientId` | — |
+| `updateCategory` | the category id | `category`, `color` | the category as the server had it: name, color, the ids of its tags |
+| `deleteCategory` | the category id | `moveTags` | same |
+| `createGroup` | its temporary id | `name` (+ `nameIndex`), `idCategory`, `members` | — |
+| `updateGroup` | the group id | `name` (+ `nameIndex`), `members` | the group as the server had it: name, members |
+| `deleteGroup` | the group id | — | same |
 
-- **Temporary ids** are negative (`-2`, `-3`…): an event or tag created
-  offline gets one at once, so the screens can show and reference it. When its
-  creation is sent, every waiting op pointing at it is rewritten with the
-  server id, and the mapping is kept for a screen still holding the temporary
-  one.
-- **Folding**: changes to the same thing fold while they wait. Editing an
-  event created offline rewrites its creation; deleting it drops it (nothing
-  is ever sent); two edits of a server event make one, keeping the first
-  base; deleting an edited event replaces the edit. An op being sent is never
-  rewritten — a change made meanwhile becomes an op of its own.
+- **Temporary ids** are negative (`-2`, `-3`…), drawn from one counter for
+  every kind of thing: something created offline gets one at once, so the
+  screens can show and reference it. When its creation is sent, every waiting
+  op pointing at it is rewritten with the server id — its target, and the
+  bodies using it: an event's `tagsId`, a group's `members`, a synonym's
+  `idParentTag`, a tag's or group's `idCategory` — and the mapping is kept for
+  a screen still holding the temporary one. A server id only names one thing
+  within its kind (event 12 and tag 12 are unrelated): the outbox never
+  matches ops of different kinds by id.
+- **Folding**: changes to the same thing fold while they wait. Editing
+  something created offline rewrites its creation; two edits of the same
+  thing make one, keeping the first base; deleting something edited replaces
+  the edit. An event created offline and deleted leaves nothing to send; a
+  tag, category or group created offline and deleted is created, then
+  deleted, so whatever was made with it meanwhile (tags in the category,
+  events using the tag) gets the server's own treatment of the deletion. An op
+  being sent is never rewritten — a change made meanwhile becomes an op of its
+  own.
 - **Stamps**: each op records the account's encryption when it was written
   (the E2EE key check, or none) and the server's `dataGeneration`.
 - **Strict storage**: unlike the snapshot (a cache), the outbox holds what
@@ -59,11 +85,15 @@ for, in wire format: an E2EE account's text is already encrypted.
   changes the shape of an op must upgrade what an older version left waiting —
   never drop it.
 
-The screens show the server data with the outbox applied (`projection.dart`):
-creations and edits appear at once (with a small clock on the card), deletions
-disappear, tags created offline are in their category. Without E2EE the server
-derives the month/year tags of an event; the projection does the same so a
-month search finds an event written offline.
+The screens show the server data with the outbox applied (`projection.dart`),
+the way the server applies each change: creations and edits appear at once
+(with a small clock on an event's card), deletions disappear, a main tag moves
+with its synonyms, a deleted synonym hands its events to its main tag, a
+category deleted with `moveTags` hands its tags and groups to Others, and the
+groups follow their members ([tag-groups.md](tag-groups.md), "Lifecycle").
+Every event shows its tags as they are now: renamed, moved, or gone. Without
+E2EE the server derives the month/year tags of an event; the projection does
+the same so a month search finds an event written offline.
 
 ## A sync
 
@@ -91,21 +121,44 @@ right after a write was queued while the server answers. One at a time:
 | deletion | the event is unchanged since the base | `DELETE` |
 | deletion | the event was edited elsewhere | **nothing: the event stays** |
 | deletion | already gone | nothing |
+| category creation | — | `POST /categories` with the op id as `clientId` |
+| tag, category or group edit | it exists | a merge of both sides, field by field |
+| tag, category or group edit | it was deleted elsewhere | **nothing: the deletion wins**, the change is dropped |
+| tag edit | the category or main tag it moves to was deleted elsewhere | parked |
+| tag, category or group deletion | unchanged since the base | `DELETE`, never with the events (`deleteEvents: false`) |
+| tag, category or group deletion | edited elsewhere (for a category: renamed, recolored, or given a tag this device never showed) | **nothing: it stays** |
+| group creation | a group of that name exists in the category | nothing: the existing group is used |
+| group creation or edit | its category was deleted, or none of its tags is left | parked |
+| a change of something created offline | its creation is parked or was discarded | parked |
 
 4. **Save** the server's state on the device, and tell the screens, which say
    what happened in one message (most important first): changes held back,
-   an event restored, an event kept, a conflict, or simply "sent".
+   an event restored, a change dropped (deleted elsewhere), something kept,
+   a conflict, or simply "sent".
 
 **Merging an edit** — description, period (start, end, ongoing, as one) and
 tags (without the date tags) are compared against the base: a field changed
 on one side takes that side's value; a field changed on both takes this
 device's ("the phone wins"), and the sync says so. Under E2EE the date tags
 follow whichever period won (the client owns them there); otherwise the server
-derives them again.
+derives them again. A tag is merged the same way on its name, its category and
+its main tag; a category on its name and its color; a group on its name and its
+members (as a whole, like an event's tags), keeping only the members still
+there as main tags of the category. Names are compared in clear, so an E2EE
+name and its blind index travel together with whichever side won.
 
-**Conflict policy** (chosen by the maintainer): an edit always wins over a
-deletion, in both directions; the same field changed on both sides keeps this
-device's value. Nothing is decided silently: each case shows a message.
+After a deletion, or a tag edit that moved or relinked something, the engine
+reads the server again before the next op: the server changed more than the
+op itself (tags off events, synonyms with their main tag), and what comes next
+must be compared with that.
+
+**Conflict policy** (chosen by the maintainer): for events, an edit always
+wins over a deletion, in both directions. For tags, categories and groups, a
+deletion made here still loses to an edit made elsewhere, but an edit made
+here loses to a deletion made elsewhere: the server already took the tag off
+its events, so bringing it back would bring it back empty. The same field
+changed on both sides keeps this device's value. Nothing is decided silently:
+each case shows a message.
 
 **Failures**:
 
@@ -115,8 +168,10 @@ device's value. Nothing is decided silently: each case shows a message.
 - a lost answer (the request reached the server, the reply did not): the op
   is sent again; an event creation carries the same `clientId`, so the server
   answers `200` with the event it already created — never a second one; a tag
-  creation answers `409 TAG_NAME_CONFLICT` and the existing tag is used; an
-  edit (full state) and a deletion (`404` = done) are safe to repeat;
+  creation answers `409 TAG_NAME_CONFLICT` and the existing tag is used, a
+  group creation the same; a category creation carries its `clientId` like an
+  event's; an edit (full state) and a deletion (`404` = done) are safe to
+  repeat;
 - any other refusal (`400`, `403`, `404` on a creation, `422`): the op is
   parked, with every op that needs what it creates (an event using a tag whose
   creation was refused).

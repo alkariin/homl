@@ -107,6 +107,35 @@ void main() {
     expect(left!.single.kind, OpKind.createEvent);
   });
 
+  testWidgets('category, tag and group changes are named too', (tester) async {
+    await tester.runAsync(() async {
+      final trips = await Outbox.instance
+          .createCategory({'category': 'Trips', 'color': '#a7ffeb'});
+      await Outbox.instance.createTag({'tag': 'Tram', 'idCategory': trips});
+      await Outbox.instance.deleteTag(10, {'idParentTag': null},
+          base: {'tag': 'Football', 'idCategory': 3, 'idParentTag': null});
+      await Outbox.instance.updateGroup(30, {'name': 'Kin', 'members': [20]},
+          base: {'name': 'Family', 'members': [20], 'idCategory': 2});
+      await Outbox.instance.park(
+          (await Outbox.instance.ops()).first, ParkReason.refused);
+    });
+
+    await tester.pumpWidget(_app(PendingChangesButton(
+        counts: Outbox.instance.currentCounts, onChanged: () {})));
+    await tester.tap(find.byIcon(Icons.cloud_upload_outlined));
+    await settle(tester);
+
+    expect(find.text('New category'), findsOneWidget);
+    expect(find.textContaining('Trips'), findsOneWidget);
+    expect(find.text('New tag'), findsOneWidget);
+    expect(find.textContaining('Needs a category or group'), findsOneWidget);
+    // A deletion is named as the server had it.
+    expect(find.text('Deleted tag'), findsOneWidget);
+    expect(find.textContaining('Football'), findsOneWidget);
+    expect(find.text('Edited tag group'), findsOneWidget);
+    expect(find.textContaining('Kin'), findsOneWidget);
+  });
+
   testWidgets('a card made offline wears a clock', (tester) async {
     Widget card(bool pending) => MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
