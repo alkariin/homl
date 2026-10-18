@@ -4,6 +4,7 @@ import 'package:bloc_test/bloc_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/intl.dart';
 
 import 'package:homl/components/event_card.dart';
 import 'package:homl/components/tag.dart' as components;
@@ -16,6 +17,7 @@ import 'package:homl/l10n/app_localizations.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
 import 'package:homl/pages/list/bloc/list_cubit.dart';
 import 'package:homl/pages/list/list.dart';
+import 'package:homl/pages/list/view/activity_calendar.dart';
 import 'package:homl/pages/list/view/last_time_summary.dart';
 import 'package:homl/pages/list/view/on_this_day_strip.dart';
 import 'package:homl/pages/list/view/period_timeline.dart';
@@ -333,6 +335,50 @@ void main() {
           find.text('No period here. An event with an end date, or still '
               'ongoing, shows up on the timeline.'),
           findsOneWidget);
+    });
+  });
+
+  group('the activity calendar', () {
+    final day = DateTime(now.year, now.month, now.day);
+    // The tooltip of the day square, as the calendar names it.
+    String squareOf(int count) =>
+        '${count == 1 ? '1 event' : '$count events'} · '
+        '${DateFormat.yMMMEd('en').format(DateTime.utc(day.year, day.month, day.day))}';
+
+    testWidgets('comes with a search, not on the whole list', (tester) async {
+      await pumpPage(tester, [
+        eventOn(1, day, [dentist])
+      ]);
+      expect(find.byType(ActivityCalendar), findsNothing);
+
+      listCubit.addTypedTerm('dentist');
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ActivityCalendar), findsOneWidget);
+      expect(find.byTooltip(squareOf(1)), findsOneWidget);
+    });
+
+    testWidgets('a tap on a day narrows the search to it, a second lifts it',
+        (tester) async {
+      await pumpPage(tester, [
+        eventOn(1, day, [dentist]),
+        eventOn(2, DateTime(2001, 1, 1), [dentist]),
+      ]);
+      listCubit.addTypedTerm('dentist');
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip(squareOf(1)));
+      await tester.pumpAndSettle();
+
+      expect(listCubit.state.range, DayRange(day, day));
+      expect(find.text('Event 1'), findsOneWidget);
+      expect(find.text('Event 2'), findsNothing);
+      // The calendar still shows the whole search.
+      expect(find.byType(ActivityCalendar), findsOneWidget);
+
+      await tester.tap(find.byTooltip(squareOf(1)));
+      await tester.pumpAndSettle();
+      expect(listCubit.state.range, isNull);
     });
   });
 }

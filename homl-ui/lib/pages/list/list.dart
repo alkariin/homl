@@ -21,6 +21,7 @@ import 'package:homl/helpers/timeline.dart';
 import 'package:homl/pages/categories/view/category_management.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
 import 'package:homl/pages/list/bloc/list_cubit.dart';
+import 'package:homl/pages/list/view/activity_calendar.dart';
 import 'package:homl/pages/list/view/event_detail_sheet.dart';
 import 'package:homl/pages/list/view/last_time_summary.dart';
 import 'package:homl/pages/list/view/on_this_day_strip.dart';
@@ -170,6 +171,22 @@ class ListPage extends StatelessWidget {
             : eventsOnThisDay(homeState.events, today);
         final lastTime =
             listState.isSearching ? lastTimeOf(listState.events, today) : null;
+
+        // The activity calendar shows what the terms find, whatever day
+        // range narrows the results: picking a day must not empty it.
+        final activity = listState.terms.isEmpty
+            ? null
+            : searchEvents(homeState.events, homeState.categories,
+                terms: listState.terms, today: today);
+        // In the color of the first tag asked for in a real category.
+        String? activityColor;
+        for (final term in listState.terms) {
+          final view = term.exclude ? null : homeState.allTagsMap[term.tagName];
+          if (view != null && !otherCategoryIds.contains(view.idCategory)) {
+            activityColor = view.color;
+            break;
+          }
+        }
         final range = listState.range;
 
         // The decorative background is shared by the tabs (parallax in the
@@ -289,6 +306,26 @@ class ListPage extends StatelessWidget {
                                   sliver: SliverToBoxAdapter(
                                     child: LastTimeSummary(
                                         lastTime: lastTime, today: today),
+                                  ),
+                                ),
+                              if (activity != null)
+                                SliverPadding(
+                                  padding:
+                                      const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                                  sliver: SliverToBoxAdapter(
+                                    child: ActivityCalendar(
+                                      events: activity,
+                                      today: today,
+                                      color: activityColor,
+                                      selected: range,
+                                      // A tap narrows to that day; on the
+                                      // day already picked, lifts it.
+                                      onDayTap: (day) {
+                                        final picked = DayRange(day, day);
+                                        context.read<ListCubit>().setRange(
+                                            picked == range ? null : picked);
+                                      },
+                                    ),
                                   ),
                                 ),
                               if (listState.timeline)
