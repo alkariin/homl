@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -878,4 +879,95 @@ func TestDeleteEventEndpoint(t *testing.T) {
 
 	assert.Equal(t, http.StatusNoContent, rec.Code)
 	sm.events.AssertExpectations(t)
+}
+
+/* --------------------------- Conditional reads -------------------------- */
+
+func doConditional(router *gin.Engine, path, ifNoneMatch string) *httptest.ResponseRecorder {
+	req, _ := http.NewRequest(http.MethodGet, path, nil)
+	req.Header.Set("Authorization", authHeader())
+	if ifNoneMatch != "" {
+		req.Header.Set("If-None-Match", ifNoneMatch)
+	}
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	return rec
+}
+
+func TestEventsCarryAnETagAndAnswer304WhenUnchanged(t *testing.T) {
+	router, sm := newTestServer()
+	sm.events.On("GetEvents", testUserID, mock.Anything).Return([]event.GetEventsResponse{
+		{Event: event.Event{Id: 1, Description: "cool"}},
+	}, nil)
+
+	first := doConditional(router, "/events", "")
+	assert.Equal(t, http.StatusOK, first.Code)
+	etag := first.Header().Get("ETag")
+	assert.Regexp(t, `^"[A-Za-z0-9_-]{24}"$`, etag)
+	assert.Equal(t, "no-store", first.Header().Get("Cache-Control"))
+
+	// The client holds that body: nothing is sent again.
+	again := doConditional(router, "/events", etag)
+	assert.Equal(t, http.StatusNotModified, again.Code)
+	assert.Empty(t, again.Body.Bytes())
+	assert.Equal(t, etag, again.Header().Get("ETag"))
+
+	// A weak form, or a list holding it, names it too.
+	assert.Equal(t, http.StatusNotModified, doConditional(router, "/events", "W/"+etag).Code)
+	assert.Equal(t, http.StatusNotModified, doConditional(router, "/events", `"other", `+etag).Code)
+
+	// Another fingerprint: the body comes.
+	stale := doConditional(router, "/events", `"stale"`)
+	assert.Equal(t, http.StatusOK, stale.Code)
+	assert.Equal(t, first.Body.Bytes(), stale.Body.Bytes())
+}
+
+func TestTheETagFollowsTheData(t *testing.T) {
+	router, sm := newTestServer()
+	sm.events.On("GetEvents", testUserID, mock.Anything).Return([]event.GetEventsResponse{
+		{Event: event.Event{Id: 1, Description: "cool"}},
+	}, nil).Once()
+	sm.events.On("GetEvents", testUserID, mock.Anything).Return([]event.GetEventsResponse{
+		{Event: event.Event{Id: 1, Description: "edited elsewhere"}},
+	}, nil).Once()
+
+	etag := doConditional(router, "/events", "").Header().Get("ETag")
+	changed := doConditional(router, "/events", etag)
+
+	assert.Equal(t, http.StatusOK, changed.Code)
+	assert.NotEqual(t, etag, changed.Header().Get("ETag"))
+	assert.Contains(t, changed.Body.String(), "edited elsewhere")
+}
+
+func TestCategoriesCarryAnETag(t *testing.T) {
+	router, sm := newTestServer()
+	sm.categories.On("GetCategories", testUserID).Return([]category.GetCategoryResponse{
+		{Id: 1, Category: "Dates"},
+	}, nil)
+
+	etag := doConditional(router, "/categories", "").Header().Get("ETag")
+	assert.NotEmpty(t, etag)
+	assert.Equal(t, http.StatusNotModified, doConditional(router, "/categories", etag).Code)
+}
+
+func TestAFailedReadGetsNoETag(t *testing.T) {
+	router, sm := newTestServer()
+	sm.events.On("GetEvents", testUserID, mock.Anything).Return(nil, errors.New("db down"))
+
+	rec := doConditional(router, "/events", "*")
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Empty(t, rec.Header().Get("ETag"))
+	assert.Contains(t, rec.Body.String(), "INTERNAL")
+}
+
+func TestABrowserMaySendAndReadTheETag(t *testing.T) {
+	router, _ := newTestServer()
+
+	req, _ := http.NewRequest(http.MethodOptions, "/events", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	assert.Contains(t, rec.Header().Get("Access-Control-Allow-Headers"), "If-None-Match")
+	assert.Equal(t, "ETag", rec.Header().Get("Access-Control-Expose-Headers"))
 }

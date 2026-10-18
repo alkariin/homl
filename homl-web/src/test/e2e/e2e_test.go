@@ -950,3 +950,55 @@ func TestCategoryDeleteOptions(t *testing.T) {
 		}
 	})
 }
+
+// getIfNoneMatch reads path with an If-None-Match header, returning the
+// status, the ETag answered and the body.
+func (c *client) getIfNoneMatch(path, etag string) (int, string, []byte) {
+	c.t.Helper()
+	req, err := http.NewRequest(http.MethodGet, baseURL()+path, nil)
+	if err != nil {
+		c.t.Fatalf("new request: %v", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+c.token)
+	if etag != "" {
+		req.Header.Set("If-None-Match", etag)
+	}
+	resp, err := c.http.Do(req)
+	if err != nil {
+		c.t.Fatalf("GET %s: %v", path, err)
+	}
+	defer resp.Body.Close()
+	out, _ := io.ReadAll(resp.Body)
+	return resp.StatusCode, resp.Header.Get("ETag"), out
+}
+
+// TestConditionalReads: a read the client already holds answers 304 with no
+// body, and any write makes the next one answer 200 with the new data.
+func TestConditionalReads(t *testing.T) {
+	c := newClient(t)
+	c.loginDemo()
+
+	for _, path := range []string{"/events", "/categories"} {
+		status, etag, body := c.getIfNoneMatch(path, "")
+		if status != http.StatusOK || etag == "" || len(body) == 0 {
+			t.Fatalf("GET %s: status %d, etag %q", path, status, etag)
+		}
+		status, again, body := c.getIfNoneMatch(path, etag)
+		if status != http.StatusNotModified || len(body) != 0 || again != etag {
+			t.Fatalf("GET %s again: status %d, %d bytes, etag %q", path, status, len(body), again)
+		}
+	}
+
+	_, before, _ := c.getIfNoneMatch("/events", "")
+	id := decodeID(t, c.mustDo(http.MethodPost, "/events", map[string]interface{}{
+		"description": "e2e-conditional",
+		"date":        "2026-05-04T00:00:00Z",
+		"tagsId":      []uint{},
+	}, http.StatusCreated))
+	defer c.mustDo(http.MethodDelete, fmt.Sprintf("/events/%d", id), nil, http.StatusNoContent)
+
+	status, after, body := c.getIfNoneMatch("/events", before)
+	if status != http.StatusOK || after == before || !bytes.Contains(body, []byte("e2e-conditional")) {
+		t.Fatalf("GET /events after a write: status %d, etag changed %v", status, after != before)
+	}
+}
