@@ -50,8 +50,8 @@ func NewEventsRepository(db *sqlx.DB, crypto application.Encryptor) event.Reposi
 	}
 }
 
-// FindEventsWithTags returns the user's events with all their tags. When
-// encTags is provided, only events matching ALL the given tag names are
+// FindEventsWithTags returns the user's events with all their tags; an event
+// without any tag has no entry in the tag map. When encTags is provided, only events matching ALL the given tag names are
 // returned; a name matches through its whole synonym group (main tag +
 // synonyms, resolved via COALESCE(idParentTag, id) as the group root).
 // E2EE users match on the blind-index column instead of the (deterministic)
@@ -70,7 +70,7 @@ func (e *EventsRepository) FindEventsWithTags(ctx context.Context, encTags []str
 			matchColumn = "named.tagIndex"
 		}
 		filterClause = `
-				AND idEvent IN (
+			AND Events.id IN (
 					SELECT ET.idEvent
 					FROM EventsTags ET
 					INNER JOIN Tags evtTag ON evtTag.id = ET.idTag
@@ -84,23 +84,27 @@ func (e *EventsRepository) FindEventsWithTags(ctx context.Context, encTags []str
 					HAVING COUNT(DISTINCT ` + matchColumn + `) = ?
 				)`
 	}
+	// From Events, with the tags LEFT JOINed: an event left without any tag
+	// (its last one deleted, or an E2EE event created without date tags) is
+	// listed all the same, with no tag columns.
 	query := `
 		SELECT Events.id, Events.description, Events.date, Events.endDate, Events.isOngoing, Tags.id, Tags.tag, Tags.idCategory, Tags.idParentTag
-			FROM Tags INNER JOIN Events INNER JOIN
+			FROM Events
+			LEFT JOIN
 			(
 				SELECT DISTINCT idTag, idEvent
 				FROM EventsTags
-				WHERE idUser = ?` + filterClause + `
-			) as ETags
-		ON Tags.id = ETags.idTag
-		AND Events.id = ETags.idEvent
+				WHERE idUser = ?
+			) as ETags ON ETags.idEvent = Events.id
+			LEFT JOIN Tags ON Tags.id = ETags.idTag
+		WHERE Events.idUser = ?` + filterClause + `
 		ORDER BY Events.id, Tags.id;
 	`
 
-	args := []interface{}{idUser}
+	args := []interface{}{idUser, idUser}
 	if len(encTags) > 0 {
 		var err error
-		query, args, err = sqlx.In(query, idUser, idUser, idUser, encTags, len(encTags))
+		query, args, err = sqlx.In(query, idUser, idUser, idUser, idUser, encTags, len(encTags))
 		if err != nil {
 			return nil, nil, err
 		}
@@ -115,16 +119,30 @@ func (e *EventsRepository) FindEventsWithTags(ctx context.Context, encTags []str
 	resTags := make(map[uint][]category.Tag)
 	resEvents := make(map[uint]event.Event)
 	for results.Next() {
-		var tag category.Tag
 		var event event.Event
 		var description sql.NullString
 		var endDate sql.NullTime
-		err = results.Scan(&event.Id, &description, &event.Date, &endDate, &event.IsOngoing, &tag.Id, &tag.Tag, &tag.IdCategory, &tag.IdParentTag)
+		var tagId, tagCategory sql.NullInt64
+		var tagName sql.NullString
+		var tagParent *uint
+		err = results.Scan(&event.Id, &description, &event.Date, &endDate, &event.IsOngoing, &tagId, &tagName, &tagCategory, &tagParent)
 		if err != nil {
 			return nil, nil, err
 		}
 		event.Description = nullStringToString(description)
 		event.EndDate = nullTimeToPtr(endDate)
+		resEvents[event.Id] = event
+		if !tagId.Valid {
+			// No tag at all: the event alone.
+			continue
+		}
+
+		tag := category.Tag{
+			Id:          uint(tagId.Int64),
+			Tag:         tagName.String,
+			IdCategory:  uint(tagCategory.Int64),
+			IdParentTag: tagParent,
+		}
 
 		// E2EE tag names are opaque blobs returned verbatim.
 		if !isE2ee {
@@ -135,7 +153,6 @@ func (e *EventsRepository) FindEventsWithTags(ctx context.Context, encTags []str
 			tag.Tag = decTag
 		}
 		resTags[event.Id] = append(resTags[event.Id], tag)
-		resEvents[event.Id] = event
 	}
 	if err := results.Err(); err != nil {
 		return nil, nil, err

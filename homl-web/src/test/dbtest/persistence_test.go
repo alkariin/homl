@@ -95,8 +95,7 @@ func TestCrossTenantEventIsolation(t *testing.T) {
 	alice := newUser(t, r)
 	mallory := newUser(t, r)
 
-	// Alice creates an event with one tag (events are only reachable through
-	// their EventsTags rows, so a tag-less event would be invisible).
+	// Alice creates an event with one tag.
 	aliceOther, err := r.cats.FindIdByKind(ctx, alice, category.KindOther)
 	require.NoError(t, err)
 	aliceTag, err := r.cats.CreateTag(ctx, r.enc(t, "Trip", alice), nil, aliceOther, nil)

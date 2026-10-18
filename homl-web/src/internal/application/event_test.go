@@ -2,6 +2,7 @@ package application_test
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"testing"
 	"time"
@@ -100,6 +101,30 @@ func TestGetEvents(t *testing.T) {
 			ids = append(ids, r.Id)
 		}
 		assert.Equal(t, []uint{1, 4, 2, 3}, ids)
+	})
+
+	t.Run("Answers an event without any tag with an empty tag list", func(t *testing.T) {
+		eventsRepo := new(mocks.MockEventsRepo)
+		svc := application.NewEventsService(&application.ESConfig{
+			EventsRepository: eventsRepo,
+			Crypto:           testCrypto,
+		})
+
+		enc, err := testCrypto.Encrypt("no tag", 1)
+		assert.NoError(t, err)
+		// The repository has no tag entry for an event without any.
+		eventsRepo.On("FindEventsWithTags", mock.Anything, uint64(1)).Return(map[uint]event.Event{
+			1: {Id: 1, Description: enc, Date: time.Now()},
+		}, map[uint][]category.Tag{}, nil)
+
+		res, err := svc.GetEvents(context.Background(), 1, nil)
+
+		assert.NoError(t, err)
+		assert.Len(t, res, 1)
+		// The clients read the field as a list: null would not parse.
+		body, err := json.Marshal(res[0])
+		assert.NoError(t, err)
+		assert.Contains(t, string(body), `"tags":[]`)
 	})
 
 	t.Run("Carries the period fields through to the response", func(t *testing.T) {
