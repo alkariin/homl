@@ -116,13 +116,17 @@ func (m *MockCategoriesService) GetCategories(ctx context.Context, idUser uint64
 	return r0, errAt(ret, 1)
 }
 
-func (m *MockCategoriesService) CreateCategory(ctx context.Context, category *category.Category) (uint, error) {
+func (m *MockCategoriesService) CreateCategory(ctx context.Context, category *category.Category) (uint, bool, error) {
 	ret := m.Called(category)
 	var r0 uint
 	if ret.Get(0) != nil {
 		r0 = ret.Get(0).(uint)
 	}
-	return r0, errAt(ret, 1)
+	var r1 bool
+	if ret.Get(1) != nil {
+		r1 = ret.Get(1).(bool)
+	}
+	return r0, r1, errAt(ret, 2)
 }
 
 func (m *MockCategoriesService) UpdateCategory(ctx context.Context, category *category.Category) error {

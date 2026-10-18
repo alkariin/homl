@@ -641,6 +641,34 @@ func TestEventPeriods(t *testing.T) {
 		c.mustDo(http.MethodPost, "/events", bad, http.StatusUnprocessableEntity)
 	})
 
+	t.Run("a category create replayed with its clientId stores one category", func(t *testing.T) {
+		const clientId = "9a3e1f7c-2d4b-4c8e-b6a1-5f0e3d2c7b98"
+		body := map[string]interface{}{
+			"category": "e2e-replayed-category",
+			"color":    "#a7ffeb",
+			"clientId": clientId,
+		}
+		first := decodeID(t, c.mustDo(http.MethodPost, "/categories", body, http.StatusCreated))
+		// The answer was lost: the client sends the same create again.
+		again := decodeID(t, c.mustDo(http.MethodPost, "/categories", body, http.StatusOK))
+		if again != first {
+			t.Fatalf("the replay answered id %d, the first create %d", again, first)
+		}
+
+		count := 0
+		for _, category := range c.categories() {
+			if category.Category == "E2e-Replayed-Category" || category.Category == "e2e-replayed-category" {
+				count++
+			}
+		}
+		if count != 1 {
+			t.Fatalf("expected one replayed category, found %d", count)
+		}
+
+		bad := map[string]interface{}{"category": "e2e-bad", "color": "#a7ffeb", "clientId": "not-a-uuid"}
+		c.mustDo(http.MethodPost, "/categories", bad, http.StatusUnprocessableEntity)
+	})
+
 	t.Run("the settings carry a data generation", func(t *testing.T) {
 		var settings struct {
 			DataGeneration string `json:"dataGeneration"`

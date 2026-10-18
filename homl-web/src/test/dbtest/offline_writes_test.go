@@ -185,3 +185,102 @@ func TestDataGeneration(t *testing.T) {
 		assert.NoError(t, err)
 	})
 }
+
+// Category names are not unique: a replayed create is told apart by its
+// clientId alone.
+
+func categoriesService(r *repos) application.CategoriesService {
+	return application.NewCategoriesService(&application.CSConfig{
+		CategoriesRepository: r.cats,
+		Crypto:               r.aes,
+	})
+}
+
+func countCategories(t *testing.T, r *repos, idUser uint64) int {
+	t.Helper()
+	var n int
+	require.NoError(t, r.db.Get(&n, "SELECT COUNT(*) FROM Categories WHERE idUser = ?", idUser))
+	return n
+}
+
+func TestCreateCategoryReplayHandsBackTheFirstRow(t *testing.T) {
+	r := setup(t)
+	ctx := context.Background()
+	u := newUser(t, r)
+	svc := categoriesService(r)
+	before := countCategories(t, r, u)
+
+	clientId := uuid.NewString()
+	id, created, err := svc.CreateCategory(ctx,
+		&category.Category{Category: "Trips", Color: "#a7ffeb", IdUser: u, ClientId: &clientId})
+	require.NoError(t, err)
+	require.True(t, created)
+
+	// The replay carries another body: it is not applied.
+	replayed, created, err := svc.CreateCategory(ctx,
+		&category.Category{Category: "Changed", Color: "#000000", IdUser: u, ClientId: &clientId})
+	require.NoError(t, err)
+	assert.False(t, created)
+	assert.Equal(t, id, replayed)
+	assert.Equal(t, before+1, countCategories(t, r, u))
+
+	stored, err := r.cats.FindByIdForUser(ctx, id, u)
+	require.NoError(t, err)
+	name, err := r.aes.Decrypt(stored.Category, u)
+	require.NoError(t, err)
+	assert.Equal(t, "Trips", name)
+	assert.Equal(t, "#a7ffeb", stored.Color)
+}
+
+func TestConcurrentCategoryReplaysStoreOneRow(t *testing.T) {
+	r := setup(t)
+	ctx := context.Background()
+	u := newUser(t, r)
+	svc := categoriesService(r)
+	before := countCategories(t, r, u)
+
+	clientId := uuid.NewString()
+	const attempts = 6
+	ids := make([]uint, attempts)
+	createdCount := 0
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	for i := range attempts {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			id, created, err := svc.CreateCategory(ctx,
+				&category.Category{Category: "Trips", Color: "#a7ffeb", IdUser: u, ClientId: &clientId})
+			assert.NoError(t, err)
+			mu.Lock()
+			defer mu.Unlock()
+			ids[i] = id
+			if created {
+				createdCount++
+			}
+		}()
+	}
+	wg.Wait()
+
+	assert.Equal(t, before+1, countCategories(t, r, u))
+	assert.Equal(t, 1, createdCount)
+	for _, id := range ids {
+		assert.Equal(t, ids[0], id)
+	}
+}
+
+func TestCreateCategoryWithoutClientIdStaysAsBefore(t *testing.T) {
+	r := setup(t)
+	ctx := context.Background()
+	u := newUser(t, r)
+	svc := categoriesService(r)
+	before := countCategories(t, r, u)
+
+	for range 2 {
+		_, created, err := svc.CreateCategory(ctx,
+			&category.Category{Category: "Trips", Color: "#a7ffeb", IdUser: u})
+		require.NoError(t, err)
+		assert.True(t, created)
+	}
+	assert.Equal(t, before+2, countCategories(t, r, u), "no clientId, no deduplication")
+}

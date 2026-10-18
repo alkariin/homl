@@ -26,11 +26,14 @@ func TestCreateCategory(t *testing.T) {
 			return err == nil && dec == "Noces" && c.Color == "red" && !c.IsLocked && c.IdUser == 42
 		})).Return(uint(5), nil)
 
-		id, err := svc.CreateCategory(context.Background(), &category.Category{Category: "noces", Color: "red", IdUser: 42})
+		id, created, err := svc.CreateCategory(context.Background(), &category.Category{Category: "noces", Color: "red", IdUser: 42})
 
 		assert.NoError(t, err)
 		// The id of the new row reaches the caller (POST /categories answers it).
 		assert.Equal(t, uint(5), id)
+		assert.True(t, created)
+		// Without a clientId nothing is looked up.
+		mockRepo.AssertNotCalled(t, "FindIdByClientId", mock.Anything, mock.Anything)
 		mockRepo.AssertExpectations(t)
 	})
 
@@ -40,10 +43,61 @@ func TestCreateCategory(t *testing.T) {
 
 		mockRepo.On("Create", mock.Anything).Return(uint(0), errors.New("db down"))
 
-		_, err := svc.CreateCategory(context.Background(), &category.Category{Category: "Noces", Color: "red"})
+		_, _, err := svc.CreateCategory(context.Background(), &category.Category{Category: "Noces", Color: "red"})
 
 		assert.Error(t, err)
 		mockRepo.AssertExpectations(t)
+	})
+}
+
+func TestCreateCategoryReplay(t *testing.T) {
+	ctx := context.Background()
+	clientId := "5b0e6a3c-2f4d-4a51-9c1e-7d2b8f6a9e10"
+	newSvc := func(repo *mocks.MockCategoriesRepo) application.CategoriesService {
+		return application.NewCategoriesService(&application.CSConfig{CategoriesRepository: repo, Crypto: testCrypto})
+	}
+
+	t.Run("A first create with a clientId stores it", func(t *testing.T) {
+		repo := new(mocks.MockCategoriesRepo)
+		repo.On("FindIdByClientId", clientId, uint64(1)).Return(uint(0), false, nil)
+		repo.On("Create", mock.MatchedBy(func(c *category.Category) bool {
+			return c.ClientId != nil && *c.ClientId == clientId
+		})).Return(uint(12), nil)
+
+		id, created, err := newSvc(repo).CreateCategory(ctx,
+			&category.Category{Category: "Trips", Color: "#ff0000", IdUser: 1, ClientId: &clientId})
+
+		assert.NoError(t, err)
+		assert.Equal(t, uint(12), id)
+		assert.True(t, created)
+		repo.AssertExpectations(t)
+	})
+
+	t.Run("A replay hands back the first category and touches nothing", func(t *testing.T) {
+		repo := new(mocks.MockCategoriesRepo)
+		repo.On("FindIdByClientId", clientId, uint64(1)).Return(uint(12), true, nil)
+
+		id, created, err := newSvc(repo).CreateCategory(ctx,
+			&category.Category{Category: "Trips", Color: "#ff0000", IdUser: 1, ClientId: &clientId})
+
+		assert.NoError(t, err)
+		assert.Equal(t, uint(12), id)
+		assert.False(t, created)
+		repo.AssertNotCalled(t, "Create", mock.Anything)
+	})
+
+	t.Run("A replay that loses the race to the first insert gets its row", func(t *testing.T) {
+		repo := new(mocks.MockCategoriesRepo)
+		repo.On("FindIdByClientId", clientId, uint64(1)).Return(uint(0), false, nil).Once()
+		repo.On("Create", mock.Anything).Return(uint(0), category.ErrDuplicateClientId)
+		repo.On("FindIdByClientId", clientId, uint64(1)).Return(uint(12), true, nil).Once()
+
+		id, created, err := newSvc(repo).CreateCategory(ctx,
+			&category.Category{Category: "Trips", Color: "#ff0000", IdUser: 1, ClientId: &clientId})
+
+		assert.NoError(t, err)
+		assert.Equal(t, uint(12), id)
+		assert.False(t, created)
 	})
 }
 

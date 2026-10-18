@@ -360,7 +360,7 @@ func TestGetCategoriesEndpoint(t *testing.T) {
 func TestCreateCategoryEndpoint(t *testing.T) {
 	router, sm := newTestServer()
 
-	sm.categories.On("CreateCategory", mock.AnythingOfType("*category.Category")).Return(uint(7), nil)
+	sm.categories.On("CreateCategory", mock.AnythingOfType("*category.Category")).Return(uint(7), true, nil)
 
 	rec := doRequest(router, http.MethodPost, "/categories",
 		`{"category":"Noces","color":"#ff0000"}`, authHeader())
@@ -368,6 +368,27 @@ func TestCreateCategoryEndpoint(t *testing.T) {
 	assert.Equal(t, http.StatusCreated, rec.Code)
 	assert.Equal(t, map[string]interface{}{"id": float64(7)}, decodeJSON(t, rec))
 	sm.categories.AssertExpectations(t)
+}
+
+// A create carrying a clientId already used answers 200 with the first
+// category: the offline replay of a create whose answer was lost.
+func TestCreateCategoryEndpointReplay(t *testing.T) {
+	const clientId = "5b0e6a3c-2f4d-4a51-9c1e-7d2b8f6a9e10"
+	router, sm := newTestServer()
+	sm.categories.On("CreateCategory", mock.MatchedBy(func(c *category.Category) bool {
+		return c.ClientId != nil && *c.ClientId == clientId
+	})).Return(uint(7), false, nil)
+
+	rec := doRequest(router, http.MethodPost, "/categories",
+		`{"category":"Noces","color":"#ff0000","clientId":"`+clientId+`"}`, authHeader())
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, map[string]interface{}{"id": float64(7)}, decodeJSON(t, rec))
+	sm.categories.AssertExpectations(t)
+
+	rec = doRequest(router, http.MethodPost, "/categories",
+		`{"category":"Noces","color":"#ff0000","clientId":"not-a-uuid"}`, authHeader())
+	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
 }
 
 func TestCreateCategoryRejectsNonHexColor(t *testing.T) {

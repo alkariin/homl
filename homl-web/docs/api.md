@@ -236,12 +236,17 @@ All endpoints require auth. A category groups tags; locked categories
 | Method | Path | Body | Response |
 | --- | --- | --- | --- |
 | GET | `/categories` | — | `200` list below |
-| POST | `/categories` | `{category, color}` | `201` `{id}` |
+| POST | `/categories` | `{category, color, clientId?}` | `201` `{id}`; `200` `{id}` for a replay (below) |
 | PATCH | `/categories/:id` | `{category, color}` | `204` |
 | DELETE | `/categories/:id` | `{moveTags, deleteEvents?}` | `204` |
 | GET | `/categories/:id/usage` | — | `200` usage below |
 
-`color` must be a hex color. `GET /categories` returns:
+`color` must be a hex color. `clientId` makes a create safe to replay, as on
+`POST /events` (see *Replaying a create* under [Events](#events)): a UUID the
+client picks once per category, answered `200` with the first category when
+it comes again. Category names are not unique, so unlike a tag or a tag group
+a replayed category cannot be recognised by its name. `GET /categories`
+returns:
 
 ```json
 [
@@ -461,8 +466,8 @@ otherwise.
 **Replaying a create.** A client that writes offline sends its creates when it
 is back, and may lose an answer on the way (the connection drops after the
 server stored the row). It cannot tell, so it sends the same create again. To
-make that safe, `POST /events` takes an optional `clientId`, a UUID the client
-picks once per event it creates:
+make that safe, `POST /events` (and `POST /categories`, the same way) takes an
+optional `clientId`, a UUID the client picks once per event it creates:
 
 - first time: the event is created, `201` `{id}`;
 - again with the same `clientId` (same user): nothing is created or changed —
