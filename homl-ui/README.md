@@ -585,10 +585,21 @@ what a visitor of a closed server needs.
 ## Security page (drawer): password, PIN, fingerprint, delete account
 
 `lib/pages/account/` is the "Security" screen: password change
-(`password_dialog.dart`), the two local unlock factors (fingerprint / PIN,
-mutually exclusive), the E2EE toggle, **Export my data** / **Import data**
-(see "Data export & import" below), then a destructive group with **Logout**
-and **Delete my account**.
+(`password_dialog.dart`), **Signed-in devices**, the two local unlock factors
+(fingerprint / PIN, mutually exclusive), the E2EE toggle, **Export my data** /
+**Import data** (see "Data export & import" below), then a destructive group
+with **Logout** and **Delete my account**.
+
+**Signed-in devices** (`view/sessions.dart`, `bloc/sessions_cubit.dart`)
+lists the account's device sessions from `GET /sessions`: this device first,
+then the others with their platform and app version, when they were last
+active and signed in, and their address. Each other device has a sign-out
+button, and "Sign out all other devices" ends them all; both ask first. It is
+online only: without the server the page says so and offers to try again.
+What names a device is the `X-Homl-Client` header the `Api` sends with every
+request (`clientLabel` in `lib/helpers/version.dart`: the platform, and the
+app version when the package info can be read) — nothing else about the
+device leaves it.
 
 Deleting the account is irreversible, so it is gated twice: a single dialog
 (`delete_account_dialog.dart`) states what is lost *and* asks for the password,
