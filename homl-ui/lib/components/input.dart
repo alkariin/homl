@@ -16,6 +16,12 @@ class Input extends StatelessWidget {
   final int maxLines;
   final int? minLines;
 
+  /// Asks the soft keyboard for capitals: [TextCapitalization.sentences]
+  /// starts each sentence with one (after a '.', '!', '?' or a new line).
+  /// The keyboard only proposes it, the user can still type a lowercase
+  /// letter there.
+  final TextCapitalization textCapitalization;
+
   /// The state can be controlled by the parent or the component itself
   final bool? toggleEye;
   final Function()? onToggleEye;
@@ -31,6 +37,7 @@ class Input extends StatelessWidget {
       this.inputType,
       this.maxLines = 1,
       this.minLines,
+      this.textCapitalization = TextCapitalization.none,
       this.toggleEye,
       this.onToggleEye,
       this.controller,
@@ -43,8 +50,17 @@ class Input extends StatelessWidget {
         return _PasswordInput(labelText, onChange, initialValue, validator,
             onBlur, errorText, toggleEye, onToggleEye, controller);
       default:
-        return _NormalInput(labelText, onChange, initialValue, validator,
-            onBlur, errorText, maxLines, minLines, controller);
+        return _NormalInput(
+            labelText,
+            onChange,
+            initialValue,
+            validator,
+            onBlur,
+            errorText,
+            maxLines,
+            minLines,
+            textCapitalization,
+            controller);
     }
   }
 }
@@ -60,11 +76,20 @@ class _NormalInput extends StatefulWidget {
   final String? errorText;
   final int maxLines;
   final int? minLines;
+  final TextCapitalization textCapitalization;
   final TextEditingController? controller;
 
-  const _NormalInput(this.labelText, this.onChange, this.initialValue,
-      this.validator, this.onBlur, this.errorText, this.maxLines,
-      this.minLines, this.controller);
+  const _NormalInput(
+      this.labelText,
+      this.onChange,
+      this.initialValue,
+      this.validator,
+      this.onBlur,
+      this.errorText,
+      this.maxLines,
+      this.minLines,
+      this.textCapitalization,
+      this.controller);
 
   @override
   State<_NormalInput> createState() => _NormalInputState();
@@ -126,6 +151,7 @@ class _NormalInputState extends State<_NormalInput> {
         controller: _controller,
         maxLines: widget.maxLines,
         minLines: widget.minLines,
+        textCapitalization: widget.textCapitalization,
         keyboardType:
             widget.maxLines > 1 ? TextInputType.multiline : null,
         decoration: InputDecoration(
