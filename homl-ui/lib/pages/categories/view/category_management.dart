@@ -27,8 +27,9 @@ bool isDateCategory(Category category) =>
 ///
 /// Two modes, chosen by [onTagSelected]:
 /// - null (Categories tab): management view — tapping a tag (or long
-///   pressing its chip) opens its actions menu, categories are editable;
-/// - non-null (tag picker opened from the "#" logo): read-only browser —
+///   pressing its chip) opens its sheet, with its synonyms and actions;
+///   categories are editable;
+/// - non-null (tag picker opened from the browse button): read-only browser —
 ///   tapping a tag hands it to the callback (e.g. insert it as a search
 ///   filter or as an event tag), tapping a group hands its tags to
 ///   [onGroupSelected].
@@ -310,14 +311,28 @@ class _CategoryTileState extends State<_CategoryTile> {
                           color: context.homl.ink.withValues(alpha: 0.05),
                         ),
                         const SizedBox(height: 10),
-                        ...mainTags.map((mainTag) => _TagRow(
-                            category: category,
-                            mainTag: mainTag,
-                            canManage: canManageTags,
-                            onTagSelected: onTagSelected,
-                            synonyms: category.tags
-                                .where((tag) => tag.idParentTag == mainTag.id)
-                                .toList())),
+                        // The main tags only, side by side: the synonyms
+                        // are a count on their chip, listed in its sheet.
+                        if (mainTags.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+                            child: Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
+                              children: [
+                                for (final mainTag in mainTags)
+                                  _TagChip(
+                                      category: category,
+                                      mainTag: mainTag,
+                                      canManage: canManageTags,
+                                      onTagSelected: onTagSelected,
+                                      synonyms: category.tags
+                                          .where((tag) =>
+                                              tag.idParentTag == mainTag.id)
+                                          .toList()),
+                              ],
+                            ),
+                          ),
                         if (groups.isNotEmpty) ...[
                           Padding(
                             padding: const EdgeInsets.fromLTRB(16, 10, 16, 2),
@@ -547,154 +562,285 @@ void _deleteGroupDialog(BuildContext context, TagGroup group) {
   );
 }
 
-class _TagRow extends StatelessWidget {
+/// A main tag in its category card. Its synonyms are only counted on the
+/// chip: a tap (or a long press) opens the tag sheet, which lists them along
+/// with the tag's actions. In the picker a tap hands the tag over.
+class _TagChip extends StatelessWidget {
   final Category category;
   final Tag mainTag;
   final List<Tag> synonyms;
   final bool canManage;
 
-  /// Picker mode when non-null: taps select instead of opening the menus.
+  /// Picker mode when non-null: a tap selects instead of opening the sheet.
   final void Function(TagView tag)? onTagSelected;
 
-  const _TagRow(
+  const _TagChip(
       {required this.category,
       required this.mainTag,
       required this.synonyms,
       required this.canManage,
       required this.onTagSelected});
 
-  /// Hands the tapped tag to the picker callback (filter/tag insertion).
-  void _selectTag(BuildContext context, Tag tag) {
-    final tagView = context.read<HomeCubit>().state.allTagsMap[tag.tag];
-    if (tagView != null) {
-      onTagSelected!(tagView);
-    }
-  }
-
-  void _onAction(BuildContext context, String action) {
-    var localization = AppLocalizations.of(context)!;
-    final homeCubit = context.read<HomeCubit>();
-
-    switch (action) {
-      case 'rename':
-        _textDialog(
-          context,
-          title: localization.categories_renameTag,
-          label: localization.categories_categoryName,
-          initialValue: mainTag.tag,
-          onSubmit: (name) =>
-              homeCubit.updateTag(mainTag.id, name, category.id),
-        );
-        break;
-      case 'synonym':
-        _textDialog(
-          context,
-          title: localization.categories_addSynonym,
-          label: localization.categories_synonymName,
-          onSubmit: (name) =>
-              homeCubit.createTag(name, category.id, idParentTag: mainTag.id),
-        );
-        break;
-      case 'move':
-        _moveTagDialog(context, category, mainTag);
-        break;
-      case 'delete':
-        _deleteTagDialog(context, mainTag, synonyms);
-        break;
-    }
-  }
-
-  /// Long press on the main tag chip: the same actions as the trailing menu,
-  /// as a dialog.
-  void _mainTagDialog(BuildContext context) {
-    var localization = AppLocalizations.of(context)!;
-
-    showDialog<void>(
-      context: context,
-      builder: (dialogContext) => SimpleDialog(
-        title: Text(mainTag.tag),
-        children: [
-          for (final (action, label) in [
-            ('rename', localization.categories_renameTag),
-            ('synonym', localization.categories_addSynonym),
-            ('move', localization.categories_moveTag),
-            ('delete', localization.categories_deleteTag),
-          ])
-            SimpleDialogOption(
-              child: Text(label),
-              onPressed: () {
-                Navigator.pop(dialogContext);
-                _onAction(context, action);
-              },
-            ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final isPicker = onTagSelected != null;
+    final onTagSelected = this.onTagSelected;
     // Read-only translation of the month date tags, which are stored in
     // English for every user (helpers/date_tags.dart).
     final locale = Localizations.localeOf(context).toString();
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-      child: Wrap(
-        spacing: 6,
-        runSpacing: 6,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          components.Tag(
-            id: mainTag.id,
-            text: localizedTagName(mainTag.tag, locale),
-            color: category.color,
-            onTap: isPicker
-                ? () => _selectTag(context, mainTag)
-                : !canManage
-                    ? null
-                    : () => _mainTagDialog(context),
-            onDeleteTag:
-                isPicker || !canManage ? null : (_) => _mainTagDialog(context),
-          ),
-          ...synonyms.map((synonym) => components.Tag(
-                id: synonym.id,
-                text: localizedTagName(synonym.tag, locale),
-                color: category.color,
-                onTap: isPicker
-                    ? () => _selectTag(context, synonym)
-                    : !canManage
-                        ? null
-                        : () => _synonymDialog(context, category, synonym),
-                onDeleteTag: isPicker || !canManage
-                    ? null
-                    : (_) => _synonymDialog(context, category, synonym),
-              )),
-        ],
-      ),
+    final VoidCallback? onTap;
+    if (onTagSelected != null) {
+      onTap = () {
+        final tagView = context.read<HomeCubit>().state.allTagsMap[mainTag.tag];
+        if (tagView != null) onTagSelected(tagView);
+      };
+    } else if (canManage || synonyms.isNotEmpty) {
+      // A read-only tag only opens the sheet to show its synonyms.
+      onTap = () => _showTagSheet(context, mainTag, canManage: canManage);
+    } else {
+      onTap = null;
+    }
+
+    return components.Tag(
+      id: mainTag.id,
+      text: localizedTagName(mainTag.tag, locale),
+      color: category.color,
+      // The picker hands the main tag over, which finds the events of its
+      // synonyms too: their count would only promise a choice it lacks.
+      count: onTagSelected == null ? synonyms.length : 0,
+      onTap: onTap,
+      onDeleteTag:
+          onTagSelected == null && onTap != null ? (_) => onTap!() : null,
     );
   }
 }
 
-/// Long press on a synonym chip: rename it, detach it from its main tag, or
-/// delete it (after a confirmation: its events migrate to the main tag).
-void _synonymDialog(BuildContext context, Category category, Tag synonym) {
-  var localization = AppLocalizations.of(context)!;
+/// Opens the sheet of [mainTag]: its synonyms, then its own actions when
+/// [canManage]. [context] is the chip's: moving or deleting the tag closes
+/// the sheet first, and their dialogs must outlive it.
+void _showTagSheet(BuildContext context, Tag mainTag,
+    {required bool canManage}) {
   final homeCubit = context.read<HomeCubit>();
-  final mainTags =
-      category.tags.where((tag) => tag.id == synonym.idParentTag).toList();
-  final mainTagName = mainTags.isEmpty ? '' : mainTags.first.tag;
 
-  showDialog<void>(
+  showModalBottomSheet<void>(
     context: context,
-    builder: (dialogContext) => SimpleDialog(
-      title: Text(synonym.tag),
-      children: [
-        SimpleDialogOption(
-          child: Text(localization.categories_renameSynonym),
-          onPressed: () {
-            Navigator.pop(dialogContext);
+    showDragHandle: true,
+    isScrollControlled: true,
+    useSafeArea: true,
+    builder: (sheetContext) => BlocProvider.value(
+      value: homeCubit,
+      child: _TagSheet(
+          tagId: mainTag.id, canManage: canManage, chipContext: context),
+    ),
+  );
+}
+
+class _TagSheet extends StatelessWidget {
+  final int tagId;
+  final bool canManage;
+  final BuildContext chipContext;
+
+  const _TagSheet(
+      {required this.tagId,
+      required this.canManage,
+      required this.chipContext});
+
+  /// The tag and its category, looked up again on every state: a synonym
+  /// added or a rename made from the sheet shows at once. Null once the tag
+  /// is gone.
+  static (Category, Tag)? _find(HomeState state, int tagId) {
+    for (final category in state.categories) {
+      for (final tag in category.tags) {
+        if (tag.id == tagId) return (category, tag);
+      }
+    }
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    var localization = AppLocalizations.of(context)!;
+    final homeCubit = context.read<HomeCubit>();
+    final locale = Localizations.localeOf(context).toString();
+    final muted = context.homl.ink.withValues(alpha: 0.45);
+    final iconColor = context.homl.ink.withValues(alpha: 0.6);
+    const padding = EdgeInsets.symmetric(horizontal: 20);
+
+    return BlocConsumer<HomeCubit, HomeState>(
+      // Gone while the sheet is up (a sync, another device): close it, once,
+      // unless a dialog sits on top of it.
+      listenWhen: (previous, current) =>
+          _find(previous, tagId) != null && _find(current, tagId) == null,
+      listener: (context, _) {
+        if (ModalRoute.of(context)?.isCurrent ?? false) {
+          Navigator.pop(context);
+        }
+      },
+      builder: (context, state) {
+        final found = _find(state, tagId);
+        if (found == null) return const SizedBox.shrink();
+        final (category, mainTag) = found;
+        final synonyms = category.tags
+            .where((tag) => tag.idParentTag == mainTag.id)
+            .toList();
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // The tag as the card shows it, and where it is filed.
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
+                child: Row(
+                  children: [
+                    Flexible(
+                      child: components.Tag(
+                          id: mainTag.id,
+                          text: localizedTagName(mainTag.tag, locale),
+                          color: category.color,
+                          large: true),
+                    ),
+                    const SizedBox(width: 10),
+                    Flexible(
+                      child: Text(
+                        localizedCategoryName(category, localization),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 12.5, color: muted),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 14, 20, 2),
+                child: Text(
+                  localization.categories_synonyms,
+                  style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: muted),
+                ),
+              ),
+              for (final synonym in synonyms)
+                _SynonymTile(
+                    category: category,
+                    mainTag: mainTag,
+                    synonym: synonym,
+                    canManage: canManage),
+              if (canManage) ...[
+                ListTile(
+                  contentPadding: padding,
+                  leading:
+                      FaIcon(FontAwesomeIcons.plus, size: 14, color: iconColor),
+                  title: Text(localization.categories_addSynonym),
+                  onTap: () => _textDialog(
+                    context,
+                    title: localization.categories_addSynonym,
+                    label: localization.categories_synonymName,
+                    onSubmit: (name) => homeCubit.createTag(name, category.id,
+                        idParentTag: mainTag.id),
+                  ),
+                ),
+                Divider(
+                    height: 17,
+                    indent: 20,
+                    endIndent: 20,
+                    color: context.homl.ink.withValues(alpha: 0.08)),
+                ListTile(
+                  contentPadding: padding,
+                  leading:
+                      FaIcon(FontAwesomeIcons.pen, size: 14, color: iconColor),
+                  title: Text(localization.categories_renameTag),
+                  onTap: () => _textDialog(
+                    context,
+                    title: localization.categories_renameTag,
+                    label: localization.categories_categoryName,
+                    initialValue: mainTag.tag,
+                    onSubmit: (name) =>
+                        homeCubit.updateTag(mainTag.id, name, category.id),
+                  ),
+                ),
+                ListTile(
+                  contentPadding: padding,
+                  leading: FaIcon(FontAwesomeIcons.arrowRightArrowLeft,
+                      size: 14, color: iconColor),
+                  title: Text(localization.categories_moveTag),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _moveTagDialog(chipContext, category, mainTag);
+                  },
+                ),
+                ListTile(
+                  contentPadding: padding,
+                  leading: FaIcon(FontAwesomeIcons.trash,
+                      size: 14, color: Colors.red.shade400),
+                  title: Text(localization.categories_deleteTag,
+                      style: TextStyle(color: Colors.red.shade400)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _deleteTagDialog(chipContext, mainTag, synonyms);
+                  },
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// A synonym in the tag sheet. A tap opens its menu: rename it, detach it
+/// from its main tag, or delete it (after a confirmation: its events
+/// migrate to the main tag).
+class _SynonymTile extends StatelessWidget {
+  final Category category;
+  final Tag mainTag;
+  final Tag synonym;
+  final bool canManage;
+
+  const _SynonymTile(
+      {required this.category,
+      required this.mainTag,
+      required this.synonym,
+      required this.canManage});
+
+  @override
+  Widget build(BuildContext context) {
+    var localization = AppLocalizations.of(context)!;
+    final homeCubit = context.read<HomeCubit>();
+    final locale = Localizations.localeOf(context).toString();
+    final ink = context.homl.ink.withValues(alpha: 0.6);
+    const padding = EdgeInsets.symmetric(horizontal: 20);
+    final title = Text(localizedTagName(synonym.tag, locale));
+    // An empty leading lines the name up with the labels of the rows below,
+    // which follow an icon.
+    const leading = SizedBox(width: 14);
+
+    if (!canManage) {
+      return ListTile(contentPadding: padding, leading: leading, title: title);
+    }
+
+    PopupMenuItem<String> item(String value, FaIconData icon, String label,
+            {Color? color}) =>
+        PopupMenuItem(
+          value: value,
+          child: Row(
+            children: [
+              FaIcon(icon, size: 14, color: color ?? ink),
+              const SizedBox(width: 12),
+              Text(label, style: TextStyle(color: color)),
+            ],
+          ),
+        );
+
+    return PopupMenuButton<String>(
+      onSelected: (action) {
+        switch (action) {
+          case 'rename':
             _textDialog(
               context,
               title: localization.categories_renameSynonym,
@@ -704,25 +850,29 @@ void _synonymDialog(BuildContext context, Category category, Tag synonym) {
                   synonym.id, name, category.id,
                   idParentTag: synonym.idParentTag),
             );
-          },
-        ),
-        SimpleDialogOption(
-          child: Text(localization.categories_detachSynonym),
-          onPressed: () {
+          case 'detach':
             homeCubit.updateTag(synonym.id, synonym.tag, category.id);
-            Navigator.pop(dialogContext);
-          },
-        ),
-        SimpleDialogOption(
-          child: Text(localization.global_delete),
-          onPressed: () {
-            Navigator.pop(dialogContext);
-            _deleteSynonymDialog(context, synonym, mainTagName);
-          },
-        ),
+          case 'delete':
+            _deleteSynonymDialog(context, synonym, mainTag.tag);
+        }
+      },
+      itemBuilder: (_) => [
+        item('rename', FontAwesomeIcons.pen,
+            localization.categories_renameSynonym),
+        item('detach', FontAwesomeIcons.linkSlash,
+            localization.categories_detachSynonym),
+        item('delete', FontAwesomeIcons.trash, localization.global_delete,
+            color: Colors.red.shade400),
       ],
-    ),
-  );
+      child: ListTile(
+        contentPadding: padding,
+        leading: leading,
+        title: title,
+        trailing: FaIcon(FontAwesomeIcons.ellipsisVertical,
+            size: 15, color: context.homl.ink.withValues(alpha: 0.45)),
+      ),
+    );
+  }
 }
 
 /// Confirms a synonym deletion: its events are repointed to the main tag.

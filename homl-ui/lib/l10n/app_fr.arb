@@ -237,6 +237,7 @@
   "categories_addSynonym": "Ajouter un synonyme",
   "categories_detachSynonym": "Détacher le synonyme",
   "categories_synonymName": "Synonyme",
+  "categories_synonyms": "Synonymes",
   "categories_renameSynonym": "Renommer le synonyme",
   "categories_deleteSynonymTitle": "Supprimer le synonyme ?",
   "categories_deleteSynonymInfo": "Les événements tagués \"{synonym}\" seront déplacés vers \"{tag}\".",

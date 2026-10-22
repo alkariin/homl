@@ -307,15 +307,24 @@ the Others tags are manageable so free tags typed on the insert page can be
 sorted into real categories). Each category is an expandable card: a colored
 icon, the name and a tag count in the header, the tag chips and a "New tag"
 pill in the body; category edit/delete live in the header's "⋮" menu (hidden
-for locked categories and in picker mode). `CategoryManagementBody` has two
-modes: the management view of the Categories tab (tap or long-press a tag →
-its actions menu), and a read-only picker (`showTagPickerSheet`, opened from
-the browse button of the tag inputs, and titled "Choose a tag" since the
-button no longer says what it opens) where tapping a tag hands it to the
-caller. The picker's `showDates` says whether the Dates category is listed:
-true on the Search tab (filtering on a month or a year is fair game), false
-on the Insert tab, where an event's date tags come from its period and
-picking one by hand would either do nothing or fight that derivation.
+for locked categories and in picker mode). The body shows the **main tags
+only**, side by side: a tag's synonyms are a small count on its chip (`count`
+on the `Tag` component), so a synonym pushed to the next line can no longer
+pass for a tag of its own. `CategoryManagementBody` has two modes: the
+management view of the Categories tab, where a tap (or a long press) on a tag
+opens its **sheet** (`_showTagSheet`): the tag and its category, its synonyms,
+"Add a synonym", then rename, move and delete. The sheet follows the
+`HomeCubit`, so a synonym added or a rename made from it shows at once, and it
+closes if the tag goes away; a read-only tag (Dates) opens it only to list its
+synonyms, if it has any. The other mode is a read-only picker
+(`showTagPickerSheet`, opened from the browse button of the tag inputs, and
+titled "Choose a tag" since the button no longer says what it opens) where
+tapping a tag hands it to the caller — the main tag only, without the synonym
+count: it finds the events of its synonyms anyway. The picker's `showDates`
+says whether the Dates category is listed: true on the Search tab (filtering
+on a month or a year is fair game), false on the Insert tab, where an event's
+date tags come from its period and picking one by hand would either do nothing
+or fight that derivation.
 Destructive actions confirm with the counts served by `GET /tags/:id/usage` /
 `GET /categories/:id/usage`:
 
@@ -327,8 +336,9 @@ Destructive actions confirm with the counts served by `GET /tags/:id/usage` /
   or moving onto a name the target category already holds is refused
   (`409 TAG_NAME_CONFLICT`, nothing written) and the toast asks for another
   name — tag names are unique per category;
-- a synonym (tap or long press on its chip) can be renamed, detached or
-  deleted — deletion confirms that its events are repointed to the main tag;
+- a synonym (tap its row in the tag sheet, or its "⋮") can be renamed,
+  detached or deleted — deletion confirms that its events are repointed to
+  the main tag;
 - a **tag group** (see below) is created from the "New group" pill, next to
   "New tag" (offered once the category has a tag), and edited or deleted
   from its chip;
