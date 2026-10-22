@@ -346,6 +346,7 @@
   "categories_addSynonym": "Add a synonym",
   "categories_detachSynonym": "Detach synonym",
   "categories_synonymName": "Synonym",
+  "categories_synonyms": "Synonyms",
   "categories_renameSynonym": "Rename synonym",
   "categories_deleteSynonymTitle": "Delete synonym?",
   "categories_deleteSynonymInfo": "Events tagged \"{synonym}\" will be moved to \"{tag}\".",

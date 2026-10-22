@@ -767,6 +767,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get categories_synonymName => 'Synonym';
 
   @override
+  String get categories_synonyms => 'Synonyms';
+
+  @override
   String get categories_renameSynonym => 'Rename synonym';
 
   @override

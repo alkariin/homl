@@ -237,6 +237,7 @@
   "categories_addSynonym": "Synonym hinzufügen",
   "categories_detachSynonym": "Synonym trennen",
   "categories_synonymName": "Synonym",
+  "categories_synonyms": "Synonyme",
   "categories_renameSynonym": "Synonym umbenennen",
   "categories_deleteSynonymTitle": "Synonym löschen?",
   "categories_deleteSynonymInfo": "Ereignisse mit dem Tag \"{synonym}\" werden zu \"{tag}\" verschoben.",

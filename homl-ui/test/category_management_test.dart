@@ -114,7 +114,7 @@ void main() {
     expect(find.text('Hobbies'), findsOneWidget);
   });
 
-  testWidgets('tapping a main tag opens the management menu', (tester) async {
+  testWidgets('tapping a main tag opens its sheet', (tester) async {
     await tester.pumpWidget(wrap());
     await tester.pumpAndSettle();
 
@@ -123,13 +123,16 @@ void main() {
     await tester.tap(find.text('Football'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Rename tag'), findsOneWidget);
+    expect(find.byType(BottomSheet), findsOneWidget);
+    expect(find.text('Synonyms'), findsOneWidget);
+    expect(find.text('Foot'), findsOneWidget);
     expect(find.text('Add a synonym'), findsOneWidget);
+    expect(find.text('Rename tag'), findsOneWidget);
     expect(find.text('Move to another category'), findsOneWidget);
     expect(find.text('Delete tag'), findsOneWidget);
   });
 
-  testWidgets('chips carry the category color, synonyms included',
+  testWidgets('the card counts the synonyms instead of listing them',
       (tester) async {
     await tester.pumpWidget(wrap());
     await tester.pumpAndSettle();
@@ -139,13 +142,12 @@ void main() {
 
     final mainChip = tester.widget<components.Tag>(
         find.widgetWithText(components.Tag, 'Football'));
-    final synonymChip = tester
-        .widget<components.Tag>(find.widgetWithText(components.Tag, 'Foot'));
     expect(mainChip.color, '#f28b82');
-    expect(synonymChip.color, '#f28b82');
+    expect(mainChip.count, 1);
+    expect(find.text('Foot'), findsNothing);
   });
 
-  testWidgets('long press on a main tag opens the same menu', (tester) async {
+  testWidgets('long press on a main tag opens the same sheet', (tester) async {
     await tester.pumpWidget(wrap());
     await tester.pumpAndSettle();
 
@@ -155,6 +157,78 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Rename tag'), findsOneWidget);
+  });
+
+  testWidgets('a synonym added from the sheet shows in it at once',
+      (tester) async {
+    when(() => tagsRepository.createTag(any(), any(),
+        idParentTag: any(named: 'idParentTag'))).thenAnswer((_) async => 5);
+
+    await tester.pumpWidget(wrap());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Hobbies'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Football'));
+    await tester.pumpAndSettle();
+
+    // The refresh that follows the creation brings the new synonym.
+    when(() => categoriesRepository.getCategories()).thenAnswer((_) async => [
+          categories[0],
+          Category(
+              id: 2,
+              category: 'Hobbies',
+              color: '#f28b82',
+              isLocked: false,
+              kind: CategoryKind.custom,
+              tags: [
+                ...categories[1].tags,
+                Tag(id: 5, tag: 'Soccer', idCategory: 2, idParentTag: 2),
+              ]),
+          categories[2],
+        ]);
+
+    await tester.tap(find.text('Add a synonym'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'Soccer');
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    verify(() => tagsRepository.createTag('Soccer', 2, idParentTag: 2))
+        .called(1);
+    expect(find.byType(BottomSheet), findsOneWidget);
+    expect(find.text('Soccer'), findsOneWidget);
+    expect(
+        tester
+            .widget<components.Tag>(
+                find.widgetWithText(components.Tag, 'Football').first)
+            .count,
+        2);
+  });
+
+  testWidgets('a synonym is detached from its menu in the sheet',
+      (tester) async {
+    when(() => tagsRepository.updateTag(any(), any(), any(),
+            idParentTag: any(named: 'idParentTag')))
+        .thenAnswer((_) async => WriteOutcome.sent);
+
+    await tester.pumpWidget(wrap());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Hobbies'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Football'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Foot'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Rename synonym'), findsOneWidget);
+    expect(find.text('Delete'), findsOneWidget);
+
+    await tester.tap(find.text('Detach synonym'));
+    await tester.pumpAndSettle();
+
+    verify(() => tagsRepository.updateTag(3, 'Foot', 2)).called(1);
   });
 
   testWidgets('picker mode selects on tap instead of opening the menu',
@@ -180,6 +254,13 @@ void main() {
 
     expect(selected?.tagName, 'Football');
     expect(find.text('Rename tag'), findsNothing);
+    // The picker hands the main tag over: no synonym count to promise more.
+    expect(
+        tester
+            .widget<components.Tag>(
+                find.widgetWithText(components.Tag, 'Football'))
+            .count,
+        0);
     // No management affordances in picker mode.
     expect(find.text('New tag'), findsNothing);
     expect(find.byIcon(Icons.add), findsNothing);
@@ -206,7 +287,8 @@ void main() {
   testWidgets('tags of the Others category are manageable and movable',
       (tester) async {
     when(() => tagsRepository.updateTag(any(), any(), any(),
-        idParentTag: any(named: 'idParentTag'))).thenAnswer((_) async => WriteOutcome.sent);
+            idParentTag: any(named: 'idParentTag')))
+        .thenAnswer((_) async => WriteOutcome.sent);
 
     await tester.pumpWidget(wrap());
     await tester.pumpAndSettle();
@@ -236,7 +318,8 @@ void main() {
     when(() => tagsRepository.getTagUsage(4))
         .thenAnswer((_) async => TagUsage(events: 2, exclusiveEvents: 0));
     when(() => tagsRepository.deleteTag(any(),
-        deleteEvents: any(named: 'deleteEvents'))).thenAnswer((_) async => WriteOutcome.sent);
+            deleteEvents: any(named: 'deleteEvents')))
+        .thenAnswer((_) async => WriteOutcome.sent);
 
     await tester.pumpWidget(wrap());
     await tester.pumpAndSettle();
@@ -266,7 +349,8 @@ void main() {
     when(() => tagsRepository.getTagUsage(4))
         .thenAnswer((_) async => TagUsage(events: 3, exclusiveEvents: 1));
     when(() => tagsRepository.deleteTag(any(),
-        deleteEvents: any(named: 'deleteEvents'))).thenAnswer((_) async => WriteOutcome.sent);
+            deleteEvents: any(named: 'deleteEvents')))
+        .thenAnswer((_) async => WriteOutcome.sent);
 
     await tester.pumpWidget(wrap());
     await tester.pumpAndSettle();
@@ -469,5 +553,6 @@ void main() {
 
     expect(find.text('Rename tag'), findsNothing);
     expect(find.byType(SimpleDialog), findsNothing);
+    expect(find.byType(BottomSheet), findsNothing);
   });
 }

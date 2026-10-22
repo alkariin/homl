@@ -27,6 +27,10 @@ class Tag extends StatelessWidget {
   final bool excluded;
   final bool large;
 
+  /// Shown after the label in a small pill when above zero: how many
+  /// synonyms the tag stands for, in the Categories tab.
+  final int count;
+
   static const double _fontSize = 13.5;
   static const double _largeFontSize = 15;
   static const double _verticalPadding = 5;
@@ -71,6 +75,7 @@ class Tag extends StatelessWidget {
       this.isGroup = false,
       this.excluded = false,
       this.large = false,
+      this.count = 0,
       super.key});
 
   @override
@@ -125,6 +130,25 @@ class Tag extends StatelessWidget {
                   style: _labelStyle(label, large: large),
                 ),
               ),
+              // Smaller than the label, so the chip keeps its height.
+              if (count > 0) ...[
+                const SizedBox(width: 6),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: palette.darken(base, .3).withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    '$count',
+                    style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: label),
+                  ),
+                ),
+              ],
             ],
           ),
         ),

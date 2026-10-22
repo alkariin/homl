@@ -1270,6 +1270,12 @@ abstract class AppLocalizations {
   /// **'Synonym'**
   String get categories_synonymName;
 
+  /// No description provided for @categories_synonyms.
+  ///
+  /// In en, this message translates to:
+  /// **'Synonyms'**
+  String get categories_synonyms;
+
   /// No description provided for @categories_renameSynonym.
   ///
   /// In en, this message translates to:
