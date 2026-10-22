@@ -228,29 +228,6 @@ void main() {
       expect(listCubit.state.range, isNull);
       expect(find.text('Event 1'), findsOneWidget);
     });
-
-    testWidgets('the calendar button picks the range', (tester) async {
-      await pumpPage(tester, events);
-
-      await tester.tap(find.byTooltip('Filter by dates'));
-      await tester.pumpAndSettle();
-      expect(find.byType(DateRangePickerDialog), findsOneWidget);
-
-      // Typed in, rather than scrolled to in the calendar.
-      await tester.tap(find.byIcon(Icons.edit_outlined));
-      await tester.pumpAndSettle();
-      final fields = find.byType(TextField);
-      await tester.enterText(
-          fields.at(fields.evaluate().length - 2), '6/1/2003');
-      await tester.enterText(fields.last, '6/30/2003');
-      await tester.tap(find.text('OK'));
-      await tester.pumpAndSettle();
-
-      expect(listCubit.state.range,
-          DayRange(DateTime(2003, 6, 1), DateTime(2003, 6, 30)));
-      expect(find.text('Event 2'), findsOneWidget);
-      expect(find.text('Event 1'), findsNothing);
-    });
   });
 
   group('the timeline', () {

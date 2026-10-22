@@ -62,18 +62,15 @@ const family = TagChipData(
 /// mark follows.
 String? suggested;
 int browsed = 0;
-int datesPicked = 0;
 
 Widget wrap(
     {List<TagChipData> tags = const [],
     List<TagChipData> suggestions = const [info, football, other, july],
     void Function(String name)? onAddTag,
     bool browsable = true,
-    bool allowExclusion = false,
-    bool pickDates = false}) {
+    bool allowExclusion = false}) {
   suggested = null;
   browsed = 0;
-  datesPicked = 0;
   return MaterialApp(
     home: Scaffold(
       body: TagInput(
@@ -84,8 +81,6 @@ Widget wrap(
         onAddTag: onAddTag ?? (_) {},
         browseLabel: 'Browse tags',
         onBrowse: browsable ? () => browsed++ : null,
-        pickDatesLabel: 'Pick dates',
-        onPickDates: pickDates ? () => datesPicked++ : null,
         allowExclusion: allowExclusion,
         onSuggestionChanged: (name) => suggested = name,
       ),
@@ -348,17 +343,6 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('"beach", -Bob'), findsOneWidget);
-    });
-
-    testWidgets('the date button is optional and reports its taps',
-        (tester) async {
-      await tester.pumpWidget(wrap());
-      expect(find.byTooltip('Pick dates'), findsNothing);
-
-      await tester.pumpWidget(wrap(pickDates: true));
-      await tester.tap(find.byTooltip('Pick dates'));
-      expect(datesPicked, 1);
-      expect(browsed, 0);
     });
 
     testWidgets('an excluded chip wears the ban icon', (tester) async {
