@@ -453,8 +453,11 @@ class _InsertViewState extends State<InsertView> {
                   Input(
                     labelText: localization.insert_descriptionLabel,
                     controller: _descriptionController,
-                    maxLines: 4,
-                    minLines: 3,
+                    // Room for a few sentences before it scrolls, each one
+                    // started with a capital by the keyboard.
+                    maxLines: 10,
+                    minLines: 5,
+                    textCapitalization: TextCapitalization.sentences,
                     validator: (_) => null,
                     onChange: (text) =>
                         context.read<InsertCubit>().updateDescription(text),

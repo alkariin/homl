@@ -48,6 +48,33 @@ void main() {
     expect(changes.last, '');
   });
 
+  testWidgets('a textarea can ask the keyboard for sentence capitals',
+      (tester) async {
+    await tester.pumpWidget(const MaterialApp(
+      home: Scaffold(
+        body: Input(
+          labelText: 'Description',
+          maxLines: 10,
+          minLines: 5,
+          textCapitalization: TextCapitalization.sentences,
+          validator: _noError,
+        ),
+      ),
+    ));
+
+    final field = tester.widget<TextField>(find.byType(TextField));
+    expect(field.textCapitalization, TextCapitalization.sentences);
+    expect(field.minLines, 5);
+    expect(field.keyboardType, TextInputType.multiline);
+  });
+
+  testWidgets('a field asks for no capitals by default', (tester) async {
+    await pumpForm(tester);
+
+    final field = tester.widget<TextField>(find.byType(TextField).first);
+    expect(field.textCapitalization, TextCapitalization.none);
+  });
+
   testWidgets('an edited field keeps its text when it loses the focus',
       (tester) async {
     await pumpForm(tester);
@@ -61,3 +88,5 @@ void main() {
     expect(changes.last, 'New text');
   });
 }
+
+String? _noError(String _) => null;
