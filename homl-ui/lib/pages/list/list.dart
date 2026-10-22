@@ -19,7 +19,6 @@ import 'package:homl/helpers/last_time.dart';
 import 'package:homl/helpers/on_this_day.dart';
 import 'package:homl/helpers/tag_groups.dart';
 import 'package:homl/helpers/timeline.dart';
-import 'package:homl/helpers/date_entry.dart';
 import 'package:homl/pages/categories/view/category_management.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
 import 'package:homl/pages/list/bloc/list_cubit.dart';
@@ -72,30 +71,6 @@ class ListPage extends StatelessWidget {
     return range.first == range.last
         ? first
         : '$first \u2013 ${format.format(range.last)}';
-  }
-
-  /// Opens the range picker on the range already set, if any; a new pick
-  /// replaces it.
-  static Future<void> _pickRange(BuildContext context) async {
-    final cubit = context.read<ListCubit>();
-    final current = cubit.state.range;
-    // The range holds calendar days; the picker works on local dates.
-    DateTime local(DateTime day) => DateTime(day.year, day.month, day.day);
-
-    final picked = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(1900),
-      lastDate: DateTime(2100),
-      // The pencil also reads "18102026": see helpers/date_entry.dart.
-      calendarDelegate: const DigitsDateCalendarDelegate(),
-      initialDateRange: current == null
-          ? null
-          : DateTimeRange(
-              start: local(current.first), end: local(current.last)),
-    );
-    if (picked != null) {
-      cubit.setRange(DayRange(picked.start, picked.end));
-    }
   }
 
   @override
@@ -253,8 +228,6 @@ class ListPage extends StatelessWidget {
                 onTagSelected: (tag) =>
                     context.read<ListCubit>().addTag(tag.tagName),
               ),
-              pickDatesLabel: localization.list_pickDates,
-              onPickDates: () => _pickRange(context),
               // The app bar mark follows the tag being typed, then the
               // filters already chosen.
               onSuggestionChanged: (name) => typedTag?.value = name,

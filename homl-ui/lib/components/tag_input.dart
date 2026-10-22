@@ -85,13 +85,6 @@ class TagInput extends StatefulWidget {
   /// Tooltip and accessible name of that button.
   final String? browseLabel;
 
-  /// Opens a date picker. Renders a calendar button after the browse one
-  /// when set, nothing when null.
-  final VoidCallback? onPickDates;
-
-  /// Tooltip and accessible name of that button.
-  final String? pickDatesLabel;
-
   /// Shown in the empty focused field, under the label.
   final String? hintText;
 
@@ -122,8 +115,6 @@ class TagInput extends StatefulWidget {
       this.showSearchIcon = false,
       this.onBrowse,
       this.browseLabel,
-      this.onPickDates,
-      this.pickDatesLabel,
       this.hintText,
       this.allowExclusion = false,
       this.onSuggestionChanged,
@@ -524,13 +515,6 @@ class _TagInputState extends State<TagInput> {
                   icon: FontAwesomeIcons.tags,
                   onPressed: widget.onBrowse!,
                   tooltip: widget.browseLabel),
-            ],
-            if (widget.onPickDates != null) ...[
-              const SizedBox(width: 10),
-              _squareButton(
-                  icon: FontAwesomeIcons.solidCalendarDays,
-                  onPressed: widget.onPickDates!,
-                  tooltip: widget.pickDatesLabel),
             ],
           ],
         ),

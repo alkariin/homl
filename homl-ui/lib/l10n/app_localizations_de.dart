@@ -512,9 +512,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String get list_filterHint => '-Bob, \"Strand\"';
 
   @override
-  String get list_pickDates => 'Nach Datum filtern';
-
-  @override
   String get activity_title => 'Aktivität';
 
   @override

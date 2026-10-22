@@ -449,9 +449,8 @@ under E2EE), so what the form shows is what the Dates category will hold and
 what the search can filter on. Both chips open the date picker, and both
 follow the picked date (`leading` of `TagInput` takes a list of widgets).
 
-The pickers (start, end, and the Search tab's range) take a typed date
-through their pencil as eight digits too — `18102026` for 18/10/2026 — in
-the order of the locale's own format (month first in US English): a phone's
+The start and end pickers take a typed date through their pencil as eight
+digits too — `18102026` for 18/10/2026 — in the order of the locale's own format (month first in US English): a phone's
 number keyboard often has no `/` or `.`. `DigitsDateCalendarDelegate`
 (`lib/helpers/date_entry.dart`) reads the digits and leaves anything else to
 the locale format, as before.
@@ -814,11 +813,12 @@ What the field takes (`SearchTerm.parse`):
   (`foldForSearch`): `cafe by` finds "Café by the sea". Quotes may be the
   typographic ones a phone keyboard types, and the closing one may be left
   out.
-- **Dates.** The calendar button after the browse one opens the Material
-  date range picker. An event is kept when it took place on one of the
-  picked days at least: a period overlapping the range counts, an open one
-  runs until today. The range is a gold chip with a calendar icon, first in
-  the row; a tap lifts it, a new pick replaces it.
+- **Dates.** A tap on a day of the activity calendar (see "Search tab: the
+  activity calendar") narrows the search to it; the field itself has no date
+  button. An event is kept when it took place on one of the range's days at
+  least: a period overlapping it counts, an open one runs until today. The
+  range is a gold chip with a calendar icon, first in the row; a tap lifts
+  it, a tap on another day replaces it.
 - Every term and the range combine with **AND**.
 - **Chips.** A tag term wears its tag's chip, a text term a neutral grey one
   in quotes, an excluded term a ban icon. A tap (or a long press) removes a

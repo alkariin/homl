@@ -982,12 +982,6 @@ abstract class AppLocalizations {
   /// **'-Bob, \"beach\"'**
   String get list_filterHint;
 
-  /// No description provided for @list_pickDates.
-  ///
-  /// In en, this message translates to:
-  /// **'Filter by dates'**
-  String get list_pickDates;
-
   /// No description provided for @activity_title.
   ///
   /// In en, this message translates to:
