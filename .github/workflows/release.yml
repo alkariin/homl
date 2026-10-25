@@ -88,10 +88,15 @@ jobs:
       - name: Check the signature
         run: |
           apksigner=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)apksigner
-          digest=$("$apksigner" verify --print-certs build/app/outputs/flutter-apk/app-release.apk \
-            | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')
-          if [ "$digest" != "$CERT_SHA256" ]; then
-            echo "::error::APK signed by ${digest:-nothing}, expected the release key $CERT_SHA256"
+          echo "$apksigner"
+          certs=$("$apksigner" verify --print-certs build/app/outputs/flutter-apk/app-release.apk)
+          echo "$certs"
+          # Every signer line, whatever its wording: "Signer #1 certificate
+          # SHA-256 digest" up to build-tools 36, "V2 Signer: certificate
+          # SHA-256 digest" from 37. All of them must name the release key.
+          digests=$(echo "$certs" | sed -n 's/.*certificate SHA-256 digest: //p' | sort -u)
+          if [ "$digests" != "$CERT_SHA256" ]; then
+            echo "::error::APK signed by ${digests:-nothing}, expected the release key $CERT_SHA256"
             exit 1
           fi
 
