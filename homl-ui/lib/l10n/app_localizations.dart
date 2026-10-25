@@ -1905,6 +1905,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Connection lost: the import stopped. Import the same file again to finish it, what is already there is skipped.'**
   String get import_interrupted;
+
+  /// No description provided for @update_available.
+  ///
+  /// In en, this message translates to:
+  /// **'Update available'**
+  String get update_available;
+
+  /// No description provided for @update_title.
+  ///
+  /// In en, this message translates to:
+  /// **'homl {release} is out'**
+  String update_title(String release);
+
+  /// No description provided for @update_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Your server already runs {release}, this app is still {installed}. Update it from Obtainium, or download the APK from the release page.'**
+  String update_body(String release, String installed);
+
+  /// No description provided for @update_later.
+  ///
+  /// In en, this message translates to:
+  /// **'Later'**
+  String get update_later;
+
+  /// No description provided for @update_open.
+  ///
+  /// In en, this message translates to:
+  /// **'Release page'**
+  String get update_open;
+
+  /// No description provided for @update_openFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open the release page.'**
+  String get update_openFailed;
 }
 
 class _AppLocalizationsDelegate

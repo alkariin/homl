@@ -1239,4 +1239,26 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get import_interrupted =>
       'Connection lost: the import stopped. Import the same file again to finish it, what is already there is skipped.';
+
+  @override
+  String get update_available => 'Update available';
+
+  @override
+  String update_title(String release) {
+    return 'homl $release is out';
+  }
+
+  @override
+  String update_body(String release, String installed) {
+    return 'Your server already runs $release, this app is still $installed. Update it from Obtainium, or download the APK from the release page.';
+  }
+
+  @override
+  String get update_later => 'Later';
+
+  @override
+  String get update_open => 'Release page';
+
+  @override
+  String get update_openFailed => 'Could not open the release page.';
 }

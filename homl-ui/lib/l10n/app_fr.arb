@@ -343,5 +343,11 @@
   "import_doneNothing": "Rien de nouveau : ton compte contenait déjà tout.",
   "import_doneExisting": "{count, plural, =1{1 événement était déjà là.} other{{count} événements étaient déjà là.}}",
   "import_doneSkipped": "{count, plural, =1{1 élément a été refusé par le serveur (un nom de tag réservé, par exemple) et laissé de côté.} other{{count} éléments ont été refusés par le serveur (un nom de tag réservé, par exemple) et laissés de côté.}}",
-  "import_interrupted": "Connexion perdue : l'import s'est arrêté. Importe à nouveau le même fichier pour le terminer, ce qui est déjà là sera ignoré."
+  "import_interrupted": "Connexion perdue : l'import s'est arrêté. Importe à nouveau le même fichier pour le terminer, ce qui est déjà là sera ignoré.",
+  "update_available": "Mise à jour disponible",
+  "update_title": "homl {release} est disponible",
+  "update_body": "Ton serveur tourne déjà en {release}, cette app est encore en {installed}. Mets-la à jour depuis Obtainium, ou télécharge l'APK sur la page de la version.",
+  "update_later": "Plus tard",
+  "update_open": "Page de la version",
+  "update_openFailed": "Impossible d'ouvrir la page de la version."
 }

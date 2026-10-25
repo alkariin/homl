@@ -1249,4 +1249,26 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get import_interrupted =>
       'Connexion perdue : l\'import s\'est arrêté. Importe à nouveau le même fichier pour le terminer, ce qui est déjà là sera ignoré.';
+
+  @override
+  String get update_available => 'Mise à jour disponible';
+
+  @override
+  String update_title(String release) {
+    return 'homl $release est disponible';
+  }
+
+  @override
+  String update_body(String release, String installed) {
+    return 'Ton serveur tourne déjà en $release, cette app est encore en $installed. Mets-la à jour depuis Obtainium, ou télécharge l\'APK sur la page de la version.';
+  }
+
+  @override
+  String get update_later => 'Plus tard';
+
+  @override
+  String get update_open => 'Page de la version';
+
+  @override
+  String get update_openFailed => 'Impossible d\'ouvrir la page de la version.';
 }
