@@ -216,6 +216,27 @@ build to the published APK (or back) means uninstalling once. Setup, secrets
 and Obtainium: [homl-web/docs/deployment.md](../homl-web/docs/deployment.md),
 "Building the clients".
 
+### The update notice
+
+On Android, an icon (`Icons.system_update_outlined`, tooltip "Update
+available") joins the home app bar when the server runs a newer release than
+the app (`lib/components/app_update.dart`): whoever upgraded the server, a
+newer APK is out. It opens a dialog naming both versions, which points at
+Obtainium and opens the GitHub release page in the browser (`url_launcher`);
+a page that cannot open closes the dialog with an error toast.
+
+- **The comparison** (`newerServerRelease`, `lib/helpers/version.dart`) reads
+  the release number on both sides: the server's `git describe` from
+  `/healthz` ("v0.6.0-3-gabc1234" still counts as 0.6.0) against the
+  pubspec version. Either side without one (a server built from an untagged
+  checkout reports a bare hash) shows nothing.
+- **When**: each time `ServerReachability` turns online, until a newer
+  release is found — a phone started away from a LAN-only server learns about
+  it back home, without the app polling anything. The app never asks GitHub:
+  the server it already talks to is the only source.
+- **Android only**: it is the one platform with a published build; the web is
+  as new as the files its host serves, and iOS builds from source.
+
 ## Toasts (user-facing messages)
 
 Every message goes through `showToast` (`lib/helpers/toast.dart`), never

@@ -554,5 +554,20 @@
       "count": { "type": "int" }
     }
   },
-  "import_interrupted": "Connection lost: the import stopped. Import the same file again to finish it, what is already there is skipped."
+  "import_interrupted": "Connection lost: the import stopped. Import the same file again to finish it, what is already there is skipped.",
+  "update_available": "Update available",
+  "update_title": "homl {release} is out",
+  "@update_title": {
+    "placeholders": { "release": { "type": "String" } }
+  },
+  "update_body": "Your server already runs {release}, this app is still {installed}. Update it from Obtainium, or download the APK from the release page.",
+  "@update_body": {
+    "placeholders": {
+      "release": { "type": "String" },
+      "installed": { "type": "String" }
+    }
+  },
+  "update_later": "Later",
+  "update_open": "Release page",
+  "update_openFailed": "Could not open the release page."
 }

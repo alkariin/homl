@@ -343,5 +343,11 @@
   "import_doneNothing": "Nichts Neues: Dein Konto enthielt bereits alles.",
   "import_doneExisting": "{count, plural, =1{1 Ereignis war schon vorhanden.} other{{count} Ereignisse waren schon vorhanden.}}",
   "import_doneSkipped": "{count, plural, =1{1 Element wurde vom Server abgelehnt (zum Beispiel ein reservierter Tag-Name) und ausgelassen.} other{{count} Elemente wurden vom Server abgelehnt (zum Beispiel ein reservierter Tag-Name) und ausgelassen.}}",
-  "import_interrupted": "Verbindung verloren: Der Import wurde unterbrochen. Importiere dieselbe Datei erneut, um ihn abzuschließen; Vorhandenes wird übersprungen."
+  "import_interrupted": "Verbindung verloren: Der Import wurde unterbrochen. Importiere dieselbe Datei erneut, um ihn abzuschließen; Vorhandenes wird übersprungen.",
+  "update_available": "Update verfügbar",
+  "update_title": "homl {release} ist da",
+  "update_body": "Dein Server läuft schon mit {release}, diese App noch mit {installed}. Aktualisiere sie über Obtainium oder lade die APK von der Release-Seite.",
+  "update_later": "Später",
+  "update_open": "Release-Seite",
+  "update_openFailed": "Die Release-Seite konnte nicht geöffnet werden."
 }

@@ -218,7 +218,9 @@ Nothing to build: install it on the phone (allowing installs from the browser
 or the file manager), or let [Obtainium](https://github.com/ImranR98/Obtainium)
 do it — add an app with the source URL `https://github.com/alkariin/homl` and
 turn on **Include prereleases** (every release is one until 1.0); it then
-notifies of each new release and upgrades in one tap.
+notifies of each new release and upgrades in one tap. The app itself also
+shows an update icon once its server runs a newer release than it does:
+upgrade the server, and the phones that use it hear about the new APK.
 
 The signing certificate's SHA-256 is
 `c6f107131022f4b44fde2fe3ca69871f80b15ae8d5a6291afb20099f8ad310b6`

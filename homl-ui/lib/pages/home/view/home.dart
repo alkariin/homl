@@ -8,6 +8,7 @@ import 'package:homl/data/repositories/categories.repository.dart';
 import 'package:homl/data/repositories/events.repository.dart';
 
 import 'package:homl/components/app_bar_mark.dart';
+import 'package:homl/components/app_update.dart';
 import 'package:homl/components/pending_changes.dart';
 import 'package:homl/components/bubbles_background.dart';
 import 'package:homl/components/logo.dart';
@@ -314,6 +315,7 @@ class _HomeViewState extends State<HomeView>
           ),
           title: Text(tabTitles[_currentIndex]),
           actions: [
+            const AppUpdateButton(),
             BlocSelector<HomeCubit, HomeState, OutboxCounts>(
                 selector: (state) => state.pendingChanges,
                 builder: (context, counts) => PendingChangesButton(

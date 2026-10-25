@@ -1251,4 +1251,27 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get import_interrupted =>
       'Verbindung verloren: Der Import wurde unterbrochen. Importiere dieselbe Datei erneut, um ihn abzuschließen; Vorhandenes wird übersprungen.';
+
+  @override
+  String get update_available => 'Update verfügbar';
+
+  @override
+  String update_title(String release) {
+    return 'homl $release ist da';
+  }
+
+  @override
+  String update_body(String release, String installed) {
+    return 'Dein Server läuft schon mit $release, diese App noch mit $installed. Aktualisiere sie über Obtainium oder lade die APK von der Release-Seite.';
+  }
+
+  @override
+  String get update_later => 'Später';
+
+  @override
+  String get update_open => 'Release-Seite';
+
+  @override
+  String get update_openFailed =>
+      'Die Release-Seite konnte nicht geöffnet werden.';
 }
