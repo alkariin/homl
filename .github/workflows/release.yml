@@ -1,0 +1,117 @@
+name: Release
+
+# Builds the signed Android APK and attaches it to the GitHub release, where
+# Obtainium (or a browser) picks it up: on publishing a release, pre-releases
+# included, or by hand for a given tag. Run by hand without a tag, it builds
+# the selected branch and keeps the APK as a workflow artifact instead — a dry
+# run of the signing that touches no release.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to attach the APK to (empty = dry run on the selected branch)
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    name: Signed Android APK
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      # SHA-256 of the release signing certificate. An APK signed with
+      # anything else (a missing secret falling back to the debug key) fails
+      # the job instead of reaching phones that could then never upgrade.
+      CERT_SHA256: c6f107131022f4b44fde2fe3ca69871f80b15ae8d5a6291afb20099f8ad310b6
+    defaults:
+      run:
+        working-directory: homl-ui
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TAG || github.ref }}
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.7'
+          channel: stable
+          cache: true
+
+      # The app shows its pubspec version next to the server's tag (Settings →
+      # About) and compares them to offer updates: they must agree.
+      - name: Check the pubspec version matches the tag
+        if: env.TAG != ''
+        run: |
+          version=$(sed -n 's/^version: *\([0-9][0-9.]*\)+.*/\1/p' pubspec.yaml)
+          if [ "v$version" != "$TAG" ]; then
+            echo "::error::pubspec.yaml says $version, the release is $TAG"
+            exit 1
+          fi
+
+      - name: Write the signing config
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KEYSTORE_PASSWORD" ]; then
+            echo "::error::the ANDROID_KEYSTORE_* secrets are not set"
+            exit 1
+          fi
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          cat > android/key.properties <<EOF
+          storeFile=$RUNNER_TEMP/release.jks
+          storePassword=$KEYSTORE_PASSWORD
+          keyAlias=homl
+          keyPassword=$KEYSTORE_PASSWORD
+          EOF
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      # arm64 only: every Android phone of the last years, a third of the size
+      # of a fat APK, and one asset so Obtainium has nothing to choose. Not
+      # --split-per-abi, which would add 2000 to the version code and refuse
+      # later locally built upgrades.
+      - name: Build
+        run: flutter build apk --release --target-platform android-arm64 --no-tree-shake-icons
+
+      - name: Check the signature
+        run: |
+          apksigner=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)apksigner
+          digest=$("$apksigner" verify --print-certs build/app/outputs/flutter-apk/app-release.apk \
+            | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')
+          if [ "$digest" != "$CERT_SHA256" ]; then
+            echo "::error::APK signed by ${digest:-nothing}, expected the release key $CERT_SHA256"
+            exit 1
+          fi
+
+      - name: Name the APK
+        id: apk
+        run: |
+          path="$RUNNER_TEMP/homl-${TAG:-${GITHUB_SHA::7}}-arm64.apk"
+          mv build/app/outputs/flutter-apk/app-release.apk "$path"
+          echo "path=$path" >> "$GITHUB_OUTPUT"
+
+      - name: Attach it to the release
+        if: env.TAG != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$TAG" "${{ steps.apk.outputs.path }}" --clobber --repo "$GITHUB_REPOSITORY"
+
+      - name: Keep it as an artifact (dry run)
+        if: env.TAG == ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: homl-apk
+          path: ${{ steps.apk.outputs.path }}
+          retention-days: 7

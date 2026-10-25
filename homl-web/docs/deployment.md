@@ -2,8 +2,9 @@
 
 Running HOML on a server you own: a single Linux host with Docker, the API
 behind a reverse proxy that terminates TLS, MySQL and Redis on the loopback.
-This is the self-hosting path — the app is distributed as source, not through
-an app store.
+This is the self-hosting path — the app is not in any app store: Android gets
+a signed APK with every GitHub release (§5), the other platforms build from
+source.
 
 Companion documents: [architecture.md](architecture.md) (what the service is
 made of), [auth-flows.md](auth-flows.md) (the email path), and
@@ -209,10 +210,54 @@ Serve `build/web` from the same origin you put in `CORS_ORIGIN`. The
 `--no-tree-shake-icons` flag is not optional — see the note in
 [../../homl-ui/README.md](../../homl-ui/README.md).
 
-For Android, the same `--dart-define` applies to `flutter build apk`; leave it
-out and users enter the address at the first sign-in. A release APK is
-currently signed with the debug key, so it cannot be upgraded by a properly
-signed build later: set up a keystore before distributing one.
+### Android: the published APK
+
+Every GitHub release carries a signed `homl-vX.Y.Z-arm64.apk`, built and
+attached by `.github/workflows/release.yml` when the release is published.
+Nothing to build: install it on the phone (allowing installs from the browser
+or the file manager), or let [Obtainium](https://github.com/ImranR98/Obtainium)
+do it — add an app with the source URL `https://github.com/alkariin/homl` and
+turn on **Include prereleases** (every release is one until 1.0); it then
+notifies of each new release and upgrades in one tap.
+
+The signing certificate's SHA-256 is
+`c6f107131022f4b44fde2fe3ca69871f80b15ae8d5a6291afb20099f8ad310b6`
+(`apksigner verify --print-certs homl-….apk`). Android only upgrades an
+install with an APK signed by the same key, so an install signed by another
+one (a local build with the debug key) has to be removed once before the
+published APK goes on: let the pending offline changes reach the server first,
+since uninstalling clears the device's store.
+
+### Android: building it yourself
+
+The same `--dart-define` applies to `flutter build apk`; leave it out and
+users enter the address at the first sign-in. Release builds are signed with
+the key described by `homl-ui/android/key.properties` (git-ignored):
+
+```properties
+storeFile=/absolute/path/to/homl-release.jks
+storePassword=…
+keyAlias=homl
+keyPassword=…
+```
+
+Without that file they fall back to the debug key: fine to try a release
+build, useless to distribute. Debug builds (`flutter run`) always use the
+debug key, so they cannot install over a release-signed app either.
+
+The release workflow writes that file from two repository secrets,
+`ANDROID_KEYSTORE_BASE64` (the keystore, `base64 -w0`) and
+`ANDROID_KEYSTORE_PASSWORD` (the store and key password — one for both, as
+PKCS12 requires). It fails rather than publish an APK whose certificate is not
+`CERT_SHA256`, or whose `pubspec.yaml` version is not the release tag. Run by
+hand without a tag (Actions → Release → Run workflow), it builds the selected
+branch and keeps the APK as a workflow artifact: a dry run that touches no
+release. A fork publishing its own APKs sets its own secrets and
+`CERT_SHA256`.
+
+Keep a copy of the keystore and its password off the machine: without them no
+install can be upgraded any more — every phone has to uninstall and reinstall
+an APK signed by a new key.
 
 ## 6. Password-reset email
 
