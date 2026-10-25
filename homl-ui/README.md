@@ -205,6 +205,17 @@ some Font Awesome glyphs that *are* referenced as constants (seen 2026-07-26:
 `xmark` and the nav icons survived). Until that is understood, build releases
 with `--no-tree-shake-icons`.
 
+## Release signing & the published APK
+
+Each GitHub release gets a signed arm64 APK from
+`.github/workflows/release.yml`. Release builds sign with the key named in
+`android/key.properties` (git-ignored) and fall back to the debug key without
+it; debug builds always use the debug key. Android refuses to upgrade an
+install with an APK signed by another key, so moving a phone from a local
+build to the published APK (or back) means uninstalling once. Setup, secrets
+and Obtainium: [homl-web/docs/deployment.md](../homl-web/docs/deployment.md),
+"Building the clients".
+
 ## Toasts (user-facing messages)
 
 Every message goes through `showToast` (`lib/helpers/toast.dart`), never
