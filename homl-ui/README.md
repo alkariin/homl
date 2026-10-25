@@ -253,6 +253,13 @@ to do that, but it *also* puts the initial text back and re-notifies
 (`_resetEmptied`): without it an erased description reappeared on blur and the
 parent bloc heard a change the user never made.
 
+`textCapitalization` is handed to the field as is (none by default). The
+event description asks for `TextCapitalization.sentences`: the soft keyboard
+starts each sentence with a capital — the first letter, then after a `.`,
+`!`, `?` or a new line. It is the keyboard's shift key, not a rewrite of the
+text: a lowercase letter typed on purpose stays, and a hardware keyboard (the
+web build on a desktop) is not affected.
+
 ## Light & dark themes
 
 **Settings → Appearance** picks *System default* (the default), *Light* or
@@ -464,6 +471,9 @@ digits too — `18102026` for 18/10/2026 — in the order of the locale's own fo
 number keyboard often has no `/` or `.`. `DigitsDateCalendarDelegate`
 (`lib/helpers/date_entry.dart`) reads the digits and leaves anything else to
 the locale format, as before.
+
+The description field opens five lines tall and grows up to ten before it
+scrolls, and its sentences start with a capital (see "Text inputs" above).
 
 Tags are optional: an event needs a tag **or** a description, and saving one
 with neither says so (`AppMessage.insertEmpty`). Deleting a tag can leave
