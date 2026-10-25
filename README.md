@@ -34,6 +34,10 @@ flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:8080/api
 
 See each sub-project's README for full setup.
 
+**Android without Flutter:** every [release](https://github.com/alkariin/homl/releases)
+carries a signed APK, which Obtainium can keep up to date — see
+[deployment.md §5](homl-web/docs/deployment.md#5-building-the-clients).
+
 **Self-hosting?** Before opening the instance to anyone, put
 `homl-web/scripts/backup.sh` in root's crontab and rehearse one restore with
 `scripts/restore.sh` — see [deployment.md §7](homl-web/docs/deployment.md#7-backups).
