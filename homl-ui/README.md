@@ -557,78 +557,55 @@ uses it under E2EE, where the server cannot derive the tags itself.
 `Ongoing`, and any four-digit name (a year tag — `1984` as a user tag is the
 accepted cost of never colliding with one).
 
-## Search tab: the event cards
+## Search tab: the event list
 
-The events are laid out in a grid of `EventCard`s
-(`lib/components/event_card.dart`). A cell is small, so the card decides what
-fits:
+The events are listed in one column, newest first, under a heading per month
+("October 2026", with how many events start in it): the reading order cannot
+be mistaken, and every tag shows. `eventFeed` (`lib/helpers/event_feed.dart`)
+turns the list into headings and rows, grouping consecutive events of the
+month they *start* in (the events come sorted by date from the projection, so
+a month never splits); `lib/pages/list/view/event_feed.dart` draws them with
+`MonthHeader` and `EventRow`, in a `SliverList`.
 
-- the date is the card header, so the month/year date tags are **not** chipped
-  — they would only repeat it. The card gets an `isDateTag` predicate from
-  `ListPage`, which resolves each tag's category through
-  `HomeState.allTagsMap` (the categories fetch, more reliable than the
-  category carried by a cached event) and compares it to
+- **The row**: the day and the weekday on the left (`25` / `SUN`), then a dot
+  on the **rail** joining the events of a month — from its first dot to its
+  last, so each month reads as one thread — then the card. The dot wears the
+  color of the event's first tag in a real category, the same rule as its bar
+  on the timeline (`timelineColor` in `ListPage`), a quarter of the way to
+  black so a pastel stays visible; an untagged or Others-only event gets the
+  neutral grey.
+- **The card**: the period line when there is one, then every tag (a `Wrap`,
+  never truncated), then two lines of description. The period line is
+  `periodLine` (`lib/helpers/event_period.dart`), shared with the detail
+  sheet: `→ Oct 18 · 7 days` for a closed period (its end with the year only
+  when not the start's), `→ Ongoing · for 22 days` for an open one, counted
+  to today at render time. A single day has none.
+- **Date tags are not chipped**: the heading and the day already say them.
+  The row gets an `isDateTag` predicate from `ListPage`, which resolves each
+  tag's category through `HomeState.allTagsMap` (the categories fetch, more
+  reliable than the category carried by a cached event) and compares it to
   `dateCategoryIds(...)` (`lib/helpers/categories.dart`, shared with the edit
-  page);
-- a period adds a small pill under the date: how long it lasted (`16 days`,
-  `3 months`, `2 years` — inclusive days, then calendar months from 31 days,
-  then years from 24 months, see `lib/helpers/event_period.dart`) or
-  `Ongoing`. Under the date, not beside it: on a phone-width cell the date
-  alone takes most of the line. The pill is deliberately not a `Tag` and must
-  not read as one; the rows below are sized from the room left, so it costs
-  at most a tag row on a short card. A single day shows no pill — most
-  events look exactly as they always did;
-- a tag longer than the card is truncated with an ellipsis (`Tag` makes its
-  label flexible), so a single very long tag still reads;
-- with a description, the tags get every whole row that fits once the
-  separator and one line of description are set aside: a second row pushes
-  the description down instead of dropping tags, but the description is never
-  hidden — at worst it ends up flush with the bottom of the card. Rows are
-  clipped whole (`Tag.heightOf` gives the row height), so tags that do not
-  fit are simply not shown rather than half-drawn;
-- without a description the tags fill the card.
+  page).
+- A change made offline wears a small clock in the corner of its card; a tap
+  on the card opens the detail sheet.
 
-## Search tab: event detail, edit & delete
-
-Tapping an event card opens a bottom sheet
-(`lib/pages/list/view/event_detail_sheet.dart`) with the full period, the
-regular tags and the whole description (scrollable), plus two actions. The
-header is the start date and, for a period, a second line: the end and the
-length (`→ Thursday, June 18, 2026 · 16 days`) or, for an open one,
-`→ Ongoing · for 2 years` — counted to today at render time, never stored,
-and left out until a full day has passed so a start still in the future never
-reads as a negative duration. The date tags (months, years, `Ongoing`) are not
-chipped, as on the card: the header already carries the period, and a long
-one would put a dozen month chips under it.
-
-- **edit** pushes `EditEventPage` (`lib/pages/insert/insert.dart`), which
-  reuses `InsertView`/`InsertCubit` in edit mode: `InsertState.fromEvent`
-  prefills the form, period included, but excludes the date tags — the
-  backend rebuilds them from the period on every update, so sending them back
-  in `tagsId` would duplicate them as regular tags. Saving calls
-  `PATCH /events/:id` (full state: the description is always sent, even
-  empty, which is how it gets erased, and so are `endDate` and `isOngoing`,
-  which is how a period turns back into a single day), pops back and
-  confirms with a snackbar.
-- **delete** asks for confirmation, then calls `DELETE /events/:id`.
-
-Neither action refreshes the list by hand: both repository calls emit on
-`EventsRepository.changes`, which `HomeCubit` already listens to (refetch +
-offline cache rewrite), and `ListCubit` re-filters from `HomeCubit.stream`.
+The previous grid of square `EventCard`s (`lib/components/event_card.dart`)
+only remains in the "On this day" strip, where a card's fixed size suits a
+horizontal row.
 
 ## Search tab: "On this day" & "Last time"
 
-Two headers above the grid, scrolling with it (`ListPage` is a
-`CustomScrollView`: the header slivers, then the grid). Both are worked out
+Two headers above the list, scrolling with it (`ListPage` is a
+`CustomScrollView`: the header slivers, then the list). Both are worked out
 by `ListPage` at render time from the events already in memory — nothing is
 stored or asked of the server, so they work offline and for an E2EE account
 alike, and are never a day behind.
 
 - **On this day** (`lib/helpers/on_this_day.dart`,
   `lib/pages/list/view/on_this_day_strip.dart`), on the whole list only (no
-  term, no range) and in the grid view: a horizontal strip of the events that *started* on today's month and day in
+  term, no range) and in the list view: a horizontal strip of the events that *started* on today's month and day in
   an earlier year, the most recent first, each card under "1 year ago",
-  "10 years ago". The cards are the grid's own `EventCard`s, so a tap opens
+  "10 years ago". The cards are `EventCard`s, and a tap opens
   the detail sheet. Only the start counts: a period comes back on the
   anniversary of its first day, never on every day it covers (a five-year
   period would otherwise fill the strip every day for five years). An event
@@ -684,13 +661,13 @@ day it covers, an open one until today.
 ## Search tab: the timeline
 
 The app bar of the Search tab carries a view switch (`_viewSwitch` in
-`lib/pages/home/view/home.dart`, a Gantt icon, a grid icon once switched):
-the grid of cards, or the **timeline** of the periods among the same
+`lib/pages/home/view/home.dart`, a Gantt icon, a list icon once switched):
+the event list, or the **timeline** of the periods among the same
 results (`ListState.timeline`, `ListCubit.toggleTimeline`). The search is
 untouched by the switch, so the timeline follows it: `Work` lays the jobs
 out, `-Trip` drops the trips, a range keeps the periods overlapping it. The
 "Last time" summary stays above it; the "On this day" strip belongs to the
-grid. The choice lasts as long as the session.
+list. The choice lasts as long as the session.
 
 - **What it shows** (`timelineOf` in `lib/helpers/timeline.dart`): every
   closed or open period, one row each, newest first (by start, then by end).

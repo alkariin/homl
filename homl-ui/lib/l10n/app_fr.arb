@@ -189,7 +189,7 @@
   "activity_more": "Plus",
   "activity_day": "{count, plural, =0{Aucun événement} =1{1 événement} other{{count} événements}} · {date}",
   "list_showTimeline": "Afficher la frise",
-  "list_showGrid": "Afficher la grille",
+  "list_showList": "Afficher la liste",
   "timeline_empty": "Aucune période ici. Un événement avec une date de fin, ou encore en cours, apparaît sur la frise.",
   "timeline_singleDays": "{count, plural, =1{1 événement d'un seul jour n'est pas affiché} other{{count} événements d'un seul jour ne sont pas affichés}}",
   "list_noEvents": "Aucun événement trouvé",
@@ -349,5 +349,6 @@
   "update_body": "Ton serveur tourne déjà en {release}, cette app est encore en {installed}. Mets-la à jour depuis Obtainium, ou télécharge l'APK sur la page de la version.",
   "update_later": "Plus tard",
   "update_open": "Page de la version",
-  "update_openFailed": "Impossible d'ouvrir la page de la version."
+  "update_openFailed": "Impossible d'ouvrir la page de la version.",
+  "list_monthCount": "{count, plural, =1{1 événement} other{{count} événements}}"
 }

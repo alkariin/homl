@@ -535,7 +535,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get list_showTimeline => 'Show the timeline';
 
   @override
-  String get list_showGrid => 'Show the grid';
+  String get list_showList => 'Show the list';
 
   @override
   String get timeline_empty =>
@@ -1261,4 +1261,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get update_openFailed => 'Could not open the release page.';
+
+  @override
+  String list_monthCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count events',
+      one: '1 event',
+    );
+    return '$_temp0';
+  }
 }

@@ -4,7 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:mocktail/mocktail.dart';
 
-import 'package:homl/components/event_card.dart';
 import 'package:homl/data/models/category.dart';
 import 'package:homl/data/models/event.dart';
 import 'package:homl/data/models/settings.dart';
@@ -20,6 +19,7 @@ import 'package:homl/pages/home/bloc/home_cubit.dart';
 import 'package:homl/pages/insert/insert.dart';
 import 'package:homl/pages/list/bloc/list_cubit.dart';
 import 'package:homl/pages/list/list.dart';
+import 'package:homl/pages/list/view/event_feed.dart';
 
 class MockEventsRepository extends Mock implements EventsRepository {}
 
@@ -127,7 +127,7 @@ void main() {
   Future<void> openSheet(WidgetTester tester) async {
     await tester.pumpWidget(wrap());
     await tester.pumpAndSettle();
-    await tester.tap(find.byType(EventCard));
+    await tester.tap(find.byType(EventRow));
     await tester.pumpAndSettle();
   }
 
@@ -168,7 +168,12 @@ void main() {
     await openSheet(tester);
 
     // Started in March 2026; whenever this runs, months or years have gone by.
-    expect(find.textContaining(RegExp(r'^→ Ongoing · for \d+ (months|years)$')),
+    // In the sheet: the row behind it says the same.
+    expect(
+        find.descendant(
+            of: find.byType(BottomSheet),
+            matching: find.textContaining(
+                RegExp(r'^→ Ongoing · for \d+ (months|years)$'))),
         findsOneWidget);
   });
 
@@ -178,7 +183,10 @@ void main() {
     await openSheet(tester);
 
     // No negative duration: just the flag, until the period has started.
-    expect(find.text('→ Ongoing'), findsOneWidget);
+    expect(
+        find.descendant(
+            of: find.byType(BottomSheet), matching: find.text('→ Ongoing')),
+        findsOneWidget);
   });
 
   testWidgets('the trash action asks for confirmation before deleting',

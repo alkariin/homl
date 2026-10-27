@@ -15,7 +15,7 @@ class ListState extends Equatable {
   final bool loading;
 
   /// The results are shown as the timeline of their periods rather than the
-  /// grid of cards (the app bar switch on the Search tab).
+  /// list of events (the app bar switch on the Search tab).
   final bool timeline;
 
   const ListState(

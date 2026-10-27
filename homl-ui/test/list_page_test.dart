@@ -6,7 +6,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/intl.dart';
 
-import 'package:homl/components/event_card.dart';
 import 'package:homl/components/tag.dart' as components;
 import 'package:homl/data/models/category.dart';
 import 'package:homl/data/models/event.dart';
@@ -17,6 +16,7 @@ import 'package:homl/l10n/app_localizations.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
 import 'package:homl/pages/list/bloc/list_cubit.dart';
 import 'package:homl/pages/list/list.dart';
+import 'package:homl/pages/list/view/event_feed.dart';
 import 'package:homl/pages/list/view/activity_calendar.dart';
 import 'package:homl/pages/list/view/last_time_summary.dart';
 import 'package:homl/pages/list/view/on_this_day_strip.dart';
@@ -266,7 +266,7 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    testWidgets('takes the place of the grid and of the strip', (tester) async {
+    testWidgets('takes the place of the list and of the strip', (tester) async {
       await pumpTimeline(tester, [
         eventOn(1, anniversary, [cinema]),
         period(2, DateTime(2019, 3, 1), [lisbon],
@@ -275,7 +275,7 @@ void main() {
 
       expect(find.byType(PeriodTimeline), findsOneWidget);
       expect(find.byType(OnThisDayStrip), findsNothing);
-      expect(find.byType(EventCard), findsNothing);
+      expect(find.byType(EventRow), findsNothing);
       expect(find.text('Lisbon'), findsOneWidget);
       expect(find.text('2 years'), findsOneWidget);
       expect(find.text('1 single-day event is not shown'), findsOneWidget);

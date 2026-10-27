@@ -9,7 +9,8 @@ import 'package:homl/helpers/event_period.dart';
 import 'package:homl/l10n/app_localizations.dart';
 
 /// Event card: white, radius 16, hairline border and soft shadow. Sized by
-/// its parent (grid cell); the tags take the rows they can get and the
+/// its parent (a cell of the "On this day" strip; the Search tab lists its
+/// events with EventRow); the tags take the rows they can get and the
 /// description fades out at the bottom.
 class EventCard extends StatelessWidget {
   /// Gap between two chips, horizontally and between two rows.
