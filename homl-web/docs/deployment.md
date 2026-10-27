@@ -399,7 +399,7 @@ everyone out and costs nothing else. It needs no backup.
 ## 8. Upgrades
 
 ```bash
-cd /srv/homl && git pull && git checkout v0.6.2   # the release you are upgrading to
+cd /srv/homl && git pull && git checkout v0.6.3   # the release you are upgrading to
 cd homl-web
 VERSION=$(git describe --tags --always) \
   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
