@@ -132,7 +132,10 @@ curl -fsS http://127.0.0.1:8080/healthz
   port at all.
 - The file is standalone (no overlay, no `!override`), so the
   `docker-compose` v1 of some NAS runs it too: write `docker-compose` for
-  `docker compose`.
+  `docker compose`. Its `run` calls the `docker` CLI, so that has to be on the
+  `PATH`: on a Synology, an interactive SSH session has it, but a command
+  passed to `ssh` or a DSM scheduled task does not and fails with "Couldn't
+  find `docker` binary" — add `export PATH="$PATH:/usr/local/bin"` first.
 
 ### Create the accounts, then close sign-ups
 
