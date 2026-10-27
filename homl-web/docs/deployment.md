@@ -443,6 +443,13 @@ left as it is.
   is the only place the real error appears.
 - **Restart**: the overlay's `restart: unless-stopped` covers crashes and host
   reboots. Shutdown is graceful (in-flight requests get 5 s).
+- **Boot order**: when the host boots, Docker starts every container at once
+  and ignores `depends_on`, so MySQL may need a minute more than the API. The
+  API waits for MySQL, then Redis, up to 2 minutes each, retrying with a
+  growing delay (1 s up to 10 s) and logging `MySQL not reachable yet` with
+  the cause. It does not exit meanwhile, so a NAS does not report the
+  container as stopped unexpectedly. Past 2 minutes it exits and the restart
+  policy takes over, so a wrong address or password still shows in the log.
 
 ## 10. Pre-flight checklist
 

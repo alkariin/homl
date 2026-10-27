@@ -135,7 +135,9 @@ Schema migrations live in `db/migrations` (golang-migrate format).
 Loaded from the environment (with `.env` fallback) by
 `infrastructure/config`. Startup fails fast on unsafe values: missing,
 placeholder or `< 32`-char secrets, and a wildcard/empty `CORS_ORIGIN`
-outside DEV.
+outside DEV. Unreachable data sources are different: `infrastructure/db`
+waits up to 2 minutes for MySQL, then Redis, since a booting host starts
+them alongside the API ([deployment.md §9](deployment.md#9-operating-it)).
 
 | Variable | Role |
 | --- | --- |
