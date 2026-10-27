@@ -80,7 +80,10 @@ own name once renamed. Requests always carry the stored name.
   - deleting a category with `moveTags: true` moves the orphaned tags into it,
     with the category's tag groups ([tag-groups.md](tag-groups.md)).
 - The app hides the category in the Categories tab while it has no tags
-  (`CategoryManagementBody`).
+  (`CategoryManagementBody`), and lists it **last** everywhere (the
+  Categories tab, the tag picker, "move to"): the API lists categories by
+  creation, so the categories created after the account would otherwise land
+  below it (`othersLast`, applied by `HomeCubit`). The API order is unchanged.
 
 ## Custom categories
 
