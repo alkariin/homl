@@ -1,27 +1,27 @@
 name: Release
 
 # Builds the signed Android APK and attaches it to the GitHub release, where
-# Obtainium (or a browser) picks it up: on publishing a release, pre-releases
+# Obtainium (or a browser) picks it up, and pushes the backend image to GHCR
+# (ghcr.io/<owner>/homl-back:<tag>): on publishing a release, pre-releases
 # included, or by hand for a given tag. Run by hand without a tag, it builds
-# the selected branch and keeps the APK as a workflow artifact instead — a dry
-# run of the signing that touches no release.
+# the selected branch, keeps the APK as a workflow artifact and pushes no
+# image — a dry run that touches no release.
 on:
   release:
     types: [published]
   workflow_dispatch:
     inputs:
       tag:
-        description: Release tag to attach the APK to (empty = dry run on the selected branch)
+        description: Release tag to build (empty = dry run on the selected branch)
         required: false
         default: ''
-
-permissions:
-  contents: write
 
 jobs:
   apk:
     name: Signed Android APK
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     env:
       TAG: ${{ github.event.release.tag_name || inputs.tag }}
       # SHA-256 of the release signing certificate. An APK signed with
@@ -120,3 +120,59 @@ jobs:
           name: homl-apk
           path: ${{ steps.apk.outputs.path }}
           retention-days: 7
+
+  image:
+    name: Backend image (GHCR)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TAG || github.ref }}
+
+      # Lowercase, as registries require: the owner is the repository's, so a
+      # fork publishes under its own name.
+      - name: Name the image
+        run: |
+          version="${TAG:-dev-${GITHUB_SHA::7}}"
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/homl-back:$version" >> "$GITHUB_ENV"
+
+      # One plain linux/amd64 manifest: no provenance or SBOM attestations,
+      # whose index older Docker engines (the docker 20.10 of some NAS)
+      # handle poorly. VERSION is what /healthz reports. The source label
+      # links the package to this repository.
+      - name: Build
+        run: |
+          docker build homl-web \
+            --platform linux/amd64 \
+            --provenance=false --sbom=false \
+            --build-arg VERSION="$VERSION" \
+            --label org.opencontainers.image.source="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
+            --label org.opencontainers.image.version="$VERSION" \
+            --label org.opencontainers.image.revision="$(git rev-parse HEAD)" \
+            --tag "$IMAGE"
+
+      # The image must carry its own migrations, all of them, and the tools to
+      # apply them: a server upgrading from it has nothing else.
+      - name: Check it carries its migrations
+        run: |
+          expected=$(ls homl-web/db/migrations/*.up.sql | wc -l)
+          found=$(docker run --rm --entrypoint sh "$IMAGE" -c \
+            'test -x /app/homlback && test -x /app/migrate && migrate -version >&2 && ls /app/migrations/*.up.sql | wc -l')
+          if [ "$found" != "$expected" ]; then
+            echo "::error::the image carries $found migrations, the repository $expected"
+            exit 1
+          fi
+
+      - name: Push it to GHCR
+        if: env.TAG != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker push "$IMAGE"
