@@ -162,19 +162,8 @@ class _PeriodHeader extends StatelessWidget {
 
   const _PeriodHeader({required this.event, required this.locale});
 
-  String? _secondLine(AppLocalizations l10n) {
-    final end = event.endDate;
-    if (end != null) {
-      final length = periodLengthLabel(l10n, periodLength(event.date, end));
-      return '→ ${DateFormat.yMMMMEEEEd(locale).format(end)} · $length';
-    }
-    if (event.isOngoing) {
-      final elapsed = ongoingLength(event.date, DateTime.now());
-      if (elapsed == null) return '→ ${l10n.event_ongoing}';
-      return '→ ${l10n.event_ongoing} · ${sinceLabel(l10n, elapsed)}';
-    }
-    return null;
-  }
+  String? _secondLine(AppLocalizations l10n) =>
+      periodLine(l10n, event, DateFormat.yMMMMEEEEd(locale), DateTime.now());
 
   @override
   Widget build(BuildContext context) {

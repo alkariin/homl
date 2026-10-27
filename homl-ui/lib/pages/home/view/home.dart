@@ -157,7 +157,7 @@ class _HomeViewState extends State<HomeView>
     super.dispose();
   }
 
-  /// The Search tab's view switch: the grid of cards, or the timeline of
+  /// The Search tab's view switch: the event list, or the timeline of
   /// the periods among the same results. The icon shows the view a tap
   /// leads to.
   Widget _viewSwitch() {
@@ -167,11 +167,11 @@ class _HomeViewState extends State<HomeView>
         final localization = AppLocalizations.of(context)!;
         return IconButton(
           tooltip: state.timeline
-              ? localization.list_showGrid
+              ? localization.list_showList
               : localization.list_showTimeline,
           icon: FaIcon(
               state.timeline
-                  ? FontAwesomeIcons.tableCellsLarge
+                  ? FontAwesomeIcons.listUl
                   : FontAwesomeIcons.chartGantt,
               size: 18),
           onPressed: () => context.read<ListCubit>().toggleTimeline(),

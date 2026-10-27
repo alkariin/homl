@@ -542,7 +542,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get list_showTimeline => 'Afficher la frise';
 
   @override
-  String get list_showGrid => 'Afficher la grille';
+  String get list_showList => 'Afficher la liste';
 
   @override
   String get timeline_empty =>
@@ -1271,4 +1271,15 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get update_openFailed => 'Impossible d\'ouvrir la page de la version.';
+
+  @override
+  String list_monthCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count événements',
+      one: '1 événement',
+    );
+    return '$_temp0';
+  }
 }

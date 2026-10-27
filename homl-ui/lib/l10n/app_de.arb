@@ -189,7 +189,7 @@
   "activity_more": "Mehr",
   "activity_day": "{count, plural, =0{Kein Ereignis} =1{1 Ereignis} other{{count} Ereignisse}} · {date}",
   "list_showTimeline": "Zeitleiste anzeigen",
-  "list_showGrid": "Raster anzeigen",
+  "list_showList": "Liste anzeigen",
   "timeline_empty": "Hier gibt es keinen Zeitraum. Ein Ereignis mit Enddatum oder noch laufend erscheint auf der Zeitleiste.",
   "timeline_singleDays": "{count, plural, =1{1 eintägiges Ereignis wird nicht angezeigt} other{{count} eintägige Ereignisse werden nicht angezeigt}}",
   "list_noEvents": "Keine Ereignisse gefunden",
@@ -349,5 +349,6 @@
   "update_body": "Dein Server läuft schon mit {release}, diese App noch mit {installed}. Aktualisiere sie über Obtainium oder lade die APK von der Release-Seite.",
   "update_later": "Später",
   "update_open": "Release-Seite",
-  "update_openFailed": "Die Release-Seite konnte nicht geöffnet werden."
+  "update_openFailed": "Die Release-Seite konnte nicht geöffnet werden.",
+  "list_monthCount": "{count, plural, =1{1 Ereignis} other{{count} Ereignisse}}"
 }

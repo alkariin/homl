@@ -225,7 +225,7 @@
     }
   },
   "list_showTimeline": "Show the timeline",
-  "list_showGrid": "Show the grid",
+  "list_showList": "Show the list",
   "timeline_empty": "No period here. An event with an end date, or still ongoing, shows up on the timeline.",
   "timeline_singleDays": "{count, plural, =1{1 single-day event is not shown} other{{count} single-day events are not shown}}",
   "@timeline_singleDays": {
@@ -569,5 +569,11 @@
   },
   "update_later": "Later",
   "update_open": "Release page",
-  "update_openFailed": "Could not open the release page."
+  "update_openFailed": "Could not open the release page.",
+  "list_monthCount": "{count, plural, =1{1 event} other{{count} events}}",
+  "@list_monthCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  }
 }

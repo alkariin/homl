@@ -8,16 +8,16 @@ import 'package:homl/helpers/colors.dart' as palette;
 import 'package:homl/helpers/on_this_day.dart';
 
 /// "On this day": the events that started on today's date in earlier years,
-/// in a horizontal strip above the search grid. Each card is the grid's own
-/// card (built by [cardBuilder], so a tap opens the same detail sheet) under
-/// how many years ago it was.
+/// in a horizontal strip above the event list. Each card (built by
+/// [cardBuilder], so a tap opens the same detail sheet) sits under how many
+/// years ago it was.
 class OnThisDayStrip extends StatelessWidget {
-  /// Size of a strip card: a phone-width grid cell, a little shorter so the
-  /// strip leaves room for the grid below it.
+  /// Size of a strip card: square, small enough to leave room for the list
+  /// below it.
   static const double cardWidth = 150;
   static const double cardHeight = 150;
 
-  /// Inset of the title and the first card, aligned on the grid.
+  /// Inset of the title and the first card, aligned on the list.
   static const double sidePadding = 20;
 
   final List<Memory> memories;

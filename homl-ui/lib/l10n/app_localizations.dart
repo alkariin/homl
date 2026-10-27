@@ -1024,11 +1024,11 @@ abstract class AppLocalizations {
   /// **'Show the timeline'**
   String get list_showTimeline;
 
-  /// No description provided for @list_showGrid.
+  /// No description provided for @list_showList.
   ///
   /// In en, this message translates to:
-  /// **'Show the grid'**
-  String get list_showGrid;
+  /// **'Show the list'**
+  String get list_showList;
 
   /// No description provided for @timeline_empty.
   ///
@@ -1941,6 +1941,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not open the release page.'**
   String get update_openFailed;
+
+  /// No description provided for @list_monthCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 event} other{{count} events}}'**
+  String list_monthCount(int count);
 }
 
 class _AppLocalizationsDelegate

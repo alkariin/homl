@@ -14,6 +14,7 @@ import 'package:homl/helpers/categories.dart';
 import 'package:homl/helpers/category_labels.dart';
 import 'package:homl/helpers/colors.dart' as palette;
 import 'package:homl/helpers/date_tags.dart';
+import 'package:homl/helpers/event_feed.dart';
 import 'package:homl/helpers/event_search.dart';
 import 'package:homl/helpers/last_time.dart';
 import 'package:homl/helpers/on_this_day.dart';
@@ -24,6 +25,7 @@ import 'package:homl/pages/home/bloc/home_cubit.dart';
 import 'package:homl/pages/list/bloc/list_cubit.dart';
 import 'package:homl/pages/list/view/activity_calendar.dart';
 import 'package:homl/pages/list/view/event_detail_sheet.dart';
+import 'package:homl/pages/list/view/event_feed.dart';
 import 'package:homl/pages/list/view/last_time_summary.dart';
 import 'package:homl/pages/list/view/on_this_day_strip.dart';
 import 'package:homl/pages/list/view/period_timeline.dart';
@@ -106,7 +108,7 @@ class ListPage extends StatelessWidget {
           return idCategory != null && dateIds.contains(idCategory);
         }
 
-        // The same card in the grid and in the "On this day" strip.
+        // The card of the "On this day" strip.
         Widget cardFor(Event event) => EventCard(
               event: event,
               tagColorResolver: (tagName) =>
@@ -144,12 +146,13 @@ class ListPage extends StatelessWidget {
         // stored, so never a day behind. "On this day" over the whole list,
         // "Last time" over the results of a search.
         final today = DateTime.now();
-        // The strip opens the grid only: the timeline is a view of its own.
+        // The strip opens the list only: the timeline is a view of its own.
         final memories = listState.isSearching || listState.timeline
             ? const <Memory>[]
             : eventsOnThisDay(homeState.events, today);
         final lastTime =
             listState.isSearching ? lastTimeOf(listState.events, today) : null;
+        final feed = eventFeed(listState.events);
 
         // The activity calendar shows what the terms find, whatever day
         // range narrows the results: picking a day must not empty it.
@@ -316,20 +319,36 @@ class ListPage extends StatelessWidget {
                                       event: event),
                                 )
                               else
+                                // One column, newest first, under a
+                                // heading per month (see EventRow).
                                 SliverPadding(
                                   padding:
-                                      const EdgeInsets.fromLTRB(20, 22, 20, 25),
-                                  sliver: SliverGrid.builder(
-                                    gridDelegate:
-                                        const SliverGridDelegateWithMaxCrossAxisExtent(
-                                      maxCrossAxisExtent: 250,
-                                      mainAxisSpacing: 20,
-                                      crossAxisSpacing: 20,
-                                      childAspectRatio: 155 / 160,
-                                    ),
-                                    itemCount: listState.events.length,
+                                      const EdgeInsets.fromLTRB(12, 4, 20, 25),
+                                  sliver: SliverList.builder(
+                                    itemCount: feed.length,
                                     itemBuilder: (context, index) =>
-                                        cardFor(listState.events[index]),
+                                        switch (feed[index]) {
+                                      FeedMonth(:final month, :final count) =>
+                                        MonthHeader(month: month, count: count),
+                                      FeedEvent(
+                                        :final event,
+                                        :final first,
+                                        :final last
+                                      ) =>
+                                        EventRow(
+                                          event: event,
+                                          first: first,
+                                          last: last,
+                                          tagColorResolver: (tagName) =>
+                                              homeState
+                                                  .allTagsMap[tagName]?.color,
+                                          isDateTag: isDateTag,
+                                          dotColor: timelineColor(event),
+                                          onTap: () => showEventDetailSheet(
+                                              context,
+                                              event: event),
+                                        ),
+                                    },
                                   ),
                                 ),
                             ],

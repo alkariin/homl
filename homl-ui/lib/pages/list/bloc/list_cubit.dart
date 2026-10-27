@@ -75,7 +75,7 @@ class ListCubit extends Cubit<ListState> {
   /// it.
   void setRange(DayRange? range) => _search(state.terms, range);
 
-  /// Switches between the grid of cards and the timeline of the periods.
+  /// Switches between the event list and the timeline of the periods.
   /// The search stays as it is: both views show the same results.
   void toggleTimeline() {
     emit(ListState(

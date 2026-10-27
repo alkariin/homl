@@ -4,7 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:mocktail/mocktail.dart';
 
-import 'package:homl/components/event_card.dart';
 import 'package:homl/components/tag.dart' as components;
 import 'package:homl/components/tag_input.dart';
 import 'package:homl/data/models/category.dart';
@@ -22,6 +21,7 @@ import 'package:homl/pages/home/bloc/home_cubit.dart';
 import 'package:homl/pages/insert/insert.dart';
 import 'package:homl/pages/list/bloc/list_cubit.dart';
 import 'package:homl/pages/list/list.dart';
+import 'package:homl/pages/list/view/event_feed.dart';
 
 class MockEventsRepository extends Mock implements EventsRepository {}
 
@@ -203,7 +203,7 @@ void main() {
       // ...chipped translated too, but filtered on the stored "July": the
       // event stays on screen, which a "juillet" filter would not match.
       expect(find.widgetWithText(components.Tag, 'juillet'), findsOneWidget);
-      expect(find.byType(EventCard), findsOneWidget);
+      expect(find.byType(EventRow), findsOneWidget);
     });
   });
 }
