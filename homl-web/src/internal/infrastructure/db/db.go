@@ -18,15 +18,36 @@ type DataSources struct {
 	RedisClient *redis.Client
 }
 
+// How long startup waits for MySQL and Redis to answer. A host that boots
+// (a NAS powering on) starts every container at once, ignoring compose's
+// depends_on: MySQL then needs about a minute, and an API that exited at the
+// first refused connection would crash-loop through the restart policy, each
+// exit reported as a failure. Past this, startup fails and the restart
+// policy takes over, so a wrong address or password still surfaces.
+const (
+	startupTimeout    = 2 * time.Minute
+	startupFirstDelay = time.Second
+	startupMaxDelay   = 10 * time.Second
+)
+
 func InitConfig(cfg *config.Config) (*DataSources, error) {
 	log.Printf("Initializing data sources\n")
-	mysql, err := initMysql(cfg)
+	var mysql *sqlx.DB
+	err := retry("MySQL", startupTimeout, startupFirstDelay, startupMaxDelay, func() (err error) {
+		mysql, err = initMysql(cfg)
+		return err
+	})
 	if err != nil {
 		return nil, fmt.Errorf("error opening db: %w", err)
 	}
 
-	rdb, err := initRedis(cfg)
+	var rdb *redis.Client
+	err = retry("Redis", startupTimeout, startupFirstDelay, startupMaxDelay, func() (err error) {
+		rdb, err = initRedis(cfg)
+		return err
+	})
 	if err != nil {
+		mysql.Close()
 		return nil, fmt.Errorf("error opening redis: %w", err)
 	}
 
@@ -60,10 +81,32 @@ func initRedis(cfg *config.Config) (*redis.Client, error) {
 	defer cancel()
 	_, err := rdb.Ping(ctx).Result()
 	if err != nil {
+		rdb.Close() // each retry builds its own client
 		return nil, err
 	}
 
 	return rdb, nil
+}
+
+// retry calls attempt until it succeeds or timeout has passed, sleeping
+// between tries from firstDelay, doubled each time up to maxDelay, and logging
+// why each try failed. Once the next sleep would end past the timeout, it
+// returns the last error.
+func retry(name string, timeout, firstDelay, maxDelay time.Duration, attempt func() error) error {
+	deadline := time.Now().Add(timeout)
+	delay := firstDelay
+	for {
+		err := attempt()
+		if err == nil {
+			return nil
+		}
+		if time.Now().Add(delay).After(deadline) {
+			return err
+		}
+		log.Printf("%s not reachable yet, retrying in %v: %v\n", name, delay, err)
+		time.Sleep(delay)
+		delay = min(delay*2, maxDelay)
+	}
 }
 
 // close to be used in graceful server shutdown
