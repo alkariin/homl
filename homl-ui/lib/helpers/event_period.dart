@@ -1,3 +1,6 @@
+import 'package:intl/intl.dart';
+
+import 'package:homl/data/models/event.dart';
 import 'package:homl/l10n/app_localizations.dart';
 
 /// Unit a period's length is shown in. Rescaled so the badge stays readable:
@@ -96,6 +99,26 @@ String sinceLabel(AppLocalizations l10n, PeriodLength length) {
     case PeriodUnit.years:
       return l10n.event_sinceYears(length.count);
   }
+}
+
+/// What follows the start of a period: "→ 18 Jun 2026 · 16 days" for a
+/// closed one (its end in [endFormat]), "→ Ongoing · for 2 years" for an open
+/// one, counted to [today] and without the length until a full day has
+/// passed; null for a single day. The detail sheet and the event list share
+/// it, each with its own date format.
+String? periodLine(
+    AppLocalizations l10n, Event event, DateFormat endFormat, DateTime today) {
+  final end = event.endDate;
+  if (end != null) {
+    final length = periodLengthLabel(l10n, periodLength(event.date, end));
+    return '→ ${endFormat.format(end)} · $length';
+  }
+  if (event.isOngoing) {
+    final elapsed = ongoingLength(event.date, today);
+    if (elapsed == null) return '→ ${l10n.event_ongoing}';
+    return '→ ${l10n.event_ongoing} · ${sinceLabel(l10n, elapsed)}';
+  }
+  return null;
 }
 
 /// "today", "yesterday", "14 months ago" in the app language: how long ago
