@@ -13,6 +13,7 @@ import 'package:homl/data/sync/offline_writes.dart';
 import 'package:homl/data/repositories/settings.repository.dart';
 import 'package:homl/data/repositories/tags.repository.dart';
 import 'package:homl/helpers/app_message.dart';
+import 'package:homl/helpers/categories.dart';
 import 'package:homl/helpers/server_reachability.dart';
 import 'package:homl/data/sync/sync_engine.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
@@ -561,6 +562,58 @@ void main() {
       cubit.endModal();
       await cubit.createCategory('Trips', '#a7ffeb');
       expect(cubit.state.modal, AppMessage.savedOffline);
+    });
+  });
+
+  group('category order', () {
+    Category category(int id, String name, CategoryKind kind) => Category(
+        id: id,
+        category: name,
+        color: '#fff',
+        isLocked: false,
+        kind: kind,
+        tags: []);
+
+    // As the backend lists them, by creation: Others is seeded with the
+    // account, so the categories created afterwards come below it.
+    final fromBackend = [
+      category(1, 'Dates', CategoryKind.date),
+      category(2, 'Persons', CategoryKind.person),
+      category(3, 'Others', CategoryKind.other),
+      category(4, 'Work', CategoryKind.custom),
+      category(5, 'Trips', CategoryKind.custom),
+    ];
+
+    test('Others comes last, the rest keep their order', () {
+      expect(othersLast(fromBackend).map((c) => c.id), [1, 2, 4, 5, 3]);
+      expect(othersLast(const []), isEmpty);
+    });
+
+    test('the cached and the fetched categories both list Others last',
+        () async {
+      when(() => eventsRepository.getCachedEvents())
+          .thenAnswer((_) async => cachedEvents);
+      when(() => categoriesRepository.getCachedCategories())
+          .thenAnswer((_) async => fromBackend);
+      when(() => eventsRepository.getEvents())
+          .thenAnswer((_) async => cachedEvents);
+      final fetched = Completer<List<Category>>();
+      when(() => categoriesRepository.getCategories())
+          .thenAnswer((_) => fetched.future);
+      when(() => eventsRepository.lastSyncedAt).thenReturn(null);
+
+      final cubit = buildCubit();
+      await expectLater(cubit.stream,
+          emitsThrough(predicate<HomeState>((s) => s.initialized)));
+      expect(cubit.state.categories.map((c) => c.id), [1, 2, 4, 5, 3]);
+
+      // A category created since: still above Others.
+      fetched.complete(
+          [...fromBackend, category(6, 'Music', CategoryKind.custom)]);
+      await Future<void>.delayed(Duration.zero);
+      expect(cubit.state.categories.map((c) => c.id), [1, 2, 4, 5, 6, 3]);
+
+      await cubit.close();
     });
   });
 }

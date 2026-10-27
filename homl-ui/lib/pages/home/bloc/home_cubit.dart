@@ -115,6 +115,11 @@ class HomeCubit extends Cubit<HomeState> {
               : category,
       ];
 
+  /// The categories as every screen shows them, cached or fetched: Dates in
+  /// gold and Others last ([othersLast]).
+  List<Category> _forDisplay(List<Category> categories) =>
+      othersLast(_withFixedDateColor(categories));
+
   Map<String, TagView> _buildTagsMap(List<Category> categories) {
     Map<String, TagView> tagMap = {};
 
@@ -132,8 +137,7 @@ class HomeCubit extends Cubit<HomeState> {
 
   /// Re-fetches the categories (and the tags map) after any tag/category CRUD.
   Future<void> _refreshCategories() async {
-    final categories =
-        _withFixedDateColor(await categoriesRepository.getCategories());
+    final categories = _forDisplay(await categoriesRepository.getCategories());
     emit(state.copyWith(
         categories: categories, allTagsMap: _buildTagsMap(categories)));
   }
@@ -147,7 +151,7 @@ class HomeCubit extends Cubit<HomeState> {
 
       if (isClosed) return;
       if (cachedEvents != null && cachedCategories != null) {
-        final categories = _withFixedDateColor(cachedCategories);
+        final categories = _forDisplay(cachedCategories);
         emit(state.copyWith(
             events: cachedEvents,
             categories: categories,
@@ -170,7 +174,7 @@ class HomeCubit extends Cubit<HomeState> {
     try {
       final events = await eventsRepository.getEvents();
       final categories =
-          _withFixedDateColor(await categoriesRepository.getCategories());
+          _forDisplay(await categoriesRepository.getCategories());
 
       // A reconnection can land after the page was closed (logout).
       if (isClosed) return true;
