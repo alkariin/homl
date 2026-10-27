@@ -38,6 +38,11 @@ See each sub-project's README for full setup.
 carries a signed APK, which Obtainium can keep up to date — see
 [deployment.md §5](homl-web/docs/deployment.md#5-building-the-clients).
 
+**Backend without building:** every release also publishes the
+`ghcr.io/alkariin/homl-back` image, which carries its own migrations: a compose
+file and a `.env` on the server, no checkout — see
+[deployment.md §3](homl-web/docs/deployment.md#without-building-the-published-image).
+
 **Self-hosting?** Before opening the instance to anyone, put
 `homl-web/scripts/backup.sh` in root's crontab and rehearse one restore with
 `scripts/restore.sh` — see [deployment.md §7](homl-web/docs/deployment.md#7-backups).

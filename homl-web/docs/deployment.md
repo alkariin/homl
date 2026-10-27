@@ -14,7 +14,9 @@ seeds a demo account.
 
 ## 1. What you need
 
-- A host with Docker Engine and the Compose v2 plugin.
+- A host with Docker Engine and the Compose v2 plugin — or, for the published
+  image (§3), any Docker with Compose, the old `docker-compose` v1 of some NAS
+  included.
 - A domain name pointing at it, if you want HTTPS (you do — see §4).
 - Outbound SMTP credentials, if you want password reset to work (§6).
 
@@ -96,6 +98,41 @@ curl -fsS http://127.0.0.1:8080/healthz
 build argument, which `make dev|up|build` fill with `git describe`; a bare
 `docker compose up --build` leaves it at `dev`, so on the server pass it
 explicitly (see §8).
+
+### Without building: the published image
+
+Every release also publishes the backend image, `ghcr.io/alkariin/homl-back:<tag>`
+(linux/amd64 — other architectures build from source, as above), built by
+`.github/workflows/release.yml`. It is public: pulling it needs no GitHub
+account. It carries the schema migrations of its own version and
+golang-migrate, so the server needs two files and no checkout:
+
+```bash
+mkdir homl && cd homl
+curl -fsSL -o docker-compose.yml \
+  https://raw.githubusercontent.com/alkariin/homl/main/homl-web/docker-compose.image.example.yml
+curl -fsSL -o .env https://raw.githubusercontent.com/alkariin/homl/main/homl-web/.env.example
+chmod 600 .env    # edit it (§2): ENVIRONMENT=PROD, the secrets, HOML_VERSION=v0.6.1
+
+docker compose up -d
+docker compose run --rm homlback /app/migrate
+curl -fsS http://127.0.0.1:8080/healthz
+```
+
+- `HOML_VERSION` picks the release; the compose file refuses to start
+  without it. `MYSQL_ADDRESS` and `REDIS_ADDRESS` from `.env` are overridden
+  by the file, which names the containers `homl-api`, `homl-mysql` and
+  `homl-redis`.
+- `/app/migrate` ([`scripts/migrate-in-image.sh`](../scripts/migrate-in-image.sh))
+  runs golang-migrate against the API's own `MYSQL_*` settings: `up` by
+  default, or any migrate command (`version`, `down 1`).
+- The API listens on port 8080 of every interface, the setup for a server
+  kept on the home network (§4, "LAN only"); behind a reverse proxy, bind it
+  to `127.0.0.1` as the comment in the file says. MySQL and Redis publish no
+  port at all.
+- The file is standalone (no overlay, no `!override`), so the
+  `docker-compose` v1 of some NAS runs it too: write `docker-compose` for
+  `docker compose`.
 
 ### Create the accounts, then close sign-ups
 
@@ -323,6 +360,10 @@ socket both need it:
 Copy those dumps off the host, together with `.env` — a dump without its
 `ENCRYPT_SECRET` restores rows nobody can read (§2).
 
+With the published image there is no checkout to run the scripts from: fetch
+`scripts/backup.sh` and `scripts/restore.sh` the same way as the compose file
+(§3), and run them with `MYSQL_CONTAINER=homl-mysql`.
+
 ### Restoring
 
 [`scripts/restore.sh`](../scripts/restore.sh) loads a dump back. Rehearse it
@@ -371,6 +412,22 @@ To roll the code back without touching the schema, check out the previous tag
 and rebuild — the migrations of a newer version are additive, so an older
 binary keeps working against a newer schema in most cases, but verify rather
 than assume.
+
+### With the published image
+
+Set the new release in `.env` (`HOML_VERSION=v0.7.0`), then, from the compose
+folder:
+
+```bash
+docker compose pull
+docker compose up -d
+docker compose run --rm homlback /app/migrate    # the new image's migrations
+curl -fsS http://127.0.0.1:8080/healthz          # "version" must show the new tag
+```
+
+The same rules apply: a dump first when the release notes announce a
+migration, and rolling back is the previous `HOML_VERSION` with the schema
+left as it is.
 
 ## 9. Operating it
 
