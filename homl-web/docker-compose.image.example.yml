@@ -1,0 +1,76 @@
+# The published backend image (ghcr.io/alkariin/homl-back, linux/amd64) with
+# MySQL and Redis: nothing to build and no checkout on the server. A
+# standalone file rather than an overlay of docker-compose.yml, so that it also
+# runs on the docker-compose v1 some NAS still ship (no `!override` there).
+#
+# Set HOML_VERSION in .env, next to this file (docs/deployment.md §3), then:
+#
+#   docker compose up -d
+#   docker compose run --rm homlback /app/migrate
+#
+# To upgrade, set the new HOML_VERSION and run the same two commands after
+# `docker compose pull` (§8). With docker-compose v1, write `docker-compose`.
+
+services:
+  homlback:
+    image: "ghcr.io/alkariin/homl-back:${HOML_VERSION:?set HOML_VERSION in .env, e.g. v0.6.1}"
+    container_name: homl-api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      MYSQL_ADDRESS: homl-mysql:3306
+      REDIS_ADDRESS: homl-redis:6379
+    ports:
+      # On the home network, the app then connects to http://<host>:8080.
+      # Behind a reverse proxy on the same host (§4): "127.0.0.1:8080:8080".
+      # If 8080 is taken, change the left side only: "8090:8080".
+      - "8080:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # MySQL and Redis publish no port: only the API reaches them, over the
+  # compose network.
+  redis:
+    image: redis:8-alpine
+    container_name: homl-redis
+    restart: unless-stopped
+    command: /bin/sh -c 'redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD"'
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", 'redis-cli -a "$$REDIS_PASSWORD" --no-auth-warning ping']
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  mysql:
+    image: mysql:8.4
+    container_name: homl-mysql
+    restart: unless-stopped
+    # Lighter on a small host: no performance schema, and no binary log, which
+    # only replication and point-in-time recovery would use (backups are dumps,
+    # §7). Remove the line to keep MySQL's defaults.
+    command: --performance-schema=OFF --skip-log-bin
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", 'MYSQL_PWD="$$MYSQL_PASSWORD" mysql -u "$$MYSQL_USER" -e "SELECT 1"']
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      # The first initialisation can take minutes on NAS disks.
+      start_period: 5m
+
+volumes:
+  mysql-data:
+  redis-data:
