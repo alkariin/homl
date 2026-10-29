@@ -191,8 +191,13 @@ class HomeCubit extends Cubit<HomeState> {
   }
 
   /// Pull to refresh: the user asked, so an unreachable server is said even
-  /// with the saved data on screen. The changes waiting to be sent go first.
+  /// with the saved data on screen. Offline, the server is looked for first
+  /// (requests fail at once until it answers). The changes waiting to be
+  /// sent go first.
   Future<void> refresh() async {
+    if (ServerReachability.instance.isOffline) {
+      await ServerReachability.instance.checkNow();
+    }
     if (!ServerReachability.instance.isOffline) {
       await SyncEngine.instance.sync();
     }

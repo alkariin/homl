@@ -34,31 +34,44 @@ class ServerReachability {
 
   bool get isOffline => value == Reachability.offline;
 
-  /// When the last transport failure was observed. Requests fail fast for a
-  /// short window after it instead of each waiting for its own timeout.
-  DateTime? get lastFailureAt => _lastFailureAt;
-  DateTime? _lastFailureAt;
+  /// Offline, and no probe has found the server since: requests fail at once
+  /// instead of each waiting for its own timeout, however long it lasts.
+  bool get failsFast => _failsFast;
+  bool _failsFast = false;
+
+  /// Looks for the server now, set by the Api ([checkNow]).
+  Future<void> Function()? _check;
+
+  set checker(Future<void> Function() check) => _check = check;
 
   void markOnline() {
-    _lastFailureAt = null;
+    _failsFast = false;
     _subject.add(Reachability.online);
   }
 
   void markOffline() {
-    _lastFailureAt = DateTime.now();
+    _failsFast = true;
     _subject.add(Reachability.offline);
   }
 
   /// No session to be online or offline for (it just ended).
   void markUnknown() {
-    _lastFailureAt = null;
+    _failsFast = false;
     _subject.add(Reachability.unknown);
   }
 
   /// The server answered a probe: stop failing requests fast, so the ones
   /// that reopen the session go through, while still offline until they do.
-  void noteAnswer() => _lastFailureAt = null;
+  void noteAnswer() => _failsFast = false;
+
+  /// The user asked (pull to refresh): look for the server now rather than
+  /// at the next probe, since requests fail at once while offline. Settles
+  /// once the server answered and the session reopened, or did not.
+  Future<void> checkNow() => _check?.call() ?? Future.value();
 
   @visibleForTesting
-  void reset() => markUnknown();
+  void reset() {
+    _check = null;
+    markUnknown();
+  }
 }

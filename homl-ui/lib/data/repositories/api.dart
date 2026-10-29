@@ -117,7 +117,9 @@ class Api {
 
   final ServerReachability _reachability = ServerReachability.instance;
   Timer? _probeTimer;
-  bool _probing = false;
+
+  /// The probe under way, shared by whoever asks for one meanwhile.
+  Future<void>? _probeInFlight;
   bool _inForeground = true;
   Duration _probeDelay = _probeMinDelay;
 
@@ -126,11 +128,6 @@ class Api {
   static const _probeMinDelay = Duration(seconds: 5);
   static const _probeMaxDelay = Duration(minutes: 2);
   static const _probeTimeout = Duration(seconds: 3);
-
-  /// Requests fail at once for this long after a transport failure instead of
-  /// each waiting for its own timeout: an offline start would otherwise sit on
-  /// the splash through the settings request too.
-  static const _failFastWindow = Duration(seconds: 10);
 
   Stream<AuthenticationStatus> get status async* {
     // Stay on the splash screen until the token refresh resolves instead of
@@ -518,11 +515,7 @@ class Api {
   /// again right away (typically: back home, on the LAN).
   void onAppResumed() {
     _inForeground = true;
-    if (_reachability.isOffline) {
-      _probeTimer?.cancel();
-      _probeTimer = null;
-      unawaited(_probe());
-    }
+    if (_reachability.isOffline) unawaited(_probeNow());
   }
 
   /// No probing in the background; [onAppResumed] picks it up again.
@@ -549,15 +542,36 @@ class Api {
   }
 
   void _scheduleProbe() {
-    if (_probing || !_inForeground || _probeTimer != null) return;
+    if (_probeInFlight != null || !_inForeground || _probeTimer != null) {
+      return;
+    }
     _probeTimer = Timer(_probeDelay, () => unawaited(_probe()));
   }
 
-  Future<void> _probe() async {
+  /// Probes at once instead of at the next scheduled probe: back in the
+  /// foreground, or the user asked ([ServerReachability.checkNow]).
+  Future<void> _probeNow() {
+    _probeTimer?.cancel();
     _probeTimer = null;
-    if (_probing || !_inForeground || !_reachability.isOffline) return;
+    return _probe();
+  }
 
-    _probing = true;
+  Future<void> _probe() {
+    _probeTimer = null;
+    if (!_inForeground || !_reachability.isOffline) return Future.value();
+
+    return _probeInFlight ??= _probeOnce().whenComplete(() {
+      _probeInFlight = null;
+      // No answer, or the refresh failed again: try later, less often.
+      if (_reachability.isOffline) {
+        final next = _probeDelay * 2;
+        _probeDelay = next > _probeMaxDelay ? _probeMaxDelay : next;
+        _scheduleProbe();
+      }
+    });
+  }
+
+  Future<void> _probeOnce() async {
     try {
       if (await _serverAnswers()) {
         _reachability.noteAnswer();
@@ -565,15 +579,6 @@ class Api {
       }
     } catch (error) {
       log('Reconnection failed', name: 'Api', error: error);
-    } finally {
-      _probing = false;
-    }
-
-    // No answer, or the refresh failed again: try later, less often.
-    if (_reachability.isOffline) {
-      final next = _probeDelay * 2;
-      _probeDelay = next > _probeMaxDelay ? _probeMaxDelay : next;
-      _scheduleProbe();
     }
   }
 
@@ -603,13 +608,6 @@ class Api {
       // makes asks for it (see _doRefreshSession).
     }
     _markOnline();
-  }
-
-  bool get _failFast {
-    final lastFailure = _reachability.lastFailureAt;
-    return _reachability.isOffline &&
-        lastFailure != null &&
-        DateTime.now().difference(lastFailure) < _failFastWindow;
   }
 
   /// Whether [error] means "the server did not answer" rather than an answer
@@ -684,12 +682,15 @@ class Api {
       contentType: Headers.jsonContentType,
       responseType: ResponseType.json,
       // Short, so an offline start reaches the saved data quickly: away from
-      // the LAN, the server's address typically just drops the packets.
-      connectTimeout: const Duration(seconds: 5),
+      // the LAN, the server's address typically just drops the packets. A
+      // server in reach accepts the connection well within it.
+      connectTimeout: const Duration(seconds: 3),
       // A server that accepts the connection but never answers must not hang
       // the app either; the long E2EE migrations set their own.
       receiveTimeout: const Duration(seconds: 30),
     ));
+
+    _reachability.checker = _probeNow;
 
     if (initFromStorage) {
       unawaited(restoreSession());
@@ -700,7 +701,9 @@ class Api {
         InterceptorsWrapper(onRequest: (options, handler) async {
       if (options.extra[_probeKey] == true) {
         options.connectTimeout = _probeTimeout;
-      } else if (_failFast) {
+      } else if (_reachability.failsFast) {
+        // Until a probe finds the server: offline, each request would
+        // otherwise wait out its connect timeout before the saved data shows.
         return handler.reject(DioException.connectionError(
             requestOptions: options, reason: 'server unreachable (offline)'));
       }
@@ -711,7 +714,8 @@ class Api {
       return handler.next(options);
     }, onResponse: (response, handler) {
       // Offline was flagged by a failure, yet a regular request just went
-      // through: the server is back. A request of a session unlocked offline
+      // through (a probe found the server, so requests no longer fail at
+      // once): the server is back. A request of a session unlocked offline
       // then gets its token through the usual 401 → refresh with the factor
       // held by the session. Not the auth paths: a session reopening goes
       // online once its refresh lands (see _postRefresh), not at its

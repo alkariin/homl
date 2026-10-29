@@ -490,12 +490,15 @@ void main() {
     expect(await sessionWiped(), isTrue);
   });
 
-  test('offline, requests fail at once instead of waiting for a timeout',
+  test('offline, requests fail at once until a probe finds the server',
       () async {
     final backend = _Backend((options) async => _offline(options));
     final t = build(backend);
 
     await t.api.restoreSession();
+    // A probe that finds nothing does not let the requests through.
+    await ServerReachability.instance.checkNow();
+    expect(backend.callsTo('/healthz'), 1);
     final before = backend.requests.length;
 
     await expectLater(
@@ -505,6 +508,43 @@ void main() {
 
     expect(backend.requests.length, before,
         reason: 'the request must not reach the network');
+
+    // Asked for (pull to refresh), a probe that finds the server reopens
+    // the session before it settles.
+    backend.reply = (options) async {
+      if (options.path.endsWith('/healthz')) {
+        return _json({'mysql': 'ok', 'redis': 'ok', 'version': 'v0'}, 200);
+      }
+      if (options.path.endsWith('/refresh')) return _tokens();
+      return _json({'ok': true}, 200);
+    };
+    await ServerReachability.instance.checkNow();
+
+    expect(ServerReachability.instance.value, Reachability.online);
+    expect(t.api.accessToken, 'new-access');
+    await t.api.api.get<dynamic>('/settings');
+    expect(backend.callsTo('/settings'), 1);
+  });
+
+  test('a check asked for during a probe waits for that probe', () async {
+    final backend = _Backend((options) async => _offline(options));
+    final t = build(backend);
+    await t.api.restoreSession();
+
+    final answer = Completer<ResponseBody>();
+    backend.reply = (options) async {
+      if (options.path.endsWith('/healthz')) return answer.future;
+      if (options.path.endsWith('/refresh')) return _tokens();
+      return _json({'error': 'not found'}, 404);
+    };
+    t.api.onAppResumed();
+    final check = ServerReachability.instance.checkNow();
+    answer.complete(
+        _json({'mysql': 'ok', 'redis': 'ok', 'version': 'v0'}, 200));
+    await check;
+
+    expect(backend.callsTo('/healthz'), 1);
+    expect(ServerReachability.instance.value, Reachability.online);
   });
 
   test('back online, an account without second factor gets its token',
@@ -540,7 +580,7 @@ void main() {
       await expectLater(
           api.api.get<dynamic>('/data'), throwsA(isA<DioException>()));
       expect(ServerReachability.instance.value, Reachability.offline);
-      // As if the fail-fast window had passed.
+      // As if a probe had just found the server again.
       ServerReachability.instance.noteAnswer();
     });
 
