@@ -95,7 +95,7 @@ void main() {
 
     expect(find.byType(OnThisDayStrip), findsOneWidget);
     expect(find.text('On this day'), findsOneWidget);
-    // Once in the strip, once in the grid below it.
+    // Once in the strip, once in the list below it.
     expect(find.text('Event 1'), findsNWidgets(2));
     expect(find.byType(LastTimeSummary), findsNothing);
   });

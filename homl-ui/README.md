@@ -148,7 +148,7 @@ session and E2EE key around the run, so it is safe on a daily dev phone.
 ```
 lib/
 ├── main.dart          # entry point: bloc observer, logo preload, runApp(App)
-├── components/        # reusable widgets (Tag, TagInput, EventCard, Input, dialogs…)
+├── components/        # reusable widgets (Tag, TagInput, Input, dialogs…)
 ├── data/
 │   ├── models/        # json_serializable DTOs (*.g.dart committed)
 │   ├── repositories/  # one per backend resource + api.dart (Dio client, refresh)
@@ -589,9 +589,8 @@ a month never splits); `lib/pages/list/view/event_feed.dart` draws them with
 - A change made offline wears a small clock in the corner of its card; a tap
   on the card opens the detail sheet.
 
-The previous grid of square `EventCard`s (`lib/components/event_card.dart`)
-only remains in the "On this day" strip, where a card's fixed size suits a
-horizontal row.
+The previous grid of square `EventCard`s is gone; the "On this day" panel
+above the list has its own layout (below).
 
 ## Search tab: "On this day" & "Last time"
 
@@ -603,10 +602,17 @@ alike, and are never a day behind.
 
 - **On this day** (`lib/helpers/on_this_day.dart`,
   `lib/pages/list/view/on_this_day_strip.dart`), on the whole list only (no
-  term, no range) and in the list view: a horizontal strip of the events that *started* on today's month and day in
-  an earlier year, the most recent first, each card under "1 year ago",
-  "10 years ago". The cards are `EventCard`s, and a tap opens
-  the detail sheet. Only the start counts: a period comes back on the
+  term, no range) and in the list view: the events that *started* on today's
+  month and day in an earlier year, the most recent first, in a gold-tinted
+  panel titled with the day ("On this day · October 29"). It shows **one at
+  a time** — its year and "3 years ago" on the left, then its period line,
+  its tags (not the date tags) and the start of its description — and a
+  swipe brings the next (a `PageView`); the dots under the panel say which
+  one is shown, none for a single memory. The page has a fixed height, as a
+  pager needs: a period line, a tag row and two lines of description (three
+  without a period); a second tag row is taken from the description, tags
+  that still do not fit are left out whole. A tap opens the detail sheet;
+  a memory changed offline wears the clock. Only the start counts: a period comes back on the
   anniversary of its first day, never on every day it covers (a five-year
   period would otherwise fill the strip every day for five years). An event
   of 29 February comes back on 28 February in the years without one, never on

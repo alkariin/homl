@@ -1,10 +1,8 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
-import 'package:homl/helpers/theme.dart';
 import 'package:homl/l10n/app_localizations.dart';
 
-import 'package:homl/components/event_card.dart';
 import 'package:homl/components/tag.dart' as components;
 import 'package:homl/components/tag_input.dart';
 import 'package:homl/data/models/category.dart';
@@ -107,15 +105,6 @@ class ListPage extends StatelessWidget {
               homeState.allTagsMap[tag.tag]?.idCategory ?? tag.idCategory;
           return idCategory != null && dateIds.contains(idCategory);
         }
-
-        // The card of the "On this day" strip.
-        Widget cardFor(Event event) => EventCard(
-              event: event,
-              tagColorResolver: (tagName) =>
-                  homeState.allTagsMap[tagName]?.color,
-              isDateTag: isDateTag,
-              onTap: () => showEventDetailSheet(context, event: event),
-            );
 
         // A timeline row is called by its tags, like a card without the
         // room for chips; the first line of the description otherwise.
@@ -264,19 +253,16 @@ class ListPage extends StatelessWidget {
                                 SliverToBoxAdapter(
                                   child: Padding(
                                     padding: const EdgeInsets.only(top: 22),
-                                    child: Column(children: [
-                                      OnThisDayStrip(
-                                          memories: memories,
-                                          cardBuilder: cardFor),
-                                      Padding(
-                                        padding: const EdgeInsets.fromLTRB(
-                                            20, 18, 20, 0),
-                                        child: Divider(
-                                            height: 1,
-                                            color: context.homl.rule
-                                                .withValues(alpha: 0.5)),
-                                      ),
-                                    ]),
+                                    child: OnThisDayStrip(
+                                      memories: memories,
+                                      tagColorResolver: (tagName) => homeState
+                                          .allTagsMap[tagName]?.color,
+                                      isDateTag: isDateTag,
+                                      onTap: (event) => showEventDetailSheet(
+                                          context,
+                                          event: event),
+                                      today: today,
+                                    ),
                                   ),
                                 ),
                               if (lastTime != null)
