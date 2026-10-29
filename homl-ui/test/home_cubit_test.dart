@@ -107,6 +107,21 @@ void main() {
       await cubit.close();
     });
 
+    test('offline, a pull to refresh looks for the server first', () async {
+      final cubit = await loaded(syncedAt: DateTime.now());
+      ServerReachability.instance.markOffline();
+      // The probe finds the server.
+      ServerReachability.instance.checker =
+          () async => ServerReachability.instance.markOnline();
+      clearInteractions(eventsRepository);
+
+      await cubit.refresh();
+
+      expect(cubit.state.modal, isNot(AppMessage.serverUnreachable));
+      verify(() => eventsRepository.getEvents()).called(greaterThan(0));
+      await cubit.close();
+    });
+
     test('back in the foreground, only stale data is fetched again',
         () async {
       final cubit = await loaded(syncedAt: DateTime.now());

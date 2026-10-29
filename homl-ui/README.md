@@ -933,9 +933,10 @@ session"; the outbox and the sync in
   `/refresh` / `/challenge`: end it); holds the session's second factor in
   memory for the silent refreshes; probes `/healthz` while offline and in the
   foreground (`onAppResumed` / `onAppPaused`, wired in `app.dart`), then
-  reopens the session with a refresh. Requests fail at once for 10 s after a
-  network failure, so an offline start does not wait out one timeout per
-  request.
+  reopens the session with a refresh. Once offline, requests fail at once
+  until a probe finds the server, so nothing done offline waits out a
+  connect timeout; a pull to refresh probes at once
+  (`ServerReachability.checkNow`).
 - **`lib/helpers/pin_verifier.dart`** — the offline PIN check (PBKDF2-SHA256,
   600 000 iterations — native through cryptography_flutter; the tests lower it)
   and its counter.
@@ -1006,7 +1007,9 @@ without E2EE:
    the icon goes away within seconds, the changes are sent ("your offline
    changes were sent"), the clocks and the count disappear. Tapping the icon
    while offline gives the date of the data on screen; pulling the list down
-   while offline says the server is unreachable.
+   while offline looks for the server at once, and says it is unreachable
+   when it does not answer. Offline, creating a synonym, or a new tag in a
+   category from the Add tab, shows it without delay.
 5. Conflicts, with the web app (or `curl`) as the other device: offline,
    edit an event's description on the phone; meanwhile change its date (or
    delete it) on the other device; back online, both changes are kept (or the

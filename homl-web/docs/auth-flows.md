@@ -260,21 +260,24 @@ elsewhere, ends the session then).
 
 ### Reconnection
 
-- Connect timeout 5 s (the unreachable LAN address usually drops the packets
-  silently), receive timeout 30 s (2 minutes for the E2EE migration and purge).
-- For 10 s after a network failure, requests fail at once instead of each
-  waiting for its own timeout.
+- Connect timeout 3 s (the unreachable LAN address usually drops the packets
+  silently, while a server in reach accepts the connection in milliseconds),
+  receive timeout 30 s (2 minutes for the E2EE migration and purge).
+- Once a network failure set the app offline, requests fail at once instead
+  of each waiting for its own timeout, until a probe finds the server: offline
+  writes and reads go straight to the device.
 - While offline and in the foreground, the client probes `GET /healthz`
   (3 s timeout) with a 5 s → 2 min backoff, and at once when the app returns
-  to the foreground. Only a `200` with a JSON body counts.
+  to the foreground or on a pull to refresh. Only a `200` with a JSON body
+  counts.
 - A refresh whose answer is lost (the connection drops mid-request) is no
   answer: the client keeps its old refresh token, and the server lets that
   token replay the rotation (see "Details worth knowing" above), however long
   the client stays away.
 - When the server answers, the session reopens with a refresh carrying the
   held factor; the screens then reload and the E2EE gate runs again on fresh
-  settings. A regular request answered in JSON (or `204`) also ends the
-  offline state.
+  settings. A regular request answered in JSON (or `204`) after the probe
+  answered also ends the offline state.
 - Offline, the app keeps working on the data saved on the device; event
   writes and tag creations wait in an outbox sent once the server answers —
   see [offline-sync.md](offline-sync.md). A session the server turns down
