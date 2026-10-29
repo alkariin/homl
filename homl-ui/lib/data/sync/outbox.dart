@@ -394,7 +394,8 @@ class Outbox {
         final entity = kind.entity;
         final target =
             entity == OpEntity.event ? resolveEvent(id) : resolve(id);
-        for (final op in ops) {
+        for (var i = 0; i < ops.length; i++) {
+          final op = ops[i];
           if (op.kind.entity != entity ||
               op.target != target ||
               op.id == _sending ||
@@ -402,9 +403,20 @@ class Outbox {
             continue;
           }
           if (op.kind.isCreate || op.kind.isUpdate) {
+            final merged = {...op.body, ...body};
+            // Folded here, the change would go before something it needs
+            // that was created offline since (a tag moved into a category
+            // made after the tag): a later change of the same thing carries
+            // it, or it waits after the queue.
+            if (_createdAfter(ops, i).any(OutboxOp(
+                    id: op.id, kind: op.kind, target: op.target, body: merged)
+                .dependencies
+                .contains)) {
+              continue;
+            }
             // Not sent yet: the creation (or the earlier edit) simply carries
             // the new state.
-            op.body = {...op.body, ...body};
+            op.body = merged;
             return;
           }
         }
@@ -520,6 +532,12 @@ class Outbox {
           {Map<String, dynamic>? base, String? keyCheck, String? generation}) =>
       _delete(OpKind.deleteGroup, id, const {},
           base: base, keyCheck: keyCheck, generation: generation);
+
+  /// The temporary ids of what the ops after [index] create.
+  static Set<int> _createdAfter(List<OutboxOp> ops, int index) => {
+        for (final op in ops.skip(index + 1))
+          if (op.kind.isCreate) op.target,
+      };
 
   Map<String, dynamic>? _earliestBase(
       List<OutboxOp> ops, int target, OpEntity entity) {

@@ -297,6 +297,26 @@ void main() {
       expect((await categories.getCategories()).last.category, 'Family Trips');
     });
 
+    test('a tag created offline, then moved into a category created since',
+        () async {
+      goOffline();
+      final rugby = await tags.createTag('Rugby', 3);
+      await events.createEvent(
+          description: 'match', date: DateTime(2026, 10, 20), tagsId: [rugby]);
+
+      final sports = await categories.createCategory('Sports', '#ccff90');
+      expect(await tags.updateTag(rugby, 'Rugby', sports), WriteOutcome.queued);
+
+      final shown = await categories.getCategories();
+      expect(shown.firstWhere((c) => c.id == sports).tags.map((t) => t.tag),
+          ['Rugby']);
+      expect(shown.firstWhere((c) => c.id == 3).tags.map((t) => t.tag),
+          isNot(contains('Rugby')));
+      final match = (await events.getEvents())
+          .firstWhere((event) => event.description == 'match');
+      expect(match.tags.map((t) => t.tag), ['Rugby']);
+    });
+
     test('a category created online carries a clientId', () async {
       await categories.createCategory('Trips', '#a7ffeb');
 

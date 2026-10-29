@@ -75,7 +75,11 @@ for, in wire format: an E2EE account's text is already encrypted.
   deleted, so whatever was made with it meanwhile (tags in the category,
   events using the tag) gets the server's own treatment of the deletion. An op
   being sent is never rewritten — a change made meanwhile becomes an op of its
-  own.
+  own. Nor does a change fold into an op queued before something it needs
+  that was created offline since — a tag created offline, then moved into a
+  category created after it, or an event given such a tag: the change goes
+  to a later op of the same thing, or after the queue, so it is still shown
+  and sent after what it needs.
 - **Stamps**: each op records the account's encryption when it was written
   (the E2EE key check, or none) and the server's `dataGeneration`.
 - **Strict storage**: unlike the snapshot (a cache), the outbox holds what
