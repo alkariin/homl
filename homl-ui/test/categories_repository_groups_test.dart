@@ -85,6 +85,16 @@ void main() {
         .setMockMethodCallHandler(storageChannel, null);
   });
 
+  test('a category name goes in the tags\' casing, created or renamed',
+      () async {
+    await repository.createCategory('family TRIPS', '#a7ffeb');
+    adapter.status = 204;
+    await repository.updateCategory(6, 'road trips', '#a7ffeb');
+
+    expect(adapter.requests.first.data['category'], 'Family Trips');
+    expect(adapter.requests.last.data['category'], 'Road Trips');
+  });
+
   test('a group is created with its name, category and members', () async {
     final id = await repository.createTagGroup('Family', 3, [10, 12]);
 
@@ -156,6 +166,14 @@ void main() {
       // The same blind index as a tag of that name.
       expect(body['nameIndex'], await E2ee().tagIndex('Close Family'));
       expect(body['members'], [10]);
+    });
+
+    test('a category name is normalized before it is encrypted', () async {
+      await repository.createCategory('family TRIPS', '#a7ffeb');
+
+      final body = adapter.requests.single.data as Map<String, dynamic>;
+      expect(body['category'], startsWith(E2ee.prefix));
+      expect(await E2ee().decrypt(body['category'] as String), 'Family Trips');
     });
 
     test('a name reserved for the dates is refused before sending', () async {

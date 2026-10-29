@@ -200,10 +200,15 @@ class CategoriesRepository {
     return WriteOutcome.sent;
   }
 
-  /// Encrypts an outgoing category name for E2EE users.
+  /// The name of a category write, in the canonical form of the tag names
+  /// ("my TRIPS" → "My Trips", see [normalizeTagName]), on a create and on a
+  /// rename: the backend title-cases a plaintext name itself, but an E2EE
+  /// one is a blob to it, and a write waiting in the outbox shows the name
+  /// as sent. Encrypted for E2EE users.
   Future<String> _outgoingName(String category) async {
-    if (!E2ee().enabled) return category;
-    return E2ee().encrypt(category);
+    final name = normalizeTagName(category);
+    if (!E2ee().enabled) return name;
+    return E2ee().encrypt(name);
   }
 
   /// [moveTags] moves the tags to the Other category; otherwise the tags are

@@ -105,7 +105,7 @@ func (c *categoriesService) CreateCategory(ctx context.Context, newCategory *cat
 		}
 	}
 
-	encCategory, err := c.storedCategoryValue(ctx, newCategory, true)
+	encCategory, err := c.storedCategoryValue(ctx, newCategory)
 	if err != nil {
 		return 0, false, err
 	}
@@ -151,7 +151,7 @@ func (c *categoriesService) UpdateCategory(ctx context.Context, newCategory *cat
 		return apperror.NewStatusForbidden()
 	}
 
-	encCategory, err := c.storedCategoryValue(ctx, newCategory, false)
+	encCategory, err := c.storedCategoryValue(ctx, newCategory)
 	if err != nil {
 		return err
 	}
@@ -172,9 +172,10 @@ func (c *categoriesService) UpdateCategory(ctx context.Context, newCategory *cat
 }
 
 // storedCategoryValue returns the category name to persist: the validated
-// client blob for E2EE users, the (optionally normalized) at-rest ciphertext
-// otherwise. Historically only CreateCategory title-cases the name.
-func (c *categoriesService) storedCategoryValue(ctx context.Context, newCategory *category.Category, normalize bool) (string, error) {
+// client blob for E2EE users (the client title-cases the name before
+// encrypting it), the title-cased at-rest ciphertext otherwise — on a create
+// and on a rename alike, the way tag names are.
+func (c *categoriesService) storedCategoryValue(ctx context.Context, newCategory *category.Category) (string, error) {
 	if e2ee.Enabled(ctx) {
 		if !e2ee.IsBlob(newCategory.Category) {
 			return "", apperror.NewBadRequest("The given category is not a valid encrypted payload")
@@ -182,11 +183,7 @@ func (c *categoriesService) storedCategoryValue(ctx context.Context, newCategory
 		return newCategory.Category, nil
 	}
 
-	uCategory := newCategory.Category
-	if normalize {
-		uCategory = titleCase(uCategory)
-	}
-	return c.Crypto.Encrypt(uCategory, newCategory.IdUser)
+	return c.Crypto.Encrypt(titleCase(newCategory.Category), newCategory.IdUser)
 }
 
 // DeleteCategory removes a category: moveTags relocates its tags and tag

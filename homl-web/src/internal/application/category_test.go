@@ -162,6 +162,27 @@ func TestUpdateCategory(t *testing.T) {
 		assert.NoError(t, err)
 		mockRepo.AssertExpectations(t)
 	})
+
+	t.Run("Title-cases a rename like a create", func(t *testing.T) {
+		mockRepo := new(mocks.MockCategoriesRepo)
+		svc := application.NewCategoriesService(&application.CSConfig{CategoriesRepository: mockRepo, Crypto: testCrypto})
+
+		stored, _ := testCrypto.Encrypt("Holidays", 9)
+		mockRepo.On("FindByIdForUser", uint(2), uint64(9)).Return(&category.Category{
+			Id:       2,
+			Category: stored,
+			IsLocked: false,
+		}, nil)
+		mockRepo.On("Update", mock.MatchedBy(func(c *category.Category) bool {
+			dec, err := testCrypto.Decrypt(c.Category, 9)
+			return err == nil && dec == "Family Trips"
+		})).Return(nil)
+
+		err := svc.UpdateCategory(context.Background(), &category.Category{Id: 2, Category: "family TRIPS", Color: "#000000", IdUser: 9})
+
+		assert.NoError(t, err)
+		mockRepo.AssertExpectations(t)
+	})
 }
 
 func TestGetCategories(t *testing.T) {

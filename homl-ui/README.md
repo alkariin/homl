@@ -451,7 +451,10 @@ backend's canonical title case (`normalizeTagName`, applied in
 `TagsRepository._outgoingTag` to every creation and rename) and chips it that
 way (`InsertCubit.addTag`), so "roadtrip" shows as "Roadtrip" right away and
 finds its category color. The backend title-cases a plaintext name anyway,
-but an E2EE name is a blob to it: only the app can normalize it.
+but an E2EE name is a blob to it: only the app can normalize it. A category
+name gets the same form, created or renamed
+(`CategoriesRepository._outgoingName`): "family TRIPS" is saved as "Family
+Trips", offline too.
 
 Submitting a new event slides back to the Search tab (`InsertView.onCreated`,
 wired to the home PageView) — the created event is the natural next focus.
