@@ -692,6 +692,59 @@ void main() {
       expect(reports.single.sent, 3);
     });
 
+    test('a tag created offline and moved into a category created since',
+        () async {
+      final rugby =
+          await outbox().createTag({'tag': 'Rugby', 'idCategory': 3});
+      await outbox().createEvent(
+          eventBody('match', '2026-10-20T00:00:00.000Z', tags: [rugby]));
+      final sports = await outbox()
+          .createCategory({'category': 'Sports', 'color': '#ccff90'});
+      await outbox().updateTag(
+          rugby, {'tag': 'Rugby', 'idCategory': sports, 'idParentTag': null});
+
+      await engine.sync();
+      await settle();
+
+      final created = server.categories.last;
+      expect(created['category'], 'Sports');
+      final rugbyId = idOf(created['id'] as int, 'Rugby');
+      expect(tagsOf(3).map((t) => t['tag']), isNot(contains('Rugby')));
+      expect((server.events.values.single['tags'] as List).map((t) => t['id']),
+          contains(rugbyId));
+      expect(await outbox().ops(), isEmpty);
+      expect(reports.single.parked, 0);
+    });
+
+    test('a move folded by an older version is sent on a retry', () async {
+      // What an older version queued: the move folded into the tag's
+      // creation, ahead of the category it needs.
+      final rugby =
+          await outbox().createTag({'tag': 'Rugby', 'idCategory': 3});
+      await outbox().createEvent(
+          eventBody('match', '2026-10-20T00:00:00.000Z', tags: [rugby]));
+      final sports = await outbox()
+          .createCategory({'category': 'Sports', 'color': '#ccff90'});
+      final stored = await LocalStore.instance.load(StoreEntry.outbox);
+      final payload = Map<String, dynamic>.from(stored!.payload as Map);
+      (((payload['ops'] as List).first as Map)['body'] as Map)['idCategory'] =
+          sports;
+      await LocalStore.instance.save(StoreEntry.outbox, payload);
+      Outbox.instance = Outbox();
+
+      await engine.sync();
+      await settle();
+      expect(reports.last.parked, 2);
+
+      await outbox().retryParked();
+      await engine.sync();
+      await settle();
+
+      final created = server.categories.last;
+      expect(idOf(created['id'] as int, 'Rugby'), isA<int>());
+      expect(await outbox().ops(), isEmpty);
+    });
+
     test('a category create replayed after a lost answer makes one', () async {
       await outbox().createCategory({'category': 'Trips', 'color': '#a7ffeb'});
       server.loseAnswerOf = 'POST /categories';

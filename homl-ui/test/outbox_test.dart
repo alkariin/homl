@@ -231,6 +231,40 @@ void main() {
       expect(ops[1].body['category'], 'Travels');
     });
 
+    test('an edit needing something created since waits after it', () async {
+      final rugby = await outbox.createTag(tag('Rugby', 3));
+      await outbox.createEvent(event('match', tags: [rugby]));
+      final sports = await outbox
+          .createCategory({'category': 'Sports', 'color': '#ffffff'});
+      // Folded into the creation, the move would go before its category.
+      await outbox.updateTag(rugby, tag('Rugby', sports));
+      // A later rename folds into the move, after the category.
+      await outbox.updateTag(rugby, tag('Rugby Union', sports));
+
+      final ops = await outbox.ops();
+      expect(ops.map((op) => op.kind), [
+        OpKind.createTag,
+        OpKind.createEvent,
+        OpKind.createCategory,
+        OpKind.updateTag,
+      ]);
+      expect(ops.first.body['idCategory'], 3);
+      expect(ops.last.target, rugby);
+      expect(ops.last.body, tag('Rugby Union', sports));
+      expect(ops.last.base, isNull);
+    });
+
+    test('an event given a tag created since is edited after it', () async {
+      final id = await outbox.createEvent(event('ride'));
+      final tram = await outbox.createTag(tag('Tram', 3));
+      await outbox.updateEvent(id, event('ride', tags: [1, tram]));
+
+      final ops = await outbox.ops();
+      expect(ops.map((op) => op.kind),
+          [OpKind.createEvent, OpKind.createTag, OpKind.updateEvent]);
+      expect(ops.first.body['tagsId'], [1]);
+    });
+
     test('a detached synonym stays detached once folded', () async {
       final id = await outbox.createTag(tag('Foot', 3, parent: 10));
       await outbox.updateTag(id, tag('Foot', 3));
