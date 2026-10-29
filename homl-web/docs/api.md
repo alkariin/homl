@@ -281,7 +281,10 @@ All endpoints require auth. A category groups tags; locked categories
 | DELETE | `/categories/:id` | `{moveTags, deleteEvents?}` | `204` |
 | GET | `/categories/:id/usage` | — | `200` usage below |
 
-`color` must be a hex color. `clientId` makes a create safe to replay, as on
+`color` must be a hex color. The name is stored title-cased, on a create
+and on a rename alike (`"family TRIPS"` → `"Family Trips"`, the rule of the
+tag names); an E2EE name is a blob, title-cased by the client before it
+encrypts it. `clientId` makes a create safe to replay, as on
 `POST /events` (see *Replaying a create* under [Events](#events)): a UUID the
 client picks once per category, answered `200` with the first category when
 it comes again. Category names are not unique, so unlike a tag or a tag group

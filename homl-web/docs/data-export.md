@@ -203,9 +203,11 @@ so names and descriptions are encrypted with the blind index sent alongside,
 the tag blacklist is enforced client-side, and the date tags are created and
 attached by the client (`periodDateTagNames`), as the insert form does.
 
-**Names.** A plain account stores category and tag names title-cased (the
-backend normalization), an E2EE account as typed. Matching ignores case, so
-this changes nothing to the merge — only how a re-exported name is spelled.
+**Names.** Category and tag names are stored title-cased: the app normalizes
+them before it sends them, and the backend again for a plain account (names
+written by older versions of an E2EE account may still be as typed).
+Matching ignores case, so this changes nothing to the merge — only how a
+re-exported name is spelled.
 
 ## Limits
 

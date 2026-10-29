@@ -289,6 +289,14 @@ void main() {
       expect(ops.last.body['idCategory'], id);
     });
 
+    test('a category created offline shows in its stored casing', () async {
+      goOffline();
+
+      await categories.createCategory('family trips', '#a7ffeb');
+
+      expect((await categories.getCategories()).last.category, 'Family Trips');
+    });
+
     test('a category created online carries a clientId', () async {
       await categories.createCategory('Trips', '#a7ffeb');
 
