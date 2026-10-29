@@ -2,9 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:homl/components/event_card.dart';
 import 'package:homl/components/pending_changes.dart';
-import 'package:homl/data/models/event.dart';
 import 'package:homl/data/store/local_store.dart';
 import 'package:homl/data/sync/outbox.dart';
 import 'package:homl/helpers/localizations.dart';
@@ -134,35 +132,5 @@ void main() {
     expect(find.textContaining('Football'), findsOneWidget);
     expect(find.text('Edited tag group'), findsOneWidget);
     expect(find.textContaining('Kin'), findsOneWidget);
-  });
-
-  testWidgets('a card made offline wears a clock', (tester) async {
-    Widget card(bool pending) => MaterialApp(
-          localizationsDelegates: appLocalizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: Scaffold(
-            body: SizedBox(
-              width: 200,
-              height: 200,
-              child: EventCard(
-                event: Event(
-                    id: pending ? -2 : 5,
-                    description: 'note',
-                    date: DateTime(2026, 10, 13),
-                    isOngoing: false,
-                    tags: [],
-                    isPending: pending),
-                tagColorResolver: (_) => null,
-                isDateTag: (_) => false,
-              ),
-            ),
-          ),
-        );
-
-    await tester.pumpWidget(card(false));
-    expect(find.byIcon(Icons.schedule), findsNothing);
-
-    await tester.pumpWidget(card(true));
-    expect(find.byIcon(Icons.schedule), findsOneWidget);
   });
 }

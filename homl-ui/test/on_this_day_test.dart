@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:homl/data/models/event.dart';
+import 'package:homl/data/models/tag.dart';
 import 'package:homl/helpers/localizations.dart';
 import 'package:homl/helpers/on_this_day.dart';
 import 'package:homl/l10n/app_localizations.dart';
@@ -101,6 +102,10 @@ void main() {
   });
 
   group('OnThisDayStrip', () {
+    final today = DateTime(2026, 10, 17);
+    final cinema = Tag(id: 1, tag: 'Cinema', idCategory: 1);
+    final october = Tag(id: 2, tag: 'October', idCategory: 9);
+
     Future<void> pumpStrip(WidgetTester tester, List<Memory> memories,
         {Locale locale = const Locale('en'),
         void Function(Event)? onTap}) async {
@@ -111,17 +116,27 @@ void main() {
         home: Scaffold(
           body: OnThisDayStrip(
             memories: memories,
-            cardBuilder: (event) => GestureDetector(
-              onTap: () => onTap?.call(event),
-              child: Text(event.description),
-            ),
+            tagColorResolver: (_) => null,
+            isDateTag: (tag) => tag.idCategory == 9,
+            onTap: (event) => onTap?.call(event),
+            today: today,
           ),
         ),
       ));
       await tester.pumpAndSettle();
     }
 
-    testWidgets('titles the strip and says how long ago each card was',
+    /// The pager dots, by position: true for the wide one, the memory shown.
+    List<bool> dots(WidgetTester tester) {
+      final widths = [
+        for (final element in find.byType(AnimatedContainer).evaluate())
+          tester.getSize(find.byWidget(element.widget)).width,
+      ];
+      final widest = widths.reduce((a, b) => a > b ? a : b);
+      return [for (final width in widths) width == widest];
+    }
+
+    testWidgets('titles the panel with the day and shows one memory at a time',
         (tester) async {
       await pumpStrip(tester, [
         Memory(eventOn(1, DateTime(2025, 10, 17)), 1),
@@ -129,14 +144,29 @@ void main() {
       ]);
 
       expect(find.text('On this day'), findsOneWidget);
+      expect(find.text('October 17'), findsOneWidget);
+      expect(find.text('2025'), findsOneWidget);
       expect(find.text('1 year ago'), findsOneWidget);
-      expect(find.text('10 years ago'), findsOneWidget);
       expect(find.text('Event 1'), findsOneWidget);
+      expect(find.text('Event 2'), findsNothing);
+      expect(dots(tester), [true, false]);
+
+      await tester.drag(find.byType(PageView), const Offset(-400, 0));
+      await tester.pumpAndSettle();
+
+      expect(find.text('2016'), findsOneWidget);
+      expect(find.text('10 years ago'), findsOneWidget);
       expect(find.text('Event 2'), findsOneWidget);
+      expect(dots(tester), [false, true]);
     });
 
-    testWidgets('a card is the one the builder made, taps included',
-        (tester) async {
+    testWidgets('a single memory has no dots', (tester) async {
+      await pumpStrip(tester, [Memory(eventOn(1, DateTime(2025, 10, 17)), 1)]);
+
+      expect(find.byType(AnimatedContainer), findsNothing);
+    });
+
+    testWidgets('a tap opens the memory', (tester) async {
       Event? tapped;
       await pumpStrip(tester, [Memory(eventOn(3, DateTime(2024, 10, 17)), 2)],
           onTap: (event) => tapped = event);
@@ -145,11 +175,59 @@ void main() {
       expect(tapped?.id, 3);
     });
 
+    testWidgets('the period and the tags, but not the date tags',
+        (tester) async {
+      final trip = Event(
+          id: 4,
+          description: 'Trip',
+          date: DateTime(2025, 10, 17),
+          endDate: DateTime(2025, 10, 24),
+          isOngoing: false,
+          tags: [cinema, october]);
+      await pumpStrip(tester, [Memory(trip, 1)]);
+
+      expect(find.text('→ Oct 24 · 8 days'), findsOneWidget);
+      expect(find.text('Cinema'), findsOneWidget);
+      expect(find.text('October'), findsNothing);
+    });
+
+    testWidgets('many tags and a long description stay inside the panel',
+        (tester) async {
+      final busy = Event(
+          id: 5,
+          description: List.filled(40, 'A long day.').join(' '),
+          date: DateTime(2025, 10, 17),
+          isOngoing: false,
+          tags: [
+            for (var i = 0; i < 12; i++)
+              Tag(id: 10 + i, tag: 'Tag number $i', idCategory: 1),
+          ]);
+      await pumpStrip(tester, [Memory(busy, 1)]);
+
+      expect(tester.takeException(), isNull);
+      final description = tester.widget<Text>(find.textContaining('A long'));
+      expect(description.maxLines, lessThanOrEqualTo(3));
+    });
+
+    testWidgets('a memory made offline wears a clock', (tester) async {
+      final pending = Event(
+          id: -2,
+          description: 'note',
+          date: DateTime(2025, 10, 17),
+          isOngoing: false,
+          tags: const [],
+          isPending: true);
+      await pumpStrip(tester, [Memory(pending, 1)]);
+
+      expect(find.byIcon(Icons.schedule), findsOneWidget);
+    });
+
     testWidgets('in French', (tester) async {
       await pumpStrip(tester, [Memory(eventOn(1, DateTime(2024, 10, 17)), 2)],
           locale: const Locale('fr'));
 
       expect(find.text('Ce jour-là'), findsOneWidget);
+      expect(find.text('17 octobre'), findsOneWidget);
       expect(find.text('il y a 2 ans'), findsOneWidget);
     });
   });

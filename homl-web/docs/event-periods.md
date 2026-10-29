@@ -20,8 +20,9 @@ Where the pieces live, now that it is built: migration
 `db/migrations/000007_event_periods`; `event.DateTagNames` and
 `application.validatePeriod` on the backend; `lib/helpers/event_period.dart`
 and `periodDateTagNames` (`lib/helpers/date_tags.dart`) on the client, the
-form in `lib/pages/insert/`, the badge in `lib/components/event_card.dart`,
-the sheet in `lib/pages/list/view/event_detail_sheet.dart`, and the
+form in `lib/pages/insert/`, the period line (`periodLine`, which replaced
+the card badge with the cards, see §7.1) in the event list and the "On this
+day" panel, the sheet in `lib/pages/list/view/event_detail_sheet.dart`, and the
 timeline of the Search tab, which lays the periods out on an axis of years,
 in `lib/pages/list/view/period_timeline.dart` (homl-ui README, "Search tab:
 the timeline"). The routes are in
@@ -414,6 +415,12 @@ Every rule is a mirror of what month tags already do:
 
 ### 7.1 Card — a duration badge
 
+> Superseded: the grid of cards became a list (October 2026), and the "On
+> this day" cards a panel showing one memory at a time. Both print the
+> period line of the detail sheet (`periodLine`, `→ Oct 18 · 7 days`)
+> instead of a badge, since a row has the width for it. Kept below as the
+> record of the original design.
+
 The card's date line is centred, 16px bold, `maxLines: 1` with an ellipsis, in
 a cell about 250px wide. A full range does not fit there. So the card **keeps
 showing the start date unchanged** and gains a small badge next to it:
@@ -634,7 +641,8 @@ implementations drifting.
   and `isOngoing` (§6).
 - `test/event_card_test.dart` — badge present for a period, **absent** for a
   single day, `ongoing` for an open one, and no "since" on a future start
-  (§7.2).
+  (§7.2). Removed with the cards; the period line is covered by
+  `test/event_feed_test.dart` and `test/on_this_day_test.dart`.
 - `test/event_detail_sheet_test.dart` — the stacked two-date layout, and the
   date-category tags (months, years, `Ongoing`) **not** rendered as chips.
 - `test/insert_cubit_test.dart` — the derived shape, `clearEndDate`, an end
