@@ -73,6 +73,31 @@ int? monthOfTagName(String name) {
   return null;
 }
 
+/// Where a date tag [name] goes in the Dates category: Ongoing, then a month
+/// by its number, then a year by its value; anything else after them.
+(int, int) _dateTagRank(String name) {
+  if (isOngoingTagName(name)) return (0, 0);
+  final month = monthOfTagName(name);
+  if (month != null) return (1, month);
+  final year = int.tryParse(name.trim());
+  if (year != null) return (2, year);
+  return (3, 0);
+}
+
+/// Reading order of the Dates category's tags: [dateTagOngoing] first, the
+/// months from January to December, then the years, oldest first. The
+/// backend lists them in creation order, the order the first events happened
+/// to need them in. The rank does not depend on the tags present, so a tag
+/// created later still falls into place. A name of no kind (none is
+/// expected) comes last, by name.
+int compareDateTagNames(String a, String b) {
+  final (leftKind, leftValue) = _dateTagRank(a);
+  final (rightKind, rightValue) = _dateTagRank(b);
+  if (leftKind != rightKind) return leftKind.compareTo(rightKind);
+  if (leftValue != rightValue) return leftValue.compareTo(rightValue);
+  return a.compareTo(b);
+}
+
 /// Month name in [locale] ("juillet" in fr, "Juli" in de), as `intl` spells
 /// it — including its casing, which is not the same in every language.
 String monthLabel(int month, String locale) =>

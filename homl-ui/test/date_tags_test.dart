@@ -92,6 +92,48 @@ void main() {
     });
   });
 
+  group('date tag order', () {
+    List<String> sorted(List<String> names) =>
+        [...names]..sort(compareDateTagNames);
+
+    test('Ongoing, then the months in calendar order, then the years', () {
+      expect(
+          sorted([
+            '2026',
+            'July',
+            'Ongoing',
+            '2019',
+            'December',
+            'January',
+            '2024',
+            'March',
+          ]),
+          [
+            'Ongoing',
+            'January',
+            'March',
+            'July',
+            'December',
+            '2019',
+            '2024',
+            '2026'
+          ]);
+    });
+
+    // A new account starts with only the tags of its first event: each one
+    // created since falls into place, whatever is missing around it.
+    test('a tag created later falls into place', () {
+      expect(sorted(['July', '2026']), ['July', '2026']);
+      expect(sorted(['July', '2026', 'Ongoing', 'March', '2019']),
+          ['Ongoing', 'March', 'July', '2019', '2026']);
+    });
+
+    test('whatever the casing, and anything else last', () {
+      expect(sorted(['Zebra', '2026', 'ongoing', 'june', 'Alpha']),
+          ['ongoing', 'june', '2026', 'Alpha', 'Zebra']);
+    });
+  });
+
   group('date chips and localized month tags', () {
     late MockEventsRepository eventsRepository;
     late MockCategoriesRepository categoriesRepository;

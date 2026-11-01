@@ -630,5 +630,49 @@ void main() {
 
       await cubit.close();
     });
+
+    // The backend lists the date tags as the events created them; every
+    // screen gets them in reading order instead, cached or fetched.
+    test('the Dates tags come in reading order', () async {
+      Category dates(List<String> names) => Category(
+              id: 1,
+              category: 'Dates',
+              color: '#fff',
+              isLocked: true,
+              kind: CategoryKind.date,
+              tags: [
+                for (final (index, name) in names.indexed)
+                  Tag(id: 100 + index, tag: name, idCategory: 1)
+              ]);
+      List<String> shownDates(HomeCubit cubit) =>
+          cubit.state.categories.first.tags.map((tag) => tag.tag).toList();
+
+      when(() => eventsRepository.getCachedEvents())
+          .thenAnswer((_) async => cachedEvents);
+      when(() => categoriesRepository.getCachedCategories())
+          .thenAnswer((_) async => [
+                dates(['July', '2026'])
+              ]);
+      when(() => eventsRepository.getEvents())
+          .thenAnswer((_) async => cachedEvents);
+      final fetched = Completer<List<Category>>();
+      when(() => categoriesRepository.getCategories())
+          .thenAnswer((_) => fetched.future);
+      when(() => eventsRepository.lastSyncedAt).thenReturn(null);
+
+      final cubit = buildCubit();
+      await expectLater(cubit.stream,
+          emitsThrough(predicate<HomeState>((s) => s.initialized)));
+      expect(shownDates(cubit), ['July', '2026']);
+
+      // An open period started in March 2019, recorded since.
+      fetched.complete([
+        dates(['July', '2026', 'March', '2019', 'Ongoing'])
+      ]);
+      await Future<void>.delayed(Duration.zero);
+      expect(shownDates(cubit), ['Ongoing', 'March', 'July', '2019', '2026']);
+
+      await cubit.close();
+    });
   });
 }

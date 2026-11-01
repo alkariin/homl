@@ -19,6 +19,7 @@ import 'package:homl/data/sync/sync_engine.dart';
 import 'package:homl/helpers/app_message.dart';
 import 'package:homl/helpers/categories.dart';
 import 'package:homl/helpers/colors.dart';
+import 'package:homl/helpers/date_tags.dart';
 import 'package:homl/helpers/local_usage.dart';
 import 'package:homl/helpers/server_reachability.dart';
 import 'package:rxdart/rxdart.dart';
@@ -99,9 +100,11 @@ class HomeCubit extends Cubit<HomeState> {
 
   /// The Dates category always wears the logo gold, whatever the backend
   /// stored: its color is not editable and brands the date tags across the
-  /// app. Purely cosmetic, so legacy backends without [Category.kind] keep
-  /// their stored color rather than risk gilding the wrong category.
-  List<Category> _withFixedDateColor(List<Category> categories) => [
+  /// app. Its tags come in reading order ([compareDateTagNames]: Ongoing,
+  /// the months, the years) rather than the backend's creation order. Purely
+  /// cosmetic, so legacy backends without [Category.kind] keep their stored
+  /// color and order rather than risk touching the wrong category.
+  List<Category> _withDatesForDisplay(List<Category> categories) => [
         for (final category in categories)
           category.kind == CategoryKind.date
               ? Category(
@@ -110,15 +113,16 @@ class HomeCubit extends Cubit<HomeState> {
                   color: yellowHex,
                   isLocked: category.isLocked,
                   kind: category.kind,
-                  tags: category.tags,
+                  tags: [...category.tags]
+                    ..sort((a, b) => compareDateTagNames(a.tag, b.tag)),
                   groups: category.groups)
               : category,
       ];
 
   /// The categories as every screen shows them, cached or fetched: Dates in
-  /// gold and Others last ([othersLast]).
+  /// gold with its tags in order, and Others last ([othersLast]).
   List<Category> _forDisplay(List<Category> categories) =>
-      othersLast(_withFixedDateColor(categories));
+      othersLast(_withDatesForDisplay(categories));
 
   Map<String, TagView> _buildTagsMap(List<Category> categories) {
     Map<String, TagView> tagMap = {};
