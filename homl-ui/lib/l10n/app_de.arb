@@ -350,5 +350,8 @@
   "update_later": "Später",
   "update_open": "Release-Seite",
   "update_openFailed": "Die Release-Seite konnte nicht geöffnet werden.",
+  "update_serverNeeded": "Server-Update nötig",
+  "update_serverBody": "Der Server läuft mit {server}, diese App braucht mindestens {minimum}: Manche Funktionen können fehlschlagen, bis der Server aktualisiert ist.",
+  "update_serverClose": "OK",
   "list_monthCount": "{count, plural, =1{1 Ereignis} other{{count} Ereignisse}}"
 }

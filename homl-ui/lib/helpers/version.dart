@@ -20,7 +20,41 @@ String healthzUrl(String apiBaseUrl) {
       .toString();
 }
 
+/// The oldest server release this app works with in full.
+///
+/// Raise it in the change that makes the app rely on something only a newer
+/// server does (a new endpoint or field, a new meaning), and say so in that
+/// release's notes; a release whose app needs nothing new from the server
+/// leaves it alone, so a phone upgraded ahead of its server (Obtainium
+/// installs in the background) carries on without a word. Never newer than
+/// the pubspec version, which a test checks. See homl-web/docs/deployment.md,
+/// "The app and its server".
+///
+/// 0.6.0: events without any tag are listed from that server on.
+const minServerRelease = '0.6.0';
+
 final _releaseNumber = RegExp(r'^v?(\d+)\.(\d+)\.(\d+)');
+
+/// The release number [version] starts with ("v0.6.0-3-gabc1234" → 0, 6, 0),
+/// or null when it starts with none.
+List<int>? _releaseParts(String version) {
+  final match = _releaseNumber.firstMatch(version);
+  if (match == null) return null;
+  return [for (var i = 1; i <= 3; i++) int.parse(match[i]!)];
+}
+
+/// Whether [a]'s release comes before (< 0), with (0) or after (> 0) [b]'s,
+/// compared as numbers; null when either is not a release number.
+int? _compareReleases(String a, String b) {
+  final left = _releaseParts(a);
+  final right = _releaseParts(b);
+  if (left == null || right == null) return null;
+  for (var i = 0; i < 3; i++) {
+    final order = left[i].compareTo(right[i]);
+    if (order != 0) return order;
+  }
+  return 0;
+}
 
 /// The release the server runs ("0.6.0") when it is newer than the app's,
 /// which means a newer app is out; null otherwise, or when either version is
@@ -28,16 +62,18 @@ final _releaseNumber = RegExp(r'^v?(\d+)\.(\d+)\.(\d+)');
 /// "v0.6.0-3-gabc1234" for a build past the tag, still 0.6.0), the app its
 /// pubspec version ("0.5.0").
 String? newerServerRelease({required String server, required String app}) {
-  final ours = _releaseNumber.firstMatch(app);
-  final theirs = _releaseNumber.firstMatch(server);
-  if (ours == null || theirs == null) return null;
-  for (var i = 1; i <= 3; i++) {
-    final order = int.parse(theirs[i]!).compareTo(int.parse(ours[i]!));
-    if (order != 0) {
-      return order > 0 ? '${theirs[1]}.${theirs[2]}.${theirs[3]}' : null;
-    }
-  }
-  return null;
+  final order = _compareReleases(server, app);
+  return order != null && order > 0 ? _releaseParts(server)!.join('.') : null;
+}
+
+/// The release the server runs ("0.5.0") when it is older than [minimum],
+/// which means this app relies on something that server does not do yet;
+/// null otherwise, or when the server's version is not a release number (a
+/// build from an untagged checkout is never called too old).
+String? outdatedServerRelease(
+    {required String server, String minimum = minServerRelease}) {
+  final order = _compareReleases(server, minimum);
+  return order != null && order < 0 ? _releaseParts(server)!.join('.') : null;
 }
 
 /// The GitHub release of [release] ("0.6.0"), which carries the signed
