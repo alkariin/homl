@@ -358,7 +358,10 @@ the Others tags are manageable so free tags typed on the insert page can be
 sorted into real categories). The categories come in creation order, except
 Others, always last (`othersLast` in `lib/helpers/categories.dart`, applied
 by `HomeCubit` to the cached and the fetched lists alike, so the tag picker
-and the "move to" dialog follow). Each category is an expandable card: a colored
+and the "move to" dialog follow). The same step puts the Dates tags in
+reading order — Ongoing, the months from January to December, the years
+oldest first (`compareDateTagNames` in `lib/helpers/date_tags.dart`) — where
+the backend lists them by creation. Each category is an expandable card: a colored
 icon, the name and a tag count in the header, the tag chips and a "New tag"
 pill in the body; category edit/delete live in the header's "⋮" menu (hidden
 for locked categories and in picker mode). The body shows the **main tags

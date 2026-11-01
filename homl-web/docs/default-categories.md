@@ -52,6 +52,12 @@ own name once renamed. Requests always carry the stored name.
   E2EE. The app translates them for display only
   (`homl-ui/lib/helpers/date_tags.dart`) and keeps filtering and creating on
   the stored English name.
+- The backend lists the date tags in creation order, the order the first
+  events happened to need them in. The app shows them in reading order
+  instead (`compareDateTagNames`): `Ongoing` first, then the months from
+  January to December, then the years, oldest first. Only the tags that
+  exist are listed — a month no event touches has no tag yet — and each one
+  created later falls into its place.
 
 ## Persons — a default suggestion, not mandatory
 
