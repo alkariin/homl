@@ -1276,6 +1276,17 @@ class AppLocalizationsDe extends AppLocalizations {
       'Die Release-Seite konnte nicht geöffnet werden.';
 
   @override
+  String get update_serverNeeded => 'Server-Update nötig';
+
+  @override
+  String update_serverBody(String server, String minimum) {
+    return 'Der Server läuft mit $server, diese App braucht mindestens $minimum: Manche Funktionen können fehlschlagen, bis der Server aktualisiert ist.';
+  }
+
+  @override
+  String get update_serverClose => 'OK';
+
+  @override
   String list_monthCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

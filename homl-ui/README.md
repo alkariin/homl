@@ -218,24 +218,36 @@ and Obtainium: [homl-web/docs/deployment.md](../homl-web/docs/deployment.md),
 
 ### The update notice
 
-On Android, an icon (`Icons.system_update_outlined`, tooltip "Update
-available") joins the home app bar when the server runs a newer release than
-the app (`lib/components/app_update.dart`): whoever upgraded the server, a
-newer APK is out. It opens a dialog naming both versions, which points at
-Obtainium and opens the GitHub release page in the browser (`url_launcher`);
-a page that cannot open closes the dialog with an error toast.
+An icon joins the home app bar when the app and its server are releases apart
+(`UpdateNoticeButton`, `lib/components/update_notice.dart`); the policy behind
+it is in [homl-web/docs/deployment.md](../homl-web/docs/deployment.md), "The
+app and its server".
 
-- **The comparison** (`newerServerRelease`, `lib/helpers/version.dart`) reads
+- **The server is newer** (Android only, `Icons.system_update_outlined`,
+  tooltip "Update available"): whoever upgraded the server, a newer APK is
+  out. The dialog names both versions, points at Obtainium and opens the
+  GitHub release page in the browser (`url_launcher`); a page that cannot
+  open closes the dialog with an error toast. Android only: it is the one
+  platform with a published build; the web is as new as the files its host
+  serves, and iOS builds from source.
+- **The server is too old** (every platform, `Icons.dns_outlined`, tooltip
+  "Server update needed"): it runs a release older than `minServerRelease`
+  (`lib/helpers/version.dart`), the oldest one that does everything this app
+  relies on — typically Obtainium upgraded the app first. The dialog names
+  both releases; nothing to open, the server's owner upgrades it. Raise
+  `minServerRelease` in the change that makes the app rely on a server change
+  (a new endpoint or field, a new meaning), with a line saying why; a test
+  keeps it no newer than the pubspec version.
+- **The comparison** (`newerServerRelease`, `outdatedServerRelease`) reads
   the release number on both sides: the server's `git describe` from
   `/healthz` ("v0.6.0-3-gabc1234" still counts as 0.6.0) against the
-  pubspec version. Either side without one (a server built from an untagged
-  checkout reports a bare hash) shows nothing.
-- **When**: each time `ServerReachability` turns online, until a newer
-  release is found — a phone started away from a LAN-only server learns about
-  it back home, without the app polling anything. The app never asks GitHub:
-  the server it already talks to is the only source.
-- **Android only**: it is the one platform with a published build; the web is
-  as new as the files its host serves, and iOS builds from source.
+  pubspec version or the minimum. A server without one (built from an
+  untagged checkout, it reports a bare hash) shows nothing.
+- **When**: each time `ServerReachability` turns online — a phone started
+  away from a LAN-only server learns about it back home, and the server
+  notice goes once that server answers with a newer release, all without the
+  app polling anything. The app never asks GitHub: the server it already
+  talks to is the only source.
 
 ## Toasts (user-facing messages)
 

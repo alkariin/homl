@@ -1942,6 +1942,24 @@ abstract class AppLocalizations {
   /// **'Could not open the release page.'**
   String get update_openFailed;
 
+  /// No description provided for @update_serverNeeded.
+  ///
+  /// In en, this message translates to:
+  /// **'Server update needed'**
+  String get update_serverNeeded;
+
+  /// No description provided for @update_serverBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The server runs {server}, and this app needs {minimum} or newer: some features may fail until the server is upgraded.'**
+  String update_serverBody(String server, String minimum);
+
+  /// No description provided for @update_serverClose.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get update_serverClose;
+
   /// No description provided for @list_monthCount.
   ///
   /// In en, this message translates to:

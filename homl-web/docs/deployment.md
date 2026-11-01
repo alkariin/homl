@@ -261,6 +261,8 @@ turn on **Include prereleases** (every release is one until 1.0); it then
 notifies of each new release and upgrades in one tap. The app itself also
 shows an update icon once its server runs a newer release than it does:
 upgrade the server, and the phones that use it hear about the new APK.
+Obtainium may as well upgrade a phone before its server, in the background:
+see [The app and its server](#the-app-and-its-server) for when that matters.
 
 The signing certificate's SHA-256 is
 `c6f107131022f4b44fde2fe3ca69871f80b15ae8d5a6291afb20099f8ad310b6`
@@ -431,6 +433,30 @@ curl -fsS http://127.0.0.1:8080/healthz          # "version" must show the new t
 The same rules apply: a dump first when the release notes announce a
 migration, and rolling back is the previous `HOML_VERSION` with the schema
 left as it is.
+
+### The app and its server
+
+The app and the server ship under one tag, but nothing makes them move
+together: Obtainium can install a new APK in the background days before the
+server is upgraded, and a phone can stay on an older APK for as long. Neither
+has to match the other exactly.
+
+- **An app newer than its server** works in full as long as the server runs
+  at least the app's `minServerRelease` (`homl-ui/lib/helpers/version.dart`):
+  the oldest release that does everything the app relies on. It moves only
+  when the app starts relying on a server change — a new endpoint or field, a
+  new meaning — so most releases leave it alone (app 0.7.0 runs in full on a
+  0.6.2 server). Below it, the app bar shows a server icon, "Server update
+  needed", whose dialog names both releases; the app carries on meanwhile with
+  what that server does. Upgrading the server makes it go.
+- **A server newer than its apps** keeps serving them: backend changes are
+  additive (new endpoints and fields; nothing a published app still uses is
+  removed or changes meaning), and the Android app shows its update icon
+  until it is upgraded too.
+
+A release that raises `minServerRelease` says so at the top of its notes
+("Requires server ≥ X.Y.Z"): upgrade the server first, or have Obtainium only
+notify of that release, not install it in the background.
 
 ## 9. Operating it
 

@@ -1263,6 +1263,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get update_openFailed => 'Could not open the release page.';
 
   @override
+  String get update_serverNeeded => 'Server update needed';
+
+  @override
+  String update_serverBody(String server, String minimum) {
+    return 'The server runs $server, and this app needs $minimum or newer: some features may fail until the server is upgraded.';
+  }
+
+  @override
+  String get update_serverClose => 'OK';
+
+  @override
   String list_monthCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

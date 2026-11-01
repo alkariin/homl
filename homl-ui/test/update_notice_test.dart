@@ -1,10 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
-import 'package:homl/components/app_update.dart';
+import 'package:homl/components/update_notice.dart';
 import 'package:homl/data/repositories/settings.repository.dart';
 import 'package:homl/helpers/localizations.dart';
 import 'package:homl/helpers/server_reachability.dart';
@@ -53,7 +55,46 @@ void main() {
     });
   });
 
-  group('AppUpdateButton', () {
+  group('outdatedServerRelease', () {
+    test('names the server release when it is older than the minimum', () {
+      expect(
+          outdatedServerRelease(server: 'v0.5.2', minimum: '0.6.0'), '0.5.2');
+      expect(
+          outdatedServerRelease(server: 'v0.9.0', minimum: '0.10.0'), '0.9.0');
+      // A build past an older tag is still that older release.
+      expect(
+          outdatedServerRelease(server: 'v0.5.0-18-g9a09439', minimum: '0.6.0'),
+          '0.5.0');
+    });
+
+    test('nothing when the server is the minimum or newer', () {
+      expect(outdatedServerRelease(server: 'v0.6.0', minimum: '0.6.0'), isNull);
+      expect(outdatedServerRelease(server: 'v0.6.2', minimum: '0.6.0'), isNull);
+      expect(
+          outdatedServerRelease(server: 'v0.10.0', minimum: '0.9.0'), isNull);
+    });
+
+    test('nothing when the server is not a release number', () {
+      expect(
+          outdatedServerRelease(server: '9a09439', minimum: '0.6.0'), isNull);
+      expect(outdatedServerRelease(server: 'dev', minimum: '0.6.0'), isNull);
+    });
+
+    // The minimum is raised by hand: never past the app's own release, or
+    // even a server as new as the app would be called too old.
+    test('the minimum is not newer than this app', () {
+      final pubspec = File('pubspec.yaml').readAsStringSync();
+      final version =
+          RegExp(r'^version: *(\S+)', multiLine: true).firstMatch(pubspec)![1]!;
+      expect(
+          outdatedServerRelease(server: 'v$version', minimum: minServerRelease),
+          isNull,
+          reason: 'minServerRelease $minServerRelease is newer than the '
+              'pubspec version $version');
+    });
+  });
+
+  group('UpdateNoticeButton', () {
     late MockSettingsRepository repository;
 
     setUp(() {
@@ -67,14 +108,18 @@ void main() {
       ServerReachability.instance.reset();
     });
 
-    Future<void> pumpButton(WidgetTester tester) async {
+    // The app-update cases run against a minimum every server here meets,
+    // whatever minServerRelease has become.
+    Future<void> pumpButton(WidgetTester tester,
+        {String minimum = '0.1.0'}) async {
       await tester.pumpWidget(RepositoryProvider<SettingsRepository>.value(
         value: repository,
         child: MaterialApp(
           localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           locale: const Locale('en'),
-          home: Scaffold(appBar: AppBar(actions: const [AppUpdateButton()])),
+          home: Scaffold(
+              appBar: AppBar(actions: [UpdateNoticeButton(minimum: minimum)])),
         ),
       ));
       await tester.pumpAndSettle();
@@ -130,16 +175,77 @@ void main() {
       expect(find.byTooltip('Update available'), findsOneWidget);
     }, variant: TargetPlatformVariant.only(TargetPlatform.android));
 
-    testWidgets('never asks off Android, which has no published build',
-        (tester) async {
+    testWidgets(
+        'never offers an app update off Android, which has no '
+        'published build', (tester) async {
       when(() => repository.getServerVersion())
           .thenAnswer((_) async => 'v0.6.0');
       ServerReachability.instance.markOnline();
       await pumpButton(tester);
 
-      verifyNever(() => repository.getServerVersion());
       expect(find.byTooltip('Update available'), findsNothing);
+      expect(find.byTooltip('Server update needed'), findsNothing);
     }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
+    testWidgets('asks for a server update when the server is too old',
+        (tester) async {
+      when(() => repository.getServerVersion())
+          .thenAnswer((_) async => 'v0.4.2');
+      ServerReachability.instance.markOnline();
+      await pumpButton(tester, minimum: '0.5.0');
+
+      // Not an app update, though the app (0.5.0) is the newer one.
+      expect(find.byTooltip('Update available'), findsNothing);
+      await tester.tap(find.byTooltip('Server update needed'));
+      await tester.pumpAndSettle();
+      expect(find.text('Server update needed'), findsOneWidget);
+      expect(
+          find.text('The server runs 0.4.2, and this app needs 0.5.0 or '
+              'newer: some features may fail until the server is upgraded.'),
+          findsOneWidget);
+
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(find.byTooltip('Server update needed'), findsOneWidget);
+    }, variant: TargetPlatformVariant.all());
+
+    // The app upgraded ahead of its server, which still does all it needs:
+    // the common case, nothing to say.
+    testWidgets('silent while the server is behind the app but not the minimum',
+        (tester) async {
+      when(() => repository.getServerVersion())
+          .thenAnswer((_) async => 'v0.4.2');
+      ServerReachability.instance.markOnline();
+      await pumpButton(tester, minimum: '0.4.0');
+
+      expect(find.byTooltip('Server update needed'), findsNothing);
+      expect(find.byTooltip('Update available'), findsNothing);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.android));
+
+    testWidgets('the server notice goes once the server is upgraded',
+        (tester) async {
+      when(() => repository.getServerVersion())
+          .thenAnswer((_) async => 'v0.4.2');
+      ServerReachability.instance.markOnline();
+      await pumpButton(tester, minimum: '0.5.0');
+      expect(find.byTooltip('Server update needed'), findsOneWidget);
+
+      // Unreachable while it restarts: the notice stays meanwhile.
+      when(() => repository.getServerVersion()).thenAnswer((_) async => null);
+      ServerReachability.instance.markOffline();
+      ServerReachability.instance.markOnline();
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Server update needed'), findsOneWidget);
+
+      when(() => repository.getServerVersion())
+          .thenAnswer((_) async => 'v0.5.0');
+      ServerReachability.instance.markOffline();
+      ServerReachability.instance.markOnline();
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Server update needed'), findsNothing);
+      expect(find.byTooltip('Update available'), findsNothing);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.android));
   });
 
   group('AppUpdateDialog', () {
