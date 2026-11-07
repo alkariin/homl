@@ -131,12 +131,14 @@ class _TagInputState extends State<TagInput> {
   static const double _buttonSize = 52;
 
   /// Widest the category name of a suggestion (or the tag list of a group)
-  /// may get. A ListTile hands its trailing the whole tile width: a long name
-  /// wrapped onto the full row fails the tile layout ("Trailing widget
-  /// consumes the entire tile width"), which took the dropdown and the screen
-  /// around it down. Capped, it is cut with an ellipsis and the chip keeps
-  /// the rest of the row.
+  /// may get, so a short chip keeps it near the chip instead of stretching
+  /// across the row. Past that, it is cut with an ellipsis.
   static const double _detailMaxWidth = 120;
+
+  /// Room a suggestion's chip always leaves its detail (a few letters and
+  /// the ellipsis), and the gap between them.
+  static const double _detailMinWidth = 48;
+  static const double _detailGap = 12;
 
   late final TextEditingController _controller =
       widget.controller ?? TextEditingController();
@@ -471,34 +473,58 @@ class _TagInputState extends State<TagInput> {
                             final detail = option.isGroup
                                 ? option.members!.join(', ')
                                 : option.category;
+                            //
+                            // The chip comes first: it takes the room it
+                            // needs and the detail makes do with the rest.
+                            // The dropdown is only as wide as the field, so
+                            // a detail laid out first (a group's member list
+                            // always fills its slot) used to squeeze the
+                            // chip down to its icon on a narrow phone.
                             return ListTile(
                               dense: true,
                               contentPadding:
                                   const EdgeInsets.fromLTRB(12, 0, 14, 0),
-                              title: Align(
-                                alignment: AlignmentDirectional.centerStart,
-                                child: Tag(
-                                    id: option.id,
-                                    text: option.label,
-                                    color: option.color,
-                                    isGroup: option.isGroup),
-                              ),
-                              trailing: detail == null
-                                  ? null
-                                  : ConstrainedBox(
-                                      constraints: const BoxConstraints(
-                                          maxWidth: _detailMaxWidth),
-                                      child: Text(
-                                        detail,
-                                        maxLines: 1,
-                                        softWrap: false,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                            fontSize: 12.5,
-                                            color: context.homl.ink
-                                                .withValues(alpha: 0.45)),
-                                      ),
+                              title: LayoutBuilder(
+                                builder: (context, constraints) => Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    ConstrainedBox(
+                                      constraints: BoxConstraints(
+                                          maxWidth: detail == null
+                                              ? constraints.maxWidth
+                                              : constraints.maxWidth -
+                                                  _detailMinWidth -
+                                                  _detailGap),
+                                      child: Tag(
+                                          id: option.id,
+                                          text: option.label,
+                                          color: option.color,
+                                          isGroup: option.isGroup),
                                     ),
+                                    if (detail != null) ...[
+                                      const SizedBox(width: _detailGap),
+                                      Flexible(
+                                        child: ConstrainedBox(
+                                          constraints: const BoxConstraints(
+                                              maxWidth: _detailMaxWidth),
+                                          child: Text(
+                                            detail,
+                                            maxLines: 1,
+                                            softWrap: false,
+                                            overflow: TextOverflow.ellipsis,
+                                            textAlign: TextAlign.end,
+                                            style: TextStyle(
+                                                fontSize: 12.5,
+                                                color: context.homl.ink
+                                                    .withValues(alpha: 0.45)),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
                               onTap: () => onSelected(option),
                             );
                           },
