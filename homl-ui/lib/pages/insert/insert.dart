@@ -216,6 +216,10 @@ class _InsertViewState extends State<InsertView> {
             return;
           }
           _descriptionController.clear();
+          // The keyboard goes away with the form: the list the user lands on
+          // has nothing to type into, and the field left focused on this tab
+          // would keep it open over the new event.
+          FocusManager.instance.primaryFocus?.unfocus();
           showToast(
               context,
               state.savedOffline

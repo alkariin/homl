@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
+import 'package:homl/components/input.dart';
 import 'package:homl/components/tag.dart' as components;
 import 'package:homl/components/tag_input.dart';
 import 'package:homl/data/models/category.dart';
@@ -12,6 +13,7 @@ import 'package:homl/data/repositories/categories.repository.dart';
 import 'package:homl/data/repositories/events.repository.dart';
 import 'package:homl/data/repositories/settings.repository.dart';
 import 'package:homl/data/repositories/tags.repository.dart';
+import 'package:homl/data/sync/offline_writes.dart';
 import 'package:homl/helpers/localizations.dart';
 import 'package:homl/l10n/app_localizations.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
@@ -174,6 +176,37 @@ void main() {
     final chip = tester.widget<components.Tag>(
         find.widgetWithText(components.Tag, 'Roadtrip'));
     expect(chip.color, '#f28b82');
+  });
+
+  testWidgets('a created event puts the keyboard away', (tester) async {
+    when(() => eventsRepository.createEvent(
+            description: any(named: 'description'),
+            date: any(named: 'date'),
+            endDate: any(named: 'endDate'),
+            isOngoing: any(named: 'isOngoing'),
+            tagsId: any(named: 'tagsId')))
+        .thenAnswer((_) async => WriteOutcome.sent);
+
+    await tester.pumpWidget(wrap());
+    await tester.pumpAndSettle();
+
+    // The description field keeps the focus (and the keyboard) when the
+    // button is tapped: it has no tap-outside handler.
+    final description = find.descendant(
+        of: find.byType(Input), matching: find.byType(EditableText));
+    await tester.enterText(description, 'Picnic by the lake');
+    await tester.pump();
+    expect(tester.widget<EditableText>(description).focusNode.hasFocus, isTrue);
+
+    await tester.tap(find.text('Create event'));
+    await tester.pumpAndSettle();
+
+    expect(tester.testTextInput.isVisible, isFalse);
+    expect(
+        tester
+            .widgetList<EditableText>(find.byType(EditableText))
+            .any((field) => field.focusNode.hasFocus),
+        isFalse);
   });
 
   testWidgets('an existing tag typed in lowercase wears its category color',
