@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/rendering.dart';
 
 import 'package:homl/components/tag.dart';
 import 'package:homl/components/tag_input.dart';
@@ -274,6 +275,43 @@ void main() {
       // The app bar mark follows a member, which shares the group's category.
       expect(suggested, 'Alice');
       expect(enabledBorderColor(tester), darken(colorFromHex('#60ccff')));
+    });
+
+    testWidgets('keeps its name whole in a narrow field', (tester) async {
+      // The dropdown is only as wide as the field. The member list used to
+      // be laid out first and leave the chip room for its icon alone.
+      const crowd = TagChipData(
+          id: 2,
+          name: 'Family',
+          color: '#60ccff',
+          highlightColor: '#60ccff',
+          members: ['Alice', 'Bob', 'Charlotte', 'Dominique', 'Emmanuel']);
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 260,
+              child: TagInput(
+                labelText: 'Tags',
+                tags: const [],
+                suggestions: const [crowd],
+                onAddTag: (_) {},
+              ),
+            ),
+          ),
+        ),
+      ));
+      await tester.enterText(find.byType(TextField), 'fam');
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      final name = tester.renderObject<RenderParagraph>(find.text('Family'));
+      expect(name.didExceedMaxLines, isFalse);
+      // The member list still shows, cut short.
+      final members = tester
+          .renderObject<RenderParagraph>(find.text(crowd.members!.join(', ')));
+      expect(members.size.width, greaterThan(0));
+      expect(members.didExceedMaxLines, isTrue);
     });
 
     testWidgets('typed in full adds its tags, never itself', (tester) async {
