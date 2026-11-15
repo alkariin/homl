@@ -220,6 +220,65 @@ void main() {
     expect(added, ['July']);
   });
 
+  group('accents', () {
+    const amelie = TagChipData(
+        id: 8,
+        name: 'Amélie',
+        color: '#60ccff',
+        highlightColor: '#60ccff',
+        category: 'Persons');
+    const amelieWithout = TagChipData(
+        id: 9, name: 'Amelie', color: '#f2e5c2', category: 'Others');
+    const february = TagChipData(
+        id: 10, name: 'February', displayName: 'Février', color: '#ffff60');
+
+    testWidgets('a tag is suggested without typing its accents',
+        (tester) async {
+      await tester.pumpWidget(wrap(suggestions: [amelie, february]));
+
+      await tester.enterText(find.byType(TextField), 'ameli');
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(ListTile, 'Amélie'), findsOneWidget);
+      expect(suggested, 'Amélie');
+
+      // A translated label too, and the other way round: accents typed
+      // where the name has none still match.
+      await tester.enterText(find.byType(TextField), 'fevr');
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(ListTile, 'Février'), findsOneWidget);
+    });
+
+    testWidgets('typed in full without accents, adds the accented tag',
+        (tester) async {
+      final added = <String>[];
+      await tester
+          .pumpWidget(wrap(suggestions: [amelie], onAddTag: added.add));
+
+      // Instead of creating a second "Amelie" tag next to "Amélie".
+      await tester.enterText(find.byType(TextField), 'amelie');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+
+      expect(added, ['Amélie']);
+    });
+
+    testWidgets('the exact spelling wins when two tags differ by accents',
+        (tester) async {
+      final added = <String>[];
+      await tester.pumpWidget(
+          wrap(suggestions: [amelie, amelieWithout], onAddTag: added.add));
+
+      await tester.enterText(find.byType(TextField), 'Amelie');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'amélie');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+
+      expect(added, ['Amelie', 'Amélie']);
+    });
+  });
+
   testWidgets('picking a suggestion leaves no stale dropdown on refocus',
       (tester) async {
     // Regression: RawAutocomplete ignores a synchronous clear made during its

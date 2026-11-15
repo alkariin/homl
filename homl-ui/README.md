@@ -574,7 +574,8 @@ same names. Translating them is therefore a display-only concern, handled by
   It is applied wherever a stored tag reaches the screen — the search filters
   and their suggestions, the event detail sheet and the Categories tab;
 - `TagChipData.displayName` carries that label next to the stored `name`.
-  `TagInput` displays the label, matches the typed text against **both**, and
+  `TagInput` displays the label, matches the typed text against **both**
+  (ignoring case and accents, so `fevrier` finds "Février"), and
   always reports the stored `name` to `onAddTag` — a French user typing
   "juillet" (or picking it in the suggestions) filters on `July`, which is
   what the tag names in the events actually are.
@@ -877,7 +878,11 @@ What the field takes (`SearchTerm.parse`):
   `application/text.go`), so any typed casing matches, and each name through
   its whole synonym group (`idParentTag ?? id` as the group root, see
   `homl-web/docs/tag-synonyms.md`). An excluded tag leaves its whole group
-  out.
+  out. The tag field (`TagInput`, on the Search and Insert tabs alike)
+  suggests and resolves names with `foldForSearch` too, so accents never
+  need typing: `ameli` offers "Amélie", and `amelie` + enter adds it rather
+  than a second, accent-less tag. Two tags that only differ by their accents
+  stay apart: the exact spelling wins on enter, and both are suggested.
 - **Texts** match anywhere in the description as one phrase, ignoring case,
   the accents of the Latin letters, curly apostrophes and runs of spaces
   (`foldForSearch`): `cafe by` finds "Café by the sea". Quotes may be the
