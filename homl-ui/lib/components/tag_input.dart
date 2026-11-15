@@ -6,6 +6,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:homl/helpers/theme.dart';
 import 'package:homl/components/tag.dart';
 import 'package:homl/helpers/colors.dart';
+import 'package:homl/helpers/event_search.dart' show foldForSearch;
 
 /// Data of a chip displayed by [TagInput]. [id] is -1 when the tag does not
 /// exist on the backend yet.
@@ -246,23 +247,27 @@ class _TagInputState extends State<TagInput> {
     });
   }
 
-  /// Suggestion whose stored name or displayed label is exactly [text]. A
-  /// tag wins over a group of the same name: the group stays one tap away
-  /// in the dropdown, while enter never adds more than what was typed.
+  /// Suggestion whose stored name or displayed label is [text], whatever
+  /// its case and accents ("amelie" names "Amélie"), the exact spelling first
+  /// when two tags only differ by their accents. A tag wins over a group of
+  /// the same name: the group stays one tap away in the dropdown, while
+  /// enter never adds more than what was typed.
   TagChipData? _suggestionFor(String text) {
     final lowered = text.toLowerCase();
-    bool named(TagChipData suggestion) =>
+    final folded = foldForSearch(text);
+    bool spelled(TagChipData suggestion) =>
         suggestion.name.toLowerCase() == lowered ||
         suggestion.label.toLowerCase() == lowered;
+    bool named(TagChipData suggestion) =>
+        foldForSearch(suggestion.name) == folded ||
+        foldForSearch(suggestion.label) == folded;
 
-    return widget.suggestions
-            .where((suggestion) => !suggestion.isGroup)
-            .where(named)
-            .firstOrNull ??
-        widget.suggestions
-            .where((suggestion) => suggestion.isGroup)
-            .where(named)
-            .firstOrNull;
+    final tags = widget.suggestions.where((suggestion) => !suggestion.isGroup);
+    final groups = widget.suggestions.where((suggestion) => suggestion.isGroup);
+    return tags.where(spelled).firstOrNull ??
+        tags.where(named).firstOrNull ??
+        groups.where(spelled).firstOrNull ??
+        groups.where(named).firstOrNull;
   }
 
   bool _isChipped(String name) =>
@@ -270,16 +275,18 @@ class _TagInputState extends State<TagInput> {
 
   Iterable<TagChipData> _filterSuggestions(TextEditingValue value) {
     final prefix = _prefixOf(value.text);
-    final query = _termOf(value.text).toLowerCase();
+    final query = foldForSearch(_termOf(value.text));
     if (query.isEmpty) return const Iterable<TagChipData>.empty();
 
     // Matched on the label as well as the stored name: a translated month tag
-    // is reachable by typing it in the app language.
+    // is reachable by typing it in the app language. Both sides are folded
+    // (case and accents, see foldForSearch): "ameli" offers "Amélie", and
+    // "fevrier" the February tag.
     // A chipped tag is not offered again, and neither is a group with
     // nothing left to add (all its tags chipped, or none left at all).
     final candidates = widget.suggestions.where((suggestion) =>
-        (suggestion.name.toLowerCase().contains(query) ||
-            suggestion.label.toLowerCase().contains(query)) &&
+        (foldForSearch(suggestion.name).contains(query) ||
+            foldForSearch(suggestion.label).contains(query)) &&
         (suggestion.isGroup
             ? !suggestion.members!
                 .every((member) => _isChipped('$prefix$member'))
@@ -288,8 +295,8 @@ class _TagInputState extends State<TagInput> {
     // Tags starting with the query come first, so the top suggestion (which
     // also drives the highlight color below) is the most natural completion.
     bool startsWithQuery(TagChipData s) =>
-        s.name.toLowerCase().startsWith(query) ||
-        s.label.toLowerCase().startsWith(query);
+        foldForSearch(s.name).startsWith(query) ||
+        foldForSearch(s.label).startsWith(query);
 
     return [
       ...candidates.where(startsWithQuery),
