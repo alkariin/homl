@@ -509,15 +509,28 @@ living above the `PageView`. What is being typed travels the other way, from
 the input up to a `ValueNotifier<String?>` owned by the page holding the bar
 (cleared on a tab change: the field left behind is not what the mark shows).
 
-## Insert tab: the date chips & the month tag language
+## Insert tab: the date fields, the date chips & the month tag language
 
-The insert form (and the edit form, same `InsertView`) opens with two fixed
-chips in front of the tag input: the **month** and the **year** of the event.
-They are not decorative — they are exactly the two date tags the event ends up
-filed under (`buildDateTags` on the backend, `InsertCubit._buildDateTags`
-under E2EE), so what the form shows is what the Dates category will hold and
-what the search can filter on. Both chips open the date picker, and both
-follow the picked date (`leading` of `TagInput` takes a list of widgets).
+The insert form (and the edit form, same `InsertView`) keeps two things apart:
+
+- **the date chips**, in front of the tag input, are a pure reflection of the
+  date tags the event ends up filed under (`periodDateTagNames`, the mirror
+  of the backend `event.DateTagNames`): every month the event covers, in the
+  order of the period, then its years, then **Ongoing** for an open period.
+  What the form shows is what the Dates category will hold and what the
+  search can filter on. They wear the Dates category color, carry no icon,
+  do nothing on a tap and cannot be removed (`leading` of `TagInput` takes a
+  list of widgets). Past three months the others fold into a muted
+  "+ 5 months" note (`insert_moreMonths`) — plain text, not a chip, so it
+  cannot be mistaken for a tag;
+- **the date fields** (`lib/components/date_field.dart`), under the
+  one day / period / ongoing control, show the dates themselves — the day is
+  not a tag, so the chips cannot say it. "Date" for a single day, "From" and
+  "To" for a closed period, "Since" for an open one, each written out in full
+  by `fullDateLabel` (`lib/helpers/date_entry.dart`): the weekday in the
+  locale's casing ("dimanche 15 novembre 2026") and the French ordinal
+  "1er" for the first of the month, which `intl` does not produce. A tap
+  opens the date picker; the field is not typed into.
 
 The start and end pickers take a typed date through their pencil as eight
 digits too — `18102026` for 18/10/2026 — in the order of the locale's own format (month first in US English): a phone's
@@ -531,19 +544,17 @@ scrolls, and its sentences start with a capital (see "Text inputs" above).
 Tags are optional: an event needs a tag **or** a description, and saving one
 with neither says so (`AppMessage.insertEmpty`). Deleting a tag can leave
 events without any tag of their own anyway, and they must stay editable. The
-two date chips never count, they only file the event.
+date chips never count, they only file the event.
 
 An event is a single day, a closed period or an open one ("still ongoing"),
 picked with the segmented control under the tag input. Its selected segment
 wears the palette's grey (`segmentedButtonTheme` in `lib/helpers/theme.dart`):
 Material 3 fills it with the scheme's `secondaryContainer`, which the black
 seed of `ColorScheme.fromSeed` turns into a washed red — the only warm surface
-in an otherwise monochrome app. The chips follow: a closed period adds a third
-chip with its end (`→ 5 Jul 2026`, tap it to change the end), an open one the
-**Ongoing** chip — the very date tag the event is filed under, translated like
-the months. Only the start month is chipped for a closed period, although the
-event is filed under every month it covers: a long one would flood the field.
-The shape is *derived* from the state (`InsertState.shape`, from `endDate` and
+in an otherwise monochrome app. The date fields under it follow the shape
+(Date, From/To, Since), and so do the chips: every month of a closed period,
+the **Ongoing** chip of an open one. The end is a field, not a chip — it is
+not a tag. The shape is *derived* from the state (`InsertState.shape`, from `endDate` and
 `isOngoing`), never stored: "period" opens the end picker straight away and
 only becomes the selected shape once a day is picked, so cancelling leaves the
 previous shape, and the form can never rest on "a period without an end". The
@@ -556,7 +567,10 @@ same names. Translating them is therefore a display-only concern, handled by
 `lib/helpers/date_tags.dart`:
 
 - `localizedTagName(name, locale)` returns the app-language month name
-  ("juillet", "Juli") for a month tag and the stored name for anything else.
+  ("Juillet", "Juli") for a month tag and the stored name for anything else.
+  `monthLabel` capitalizes it: it is shown as a tag, and every other tag
+  starts with a capital (`normalizeTagName`), whereas French typography
+  writes the months in lowercase — `intl` gives "juillet".
   It is applied wherever a stored tag reaches the screen — the search filters
   and their suggestions, the event detail sheet and the Categories tab;
 - `TagChipData.displayName` carries that label next to the stored `name`.

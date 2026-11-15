@@ -525,18 +525,25 @@ A single-day event keeps its current single line.
 
 ### 7.3 Form — three explicit states
 
-The form has no date *field*: the date is two fixed chips in front of the tag
-input — the start month and year — which are exactly the date tags the event
-gets filed under (they open the picker). The period keeps that metaphor
-rather than adding a field: a `SegmentedButton` with the three states sits
-under the tag input, and the chips follow — a closed period adds a third chip
-with its end (`→ 5 Jul 2026`, tap to change it), an open one the `Ongoing`
-chip, the very tag it will be filed under, translated like the months. Only
-the start month is chipped for a closed period, although it is filed under
-every month it covers: a long one would flood the field. A segmented control
-is worth the widget over an "end date + ongoing checkbox" pair because it
-makes the invalid combination of §2.1 **unreachable** — you cannot set an end
-date and "ongoing" at once.
+The form keeps the date tags and the dates apart. The date tags are chips
+in front of the tag input — a pure reflection of what the event gets filed
+under: every month the period covers, in its order, the years, and the
+`Ongoing` tag of an open one, translated like the months. They carry no icon
+and no action; past three months the rest fold into a muted "+ 5 months"
+note, plain text rather than a chip so it cannot read as a tag. The dates
+themselves — the day is not a tag, so no chip can show it — are fields under
+a `SegmentedButton` with the three states: "Date" for a single day, "From"
+and "To" for a closed period, "Since" for an open one, each written out in
+full and opening the picker on a tap.
+
+*History:* the first version had no date field — the start month and year
+chips opened the picker, a closed period added a third `→ 5 Jul 2026` chip
+for its end, and only the start month was chipped. The end chip was not a
+tag and the day showed nowhere, hence the split (2026-11).
+
+A segmented control is worth the widget over an "end date + ongoing
+checkbox" pair because it makes the invalid combination of §2.1
+**unreachable** — you cannot set an end date and "ongoing" at once.
 
 "Legal-by-construction" has a hole if the flow is naive: a user who selects
 "period" and submits before picking an end sends `endDate == null` with
@@ -648,7 +655,8 @@ implementations drifting.
 - `test/insert_cubit_test.dart` — the derived shape, `clearEndDate`, an end
   date and `isOngoing` excluding each other, a start moved past the end
   dropping it; plus `test/insert_period_test.dart` on `insert.dart` for the
-  open-picker-on-select flow, its revert on cancel and the end chip (§7.3).
+  open-picker-on-select flow, its revert on cancel, the date fields of each
+  shape and the month chips folded after three (§7.3).
 - `test/date_tags_test.dart` — `Ongoing` translates through `event_ongoing`,
   month names still translate through `intl` (§5.6).
 - `test/e2ee_test.dart` — `isBlacklistedTag('2026')` is true, and a year tag

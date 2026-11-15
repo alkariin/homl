@@ -499,6 +499,29 @@ class AppLocalizationsEn extends AppLocalizations {
   String get insert_periodOngoing => 'Ongoing';
 
   @override
+  String get insert_dateLabel => 'Date';
+
+  @override
+  String get insert_dateFromLabel => 'From';
+
+  @override
+  String get insert_dateToLabel => 'To';
+
+  @override
+  String get insert_dateSinceLabel => 'Since';
+
+  @override
+  String insert_moreMonths(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '+ $count months',
+      one: '+ 1 month',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get list_filterLabel => 'Tag or text';
 
   @override

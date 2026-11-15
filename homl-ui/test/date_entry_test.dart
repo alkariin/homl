@@ -50,4 +50,27 @@ void main() {
     expect(calendar.parseCompactDate('18/10/2026', fr), DateTime(2026, 10, 18));
     expect(calendar.parseCompactDate('18-10', fr), isNull);
   });
+
+  group('fullDateLabel', () {
+    setUpAll(() async {
+      // Loading the Material localizations initializes the intl data.
+      for (final locale in ['fr', 'de', 'en']) {
+        await load(locale);
+      }
+    });
+
+    test('the weekday, the day, the month and the year in the locale', () {
+      final date = DateTime(2026, 11, 15);
+      expect(fullDateLabel(date, 'fr'), 'dimanche 15 novembre 2026');
+      expect(fullDateLabel(date, 'de'), 'Sonntag, 15. November 2026');
+      expect(fullDateLabel(date, 'en'), 'Sunday, November 15, 2026');
+    });
+
+    test('the first of the month is "1er" in French only', () {
+      final date = DateTime(2026, 9, 1);
+      expect(fullDateLabel(date, 'fr'), 'mardi 1er septembre 2026');
+      expect(fullDateLabel(date, 'fr_CH'), 'mardi 1er septembre 2026');
+      expect(fullDateLabel(date, 'en'), 'Tuesday, September 1, 2026');
+    });
+  });
 }

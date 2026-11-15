@@ -1,3 +1,4 @@
+import 'package:intl/intl.dart';
 import 'package:material_ui/material_ui.dart';
 
 /// The calendar of the app's date pickers. The typed entry (the pencil)
@@ -57,4 +58,17 @@ List<String> _fieldOrder(MaterialLocalizations localizations) {
   }
   return positions.keys.toList()
     ..sort((a, b) => positions[a]!.compareTo(positions[b]!));
+}
+
+/// [date] written out in full in [locale], weekday included, as the date
+/// fields of the event form show it: "dimanche 15 novembre 2026", "Sunday,
+/// November 15, 2026". The weekday keeps the locale's casing (lowercase in
+/// French). French writes the first of the month as an ordinal, "1er", which
+/// `intl` does not: "mardi 1er septembre 2026".
+String fullDateLabel(DateTime date, String locale) {
+  if (date.day == 1 && locale.split('_').first == 'fr') {
+    return '${DateFormat.EEEE(locale).format(date)} 1er '
+        '${DateFormat.yMMMM(locale).format(date)}';
+  }
+  return DateFormat.yMMMMEEEEd(locale).format(date);
 }
