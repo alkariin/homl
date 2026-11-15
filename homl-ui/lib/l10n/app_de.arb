@@ -179,6 +179,11 @@
   "insert_periodSingleDay": "Ein Tag",
   "insert_periodClosed": "Zeitraum",
   "insert_periodOngoing": "Laufend",
+  "insert_dateLabel": "Datum",
+  "insert_dateFromLabel": "Von",
+  "insert_dateToLabel": "Bis",
+  "insert_dateSinceLabel": "Seit",
+  "insert_moreMonths": "{count, plural, =1{+ 1 Monat} other{+ {count} Monate}}",
 
   "list_filterLabel": "Tag oder Text",
   "list_filterHint": "-Bob, \"Strand\"",

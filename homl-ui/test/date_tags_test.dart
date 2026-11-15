@@ -66,7 +66,9 @@ void main() {
     setUpAll(initializeDateFormatting);
 
     test('translates the month date tags, leaves the other tags alone', () {
-      expect(localizedTagName('July', 'fr'), 'juillet');
+      // Capitalized like every other tag, although French writes the
+      // months in lowercase.
+      expect(localizedTagName('July', 'fr'), 'Juillet');
       expect(localizedTagName('July', 'de'), 'Juli');
       expect(localizedTagName('July', 'en'), 'July');
       // The year tag and the user tags are language-independent.
@@ -191,23 +193,23 @@ void main() {
       );
     }
 
-    testWidgets('the date is two chips, the month in the app language',
+    testWidgets('the date chips are the month and the year, translated',
         (tester) async {
       await tester.pumpWidget(wrapEditForm(const Locale('fr')));
       await tester.pumpAndSettle();
 
       // The two chips the event is filed under, not one packed date.
-      expect(find.widgetWithText(components.Tag, 'juillet'), findsOneWidget);
+      expect(find.widgetWithText(components.Tag, 'Juillet'), findsOneWidget);
       expect(find.widgetWithText(components.Tag, '2026'), findsOneWidget);
       expect(find.text('12/07/2026'), findsNothing);
     });
 
-    testWidgets('picking a date updates both chips', (tester) async {
+    testWidgets('picking a date updates the field and both chips', (tester) async {
       await tester.pumpWidget(wrapEditForm(const Locale('fr')));
       await tester.pumpAndSettle();
 
-      // Either chip opens the calendar (here the year one).
-      await tester.tap(find.widgetWithText(components.Tag, '2026'));
+      // The date field opens the calendar (the chips do not).
+      await tester.tap(find.text('dimanche 12 juillet 2026'));
       await tester.pumpAndSettle();
       expect(find.byType(DatePickerDialog), findsOneWidget);
 
@@ -221,10 +223,11 @@ void main() {
       await tester.tap(find.text('OK'));
       await tester.pumpAndSettle();
 
-      expect(find.widgetWithText(components.Tag, 'décembre'), findsOneWidget);
+      expect(find.widgetWithText(components.Tag, 'Décembre'), findsOneWidget);
       expect(find.widgetWithText(components.Tag, '2025'), findsOneWidget);
-      expect(find.widgetWithText(components.Tag, 'juillet'), findsNothing);
+      expect(find.widgetWithText(components.Tag, 'Juillet'), findsNothing);
       expect(find.widgetWithText(components.Tag, '2026'), findsNothing);
+      expect(find.text('lundi 15 décembre 2025'), findsOneWidget);
     });
 
     testWidgets('a month tag is searchable in the app language',
@@ -239,12 +242,12 @@ void main() {
       await tester.pumpAndSettle();
 
       // Suggested under its translated label...
-      await tester.tap(find.text('juillet').last);
+      await tester.tap(find.text('Juillet').last);
       await tester.pumpAndSettle();
 
       // ...chipped translated too, but filtered on the stored "July": the
       // event stays on screen, which a "juillet" filter would not match.
-      expect(find.widgetWithText(components.Tag, 'juillet'), findsOneWidget);
+      expect(find.widgetWithText(components.Tag, 'Juillet'), findsOneWidget);
       expect(find.byType(EventRow), findsOneWidget);
     });
   });

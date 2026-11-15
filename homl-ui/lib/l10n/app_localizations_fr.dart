@@ -506,6 +506,23 @@ class AppLocalizationsFr extends AppLocalizations {
   String get insert_periodOngoing => 'En cours';
 
   @override
+  String get insert_dateLabel => 'Date';
+
+  @override
+  String get insert_dateFromLabel => 'Du';
+
+  @override
+  String get insert_dateToLabel => 'Au';
+
+  @override
+  String get insert_dateSinceLabel => 'Depuis';
+
+  @override
+  String insert_moreMonths(int count) {
+    return '+ $count mois';
+  }
+
+  @override
   String get list_filterLabel => 'Tag ou texte';
 
   @override

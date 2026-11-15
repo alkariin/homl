@@ -970,6 +970,36 @@ abstract class AppLocalizations {
   /// **'Ongoing'**
   String get insert_periodOngoing;
 
+  /// No description provided for @insert_dateLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Date'**
+  String get insert_dateLabel;
+
+  /// No description provided for @insert_dateFromLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'From'**
+  String get insert_dateFromLabel;
+
+  /// No description provided for @insert_dateToLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'To'**
+  String get insert_dateToLabel;
+
+  /// No description provided for @insert_dateSinceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Since'**
+  String get insert_dateSinceLabel;
+
+  /// No description provided for @insert_moreMonths.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{+ 1 month} other{+ {count} months}}'**
+  String insert_moreMonths(int count);
+
   /// No description provided for @list_filterLabel.
   ///
   /// In en, this message translates to:

@@ -179,6 +179,11 @@
   "insert_periodSingleDay": "Un jour",
   "insert_periodClosed": "Période",
   "insert_periodOngoing": "En cours",
+  "insert_dateLabel": "Date",
+  "insert_dateFromLabel": "Du",
+  "insert_dateToLabel": "Au",
+  "insert_dateSinceLabel": "Depuis",
+  "insert_moreMonths": "+ {count} mois",
 
   "list_filterLabel": "Tag ou texte",
   "list_filterHint": "-Bob, \"plage\"",

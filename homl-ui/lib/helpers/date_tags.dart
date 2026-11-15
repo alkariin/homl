@@ -98,10 +98,12 @@ int compareDateTagNames(String a, String b) {
   return a.compareTo(b);
 }
 
-/// Month name in [locale] ("juillet" in fr, "Juli" in de), as `intl` spells
-/// it — including its casing, which is not the same in every language.
-String monthLabel(int month, String locale) =>
-    DateFormat.MMMM(locale).format(DateTime(2000, month));
+/// Month name in [locale] ("Juillet" in fr, "Juli" in de), as `intl` spells
+/// it but always capitalized: it is displayed as a tag, and every other tag
+/// starts with a capital (`normalizeTagName`), whereas French typography
+/// writes the months in lowercase ("juillet").
+String monthLabel(int month, String locale) => toBeginningOfSentenceCase(
+    DateFormat.MMMM(locale).format(DateTime(2000, month)), locale);
 
 /// Display name of the Ongoing tag in [locale] — the same word as the card
 /// badge, taken from the app strings since `intl` has nothing for it, unlike

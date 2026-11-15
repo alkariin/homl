@@ -205,6 +205,16 @@
   "insert_periodSingleDay": "Single day",
   "insert_periodClosed": "Period",
   "insert_periodOngoing": "Ongoing",
+  "insert_dateLabel": "Date",
+  "insert_dateFromLabel": "From",
+  "insert_dateToLabel": "To",
+  "insert_dateSinceLabel": "Since",
+  "insert_moreMonths": "{count, plural, =1{+ 1 month} other{+ {count} months}}",
+  "@insert_moreMonths": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
 
   "list_filterLabel": "Tag or text",
   "list_filterHint": "-Bob, \"beach\"",

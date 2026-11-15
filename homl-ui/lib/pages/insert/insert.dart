@@ -1,12 +1,12 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:intl/intl.dart';
 import 'package:homl/helpers/theme.dart';
 import 'package:homl/l10n/app_localizations.dart';
 
 import 'package:homl/components/app_bar_mark.dart';
 import 'package:homl/components/bubbles_background.dart';
 import 'package:homl/components/button.dart';
+import 'package:homl/components/date_field.dart';
 import 'package:homl/components/input.dart';
 import 'package:homl/components/tag.dart';
 import 'package:homl/components/tag_input.dart';
@@ -256,6 +256,16 @@ class _InsertViewState extends State<InsertView> {
           }
         }
 
+        // The date chips wear the color of the Dates category, like the
+        // date tags anywhere else.
+        String? dateCategoryColor;
+        for (final category in homeState.categories) {
+          if (isDateCategory(category)) {
+            dateCategoryColor = category.color;
+            break;
+          }
+        }
+
         return BlocBuilder<InsertCubit, InsertState>(builder: (context, state) {
           final insertCubit = context.read<InsertCubit>();
 
@@ -362,46 +372,20 @@ class _InsertViewState extends State<InsertView> {
                         context.read<InsertCubit>().addTag(name),
                     onRemoveTag: (tag) =>
                         context.read<InsertCubit>().removeTag(tag.name),
-                    // The date chips are always there and cannot be removed.
-                    // They mirror the date tags the event is filed under
-                    // (translated for display, stored in English): the start
-                    // month and year, both opening the date picker, then the
-                    // end of a closed period (tap to change it) or the
-                    // Ongoing tag of an open one. A closed period is filed
-                    // under every month it covers, but only its start is
-                    // chipped — a long one would flood the field.
-                    leading: [
-                      Tag(
-                        id: -1,
-                        text: monthLabel(state.date.month, locale),
-                        isDate: true,
-                        large: true,
-                        onTap: pickDate,
-                      ),
-                      Tag(
-                        id: -1,
-                        text: state.date.year.toString(),
-                        isDate: true,
-                        large: true,
-                        onTap: pickDate,
-                      ),
-                      if (state.endDate != null)
-                        Tag(
-                          id: -1,
-                          text:
-                              '→ ${DateFormat.yMMMd(locale).format(state.endDate!)}',
-                          isDate: true,
-                          large: true,
-                          onTap: pickEndDate,
-                        ),
-                      if (state.isOngoing)
-                        Tag(
-                          id: -1,
-                          text: localizedTagName(dateTagOngoing, locale),
-                          isDate: true,
-                          large: true,
-                        ),
-                    ],
+                    // The date chips mirror the date tags the event will be
+                    // filed under (translated for display, stored in
+                    // English): every month the period covers, in its order,
+                    // then the years, then Ongoing for an open period. They
+                    // are only a reflection — no icon, no action, not
+                    // removable: the dates are entered in the fields below.
+                    leading: _dateChips(
+                        periodDateTagNames(
+                            date: state.date,
+                            endDate: state.endDate,
+                            isOngoing: state.isOngoing),
+                        locale,
+                        localization,
+                        dateCategoryColor),
                   ),
                   ValueListenableBuilder<String?>(
                     valueListenable: _newTagName,
@@ -453,6 +437,35 @@ class _InsertViewState extends State<InsertView> {
                       }
                     },
                   ),
+                  const SizedBox(height: 14),
+                  // The dates themselves, written out in full: the day is
+                  // not a tag, so the chips above cannot show it. A tap
+                  // opens the picker.
+                  ...switch (state.shape) {
+                    PeriodShape.singleDay => [
+                        DateField(
+                            label: localization.insert_dateLabel,
+                            date: state.date,
+                            onTap: pickDate),
+                      ],
+                    PeriodShape.closed => [
+                        DateField(
+                            label: localization.insert_dateFromLabel,
+                            date: state.date,
+                            onTap: pickDate),
+                        const SizedBox(height: 12),
+                        DateField(
+                            label: localization.insert_dateToLabel,
+                            date: state.endDate!,
+                            onTap: pickEndDate),
+                      ],
+                    PeriodShape.ongoing => [
+                        DateField(
+                            label: localization.insert_dateSinceLabel,
+                            date: state.date,
+                            onTap: pickDate),
+                      ],
+                  },
                   const SizedBox(height: 22),
                   Input(
                     labelText: localization.insert_descriptionLabel,
@@ -484,6 +497,55 @@ class _InsertViewState extends State<InsertView> {
           );
         });
       }),
+    );
+  }
+}
+
+/// Months shown as chips before the rest fold into a "+ N months" note.
+const _shownDateMonths = 3;
+
+/// The chips of the date tags [names] (as `periodDateTagNames` lists them),
+/// in front of the tag input: the months in the order the period covers
+/// them, the years, then Ongoing. Past [_shownDateMonths] months the others
+/// fold into a muted note rather than a chip, so it cannot be mistaken for a
+/// tag named "+7".
+List<Widget> _dateChips(List<String> names, String locale,
+    AppLocalizations localization, String? color) {
+  final months = names.where((name) => monthOfTagName(name) != null).toList();
+  final others = names.where((name) => monthOfTagName(name) == null);
+  final shown = months.take(_shownDateMonths);
+
+  Widget chip(String name) => Tag(
+      id: -1, text: localizedTagName(name, locale), color: color, large: true);
+
+  return [
+    ...shown.map(chip),
+    if (months.length > _shownDateMonths)
+      _MoreMonths(
+          label: localization.insert_moreMonths(
+              months.length - _shownDateMonths)),
+    ...others.map(chip),
+  ];
+}
+
+/// The note standing for the months [_dateChips] does not show: plain muted
+/// text, padded to sit on the chips' baseline.
+class _MoreMonths extends StatelessWidget {
+  final String label;
+
+  const _MoreMonths({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+      child: Text(
+        label,
+        style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: context.homl.ink.withValues(alpha: 0.5)),
+      ),
     );
   }
 }
