@@ -5,6 +5,7 @@ import 'package:homl/data/repositories/e2ee.repository.dart';
 import 'package:homl/data/repositories/settings.repository.dart';
 import 'package:homl/data/repositories/users.repository.dart';
 import 'package:homl/helpers/e2ee.dart';
+import 'package:homl/helpers/theme.dart';
 import 'package:homl/helpers/toast.dart';
 import 'package:homl/l10n/app_localizations.dart';
 import 'package:homl/services/authentication/bloc/authentication_cubit.dart';
@@ -164,6 +165,7 @@ class _E2eeRestorePageState extends State<E2eeRestorePage> {
               ),
               const SizedBox(height: 12),
               ElevatedButton(
+                style: entranceButtonStyle(context),
                 onPressed: _busy ? null : _restore,
                 child: _busy
                     ? const SizedBox(

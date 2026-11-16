@@ -929,8 +929,20 @@ since it passed no `highlightColor` at all.
 The logo is an SVG (`assets/images/logo.svg`) rendered with `flutter_svg`: a
 `ColorMapper` repaints only its gold strokes (drawn in the palette's
 `yellow`), the black ones stay black. The rest of the app stays monochrome —
-buttons, focus borders and the selected nav item are ink, the gold stays in
-the logo and small accents.
+focus borders and the selected nav item are ink, the gold stays in the logo,
+small accents and the main action buttons:
+
+- **in the app**, the main action of a form or a dialog (`ElevatedButton`,
+  `FilledButton`, through their themes) is the gold in pastel — the tint of
+  the Dates chips, 30 % over the card (22 % in the dark theme), a gold
+  hairline, the label in ink. The shared `Button` (`lib/components/button.dart`)
+  spans the width of its form and takes an optional leading `icon` (the ✓ of
+  "Create event");
+- **on the entrance screens** — login, register, forgot password, E2EE
+  restore — it is the full gold with a dark label (`Button(entrance: true)`,
+  or `style: entranceButtonStyle(context)` on a bare `ElevatedButton`): the
+  button is about all there is on screen, and it greets like the logo;
+- the secondary actions stay text buttons ("Cancel", "Later").
 
 `EventsRepository.getEvents()`, `CategoriesRepository.getCategories()` and
 `SettingsRepository.getSettings()` save each successful payload in the local
