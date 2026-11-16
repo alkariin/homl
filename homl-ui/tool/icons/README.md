@@ -42,6 +42,13 @@ viewBox, so what must fit inside the circular safe zones (adaptive icon,
 Android 12 splash mask) is its circumradius (~40.9 units for a 91-unit-wide
 logo) — that is what caps the logo widths hardcoded in `generate.mjs`.
 
+The adaptive-icon PNGs (`icon-foreground-1024.png`, `icon-monochrome-1024.png`)
+span the whole 108dp layer: `pubspec.yaml` sets
+`adaptive_icon_foreground_inset: 0`, so `flutter_launcher_icons` does not shrink
+them by its default extra 16% inset. To resize the logo in the app drawer,
+change `ADAPTIVE_LOGO_W` in `generate.mjs` (currently ~59.5dp of the 72dp
+visible area) and regenerate.
+
 The splash colors match the app theme's background (`HomlColors` in
 `lib/helpers/theme.dart`): `#FBFBFB` with the black hash, `#121213` with the
 soft-white one on a dark system (`color_dark` / `image_dark`). The native

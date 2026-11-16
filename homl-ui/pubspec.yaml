@@ -86,6 +86,9 @@ flutter_launcher_icons:
   adaptive_icon_background: "#FFFFFF"
   adaptive_icon_foreground: tool/icons/out/icon-foreground-1024.png
   adaptive_icon_monochrome: tool/icons/out/icon-monochrome-1024.png
+  # The foreground PNGs already place the hash in the safe zone (see
+  # tool/icons/generate.mjs); skip the plugin's default 16% extra inset.
+  adaptive_icon_foreground_inset: 0
   remove_alpha_ios: true
   web:
     generate: true

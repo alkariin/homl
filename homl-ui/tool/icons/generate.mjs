@@ -50,12 +50,15 @@ function render(name, svg, width) {
 // Launcher icon: two-tone hash on white, ~62% width for breathing room.
 render('icon-1024.png', compose({ canvas: 1024, logoWidth: 640, paths: logoPaths, background: '#FFFFFF' }), 1024);
 
-// Android adaptive foreground: transparent, hash inside the 66/108 safe-zone
-// circle (diameter ~626px on a 1024 canvas → circumradius caps width at ~690).
-render('icon-foreground-1024.png', compose({ canvas: 1024, logoWidth: 690, paths: logoPaths }), 1024);
+// Android adaptive foreground: transparent. The canvas is the full 108dp layer
+// (pubspec sets adaptive_icon_foreground_inset: 0, so no extra shrinking); the
+// launcher shows its inner 72dp (683px). 564px ≈ 59.5dp, whose circumradius
+// (~253px) sits well inside the 66dp safe-zone circle (radius ~313px).
+const ADAPTIVE_LOGO_W = 564;
+render('icon-foreground-1024.png', compose({ canvas: 1024, logoWidth: ADAPTIVE_LOGO_W, paths: logoPaths }), 1024);
 
 // Android 13+ themed icon: same layout, all strokes black.
-render('icon-monochrome-1024.png', compose({ canvas: 1024, logoWidth: 690, paths: blackPaths }), 1024);
+render('icon-monochrome-1024.png', compose({ canvas: 1024, logoWidth: ADAPTIVE_LOGO_W, paths: blackPaths }), 1024);
 
 // Native splash: all-black hash on transparent. 696px = 174dp at 4x, matching
 // the 174-logical-px logo on the Flutter splash for a seamless hand-off.
