@@ -27,8 +27,8 @@ class CategoriesPage extends StatelessWidget {
           onSubmit: (name, color) => homeCubit.createCategory(name, color),
         ),
       ),
-      // The decorative background is shared by the tabs (parallax in the
-      // home page), so the body is transparent.
+      // The sky is shared by the tabs (parallax in the home page), so the
+      // body is transparent.
       body: const CategoryManagementBody(),
     );
   }

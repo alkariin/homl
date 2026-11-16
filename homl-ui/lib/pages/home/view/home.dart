@@ -4,19 +4,21 @@ import 'package:material_ui/material_ui.dart';
 import 'package:intl/intl.dart';
 import 'package:homl/helpers/theme.dart';
 import 'package:homl/l10n/app_localizations.dart';
+import 'package:homl/data/models/event.dart';
 import 'package:homl/data/repositories/categories.repository.dart';
 import 'package:homl/data/repositories/events.repository.dart';
 
 import 'package:homl/components/app_bar_mark.dart';
 import 'package:homl/components/update_notice.dart';
 import 'package:homl/components/pending_changes.dart';
-import 'package:homl/components/bubbles_background.dart';
 import 'package:homl/components/logo.dart';
+import 'package:homl/components/sky_background.dart';
 import 'package:homl/data/repositories/settings.repository.dart';
 import 'package:homl/data/repositories/tags.repository.dart';
 import 'package:homl/data/sync/outbox.dart';
 import 'package:homl/helpers/app_message.dart';
 import 'package:homl/helpers/server_reachability.dart';
+import 'package:homl/helpers/sky.dart';
 import 'package:homl/helpers/toast.dart';
 import 'package:homl/pages/settings/view/settings.dart';
 import 'package:homl/pages/categories/categories.dart';
@@ -332,17 +334,21 @@ class _HomeViewState extends State<HomeView>
         ),
         body: Stack(
           children: [
-            // One decorative background for the three tabs, wider than the
-            // screen and slid sideways with the PageView: swiping to a tab
-            // reveals the matching slice of the artwork.
+            // One sky for the three tabs, wider than the screen and slid
+            // sideways with the PageView: swiping to a tab reveals the
+            // matching slice of it, the tabs a continuation of one another.
+            // The sky is the AnimatedBuilder's child: built when the events
+            // change, only moved on every frame of a swipe.
             AnimatedBuilder(
               animation: _pageController,
-              builder: (context, _) {
+              child: const _HomeSky(),
+              builder: (context, sky) {
                 final page = _pageController.hasClients &&
                         _pageController.position.haveDimensions
                     ? _pageController.page ?? _currentIndex.toDouble()
                     : _currentIndex.toDouble();
-                return _ParallaxBackground(page: page, pageCount: 3);
+                return _ParallaxBackground(
+                    page: page, pageCount: 3, child: sky!);
               },
             ),
             PageView(
@@ -446,14 +452,13 @@ class _DrawerListTile extends StatelessWidget {
       leading: Icon(icon, size: 22),
       title: Text(title),
       trailing: Icon(Icons.chevron_right,
-          size: 20,
-          color: context.homl.ink.withValues(alpha: 0.3)),
+          size: 20, color: context.homl.ink.withValues(alpha: 0.3)),
       onTap: onTap,
     );
   }
 }
 
-/// Renders the shared decorative background wider than the screen and slides
+/// Renders [child], the shared background, wider than the screen and slides
 /// it with the PageView position: the leftmost tab shows its left slice, the
 /// rightmost tab its right slice.
 class _ParallaxBackground extends StatelessWidget {
@@ -462,8 +467,10 @@ class _ParallaxBackground extends StatelessWidget {
 
   final double page;
   final int pageCount;
+  final Widget child;
 
-  const _ParallaxBackground({required this.page, required this.pageCount});
+  const _ParallaxBackground(
+      {required this.page, required this.pageCount, required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -481,12 +488,30 @@ class _ParallaxBackground extends StatelessWidget {
             child: SizedBox(
               width: w + extra,
               height: constraints.maxHeight,
-              child: const BubblesBackground(),
+              child: child,
             ),
           ),
         ),
       );
     });
+  }
+}
+
+/// The sky of the user's events behind the tabs (see SkyBackground). Rebuilt
+/// when the events change — a new one adds its star — and in its own layer,
+/// so neither a swipe nor a scroll repaints it.
+class _HomeSky extends StatelessWidget {
+  const _HomeSky();
+
+  @override
+  Widget build(BuildContext context) {
+    return RepaintBoundary(
+      child: BlocSelector<HomeCubit, HomeState, List<Event>>(
+        selector: (state) => state.events,
+        builder: (context, events) =>
+            SkyBackground(sky: buildSky(events, DateTime.now())),
+      ),
+    );
   }
 }
 
@@ -511,10 +536,10 @@ class OfflineIndicator extends StatelessWidget {
         final syncedAt = lastSyncedAt;
         final message = syncedAt == null
             ? localization.offline_explanation
-            : localization.offline_explanationSince(DateFormat.MMMd(
-                    Localizations.localeOf(context).toString())
-                .add_Hm()
-                .format(syncedAt));
+            : localization.offline_explanationSince(
+                DateFormat.MMMd(Localizations.localeOf(context).toString())
+                    .add_Hm()
+                    .format(syncedAt));
         return IconButton(
           tooltip: localization.offline_title,
           icon: const Icon(Icons.cloud_off_outlined),

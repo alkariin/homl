@@ -63,6 +63,20 @@ List<String> periodDateTagNames(
   return names;
 }
 
+/// Whether [name] is one of the date tags the backend files every event
+/// under — a month, a year or Ongoing — whatever its casing, judged on the
+/// name alone (no category needed, so it works on any event, cached or
+/// decrypted).
+bool isDateTagName(String name) {
+  final trimmed = name.trim();
+  return monthOfTagName(trimmed) != null ||
+      isOngoingTagName(trimmed) ||
+      _yearTagName.hasMatch(trimmed);
+}
+
+/// What a year tag looks like (the backend refuses any four-digit tag name).
+final _yearTagName = RegExp(r'^[0-9]{4}$');
+
 /// 1-based month of a month date tag, null when [name] is not one of the
 /// English month names.
 int? monthOfTagName(String name) {

@@ -509,6 +509,55 @@ living above the `PageView`. What is being typed travels the other way, from
 the input up to a `ValueNotifier<String?>` owned by the page holding the bar
 (cleared on a tab change: the field left behind is not what the mark shows).
 
+## Home tabs: the sky
+
+Behind the three tabs lies the user's own sky (`lib/helpers/sky.dart` for
+what it shows, `lib/components/sky_background.dart` for how it is drawn):
+**one constellation per month, one star per event**, the oldest month
+top-left and the current one bottom-right. It replaced decorative waves that
+meant nothing. The login and register screens and the edit route keep a
+plain background.
+
+- **A budget of stars, not of months** (`buildSky`): from the current month
+  backwards, a month is added while its stars fit in `skyMaxStars` (100) —
+  at most `skyStarsPerMonth` (12) per month, the events with the most tags —
+  and never more than `skyMaxMonths` (24). A busy life shows fewer months, a
+  quiet one more; the sky is never crowded. An empty month keeps its cell,
+  as a gap in the sky, until the stars are spent. An event belongs to the
+  month it starts in; one in the future is left out.
+- **Never overlapping** (`SkyGeometry`): the area is cut into a grid fitted
+  to the number of months (cells as square as it allows, the spare cells
+  first so the current month stays bottom-right), and each constellation
+  stays in a disc inside its cell, drifted by a few pixels from the month
+  (`SkyMonth.drift`) so the sky does not read as a table.
+- **Stable**: a star is placed in its month's disc from its event id, the
+  best of a few candidates — the one furthest from the stars already there,
+  taken by id. Ids only grow, so a new event adds its star and never moves
+  the others. The grid changes when the number of months does (a new month
+  starts, an old one leaves the budget), about once a month.
+- **The lines** are the minimum spanning tree of the month's stars (each
+  star to its nearest, no loop), the way constellations are drawn.
+- **One star shines per month**, in gold with a halo: the event sharing the
+  most tags with the others of its month — the one that ties the month
+  together — then the one with the most tags, then the oldest. The date tags
+  (month, year, Ongoing, told by their name: `isDateTagName`) never count:
+  every event of a month has them. A star grows with its own tags.
+- **Light and dark**: grey stars at 19 % and lines at 6 % on the light
+  theme — half the strength of the dark one, where grey on white reads
+  louder — white stars at 60 %, lines at 18 % and a fixed dust of tiny
+  stars on the dark theme.
+- **On screen**: the sky is 40 % wider than the screen and slides with the
+  `PageView`, so the three tabs are a continuation of one another
+  (`_ParallaxBackground` in `lib/pages/home/view/home.dart`). `_HomeSky`
+  rebuilds it only when `HomeState.events` changes, in its own
+  `RepaintBoundary`, and hands it to the parallax as the `AnimatedBuilder`'s
+  child: a swipe or a scroll only moves it. Building it is a pass over the
+  events and a dozen tiny trees: nothing to cache.
+- **What it must not cover**: the Search list lays the page background
+  under its month headings (edge to edge) and under the days and the rail
+  (from the edge of the screen to the cards), and the "On this day" panel
+  is opaque; the sky shows around and between the cards only.
+
 ## Insert tab: the date fields, the date chips & the month tag language
 
 The insert form (and the edit form, same `InsertView`) keeps two things apart:
@@ -621,6 +670,10 @@ a month never splits); `lib/pages/list/view/event_feed.dart` draws them with
   page).
 - A change made offline wears a small clock in the corner of its card; a tap
   on the card opens the detail sheet.
+- **On the page background**: the headings, and the day and rail of every
+  row, paint the page background under them, reaching past the list padding
+  (`feedPadding`) to the edge of the screen — the sky of the home tabs
+  (above) shows behind the cards, never behind a date.
 
 The previous grid of square `EventCard`s is gone; the "On this day" panel
 above the list has its own layout (below).
@@ -637,7 +690,8 @@ alike, and are never a day behind.
   `lib/pages/list/view/on_this_day_strip.dart`), on the whole list only (no
   term, no range) and in the list view: the events that *started* on today's
   month and day in an earlier year, the most recent first, in a gold-tinted
-  panel titled with the day ("On this day · October 29"). It shows **one at
+  panel (opaque: the tint laid over the page background, so the sky never
+  shows through) titled with the day ("On this day · October 29"). It shows **one at
   a time** — its year and "3 years ago" on the left, then its period line,
   its tags (not the date tags) and the start of its description — and a
   swipe brings the next (a `PageView`); the dots under the panel say which
@@ -937,7 +991,8 @@ small accents and the main action buttons:
   the Dates chips, 30 % over the card (22 % in the dark theme), a gold
   hairline, the label in ink. The shared `Button` (`lib/components/button.dart`)
   spans the width of its form and takes an optional leading `icon` (the ✓ of
-  "Create event");
+  "Create event"). The floating "New category" of the Categories tab wears
+  the same pastel (`floatingActionButtonTheme`);
 - **on the entrance screens** — login, register, forgot password, E2EE
   restore — it is the full gold with a dark label (`Button(entrance: true)`,
   or `style: entranceButtonStyle(context)` on a bare `ElevatedButton`): the
