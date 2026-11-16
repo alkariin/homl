@@ -483,6 +483,7 @@ class _InsertViewState extends State<InsertView> {
                   state.status == InsertStatus.submitting
                       ? const Center(child: CircularProgressIndicator())
                       : Button(
+                          icon: Icons.check_rounded,
                           text: state.editingEventId != null
                               ? localization.global_save
                               : localization.insert_submit,

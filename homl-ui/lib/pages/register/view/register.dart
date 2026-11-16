@@ -109,6 +109,7 @@ class _RegisterViewState extends State<RegisterView> {
                                     child: CircularProgressIndicator())
                                 : Button(
                                     text: localization.register_submit,
+                                    entrance: true,
                                     onPressed: () {
                                       if (_formKey.currentState!.validate()) {
                                         context.read<RegisterCubit>().submit();
@@ -155,6 +156,7 @@ class _RegistrationClosed extends StatelessWidget {
         const SizedBox(height: 24),
         Button(
           text: localization.register_backToLogin,
+          entrance: true,
           onPressed: () => Navigator.of(context).pop(),
         ),
       ],

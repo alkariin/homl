@@ -133,6 +133,7 @@ class _LoginViewState extends State<LoginView> {
                       ? const Center(child: CircularProgressIndicator())
                       : Button(
                           text: localization.login_submit,
+                          entrance: true,
                           onPressed: () {
                             if (_formKey.currentState!.validate()) {
                               _withServer(

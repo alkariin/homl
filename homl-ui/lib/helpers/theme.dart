@@ -111,8 +111,9 @@ extension HomlColorsOf on BuildContext {
 }
 
 /// Global theme of the app: Encode Sans, plain surfaces, monochrome ink
-/// controls (buttons, focus, selection); the gold #D3A934 stays confined to
-/// the logo and small accents. [brightness] picks the light or the dark
+/// controls (focus, selection); the gold #D3A934 stays confined to the logo,
+/// small accents and the main action buttons (pastel in the app, full on the
+/// entrance screens). [brightness] picks the light or the dark
 /// colors ([HomlColors]); everything else is the same.
 ThemeData homlTheme({Brightness brightness = Brightness.light}) {
   const fontFamily = 'Encode Sans';
@@ -176,20 +177,14 @@ ThemeData homlTheme({Brightness brightness = Brightness.light}) {
         borderSide: BorderSide(color: ink, width: 1.5),
       ),
     ),
-    elevatedButtonTheme: ElevatedButtonThemeData(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: ink,
-        foregroundColor: colors.background,
-        elevation: 0,
-        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        textStyle: const TextStyle(
-          fontFamily: fontFamily,
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    ),
+    // The main action of a screen or a dialog wears the gold in pastel, the
+    // tint of the Dates chips; the entrance screens (login, register) take
+    // the full gold instead (entranceButtonStyle). Both are set apart from
+    // the monochrome controls on purpose: the action is the one warm spot.
+    elevatedButtonTheme:
+        ElevatedButtonThemeData(style: _pastelButtonStyle(colors, brightness)),
+    filledButtonTheme:
+        FilledButtonThemeData(style: _pastelButtonStyle(colors, brightness)),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: ink,
@@ -309,5 +304,62 @@ ThemeData homlTheme({Brightness brightness = Brightness.light}) {
         color: ink.withValues(alpha: 0.45),
       ),
     ),
+  );
+}
+
+const _buttonTextStyle = TextStyle(
+  fontFamily: 'Encode Sans',
+  fontSize: 16,
+  fontWeight: FontWeight.w600,
+);
+
+const _buttonShape =
+    RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(14)));
+
+/// The main action of the app's screens and dialogs: [yellow] laid at 30 %
+/// over the card (22 % in the dark theme, where more turns muddy), a gold
+/// hairline, the label in ink. Opaque, so it reads the same over any
+/// surface.
+ButtonStyle _pastelButtonStyle(HomlColors colors, Brightness brightness) {
+  final dark = brightness == Brightness.dark;
+  return ElevatedButton.styleFrom(
+    backgroundColor:
+        Color.alphaBlend(yellow.withValues(alpha: dark ? 0.22 : 0.30), colors.card),
+    foregroundColor: colors.ink,
+    disabledBackgroundColor: colors.field,
+    disabledForegroundColor: colors.ink.withValues(alpha: 0.38),
+    elevation: 0,
+    minimumSize: const Size(64, 52),
+    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+    shape: _buttonShape.copyWith(
+      side: BorderSide(
+          color: dark
+              ? yellow.withValues(alpha: 0.55)
+              : darken(yellow, .2).withValues(alpha: 0.55)),
+    ),
+    textStyle: _buttonTextStyle,
+  );
+}
+
+/// Dark ink on the full gold, in both themes: the gold is light enough for
+/// it either way.
+const _onYellow = Color(0xFF1C1A14);
+
+/// The main action of the entrance screens (login, register, forgot
+/// password, E2EE restore): the full gold of the logo, where the button is
+/// about the only thing on screen. Set by `Button(entrance: true)`, or as
+/// the `style` of a bare ElevatedButton.
+ButtonStyle entranceButtonStyle(BuildContext context) {
+  final colors = context.homl;
+  return ElevatedButton.styleFrom(
+    backgroundColor: yellow,
+    foregroundColor: _onYellow,
+    disabledBackgroundColor: colors.field,
+    disabledForegroundColor: colors.ink.withValues(alpha: 0.38),
+    elevation: 0,
+    minimumSize: const Size(64, 52),
+    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+    shape: _buttonShape,
+    textStyle: _buttonTextStyle,
   );
 }

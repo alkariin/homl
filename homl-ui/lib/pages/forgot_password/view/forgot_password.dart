@@ -105,6 +105,7 @@ class _EmailStep extends StatelessWidget {
             ? const Center(child: CircularProgressIndicator())
             : Button(
                 text: localization.forgot_sendCode,
+                entrance: true,
                 onPressed: () {
                   if (formKey.currentState!.validate()) {
                     cubit.sendCode();
@@ -179,6 +180,7 @@ class _CodeStep extends StatelessWidget {
             ? const Center(child: CircularProgressIndicator())
             : Button(
                 text: localization.forgot_submit,
+                entrance: true,
                 onPressed: () {
                   if (state.code.length == 6 &&
                       formKey.currentState!.validate()) {
