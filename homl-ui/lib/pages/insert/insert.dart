@@ -4,7 +4,6 @@ import 'package:homl/helpers/theme.dart';
 import 'package:homl/l10n/app_localizations.dart';
 
 import 'package:homl/components/app_bar_mark.dart';
-import 'package:homl/components/bubbles_background.dart';
 import 'package:homl/components/button.dart';
 import 'package:homl/components/date_field.dart';
 import 'package:homl/components/input.dart';
@@ -94,9 +93,9 @@ class _EditEventPageState extends State<EditEventPage> {
             const SizedBox(width: 16),
           ],
         ),
-        // This route lives outside the home PageView: it carries its own
-        // copy of the shared decorative background.
-        body: BubblesBackground(child: InsertView(typedTag: _typedTag)),
+        // This route lives outside the home PageView and its sky: a plain
+        // background, the event being edited is all there is to look at.
+        body: InsertView(typedTag: _typedTag),
       ),
     );
   }
@@ -309,8 +308,8 @@ class _InsertViewState extends State<InsertView> {
                   .where((tag) => tag.tagName.toLowerCase() == name.toLowerCase())
                   .firstOrNull;
 
-          // The decorative background is shared by the tabs (parallax in
-          // the home page); the edit route wraps this view with its own.
+          // Transparent: on the Add tab, the sky shared by the tabs (home
+          // page) shows around the card; the edit route has a plain one.
           return SingleChildScrollView(
             padding: const EdgeInsets.all(20),
             child: Container(

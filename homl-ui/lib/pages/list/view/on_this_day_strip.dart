@@ -84,8 +84,11 @@ class _OnThisDayStripState extends State<OnThisDayStrip> {
               horizontal: OnThisDayStrip.sidePadding),
           // The pages slide out at the panel's edges, not at its inset.
           clipBehavior: Clip.antiAlias,
+          // Opaque — the tint laid over the page background — so the sky
+          // of the home tabs never shows through the memory.
           decoration: BoxDecoration(
-            color: palette.yellow.withValues(alpha: 0.11),
+            color: Color.alphaBlend(palette.yellow.withValues(alpha: 0.11),
+                context.homl.background),
             borderRadius: BorderRadius.circular(16),
           ),
           child: Column(
@@ -251,8 +254,8 @@ class _MemoryPage extends StatelessWidget {
               // height actually left, hence the LayoutBuilder.
               Expanded(
                 child: LayoutBuilder(
-                  builder: (context, constraints) => _tagsAndDescription(
-                      context, constraints.maxHeight, tags),
+                  builder: (context, constraints) =>
+                      _tagsAndDescription(context, constraints.maxHeight, tags),
                 ),
               ),
             ],
@@ -300,8 +303,8 @@ class _MemoryPage extends StatelessWidget {
     // Every whole tag row that fits once a line of description is set aside;
     // one row at least.
     final free = available - (description.isEmpty ? 0 : _gap + line);
-    final rows = math.max(
-        1, ((free + _tagSpacing) / (rowHeight + _tagSpacing)).floor());
+    final rows =
+        math.max(1, ((free + _tagSpacing) / (rowHeight + _tagSpacing)).floor());
     final tagsHeight = rows * rowHeight + (rows - 1) * _tagSpacing;
 
     return Column(
@@ -340,8 +343,8 @@ class _MemoryPage extends StatelessWidget {
                 description,
                 // The room is a whole number of lines by construction: the
                 // margin keeps a rounding error from dropping one.
-                maxLines: math.max(
-                    1, (constraints.maxHeight / line + 0.01).floor()),
+                maxLines:
+                    math.max(1, (constraints.maxHeight / line + 0.01).floor()),
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                     fontSize: _descriptionFontSize,

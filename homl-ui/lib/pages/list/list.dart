@@ -160,8 +160,8 @@ class ListPage extends StatelessWidget {
         }
         final range = listState.range;
 
-        // The decorative background is shared by the tabs (parallax in the
-        // home page).
+        // Transparent: the sky shared by the tabs (home page) shows through,
+        // except behind the days and the rail of the list (EventRow).
         return Column(children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
@@ -308,8 +308,7 @@ class ListPage extends StatelessWidget {
                                 // One column, newest first, under a
                                 // heading per month (see EventRow).
                                 SliverPadding(
-                                  padding:
-                                      const EdgeInsets.fromLTRB(12, 4, 20, 25),
+                                  padding: feedPadding,
                                   sliver: SliverList.builder(
                                     itemCount: feed.length,
                                     itemBuilder: (context, index) =>

@@ -194,10 +194,12 @@ ThemeData homlTheme({Brightness brightness = Brightness.light}) {
         ),
       ),
     ),
+    // The floating "New category" is a main action too: the pastel gold of
+    // the buttons, floating over the list.
     floatingActionButtonTheme: FloatingActionButtonThemeData(
-      backgroundColor: ink,
-      foregroundColor: colors.background,
-      shape: const StadiumBorder(),
+      backgroundColor: _pastelFill(colors, brightness),
+      foregroundColor: ink,
+      shape: StadiumBorder(side: BorderSide(color: _pastelEdge(brightness))),
       extendedTextStyle: const TextStyle(
         fontFamily: fontFamily,
         fontSize: 15,
@@ -316,15 +318,23 @@ const _buttonTextStyle = TextStyle(
 const _buttonShape =
     RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(14)));
 
-/// The main action of the app's screens and dialogs: [yellow] laid at 30 %
-/// over the card (22 % in the dark theme, where more turns muddy), a gold
-/// hairline, the label in ink. Opaque, so it reads the same over any
-/// surface.
+/// The pastel gold of the main actions: [yellow] laid at 30 % over the card
+/// (22 % in the dark theme, where more turns muddy). Opaque, so it reads the
+/// same over any surface.
+Color _pastelFill(HomlColors colors, Brightness brightness) => Color.alphaBlend(
+    yellow.withValues(alpha: brightness == Brightness.dark ? 0.22 : 0.30),
+    colors.card);
+
+/// The gold hairline around [_pastelFill].
+Color _pastelEdge(Brightness brightness) => brightness == Brightness.dark
+    ? yellow.withValues(alpha: 0.55)
+    : darken(yellow, .2).withValues(alpha: 0.55);
+
+/// The main action of the app's screens and dialogs: [_pastelFill] inside
+/// its gold hairline, the label in ink.
 ButtonStyle _pastelButtonStyle(HomlColors colors, Brightness brightness) {
-  final dark = brightness == Brightness.dark;
   return ElevatedButton.styleFrom(
-    backgroundColor:
-        Color.alphaBlend(yellow.withValues(alpha: dark ? 0.22 : 0.30), colors.card),
+    backgroundColor: _pastelFill(colors, brightness),
     foregroundColor: colors.ink,
     disabledBackgroundColor: colors.field,
     disabledForegroundColor: colors.ink.withValues(alpha: 0.38),
@@ -332,10 +342,7 @@ ButtonStyle _pastelButtonStyle(HomlColors colors, Brightness brightness) {
     minimumSize: const Size(64, 52),
     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
     shape: _buttonShape.copyWith(
-      side: BorderSide(
-          color: dark
-              ? yellow.withValues(alpha: 0.55)
-              : darken(yellow, .2).withValues(alpha: 0.55)),
+      side: BorderSide(color: _pastelEdge(brightness)),
     ),
     textStyle: _buttonTextStyle,
   );

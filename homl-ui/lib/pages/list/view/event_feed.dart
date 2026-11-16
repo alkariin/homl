@@ -9,8 +9,33 @@ import 'package:homl/helpers/event_period.dart';
 import 'package:homl/helpers/theme.dart';
 import 'package:homl/l10n/app_localizations.dart';
 
+/// Padding of the event list around its headings and rows (ListPage). Both
+/// reach past it, to the edges of the screen, to lay the page background
+/// under what must stay legible: the sky of the home tabs shows behind the
+/// list, but not behind a heading, a day or the rail.
+const feedPadding = EdgeInsets.fromLTRB(12, 4, 20, 25);
+
+/// The page background under [child], from [left] (relative to [child]) to
+/// [right] — reaching into [feedPadding] — over its whole height: what the
+/// sky must not show through.
+Widget _overSky(BuildContext context,
+        {required double left,
+        double? width,
+        double? right,
+        required Widget child}) =>
+    Stack(clipBehavior: Clip.none, children: [
+      Positioned(
+          left: left,
+          width: width,
+          right: right,
+          top: 0,
+          bottom: 0,
+          child: ColoredBox(color: context.homl.background)),
+      child,
+    ]);
+
 /// Heading of a month in the event list: "October 2026", and how many events
-/// start in it.
+/// start in it. It lies on the page background, edge to edge.
 class MonthHeader extends StatelessWidget {
   final DateTime month;
   final int count;
@@ -21,7 +46,7 @@ class MonthHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final locale = Localizations.localeOf(context).toString();
 
-    return Semantics(
+    final heading = Semantics(
       header: true,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(8, 18, 0, 10),
@@ -48,6 +73,8 @@ class MonthHeader extends StatelessWidget {
         ),
       ),
     );
+    return _overSky(context,
+        left: -feedPadding.left, right: -feedPadding.right, child: heading);
   }
 }
 
@@ -55,7 +82,8 @@ class MonthHeader extends StatelessWidget {
 /// that joins the events of a month, and a card with the period, every tag
 /// (wrapped, never cut) and two lines of description. A tap opens the detail
 /// sheet. The month and year are in the heading above, so the date tags are
-/// not chipped.
+/// not chipped. The day and the rail lie on the page background, from the
+/// edge of the screen: the sky of the home tabs stays behind the cards.
 class EventRow extends StatelessWidget {
   static const double _dayWidth = 44;
   static const double _gap = 6;
@@ -109,65 +137,70 @@ class EventRow extends StatelessWidget {
         : Color.lerp(palette.colorFromHex(dotColor!), Colors.black, .25)!;
     const dotCenter = _dotTop + _dotSize / 2;
 
-    return Stack(
-      children: [
-        if (!(first && last))
+    return _overSky(
+      context,
+      left: -feedPadding.left,
+      width: feedPadding.left + _dayWidth + _gap * 2 + _railWidth,
+      child: Stack(
+        children: [
+          if (!(first && last))
+            Positioned(
+              left: _railX - 1,
+              width: 2,
+              top: first ? dotCenter : 0,
+              bottom: last ? null : 0,
+              height: last ? dotCenter : null,
+              child: ColoredBox(color: context.homl.quiet),
+            ),
           Positioned(
-            left: _railX - 1,
-            width: 2,
-            top: first ? dotCenter : 0,
-            bottom: last ? null : 0,
-            height: last ? dotCenter : null,
-            child: ColoredBox(color: context.homl.quiet),
+            left: _railX - _dotSize / 2,
+            top: _dotTop,
+            child: Container(
+              width: _dotSize,
+              height: _dotSize,
+              decoration: BoxDecoration(color: dot, shape: BoxShape.circle),
+            ),
           ),
-        Positioned(
-          left: _railX - _dotSize / 2,
-          top: _dotTop,
-          child: Container(
-            width: _dotSize,
-            height: _dotSize,
-            decoration: BoxDecoration(color: dot, shape: BoxShape.circle),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                width: _dayWidth,
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 9),
-                  child: Column(
-                    children: [
-                      Text(
-                        DateFormat.d(locale).format(event.date),
-                        style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w700,
-                            height: 1),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        DateFormat.E(locale).format(event.date).toUpperCase(),
-                        maxLines: 1,
-                        overflow: TextOverflow.clip,
-                        style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0.4,
-                            color: muted),
-                      ),
-                    ],
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: _dayWidth,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 9),
+                    child: Column(
+                      children: [
+                        Text(
+                          DateFormat.d(locale).format(event.date),
+                          style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w700,
+                              height: 1),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          DateFormat.E(locale).format(event.date).toUpperCase(),
+                          maxLines: 1,
+                          overflow: TextOverflow.clip,
+                          style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.4,
+                              color: muted),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: _gap * 2 + _railWidth),
-              Expanded(child: _card(context, locale, muted)),
-            ],
+                const SizedBox(width: _gap * 2 + _railWidth),
+                Expanded(child: _card(context, locale, muted)),
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 

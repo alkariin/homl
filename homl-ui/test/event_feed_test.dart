@@ -6,6 +6,7 @@ import 'package:homl/data/models/event.dart';
 import 'package:homl/data/models/tag.dart';
 import 'package:homl/helpers/event_feed.dart';
 import 'package:homl/helpers/localizations.dart';
+import 'package:homl/helpers/theme.dart';
 import 'package:homl/l10n/app_localizations.dart';
 import 'package:homl/pages/list/view/event_feed.dart';
 
@@ -85,6 +86,32 @@ void main() {
           isDateTag: (tag) => tag.idCategory == 1,
           onTap: onTap,
         );
+
+    testWidgets(
+        'the headings, the days and the rail lie on the page background',
+        (tester) async {
+      // The sky of the home tabs must not show behind them: each paints the
+      // page background, from the edge of the screen.
+      Finder background(Finder of) => find.descendant(
+          of: of,
+          matching: find.byWidgetPredicate((widget) =>
+              widget is ColoredBox &&
+              widget.color == HomlColors.light.background));
+
+      await pump(tester, MonthHeader(month: DateTime(2026, 10), count: 5));
+      expect(background(find.byType(MonthHeader)), findsOneWidget);
+
+      await pump(tester, rowOf(eventOn(DateTime(2026, 10, 25))));
+      final row = background(find.byType(EventRow));
+      expect(row, findsOneWidget);
+      final card = tester.getTopLeft(find
+          .descendant(of: find.byType(EventRow), matching: find.byType(InkWell))
+          .first);
+      final behind = tester.getRect(row);
+      // From the left edge of the list's padding to the start of the card.
+      expect(behind.left, tester.getTopLeft(find.byType(EventRow)).dx - 12);
+      expect(behind.right, lessThanOrEqualTo(card.dx));
+    });
 
     testWidgets('a month heading starts with a capital and counts its events',
         (tester) async {
