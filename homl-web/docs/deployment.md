@@ -159,6 +159,22 @@ deletion work as before. To add someone later, open it again for the time
 it takes. Only `true` or `false` (also `1`/`0`) are accepted: any other
 value stops the service at startup rather than being read as either.
 
+### Terms & privacy: you are the operator
+
+The app ships a standard terms of use and privacy policy (drawer → **Terms &
+privacy**, also linked under the sign-up button; creating an account is the
+acceptance). It names no one: whoever runs the server — you — is "the
+operator" and the controller of the data stored on it, under Swiss law (FADP),
+with the GDPR rights for users in the EU. The text has no contact field, so
+before opening the instance to anyone else, tell them how to reach you for
+questions or requests about their data.
+
+It states what this deployment does by default; keep it true if you change
+it: requests are logged with their IP address (`docker compose logs`, kept as
+long as your Docker log settings keep them), and backups disappear after
+`BACKUP_KEEP_DAYS` (28 by default, §7). The full list, and where each fact
+comes from, is in `homl-ui/README.md` ("Terms & privacy page").
+
 ## 4. TLS and the reverse proxy
 
 The API speaks plain HTTP and does not terminate TLS. Put a proxy in front of
@@ -484,6 +500,7 @@ notify of that release, not install it in the background.
 - [ ] `TRUSTED_PROXIES` matching the actual proxy (§4)
 - [ ] Migrations applied, **seeder never run**
 - [ ] Your accounts created, then `REGISTRATION_OPEN=false` (§3)
+- [ ] Users told how to reach you about their data: the in-app privacy policy names "the operator", without a contact (§3)
 - [ ] TLS working, port 8080 not reachable from outside
 - [ ] `3306` and `6379` not reachable from outside (`ss -ltn` on the host)
 - [ ] SMTP configured, a real reset email received

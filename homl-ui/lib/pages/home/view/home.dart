@@ -25,6 +25,7 @@ import 'package:homl/pages/categories/categories.dart';
 import 'package:homl/pages/home/bloc/home_cubit.dart';
 import 'package:homl/pages/insert/bloc/insert_cubit.dart';
 import 'package:homl/pages/insert/insert.dart';
+import 'package:homl/pages/legal/legal.dart';
 import 'package:homl/pages/list/bloc/list_cubit.dart';
 import 'package:homl/pages/list/list.dart';
 import 'package:homl/pages/account/view/account.dart';
@@ -290,6 +291,13 @@ class _HomeViewState extends State<HomeView>
           icon: Icons.settings_outlined,
           onTap: () {
             Navigator.of(context).push(SettingsPage.route());
+          },
+        ),
+        _DrawerListTile(
+          title: localization.legal_title,
+          icon: Icons.description_outlined,
+          onTap: () {
+            Navigator.of(context).push(LegalPage.route());
           },
         ),
       ],

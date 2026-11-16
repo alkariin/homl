@@ -12,6 +12,7 @@ import 'package:homl/data/repositories/users.repository.dart';
 import 'package:homl/helpers/language.dart';
 import 'package:homl/helpers/toast.dart';
 import 'package:homl/helpers/validations.dart';
+import 'package:homl/pages/legal/legal.dart';
 import 'package:homl/pages/register/bloc/register_cubit.dart';
 
 class RegisterPage extends StatelessWidget {
@@ -115,7 +116,19 @@ class _RegisterViewState extends State<RegisterView> {
                                         context.read<RegisterCubit>().submit();
                                       }
                                     },
-                                  )
+                                  ),
+                            const Padding(padding: EdgeInsets.all(8)),
+                            // Read before signing up, not ticked: creating
+                            // the account is the acceptance.
+                            TextButton(
+                              onPressed: () =>
+                                  Navigator.of(context).push(LegalPage.route()),
+                              child: Text(
+                                localization.register_legalNotice,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(fontSize: 13),
+                              ),
+                            ),
                           ],
                         ),
                       ),

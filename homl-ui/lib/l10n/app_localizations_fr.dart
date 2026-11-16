@@ -1310,4 +1310,148 @@ class AppLocalizationsFr extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get legal_title => 'Conditions et confidentialité';
+
+  @override
+  String legal_updated(String date) {
+    return 'Dernière mise à jour : $date';
+  }
+
+  @override
+  String get legal_termsHeading => 'Conditions d\'utilisation';
+
+  @override
+  String get legal_privacyHeading => 'Protection des données';
+
+  @override
+  String get legal_termsServiceTitle => 'Le service';
+
+  @override
+  String get legal_termsServiceBody =>
+      'HOML est un journal personnel : tu y notes les événements de ta vie, tu les relies à des tags et des catégories, et tu parcours ton propre historique. Ces conditions s\'appliquent à ton utilisation de l\'app et du serveur HOML auquel tu te connectes.';
+
+  @override
+  String get legal_termsOperatorTitle => 'Qui l\'exploite';
+
+  @override
+  String get legal_termsOperatorBody =>
+      'HOML est un logiciel libre et auto-hébergé. Chaque serveur est installé et géré par son exploitant — la personne ou l\'organisation qui l\'administre —, indépendamment des auteurs du logiciel. L\'exploitant du serveur choisi à la connexion est responsable de ton compte et de tes données.';
+
+  @override
+  String get legal_termsAccountTitle => 'Ton compte';
+
+  @override
+  String get legal_termsAccountBody =>
+      'Il te faut une adresse e-mail valide et un mot de passe. Ton compte est personnel. Tu dois avoir au moins 16 ans, ou l\'accord d\'un parent ou d\'un représentant légal. Garde en lieu sûr ton mot de passe, ton PIN et, si tu actives le chiffrement de bout en bout, ta phrase de récupération : sans elle, personne ne peut récupérer tes données chiffrées.';
+
+  @override
+  String get legal_termsUseTitle => 'Utilisation';
+
+  @override
+  String get legal_termsUseBody =>
+      'Utilise HOML dans le respect de la loi. N\'y stocke pas de contenus illicites, n\'essaie pas de perturber le serveur ni d\'accéder aux comptes d\'autres personnes. Quand tu écris sur d\'autres personnes, respecte leur vie privée.';
+
+  @override
+  String get legal_termsContentTitle => 'Tes contenus';
+
+  @override
+  String get legal_termsContentBody =>
+      'Tes événements, tags et catégories t\'appartiennent. L\'exploitant ne les utilise que pour faire fonctionner le service. Tu peux les exporter à tout moment depuis la page Sécurité.';
+
+  @override
+  String get legal_termsAvailabilityTitle => 'Disponibilité';
+
+  @override
+  String get legal_termsAvailabilityBody =>
+      'Le service est fourni « en l\'état », sans garantie de disponibilité ni d\'absence d\'erreurs. L\'exploitant peut le modifier, l\'interrompre ou y mettre fin. Exporte régulièrement tes données : le fichier est ta propre sauvegarde.';
+
+  @override
+  String get legal_termsLiabilityTitle => 'Responsabilité';
+
+  @override
+  String get legal_termsLiabilityBody =>
+      'Dans la mesure permise par la loi, ni l\'exploitant ni les auteurs du logiciel ne répondent des pertes de données ou des dommages indirects résultant de l\'utilisation du service. Le logiciel lui-même est distribué sous la licence GNU Affero General Public License v3, sans garantie.';
+
+  @override
+  String get legal_termsEndTitle => 'Fermer ton compte';
+
+  @override
+  String get legal_termsEndBody =>
+      'Tu peux supprimer ton compte à tout moment depuis la page Sécurité : tes données sont alors effacées du serveur. L\'exploitant peut fermer un compte qui enfreint ces conditions.';
+
+  @override
+  String get legal_termsLawTitle => 'Modifications et droit applicable';
+
+  @override
+  String get legal_termsLawBody =>
+      'Ces conditions peuvent évoluer avec l\'app ; la version en vigueur est celle affichée ici, datée en haut de cette page. Elles sont régies par le droit suisse.';
+
+  @override
+  String get legal_privacyControllerTitle => 'Responsable';
+
+  @override
+  String get legal_privacyControllerBody =>
+      'Le responsable du traitement de tes données est l\'exploitant du serveur auquel tu te connectes. Adresse-lui toute question ou demande concernant tes données. Les auteurs du logiciel n\'ont accès ni à ton serveur ni à tes données.';
+
+  @override
+  String get legal_privacyDataTitle => 'Données traitées';
+
+  @override
+  String get legal_privacyDataBody =>
+      '• Compte : ton adresse e-mail, ton mot de passe (uniquement stocké haché), ta langue et tes préférences.\n• Contenus : tes événements (dates et descriptions), tags, catégories et groupes de tags.\n• Sécurité : pour chaque appareil connecté, la plateforme et la version de l\'app, son adresse IP, la date de connexion et de dernière activité ; ton PIN, stocké haché, ou la clé publique qui vérifie ton empreinte — l\'empreinte elle-même ne quitte jamais ton appareil.\n• Journaux techniques : le serveur enregistre chaque requête (heure, adresse IP, adresse appelée) pour fonctionner et se protéger.';
+
+  @override
+  String get legal_privacyPurposesTitle => 'Finalités';
+
+  @override
+  String get legal_privacyPurposesBody =>
+      'Uniquement pour fournir le service (enregistrer, synchroniser et afficher tes contenus), sécuriser ton compte (connexion, appareils connectés, limitation des tentatives répétées) et t\'envoyer les e-mails nécessaires, comme un code de réinitialisation du mot de passe. La base légale est l\'exécution du contrat — fournir le service que tu as demandé en créant ton compte — et l\'intérêt légitime de l\'exploitant à le sécuriser. Aucune publicité, aucun pistage, aucune mesure d\'audience, aucune revente de données.';
+
+  @override
+  String get legal_privacySecurityTitle => 'Chiffrement';
+
+  @override
+  String get legal_privacySecurityBody =>
+      'Les noms de catégories et de tags et les descriptions d\'événements sont chiffrés au repos sur le serveur. Avec le chiffrement de bout en bout (optionnel, dans la page Sécurité), ils sont chiffrés sur ton appareil et le serveur ne peut pas les lire ; les dates de tes événements restent lisibles par le serveur. Les connexions sont chiffrées quand le serveur est joint en HTTPS ; l\'app te prévient quand ce n\'est pas le cas.';
+
+  @override
+  String get legal_privacyDeviceTitle => 'Sur ton appareil';
+
+  @override
+  String get legal_privacyDeviceBody =>
+      'Pour fonctionner hors ligne, l\'app garde une copie de tes données sur ton appareil, chiffrée avec une clé qui ne le quitte jamais. Te déconnecter l\'efface.';
+
+  @override
+  String get legal_privacySharingTitle => 'Partage';
+
+  @override
+  String get legal_privacySharingBody =>
+      'Tes données ne sont transmises à personne, sauf : au fournisseur d\'e-mail qu\'utilise l\'exploitant pour envoyer les e-mails de l\'app (il voit ton adresse et le message), à l\'hébergeur du serveur si l\'exploitant en utilise un, et aux autorités lorsque la loi l\'exige. L\'app ne contacte aucun autre service : le lien vers une nouvelle version ne s\'ouvre que si tu le touches.';
+
+  @override
+  String get legal_privacyRetentionTitle => 'Durée de conservation';
+
+  @override
+  String get legal_privacyRetentionBody =>
+      'Tes données sont conservées tant que ton compte existe. Supprimer ton compte les efface du serveur ; elles peuvent subsister dans les sauvegardes de l\'exploitant jusqu\'à leur remplacement (28 jours par défaut). Une session d\'appareil prend fin après six mois sans utilisation, un code de réinitialisation après 15 minutes. La durée de conservation des journaux techniques dépend de la configuration du serveur.';
+
+  @override
+  String get legal_privacyRightsTitle => 'Tes droits';
+
+  @override
+  String get legal_privacyRightsBody =>
+      'Selon la loi fédérale sur la protection des données (LPD) et, si tu te trouves dans l\'Union européenne, le RGPD, tu peux accéder à tes données, les faire rectifier ou effacer, les recevoir dans un format portable et t\'opposer à leur traitement. L\'essentiel se fait dans l\'app : tout modifier, exporter tes données, supprimer ton compte. Pour le reste, contacte l\'exploitant. Tu peux aussi déposer une plainte auprès d\'une autorité de surveillance : le PFPDT en Suisse, ou l\'autorité de ton pays dans l\'UE.';
+
+  @override
+  String get legal_privacyChangesTitle => 'Modifications';
+
+  @override
+  String get legal_privacyChangesBody =>
+      'Cette politique peut évoluer avec l\'app ; la date en haut de cette page indique sa dernière mise à jour.';
+
+  @override
+  String get register_legalNotice =>
+      'En créant un compte, tu acceptes les conditions d\'utilisation et la politique de protection des données.';
 }

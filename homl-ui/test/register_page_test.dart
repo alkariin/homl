@@ -58,4 +58,27 @@ void main() {
       expect(find.byType(TextFormField), findsNWidgets(2));
     });
   }
+
+  const legalNotice =
+      'By creating an account, you accept the terms of use and the privacy '
+      'policy.';
+
+  testWidgets('the form links to the terms & privacy page', (tester) async {
+    await openRegistration(tester, true);
+
+    await tester.tap(find.text(legalNotice));
+    await tester.pumpAndSettle();
+    expect(find.text('Terms & privacy'), findsOneWidget);
+    expect(find.text('Terms of use'), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.arrow_back));
+    await tester.pumpAndSettle();
+    expect(find.byType(TextFormField), findsNWidgets(2));
+  });
+
+  testWidgets('a closed server shows no terms to accept', (tester) async {
+    await openRegistration(tester, false);
+
+    expect(find.text(legalNotice), findsNothing);
+  });
 }
