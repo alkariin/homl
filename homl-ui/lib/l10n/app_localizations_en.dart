@@ -1306,4 +1306,148 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get legal_title => 'Terms & privacy';
+
+  @override
+  String legal_updated(String date) {
+    return 'Last updated: $date';
+  }
+
+  @override
+  String get legal_termsHeading => 'Terms of use';
+
+  @override
+  String get legal_privacyHeading => 'Privacy policy';
+
+  @override
+  String get legal_termsServiceTitle => 'The service';
+
+  @override
+  String get legal_termsServiceBody =>
+      'HOML is a personal journal: you record the events of your life, link them to tags and categories, and browse your own history. These terms apply to your use of the app and of the HOML server you sign in to.';
+
+  @override
+  String get legal_termsOperatorTitle => 'Who runs it';
+
+  @override
+  String get legal_termsOperatorBody =>
+      'HOML is free, self-hosted software. Each server is installed and run by its operator — the person or organisation that administers it — independently of the authors of the software. The operator of the server you chose at sign-in is responsible for your account and your data.';
+
+  @override
+  String get legal_termsAccountTitle => 'Your account';
+
+  @override
+  String get legal_termsAccountBody =>
+      'You need a valid email address and a password. Your account is personal. You must be at least 16 years old, or have the consent of a parent or guardian. Keep your password, your PIN and — if you turn on end-to-end encryption — your recovery phrase safe: without that phrase, nobody can recover your encrypted data.';
+
+  @override
+  String get legal_termsUseTitle => 'Acceptable use';
+
+  @override
+  String get legal_termsUseBody =>
+      'Use HOML lawfully. Do not store unlawful content, do not try to disrupt the server or to access other people\'s accounts. When you write about other people, respect their privacy.';
+
+  @override
+  String get legal_termsContentTitle => 'Your content';
+
+  @override
+  String get legal_termsContentBody =>
+      'Your events, tags and categories belong to you. The operator uses them only to run the service. You can export them at any time from the Security page.';
+
+  @override
+  String get legal_termsAvailabilityTitle => 'Availability';
+
+  @override
+  String get legal_termsAvailabilityBody =>
+      'The service is provided \"as is\", without any guarantee of availability or freedom from errors. The operator may change, interrupt or stop it. Export your data regularly: the file is your own backup.';
+
+  @override
+  String get legal_termsLiabilityTitle => 'Liability';
+
+  @override
+  String get legal_termsLiabilityBody =>
+      'To the extent permitted by law, neither the operator nor the authors of the software are liable for loss of data or for indirect damage resulting from the use of the service. The software itself is distributed under the GNU Affero General Public License v3, without warranty.';
+
+  @override
+  String get legal_termsEndTitle => 'Closing your account';
+
+  @override
+  String get legal_termsEndBody =>
+      'You can delete your account at any time from the Security page: your data is then erased from the server. The operator may close an account that breaks these terms.';
+
+  @override
+  String get legal_termsLawTitle => 'Changes and applicable law';
+
+  @override
+  String get legal_termsLawBody =>
+      'These terms may change with the app; the version in force is the one shown here, dated at the top of this page. They are governed by Swiss law.';
+
+  @override
+  String get legal_privacyControllerTitle => 'Who is responsible';
+
+  @override
+  String get legal_privacyControllerBody =>
+      'The controller of your data is the operator of the server you sign in to. Address any question or request about your data to them. The authors of the software have no access to your server or your data.';
+
+  @override
+  String get legal_privacyDataTitle => 'What is processed';
+
+  @override
+  String get legal_privacyDataBody =>
+      '• Account: your email address, your password (only ever stored hashed), your language and your preferences.\n• Content: your events (dates and descriptions), tags, categories and tag groups.\n• Security: for each signed-in device, the platform and version of the app, its IP address, and when it signed in and was last active; your PIN, stored hashed, or the public key that checks your fingerprint — the fingerprint itself never leaves your device.\n• Technical logs: the server records each request (time, IP address, address called) to run and protect the service.';
+
+  @override
+  String get legal_privacyPurposesTitle => 'Why';
+
+  @override
+  String get legal_privacyPurposesBody =>
+      'Only to provide the service (store, sync and show your content), to secure your account (sign-in, signed-in devices, limiting repeated attempts) and to send you the emails it needs, such as a password reset code. The legal basis is the performance of the contract — providing the service you asked for by creating your account — and the operator\'s legitimate interest in keeping it secure. No advertising, no tracking, no analytics, no sale of data.';
+
+  @override
+  String get legal_privacySecurityTitle => 'Encryption';
+
+  @override
+  String get legal_privacySecurityBody =>
+      'Category names, tag names and event descriptions are encrypted at rest on the server. With end-to-end encryption (optional, on the Security page), they are encrypted on your device and the server cannot read them; the dates of your events stay readable by the server. Connections are encrypted when the server is reached over HTTPS; the app warns you when it is not.';
+
+  @override
+  String get legal_privacyDeviceTitle => 'On your device';
+
+  @override
+  String get legal_privacyDeviceBody =>
+      'To work offline, the app keeps a copy of your data on your device, encrypted with a key that never leaves it. Logging out erases it.';
+
+  @override
+  String get legal_privacySharingTitle => 'Sharing';
+
+  @override
+  String get legal_privacySharingBody =>
+      'Your data is passed on to no one, except: the email provider the operator uses to send the app\'s emails (it sees your address and the message), the company hosting the server if the operator uses one, and authorities where the law requires it. The app contacts no other service: the link to a new version only opens if you tap it.';
+
+  @override
+  String get legal_privacyRetentionTitle => 'How long';
+
+  @override
+  String get legal_privacyRetentionBody =>
+      'Your data is kept as long as your account exists. Deleting your account erases it from the server; it may remain in the operator\'s backups until they are replaced (28 days by default). A device session ends after six months without use, a password reset code after 15 minutes. How long technical logs are kept depends on the server\'s configuration.';
+
+  @override
+  String get legal_privacyRightsTitle => 'Your rights';
+
+  @override
+  String get legal_privacyRightsBody =>
+      'Under the Swiss Federal Act on Data Protection (FADP) and, if you are in the European Union, the GDPR, you can access your data, have it corrected or erased, receive it in a portable format and object to its processing. Most of this is in the app: edit anything, export your data, delete your account. For the rest, contact the operator. You can also complain to a supervisory authority: the FDPIC in Switzerland, or the authority of your country in the EU.';
+
+  @override
+  String get legal_privacyChangesTitle => 'Changes';
+
+  @override
+  String get legal_privacyChangesBody =>
+      'This policy may change with the app; the date at the top of this page shows its last update.';
+
+  @override
+  String get register_legalNotice =>
+      'By creating an account, you accept the terms of use and the privacy policy.';
 }

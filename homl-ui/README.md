@@ -841,6 +841,43 @@ explanation rather than the generic "Registration failed" toast. The login
 page keeps its "create an account" link either way: the explanation is
 what a visitor of a closed server needs.
 
+Under the sign-up button, a link — "By creating an account, you accept the
+terms of use and the privacy policy" — opens the terms & privacy page (see
+below). No checkbox: creating the account is the acceptance. A closed server
+shows no form, so no link either.
+
+## Terms & privacy page (drawer)
+
+`lib/pages/legal/` is the last drawer entry, **Terms & privacy**: the terms
+of use and the privacy policy, one card each, with the date of the last
+update on top (`LegalPage.updated`, formatted in the app language). It is
+static text from the `legal_*` keys of the `.arb` files, in the same tone as
+the rest of the app (*tu* / *du*). A line of a section starting with `• ` is
+a list item, drawn with a hanging indent. The text is selectable.
+
+Every HOML server is self-hosted, so the texts never name a person: the
+**operator** of the server the user signed in to is responsible for the
+account and is the data controller; the authors of the software have no
+access. The law is Swiss (FADP / LPD / DSG, the FDPIC as authority), with the
+GDPR rights listed for users in the EU. The text has no contact field: the
+operator tells their users how to reach them (homl-web/docs/deployment.md
+§3, "Terms & privacy: you are the operator").
+
+The privacy policy states facts about the code; a change to one of them
+changes the text too, in the three languages, and bumps `LegalPage.updated`:
+
+| The text says | Where it comes from |
+|---|---|
+| password and PIN stored hashed, a public key for the fingerprint | `homl-web/docs/auth-flows.md` ("Enabling pin / fingerprint") |
+| per device: platform and version, IP address, sign-in and last activity | "Signed-in devices" below, `X-Homl-Client` |
+| every request logged (time, IP, path) | `gin.Default()` in `homl-web/.../web/router.go` |
+| names and descriptions encrypted at rest, dates readable even with E2EE | `homl-web/docs/architecture.md`, `homl-web/docs/e2ee.md` |
+| offline copy sealed with a device key, erased at logout | "Offline cache & local search" below, `LocalStore` |
+| only outbound: the operator's SMTP; the release link opens on tap only | `homl-web/docs/deployment.md` §6, "The update notice" above |
+| backups kept 28 days by default | `BACKUP_KEEP_DAYS` in `homl-web/scripts/backup.sh` |
+| device session ends after six months unused, reset code after 15 min | refresh token TTL and reset code TTL, `homl-web/docs/auth-flows.md` |
+| export, edit, delete the account in the app | "Data export & import", "Security page" below |
+
 ## Security page (drawer): password, PIN, fingerprint, delete account
 
 `lib/pages/account/` is the "Security" screen: password change

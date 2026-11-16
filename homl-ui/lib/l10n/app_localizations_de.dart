@@ -1319,4 +1319,148 @@ class AppLocalizationsDe extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get legal_title => 'Nutzungsbedingungen & Datenschutz';
+
+  @override
+  String legal_updated(String date) {
+    return 'Zuletzt aktualisiert: $date';
+  }
+
+  @override
+  String get legal_termsHeading => 'Nutzungsbedingungen';
+
+  @override
+  String get legal_privacyHeading => 'Datenschutzerklärung';
+
+  @override
+  String get legal_termsServiceTitle => 'Der Dienst';
+
+  @override
+  String get legal_termsServiceBody =>
+      'HOML ist ein persönliches Tagebuch: Du hältst die Ereignisse deines Lebens fest, verknüpfst sie mit Tags und Kategorien und blätterst in deiner eigenen Geschichte. Diese Bedingungen gelten für die Nutzung der App und des HOML-Servers, bei dem du dich anmeldest.';
+
+  @override
+  String get legal_termsOperatorTitle => 'Wer ihn betreibt';
+
+  @override
+  String get legal_termsOperatorBody =>
+      'HOML ist freie, selbst gehostete Software. Jeder Server wird von seinem Betreiber – der Person oder Organisation, die ihn verwaltet – installiert und betrieben, unabhängig von den Autoren der Software. Der Betreiber des Servers, den du bei der Anmeldung gewählt hast, ist für dein Konto und deine Daten verantwortlich.';
+
+  @override
+  String get legal_termsAccountTitle => 'Dein Konto';
+
+  @override
+  String get legal_termsAccountBody =>
+      'Du brauchst eine gültige E-Mail-Adresse und ein Passwort. Dein Konto ist persönlich. Du musst mindestens 16 Jahre alt sein oder die Zustimmung eines Elternteils oder gesetzlichen Vertreters haben. Bewahre dein Passwort, deine PIN und – falls du die Ende-zu-Ende-Verschlüsselung aktivierst – deine Wiederherstellungsphrase sicher auf: Ohne diese Phrase kann niemand deine verschlüsselten Daten wiederherstellen.';
+
+  @override
+  String get legal_termsUseTitle => 'Zulässige Nutzung';
+
+  @override
+  String get legal_termsUseBody =>
+      'Nutze HOML im Rahmen der Gesetze. Speichere keine rechtswidrigen Inhalte und versuche nicht, den Server zu stören oder auf Konten anderer zuzugreifen. Wenn du über andere Menschen schreibst, respektiere ihre Privatsphäre.';
+
+  @override
+  String get legal_termsContentTitle => 'Deine Inhalte';
+
+  @override
+  String get legal_termsContentBody =>
+      'Deine Ereignisse, Tags und Kategorien gehören dir. Der Betreiber nutzt sie nur, um den Dienst zu betreiben. Du kannst sie jederzeit auf der Seite Sicherheit exportieren.';
+
+  @override
+  String get legal_termsAvailabilityTitle => 'Verfügbarkeit';
+
+  @override
+  String get legal_termsAvailabilityBody =>
+      'Der Dienst wird „wie besehen“ bereitgestellt, ohne Gewähr für Verfügbarkeit oder Fehlerfreiheit. Der Betreiber kann ihn ändern, unterbrechen oder einstellen. Exportiere deine Daten regelmäßig: Die Datei ist deine eigene Sicherung.';
+
+  @override
+  String get legal_termsLiabilityTitle => 'Haftung';
+
+  @override
+  String get legal_termsLiabilityBody =>
+      'Soweit gesetzlich zulässig, haften weder der Betreiber noch die Autoren der Software für Datenverlust oder indirekte Schäden aus der Nutzung des Dienstes. Die Software selbst wird unter der GNU Affero General Public License v3 ohne Gewährleistung verbreitet.';
+
+  @override
+  String get legal_termsEndTitle => 'Konto schließen';
+
+  @override
+  String get legal_termsEndBody =>
+      'Du kannst dein Konto jederzeit auf der Seite Sicherheit löschen: Deine Daten werden dann vom Server gelöscht. Der Betreiber kann ein Konto schließen, das gegen diese Bedingungen verstößt.';
+
+  @override
+  String get legal_termsLawTitle => 'Änderungen und anwendbares Recht';
+
+  @override
+  String get legal_termsLawBody =>
+      'Diese Bedingungen können sich mit der App ändern; es gilt die hier angezeigte Fassung, oben auf dieser Seite datiert. Es gilt Schweizer Recht.';
+
+  @override
+  String get legal_privacyControllerTitle => 'Verantwortlicher';
+
+  @override
+  String get legal_privacyControllerBody =>
+      'Verantwortlich für deine Daten ist der Betreiber des Servers, bei dem du dich anmeldest. Richte Fragen oder Anliegen zu deinen Daten an ihn. Die Autoren der Software haben keinen Zugriff auf deinen Server oder deine Daten.';
+
+  @override
+  String get legal_privacyDataTitle => 'Welche Daten';
+
+  @override
+  String get legal_privacyDataBody =>
+      '• Konto: deine E-Mail-Adresse, dein Passwort (nur als Hash gespeichert), deine Sprache und deine Einstellungen.\n• Inhalte: deine Ereignisse (Datum und Beschreibung), Tags, Kategorien und Tag-Gruppen.\n• Sicherheit: für jedes angemeldete Gerät Plattform und Version der App, seine IP-Adresse sowie Zeitpunkt der Anmeldung und der letzten Aktivität; deine PIN, als Hash gespeichert, oder der öffentliche Schlüssel, der deinen Fingerabdruck prüft – der Fingerabdruck selbst verlässt nie dein Gerät.\n• Technische Protokolle: Der Server protokolliert jede Anfrage (Zeit, IP-Adresse, aufgerufene Adresse), um zu funktionieren und sich zu schützen.';
+
+  @override
+  String get legal_privacyPurposesTitle => 'Zwecke';
+
+  @override
+  String get legal_privacyPurposesBody =>
+      'Nur um den Dienst zu erbringen (deine Inhalte speichern, synchronisieren und anzeigen), dein Konto zu schützen (Anmeldung, angemeldete Geräte, Begrenzung wiederholter Versuche) und dir die nötigen E-Mails zu senden, etwa einen Code zum Zurücksetzen des Passworts. Rechtsgrundlage ist die Vertragserfüllung – der Dienst, den du mit deinem Konto angefordert hast – und das berechtigte Interesse des Betreibers an seiner Sicherheit. Keine Werbung, kein Tracking, keine Analyse, kein Verkauf von Daten.';
+
+  @override
+  String get legal_privacySecurityTitle => 'Verschlüsselung';
+
+  @override
+  String get legal_privacySecurityBody =>
+      'Kategorienamen, Tag-Namen und Ereignisbeschreibungen werden auf dem Server verschlüsselt gespeichert. Mit der Ende-zu-Ende-Verschlüsselung (optional, auf der Seite Sicherheit) werden sie auf deinem Gerät verschlüsselt, und der Server kann sie nicht lesen; die Datumsangaben deiner Ereignisse bleiben für den Server lesbar. Verbindungen sind verschlüsselt, wenn der Server über HTTPS erreicht wird; die App warnt dich, wenn das nicht der Fall ist.';
+
+  @override
+  String get legal_privacyDeviceTitle => 'Auf deinem Gerät';
+
+  @override
+  String get legal_privacyDeviceBody =>
+      'Damit die App offline funktioniert, behält sie eine Kopie deiner Daten auf deinem Gerät, verschlüsselt mit einem Schlüssel, der es nie verlässt. Beim Abmelden wird sie gelöscht.';
+
+  @override
+  String get legal_privacySharingTitle => 'Weitergabe';
+
+  @override
+  String get legal_privacySharingBody =>
+      'Deine Daten werden an niemanden weitergegeben, außer: an den E-Mail-Anbieter, über den der Betreiber die E-Mails der App versendet (er sieht deine Adresse und die Nachricht), an den Hoster des Servers, falls der Betreiber einen nutzt, und an Behörden, wenn das Gesetz es verlangt. Die App kontaktiert keinen anderen Dienst: Der Link zu einer neuen Version öffnet sich nur, wenn du ihn antippst.';
+
+  @override
+  String get legal_privacyRetentionTitle => 'Aufbewahrung';
+
+  @override
+  String get legal_privacyRetentionBody =>
+      'Deine Daten werden aufbewahrt, solange dein Konto besteht. Das Löschen deines Kontos entfernt sie vom Server; in den Sicherungen des Betreibers können sie bleiben, bis diese ersetzt werden (standardmäßig 28 Tage). Eine Gerätesitzung endet nach sechs Monaten ohne Nutzung, ein Code zum Zurücksetzen nach 15 Minuten. Wie lange technische Protokolle aufbewahrt werden, hängt von der Konfiguration des Servers ab.';
+
+  @override
+  String get legal_privacyRightsTitle => 'Deine Rechte';
+
+  @override
+  String get legal_privacyRightsBody =>
+      'Nach dem Schweizer Datenschutzgesetz (DSG) und, wenn du dich in der Europäischen Union befindest, der DSGVO kannst du auf deine Daten zugreifen, sie berichtigen oder löschen lassen, sie in einem übertragbaren Format erhalten und ihrer Bearbeitung widersprechen. Das meiste geht direkt in der App: alles bearbeiten, deine Daten exportieren, dein Konto löschen. Für den Rest wende dich an den Betreiber. Du kannst dich auch bei einer Aufsichtsbehörde beschweren: beim EDÖB in der Schweiz oder bei der Behörde deines Landes in der EU.';
+
+  @override
+  String get legal_privacyChangesTitle => 'Änderungen';
+
+  @override
+  String get legal_privacyChangesBody =>
+      'Diese Erklärung kann sich mit der App ändern; das Datum oben auf dieser Seite zeigt ihre letzte Aktualisierung.';
+
+  @override
+  String get register_legalNotice =>
+      'Mit der Registrierung akzeptierst du die Nutzungsbedingungen und die Datenschutzerklärung.';
 }

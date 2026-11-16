@@ -1995,6 +1995,252 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =1{1 event} other{{count} events}}'**
   String list_monthCount(int count);
+
+  /// Drawer entry and page title of the terms of use and privacy policy page.
+  ///
+  /// In en, this message translates to:
+  /// **'Terms & privacy'**
+  String get legal_title;
+
+  /// Date of the last change to the terms and privacy texts.
+  ///
+  /// In en, this message translates to:
+  /// **'Last updated: {date}'**
+  String legal_updated(String date);
+
+  /// No description provided for @legal_termsHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'Terms of use'**
+  String get legal_termsHeading;
+
+  /// No description provided for @legal_privacyHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy policy'**
+  String get legal_privacyHeading;
+
+  /// No description provided for @legal_termsServiceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The service'**
+  String get legal_termsServiceTitle;
+
+  /// No description provided for @legal_termsServiceBody.
+  ///
+  /// In en, this message translates to:
+  /// **'HOML is a personal journal: you record the events of your life, link them to tags and categories, and browse your own history. These terms apply to your use of the app and of the HOML server you sign in to.'**
+  String get legal_termsServiceBody;
+
+  /// No description provided for @legal_termsOperatorTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Who runs it'**
+  String get legal_termsOperatorTitle;
+
+  /// Every HOML server is self-hosted: the texts name its operator generically, never a fixed person.
+  ///
+  /// In en, this message translates to:
+  /// **'HOML is free, self-hosted software. Each server is installed and run by its operator — the person or organisation that administers it — independently of the authors of the software. The operator of the server you chose at sign-in is responsible for your account and your data.'**
+  String get legal_termsOperatorBody;
+
+  /// No description provided for @legal_termsAccountTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account'**
+  String get legal_termsAccountTitle;
+
+  /// No description provided for @legal_termsAccountBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You need a valid email address and a password. Your account is personal. You must be at least 16 years old, or have the consent of a parent or guardian. Keep your password, your PIN and — if you turn on end-to-end encryption — your recovery phrase safe: without that phrase, nobody can recover your encrypted data.'**
+  String get legal_termsAccountBody;
+
+  /// No description provided for @legal_termsUseTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Acceptable use'**
+  String get legal_termsUseTitle;
+
+  /// No description provided for @legal_termsUseBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Use HOML lawfully. Do not store unlawful content, do not try to disrupt the server or to access other people\'s accounts. When you write about other people, respect their privacy.'**
+  String get legal_termsUseBody;
+
+  /// No description provided for @legal_termsContentTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your content'**
+  String get legal_termsContentTitle;
+
+  /// No description provided for @legal_termsContentBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your events, tags and categories belong to you. The operator uses them only to run the service. You can export them at any time from the Security page.'**
+  String get legal_termsContentBody;
+
+  /// No description provided for @legal_termsAvailabilityTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Availability'**
+  String get legal_termsAvailabilityTitle;
+
+  /// No description provided for @legal_termsAvailabilityBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The service is provided \"as is\", without any guarantee of availability or freedom from errors. The operator may change, interrupt or stop it. Export your data regularly: the file is your own backup.'**
+  String get legal_termsAvailabilityBody;
+
+  /// No description provided for @legal_termsLiabilityTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Liability'**
+  String get legal_termsLiabilityTitle;
+
+  /// No description provided for @legal_termsLiabilityBody.
+  ///
+  /// In en, this message translates to:
+  /// **'To the extent permitted by law, neither the operator nor the authors of the software are liable for loss of data or for indirect damage resulting from the use of the service. The software itself is distributed under the GNU Affero General Public License v3, without warranty.'**
+  String get legal_termsLiabilityBody;
+
+  /// No description provided for @legal_termsEndTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Closing your account'**
+  String get legal_termsEndTitle;
+
+  /// No description provided for @legal_termsEndBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You can delete your account at any time from the Security page: your data is then erased from the server. The operator may close an account that breaks these terms.'**
+  String get legal_termsEndBody;
+
+  /// No description provided for @legal_termsLawTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes and applicable law'**
+  String get legal_termsLawTitle;
+
+  /// No description provided for @legal_termsLawBody.
+  ///
+  /// In en, this message translates to:
+  /// **'These terms may change with the app; the version in force is the one shown here, dated at the top of this page. They are governed by Swiss law.'**
+  String get legal_termsLawBody;
+
+  /// No description provided for @legal_privacyControllerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Who is responsible'**
+  String get legal_privacyControllerTitle;
+
+  /// No description provided for @legal_privacyControllerBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The controller of your data is the operator of the server you sign in to. Address any question or request about your data to them. The authors of the software have no access to your server or your data.'**
+  String get legal_privacyControllerBody;
+
+  /// No description provided for @legal_privacyDataTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What is processed'**
+  String get legal_privacyDataTitle;
+
+  /// One item per line, each starting with '• '; the page renders them as a bulleted list.
+  ///
+  /// In en, this message translates to:
+  /// **'• Account: your email address, your password (only ever stored hashed), your language and your preferences.\n• Content: your events (dates and descriptions), tags, categories and tag groups.\n• Security: for each signed-in device, the platform and version of the app, its IP address, and when it signed in and was last active; your PIN, stored hashed, or the public key that checks your fingerprint — the fingerprint itself never leaves your device.\n• Technical logs: the server records each request (time, IP address, address called) to run and protect the service.'**
+  String get legal_privacyDataBody;
+
+  /// No description provided for @legal_privacyPurposesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Why'**
+  String get legal_privacyPurposesTitle;
+
+  /// No description provided for @legal_privacyPurposesBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Only to provide the service (store, sync and show your content), to secure your account (sign-in, signed-in devices, limiting repeated attempts) and to send you the emails it needs, such as a password reset code. The legal basis is the performance of the contract — providing the service you asked for by creating your account — and the operator\'s legitimate interest in keeping it secure. No advertising, no tracking, no analytics, no sale of data.'**
+  String get legal_privacyPurposesBody;
+
+  /// No description provided for @legal_privacySecurityTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Encryption'**
+  String get legal_privacySecurityTitle;
+
+  /// No description provided for @legal_privacySecurityBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Category names, tag names and event descriptions are encrypted at rest on the server. With end-to-end encryption (optional, on the Security page), they are encrypted on your device and the server cannot read them; the dates of your events stay readable by the server. Connections are encrypted when the server is reached over HTTPS; the app warns you when it is not.'**
+  String get legal_privacySecurityBody;
+
+  /// No description provided for @legal_privacyDeviceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'On your device'**
+  String get legal_privacyDeviceTitle;
+
+  /// No description provided for @legal_privacyDeviceBody.
+  ///
+  /// In en, this message translates to:
+  /// **'To work offline, the app keeps a copy of your data on your device, encrypted with a key that never leaves it. Logging out erases it.'**
+  String get legal_privacyDeviceBody;
+
+  /// No description provided for @legal_privacySharingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sharing'**
+  String get legal_privacySharingTitle;
+
+  /// No description provided for @legal_privacySharingBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your data is passed on to no one, except: the email provider the operator uses to send the app\'s emails (it sees your address and the message), the company hosting the server if the operator uses one, and authorities where the law requires it. The app contacts no other service: the link to a new version only opens if you tap it.'**
+  String get legal_privacySharingBody;
+
+  /// No description provided for @legal_privacyRetentionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How long'**
+  String get legal_privacyRetentionTitle;
+
+  /// No description provided for @legal_privacyRetentionBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your data is kept as long as your account exists. Deleting your account erases it from the server; it may remain in the operator\'s backups until they are replaced (28 days by default). A device session ends after six months without use, a password reset code after 15 minutes. How long technical logs are kept depends on the server\'s configuration.'**
+  String get legal_privacyRetentionBody;
+
+  /// No description provided for @legal_privacyRightsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your rights'**
+  String get legal_privacyRightsTitle;
+
+  /// No description provided for @legal_privacyRightsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Under the Swiss Federal Act on Data Protection (FADP) and, if you are in the European Union, the GDPR, you can access your data, have it corrected or erased, receive it in a portable format and object to its processing. Most of this is in the app: edit anything, export your data, delete your account. For the rest, contact the operator. You can also complain to a supervisory authority: the FDPIC in Switzerland, or the authority of your country in the EU.'**
+  String get legal_privacyRightsBody;
+
+  /// No description provided for @legal_privacyChangesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes'**
+  String get legal_privacyChangesTitle;
+
+  /// No description provided for @legal_privacyChangesBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This policy may change with the app; the date at the top of this page shows its last update.'**
+  String get legal_privacyChangesBody;
+
+  /// Under the sign-up button; tapping it opens the terms & privacy page.
+  ///
+  /// In en, this message translates to:
+  /// **'By creating an account, you accept the terms of use and the privacy policy.'**
+  String get register_legalNotice;
 }
 
 class _AppLocalizationsDelegate
